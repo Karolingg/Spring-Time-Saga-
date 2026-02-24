@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { loginWithEmail, signUpWithEmail } from '../../src/services/auth-service';
+import { loginWithEmail, signUpWithEmail } from '@/src/services/auth.service';
 
 const ACCENT_COLOR = '#00ffb4';
 const BG_COLOR = '#080808';

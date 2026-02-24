@@ -1,6 +1,6 @@
 'use client';
 
-import { useAuth } from '../../src/context/auth-context';
+import { useAuth } from '@/src/hooks/useAuth';
 
 const ACCENT_COLOR = '#00ffb4';
 
