@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
+import { useAuth } from '../src/context/auth-context'
 
 // Animated grid background
 function GridBackground() {
@@ -242,14 +243,37 @@ function Cursor() {
 }
 
 export default function DashboardPage() {
+  const { isAuthenticated, isLoading: isAuthLoading } = useAuth()
   const [loaded, setLoaded] = useState(false)
   const [headerVisible, setHeaderVisible] = useState(false)
+
+  useEffect(() => {
+    if (!isAuthLoading && !isAuthenticated) {
+      window.location.href = '/auth'
+    }
+  }, [isAuthLoading, isAuthenticated])
 
   useEffect(() => {
     const t1 = setTimeout(() => setLoaded(true), 100)
     const t2 = setTimeout(() => setHeaderVisible(true), 300)
     return () => { clearTimeout(t1); clearTimeout(t2) }
   }, [])
+
+  if (isAuthLoading) {
+    return (
+      <div style={{
+        minHeight: '100vh',
+        background: '#080808',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+      }}>
+        <div style={{ color: '#00ffb4', fontSize: '14px', fontFamily: 'monospace' }}>
+          AUTHENTICATING...
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div style={{
