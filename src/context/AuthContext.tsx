@@ -1,16 +1,16 @@
 'use client';
 
-import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
-import { onAuthStateChange, getCurrentUser, logout } from '../services/auth-service';
+import { createContext, useEffect, useState, ReactNode } from 'react';
+import { onAuthStateChange, getCurrentUser, logout } from '../services/auth.service';
 
-interface AuthContextValue {
+export interface AuthContextValue {
   user: unknown;
   isLoading: boolean;
   isAuthenticated: boolean;
   handleLogout: () => Promise<void>;
 }
 
-const AuthContext = createContext<AuthContextValue>({
+export const AuthContext = createContext<AuthContextValue>({
   user: null,
   isLoading: true,
   isAuthenticated: false,
@@ -50,8 +50,4 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       {children}
     </AuthContext.Provider>
   );
-}
-
-export function useAuth() {
-  return useContext(AuthContext);
 }
