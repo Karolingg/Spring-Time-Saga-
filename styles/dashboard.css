@@ -5,6 +5,7 @@
   color: #e0e0e0;
   font-family: monospace;
   position: relative;
+  overflow-x: hidden; /* prevent horizontal scroll specific to dashboard */
 }
 
 .dashboard-container {
