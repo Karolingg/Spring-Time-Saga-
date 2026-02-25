@@ -2,12 +2,12 @@
 
 import { ReactNode } from 'react';
 import { AuthProvider } from '@/src/context/AuthContext';
-import { AuthBar } from '@/components/auth/AuthBar';
+import { Navbar } from '@/components/Navbar';
 
 export function Providers({ children }: { children: ReactNode }) {
   return (
     <AuthProvider>
-      <AuthBar />
+      <Navbar />
       {children}
     </AuthProvider>
   );

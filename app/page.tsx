@@ -40,19 +40,6 @@ export default function DashboardPage() {
     <div className="dashboard">
       <GridBackground />
 
-      {/* Top Status Bar */}
-      <div className={`status-bar ${loaded ? 'loaded' : ''}`}>
-        <div className="status-bar-left">
-          <div className="status-indicator" />
-          <span className="status-label">EVAC-SIM v1.0</span>
-        </div>
-        <div className="status-bar-right">
-          <span className="status-item">SYSTEM READY</span>
-          <span className="status-item">DB CONNECTED</span>
-          <span className="status-item">ENGINE IDLE</span>
-        </div>
-      </div>
-
       {/* Main Content */}
       <div className="dashboard-container">
         {/* System Label */}
