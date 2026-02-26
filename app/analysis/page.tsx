@@ -39,34 +39,37 @@ export default function AnalysisPage() {
   const sectionCard = {
     background: '#ffffff',
     border: '1px solid var(--border)',
-    borderRadius: '12px',
-    padding: '20px',
+    borderRadius: '14px',
+    padding: '28px 32px',
     boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
-    marginBottom: '16px',
+    marginBottom: '20px',
   } as React.CSSProperties
 
   return (
-    <div style={{ minHeight: '100vh', paddingTop: '72px', padding: '72px 24px 40px', maxWidth: '800px', margin: '0 auto' }}>
+    <div style={{ minHeight: '100vh', padding: '88px 40px 56px', maxWidth: '1280px', margin: '0 auto' }}>
 
       {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '24px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '32px' }}>
         <div style={{
-          width: '36px', height: '36px', borderRadius: '10px',
+          width: '44px', height: '44px', borderRadius: '12px',
           background: 'rgba(45,184,176,0.1)',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
         }}>
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2db8b0" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#2db8b0" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M3 3v18h18"/><path d="M18.7 8l-5.1 5.2-2.8-2.7L7 14.3"/>
           </svg>
         </div>
         <div>
-          <h1 style={{ margin: 0, fontSize: '22px', fontWeight: '700', color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>Heatmap Analysis</h1>
-          <p style={{ margin: 0, fontSize: '13px', color: 'var(--text-secondary)' }}>Congestion density and bottleneck identification</p>
+          <h1 style={{ margin: 0, fontSize: '26px', fontWeight: '700', color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>Heatmap Analysis</h1>
+          <p style={{ margin: 0, fontSize: '14px', color: 'var(--text-secondary)' }}>Congestion density and bottleneck identification</p>
         </div>
       </div>
 
+      {/* Two-column: heatmap + building risk */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '20px' }}>
+
       {/* Congestion Heatmap */}
-      <div style={sectionCard}>
+      <div style={{ ...sectionCard, marginBottom: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#2db8b0" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/>
@@ -109,7 +112,7 @@ export default function AnalysisPage() {
       </div>
 
       {/* Building Risk Table */}
-      <div style={sectionCard}>
+      <div style={{ ...sectionCard, marginBottom: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#2db8b0" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <rect x="2" y="7" width="20" height="14" rx="2" ry="2"/>
@@ -158,8 +161,10 @@ export default function AnalysisPage() {
         </table>
       </div>
 
+      </div>{/* end two-column grid */}
+
       {/* Summary Stats */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px' }}>
         {[
           { label: 'Total Zones Analyzed', value: '6', icon: '🗺' },
           { label: 'Critical Bottlenecks', value: '2', icon: '⚠️' },
@@ -168,14 +173,14 @@ export default function AnalysisPage() {
           <div key={i} style={{
             background: '#ffffff',
             border: '1px solid var(--border)',
-            borderRadius: '12px',
-            padding: '16px',
+            borderRadius: '14px',
+            padding: '28px 24px',
             boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
             textAlign: 'center',
           }}>
-            <div style={{ fontSize: '24px', marginBottom: '6px' }}>{stat.icon}</div>
-            <div style={{ fontSize: '22px', fontWeight: '700', color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>{stat.value}</div>
-            <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '2px' }}>{stat.label}</div>
+            <div style={{ fontSize: '28px', marginBottom: '8px' }}>{stat.icon}</div>
+            <div style={{ fontSize: '28px', fontWeight: '700', color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>{stat.value}</div>
+            <div style={{ fontSize: '13px', color: 'var(--text-secondary)', marginTop: '4px' }}>{stat.label}</div>
           </div>
         ))}
       </div>

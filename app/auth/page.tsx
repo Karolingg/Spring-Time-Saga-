@@ -55,25 +55,25 @@ export default function LoginPage() {
       backgroundSize: '32px 32px',
     }}>
       {/* Logo */}
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: '28px', gap: '12px' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: '36px', gap: '14px' }}>
         <div style={{
-          width: '56px',
-          height: '56px',
-          borderRadius: '16px',
+          width: '68px',
+          height: '68px',
+          borderRadius: '20px',
           background: 'rgba(45,184,176,0.12)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
         }}>
-          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#2db8b0" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+          <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#2db8b0" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
             <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
           </svg>
         </div>
         <div style={{ textAlign: 'center' }}>
-          <div style={{ fontSize: '22px', fontWeight: '800', letterSpacing: '-0.03em', color: '#1a2332' }}>
+          <div style={{ fontSize: '26px', fontWeight: '800', letterSpacing: '-0.03em', color: '#1a2332' }}>
             EVAC<span style={{ color: '#2db8b0' }}>SIM</span>
           </div>
-          <div style={{ fontSize: '12px', color: '#64748b', marginTop: '2px' }}>
+          <div style={{ fontSize: '13px', color: '#64748b', marginTop: '4px' }}>
             Crowd Evacuation Simulator with Predictive Congestion Analysis
           </div>
         </div>
@@ -82,12 +82,12 @@ export default function LoginPage() {
       {/* Card */}
       <div style={{
         background: '#ffffff',
-        borderRadius: '16px',
+        borderRadius: '20px',
         border: '1px solid #e2e8f0',
-        boxShadow: '0 4px 16px rgba(0,0,0,0.08)',
-        padding: '32px',
+        boxShadow: '0 4px 24px rgba(0,0,0,0.08)',
+        padding: '44px 48px',
         width: '100%',
-        maxWidth: '420px',
+        maxWidth: '480px',
       }}>
         {/* Heading */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '24px' }}>

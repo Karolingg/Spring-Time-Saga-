@@ -97,30 +97,34 @@ export default function SimulatePage() {
   const sectionCard = {
     background: '#ffffff',
     border: '1px solid var(--border)',
-    borderRadius: '12px',
-    padding: '20px',
+    borderRadius: '14px',
+    padding: '28px 32px',
     boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
-    marginBottom: '16px',
+    marginBottom: '20px',
   } as React.CSSProperties
 
   return (
-    <div style={{ minHeight: '100vh', paddingTop: '72px', padding: '72px 24px 40px', maxWidth: '800px', margin: '0 auto' }}>
+    <div style={{ minHeight: '100vh', padding: '88px 40px 56px', maxWidth: '1280px', margin: '0 auto' }}>
 
       {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '24px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '32px' }}>
         <div style={{
-          width: '36px', height: '36px', borderRadius: '10px',
+          width: '44px', height: '44px', borderRadius: '12px',
           background: `${accentColor}18`,
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontSize: '18px',
+          fontSize: '22px',
         }}>
           {isFireMode ? '🔥' : '🌎'}
         </div>
         <div>
-          <h1 style={{ margin: 0, fontSize: '22px', fontWeight: '700', color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>{modeLabel}</h1>
-          <p style={{ margin: 0, fontSize: '13px', color: 'var(--text-secondary)' }}>Configure and run the evacuation simulation</p>
+          <h1 style={{ margin: 0, fontSize: '26px', fontWeight: '700', color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>{modeLabel}</h1>
+          <p style={{ margin: 0, fontSize: '14px', color: 'var(--text-secondary)' }}>Configure and run the evacuation simulation</p>
         </div>
       </div>
+
+      {/* Two-column layout */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 380px', gap: '24px', alignItems: 'start' }}>
+      <div>
 
       {/* Configuration */}
       <div style={sectionCard}>
@@ -160,15 +164,21 @@ export default function SimulatePage() {
         </button>
       </div>
 
+
+      </div>{/* end left column */}
+
+      {/* Right column: Controls + Live Stats */}
+      <div>
+
       {/* Controls */}
       <div style={sectionCard}>
-        <span style={{ fontSize: '11px', fontWeight: '700', letterSpacing: '0.1em', color: 'var(--text-muted)', textTransform: 'uppercase' as const, display: 'block', marginBottom: '12px' }}>Controls</span>
+        <span style={{ fontSize: '11px', fontWeight: '700', letterSpacing: '0.1em', color: 'var(--text-muted)', textTransform: 'uppercase' as const, display: 'block', marginBottom: '16px' }}>Controls</span>
         <div style={{ display: 'flex', gap: '10px' }}>
           <button
             onClick={handleToggleSim}
             style={{
               flex: 1,
-              padding: '12px',
+              padding: '14px',
               background: isRunning ? '#f59e0b' : '#2db8b0',
               border: 'none',
               borderRadius: '8px',
@@ -198,8 +208,8 @@ export default function SimulatePage() {
             onClick={handleReset}
             title="Reset"
             style={{
-              width: '44px',
-              height: '44px',
+              width: '48px',
+              height: '48px',
               background: '#f1f5f9',
               border: '1px solid var(--border)',
               borderRadius: '8px',
@@ -217,8 +227,8 @@ export default function SimulatePage() {
         </div>
         {!isRunning && step === 0 && (
           <div style={{
-            marginTop: '10px',
-            padding: '10px 12px',
+            marginTop: '12px',
+            padding: '12px 14px',
             background: 'rgba(245,158,11,0.08)',
             border: '1px solid rgba(245,158,11,0.2)',
             borderRadius: '8px',
@@ -254,7 +264,7 @@ export default function SimulatePage() {
             display: 'flex',
             justifyContent: 'space-between',
             alignItems: 'center',
-            padding: '10px 0',
+            padding: '12px 0',
             borderTop: i === 0 ? '1px solid var(--border)' : 'none',
             borderBottom: '1px solid var(--border)',
           }}>
@@ -262,10 +272,13 @@ export default function SimulatePage() {
               <span>{stat.icon}</span>
               <span>{stat.label}</span>
             </div>
-            <span style={{ fontSize: '14px', fontWeight: '600', color: stat.color ?? 'var(--text-primary)' }}>{stat.value}</span>
+            <span style={{ fontSize: '15px', fontWeight: '600', color: stat.color ?? 'var(--text-primary)' }}>{stat.value}</span>
           </div>
         ))}
       </div>
+
+      </div>{/* end right column */}
+      </div>{/* end two-column grid */}
     </div>
   )
 }

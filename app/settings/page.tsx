@@ -53,23 +53,23 @@ export default function SettingsPage() {
   const userEmail = (user as { email?: string } | null)?.email ?? ''
 
   return (
-    <div style={{ minHeight: '100vh', paddingTop: '72px', padding: '72px 24px 40px', maxWidth: '600px', margin: '0 auto' }}>
+    <div style={{ minHeight: '100vh', padding: '88px 40px 56px', maxWidth: '900px', margin: '0 auto' }}>
 
       {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '24px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '32px' }}>
         <div style={{
-          width: '36px', height: '36px', borderRadius: '10px',
+          width: '44px', height: '44px', borderRadius: '12px',
           background: 'rgba(45,184,176,0.1)',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
         }}>
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2db8b0" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#2db8b0" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <circle cx="12" cy="12" r="3"/>
             <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
           </svg>
         </div>
         <div>
-          <h1 style={{ margin: 0, fontSize: '22px', fontWeight: '700', color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>Settings</h1>
-          <p style={{ margin: 0, fontSize: '13px', color: 'var(--text-secondary)' }}>Manage your account and security preferences</p>
+          <h1 style={{ margin: 0, fontSize: '26px', fontWeight: '700', color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>Settings</h1>
+          <p style={{ margin: 0, fontSize: '14px', color: 'var(--text-secondary)' }}>Manage your account and security preferences</p>
         </div>
       </div>
 
@@ -77,12 +77,12 @@ export default function SettingsPage() {
       <div style={{
         background: '#ffffff',
         border: '1px solid var(--border)',
-        borderRadius: '12px',
+        borderRadius: '14px',
         boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
         overflow: 'hidden',
       }}>
         {/* Tabs */}
-        <div style={{ display: 'flex', borderBottom: '1px solid var(--border)', padding: '0 20px' }}>
+        <div style={{ display: 'flex', borderBottom: '1px solid var(--border)', padding: '0 32px' }}>
           {TABS.map(tab => (
             <button
               key={tab.id}
@@ -106,7 +106,7 @@ export default function SettingsPage() {
         </div>
 
         {/* Panel content */}
-        <div style={{ padding: '24px' }}>
+        <div style={{ padding: '36px 40px' }}>
           {activeTab === 'profile' && <ProfilePanel userEmail={userEmail} />}
           {activeTab === 'security' && <SecurityPanel handleLogout={handleLogout} />}
         </div>

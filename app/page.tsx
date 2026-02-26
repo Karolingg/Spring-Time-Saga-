@@ -78,31 +78,30 @@ export default function DashboardPage() {
   return (
     <div style={{
       minHeight: '100vh',
-      paddingTop: '72px',
-      padding: '72px 24px 40px',
-      maxWidth: '800px',
+      padding: '88px 40px 56px',
+      maxWidth: '1280px',
       margin: '0 auto',
     }}>
 
       {/* Page header */}
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '24px', gap: '16px', flexWrap: 'wrap' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '32px', gap: '16px', flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
           <div style={{
-            width: '36px',
-            height: '36px',
-            borderRadius: '10px',
+            width: '44px',
+            height: '44px',
+            borderRadius: '12px',
             background: 'rgba(45,184,176,0.1)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
           }}>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2db8b0" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#2db8b0" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
               <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
             </svg>
           </div>
           <div>
-            <h1 style={{ margin: 0, fontSize: '22px', fontWeight: '700', color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>Dashboard</h1>
-            <p style={{ margin: 0, fontSize: '13px', color: 'var(--text-secondary)' }}>Campus evacuation overview &amp; analytics</p>
+            <h1 style={{ margin: 0, fontSize: '26px', fontWeight: '700', color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>Dashboard</h1>
+            <p style={{ margin: 0, fontSize: '14px', color: 'var(--text-secondary)' }}>Campus evacuation overview &amp; analytics</p>
           </div>
         </div>
         <a href="/simulate?disaster=fire" style={{
@@ -129,30 +128,30 @@ export default function DashboardPage() {
       </div>
 
       {/* Stat cards */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px', marginBottom: '20px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px', marginBottom: '24px' }}>
         {STAT_CARDS.map((card, i) => (
           <div key={i} style={{
             background: '#ffffff',
             border: '1px solid var(--border)',
-            borderRadius: '12px',
-            padding: '18px 20px',
+            borderRadius: '14px',
+            padding: '24px 28px',
             boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
           }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
               {card.icon}
               <span style={{ fontSize: '11px', fontWeight: '600', letterSpacing: '0.08em', color: 'var(--text-muted)', textTransform: 'uppercase' }}>
                 {card.label}
               </span>
             </div>
-            <div style={{ fontSize: '28px', fontWeight: '700', color: 'var(--text-primary)', letterSpacing: '-0.02em', lineHeight: 1 }}>
+            <div style={{ fontSize: '32px', fontWeight: '700', color: 'var(--text-primary)', letterSpacing: '-0.02em', lineHeight: 1 }}>
               {card.value}
             </div>
             {'progress' in card && (
-              <div style={{ margin: '8px 0 4px', height: '3px', background: '#f1f5f9', borderRadius: '2px' }}>
+              <div style={{ margin: '10px 0 4px', height: '4px', background: '#f1f5f9', borderRadius: '2px' }}>
                 <div style={{ height: '100%', width: `${card.progress}%`, background: card.color, borderRadius: '2px' }} />
               </div>
             )}
-            <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '4px' }}>{card.sub}</div>
+            <div style={{ fontSize: '13px', color: 'var(--text-secondary)', marginTop: '6px' }}>{card.sub}</div>
           </div>
         ))}
       </div>
@@ -161,10 +160,10 @@ export default function DashboardPage() {
       <div style={{
         background: '#ffffff',
         border: '1px solid var(--border)',
-        borderRadius: '12px',
-        padding: '20px',
+        borderRadius: '14px',
+        padding: '28px 32px',
         boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
-        marginBottom: '20px',
+        marginBottom: '24px',
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#2db8b0" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -217,13 +216,13 @@ export default function DashboardPage() {
       <div style={{
         background: '#ffffff',
         border: '1px solid var(--border)',
-        borderRadius: '12px',
-        padding: '20px',
+        borderRadius: '14px',
+        padding: '28px 32px',
         boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
-        marginBottom: '20px',
+        marginBottom: '24px',
       }}>
         <h2 style={{ margin: '0 0 14px', fontSize: '14px', fontWeight: '600', color: 'var(--text-primary)' }}>Quick Actions</h2>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px' }}>
           {[
             { href: '/simulate?disaster=fire', label: 'Fire Simulation', sub: 'High urgency scenario', color: '#ff6b35', icon: '🔥' },
             { href: '/simulate?disaster=earthquake', label: 'Earthquake Simulation', sub: 'Dynamic obstacles scenario', color: '#f59e0b', icon: '🌎' },
@@ -265,8 +264,8 @@ export default function DashboardPage() {
       <div style={{
         background: '#ffffff',
         border: '1px solid var(--border)',
-        borderRadius: '12px',
-        padding: '20px',
+        borderRadius: '14px',
+        padding: '28px 32px',
         boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
@@ -278,7 +277,7 @@ export default function DashboardPage() {
         </div>
         <p style={{ margin: '0 0 16px', fontSize: '12px', color: 'var(--text-secondary)' }}>Building-level risk assessment based on simulation data</p>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '10px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px' }}>
           {BUILDINGS.map(building => (
             <div key={building} style={{
               background: '#f8fafc',

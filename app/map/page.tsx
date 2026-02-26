@@ -45,24 +45,24 @@ export default function MapPage() {
   }
 
   return (
-    <div style={{ minHeight: '100vh', paddingTop: '72px', padding: '72px 24px 40px', maxWidth: '900px', margin: '0 auto' }}>
+    <div style={{ minHeight: '100vh', padding: '88px 40px 56px', maxWidth: '1280px', margin: '0 auto' }}>
 
       {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '20px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '28px' }}>
         <div style={{
-          width: '36px', height: '36px', borderRadius: '10px',
+          width: '44px', height: '44px', borderRadius: '12px',
           background: 'rgba(45,184,176,0.1)',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
         }}>
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2db8b0" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#2db8b0" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/>
           </svg>
         </div>
         <div>
-          <h1 style={{ margin: 0, fontSize: '22px', fontWeight: '700', color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>
+          <h1 style={{ margin: 0, fontSize: '26px', fontWeight: '700', color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>
             Campus Map
           </h1>
-          <p style={{ margin: 0, fontSize: '13px', color: 'var(--text-secondary)' }}>
+          <p style={{ margin: 0, fontSize: '14px', color: 'var(--text-secondary)' }}>
             UP High School – Cebu &nbsp;·&nbsp; Lahug, Cebu City, Philippines
           </p>
         </div>
@@ -102,10 +102,10 @@ export default function MapPage() {
       <div style={{
         background: '#ffffff',
         border: '1px solid var(--border)',
-        borderRadius: '12px',
+        borderRadius: '14px',
         boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
         overflow: 'hidden',
-        height: '520px',
+        height: '640px',
       }}>
         <MapView />
       </div>
