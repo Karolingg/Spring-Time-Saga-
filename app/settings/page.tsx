@@ -3,9 +3,6 @@
 import { useState } from 'react'
 import { useAuth } from '@/src/hooks/useAuth'
 import { updateUserEmail, updateUserPassword } from '@/src/services/user.service'
-import { GridBackground } from '@/components/GridBackground'
-import { BlinkingCursor } from '@/components/Cursor'
-import '@/styles/settings.css'
 
 const TABS = [
   { id: 'profile', label: 'Profile' },
@@ -14,67 +11,104 @@ const TABS = [
 
 type TabId = (typeof TABS)[number]['id']
 
+const inputStyle: React.CSSProperties = {
+  width: '100%',
+  padding: '10px 14px',
+  background: '#f8fafc',
+  border: '1px solid #e2e8f0',
+  borderRadius: '8px',
+  fontSize: '14px',
+  color: '#1a2332',
+  outline: 'none',
+  boxSizing: 'border-box',
+}
+
+const labelStyle: React.CSSProperties = {
+  display: 'block',
+  fontSize: '11px',
+  fontWeight: '600',
+  letterSpacing: '0.08em',
+  color: '#64748b',
+  textTransform: 'uppercase',
+  marginBottom: '6px',
+}
+
 export default function SettingsPage() {
   const { isAuthenticated, isLoading: isAuthLoading, user, handleLogout } = useAuth()
   const [activeTab, setActiveTab] = useState<TabId>('profile')
 
   if (isAuthLoading) {
     return (
-      <div className="settings__loading">
-        <div className="settings__loading-text">LOADING...</div>
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg)' }}>
+        <div style={{ color: 'var(--text-secondary)', fontSize: '14px' }}>Loading...</div>
       </div>
     )
   }
 
   if (!isAuthenticated) {
-    if (typeof window !== 'undefined') {
-      window.location.href = '/auth'
-    }
+    if (typeof window !== 'undefined') window.location.href = '/auth'
     return null
   }
 
   const userEmail = (user as { email?: string } | null)?.email ?? ''
 
-  function handleTabChange(tabId: TabId) {
-    setActiveTab(tabId)
-  }
-
   return (
-    <div className="settings">
-      <GridBackground />
+    <div style={{ minHeight: '100vh', paddingTop: '72px', padding: '72px 24px 40px', maxWidth: '600px', margin: '0 auto' }}>
 
-      <div className="settings__container">
-        <div className="settings__header">
-          <div className="settings__label">
-            <div className="settings__label-line" />
-            <span className="settings__label-text">System Configuration</span>
-          </div>
-          <h1 className="settings__title">
-            SETTINGS<BlinkingCursor />
-          </h1>
-          <p className="settings__subtitle">
-            Manage your account profile and security preferences.
-          </p>
+      {/* Header */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '24px' }}>
+        <div style={{
+          width: '36px', height: '36px', borderRadius: '10px',
+          background: 'rgba(45,184,176,0.1)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+        }}>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2db8b0" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="12" r="3"/>
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+          </svg>
         </div>
+        <div>
+          <h1 style={{ margin: 0, fontSize: '22px', fontWeight: '700', color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>Settings</h1>
+          <p style={{ margin: 0, fontSize: '13px', color: 'var(--text-secondary)' }}>Manage your account and security preferences</p>
+        </div>
+      </div>
 
-        <div className="settings__tabs">
+      {/* Card */}
+      <div style={{
+        background: '#ffffff',
+        border: '1px solid var(--border)',
+        borderRadius: '12px',
+        boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+        overflow: 'hidden',
+      }}>
+        {/* Tabs */}
+        <div style={{ display: 'flex', borderBottom: '1px solid var(--border)', padding: '0 20px' }}>
           {TABS.map(tab => (
             <button
               key={tab.id}
-              className={`settings__tab ${activeTab === tab.id ? 'settings__tab--active' : ''}`}
-              onClick={() => handleTabChange(tab.id)}
-              type="button"
+              onClick={() => setActiveTab(tab.id)}
+              style={{
+                padding: '14px 16px',
+                background: 'none',
+                border: 'none',
+                borderBottom: `2px solid ${activeTab === tab.id ? '#2db8b0' : 'transparent'}`,
+                color: activeTab === tab.id ? '#2db8b0' : 'var(--text-secondary)',
+                fontSize: '14px',
+                fontWeight: activeTab === tab.id ? '600' : '400',
+                cursor: 'pointer',
+                marginBottom: '-1px',
+                transition: 'color 0.15s',
+              }}
             >
               {tab.label}
             </button>
           ))}
         </div>
 
-        <div className="settings__content">
+        {/* Panel content */}
+        <div style={{ padding: '24px' }}>
           {activeTab === 'profile' && <ProfilePanel userEmail={userEmail} />}
-          {activeTab === 'security' && (
-            <SecurityPanel handleLogout={handleLogout} />
-          )}
+          {activeTab === 'security' && <SecurityPanel handleLogout={handleLogout} />}
         </div>
       </div>
     </div>
@@ -104,35 +138,35 @@ function ProfilePanel({ userEmail }: { userEmail: string }) {
   }
 
   return (
-    <div className="settings__panel">
-      <h2 className="settings__panel-title">Profile Information</h2>
-      <form onSubmit={handleSaveEmail} className="settings__form">
-        <div className="settings__field">
-          <label htmlFor="PROFILE_EMAIL" className="settings__field-label">
-            Email Address
-          </label>
-          <input
-            id="PROFILE_EMAIL"
-            type="email"
-            value={email}
-            onChange={e => setEmail(e.target.value)}
-            className="settings__input"
-            required
-          />
+    <div>
+      <h2 style={{ margin: '0 0 20px', fontSize: '15px', fontWeight: '600', color: 'var(--text-primary)' }}>Profile Information</h2>
+      <form onSubmit={handleSaveEmail}>
+        <div style={{ marginBottom: '20px' }}>
+          <label style={labelStyle}>Email Address</label>
+          <input type="email" value={email} onChange={e => setEmail(e.target.value)} style={inputStyle} required />
         </div>
-
         {statusMessage && (
-          <div className={`settings__message ${isError ? 'settings__message--error' : 'settings__message--success'}`}>
-            {statusMessage}
-          </div>
+          <div style={{
+            marginBottom: '16px',
+            padding: '10px 14px',
+            background: isError ? '#fef2f2' : '#f0fdf4',
+            border: `1px solid ${isError ? '#fecaca' : '#bbf7d0'}`,
+            borderRadius: '8px',
+            color: isError ? '#dc2626' : '#16a34a',
+            fontSize: '13px',
+          }}>{statusMessage}</div>
         )}
-
-        <button
-          type="submit"
-          className="settings__submit"
-          disabled={isSubmitting}
-        >
-          {isSubmitting ? 'UPDATING...' : 'UPDATE PROFILE'}
+        <button type="submit" disabled={isSubmitting} style={{
+          padding: '10px 20px',
+          background: isSubmitting ? '#94e0db' : '#2db8b0',
+          border: 'none',
+          borderRadius: '8px',
+          color: '#ffffff',
+          fontSize: '14px',
+          fontWeight: '600',
+          cursor: isSubmitting ? 'not-allowed' : 'pointer',
+        }}>
+          {isSubmitting ? 'Updating...' : 'Update Profile'}
         </button>
       </form>
     </div>
@@ -150,19 +184,16 @@ function SecurityPanel({ handleLogout }: { handleLogout: () => Promise<void> }) 
     event.preventDefault()
     setStatusMessage('')
     setIsError(false)
-
     if (newPassword !== confirmPassword) {
       setIsError(true)
       setStatusMessage('Passwords do not match.')
       return
     }
-
     if (newPassword.length < 6) {
       setIsError(true)
       setStatusMessage('Password must be at least 6 characters.')
       return
     }
-
     setIsSubmitting(true)
     try {
       await updateUserPassword(newPassword)
@@ -177,69 +208,71 @@ function SecurityPanel({ handleLogout }: { handleLogout: () => Promise<void> }) 
     }
   }
 
-  function handleLogoutClick() {
-    handleLogout()
-  }
-
   return (
-    <div className="settings__panel">
-      <h2 className="settings__panel-title">Change Password</h2>
-      <form onSubmit={handleChangePassword} className="settings__form">
-        <div className="settings__field">
-          <label htmlFor="NEW_PASSWORD" className="settings__field-label">
-            New Password
-          </label>
-          <input
-            id="NEW_PASSWORD"
-            type="password"
-            value={newPassword}
-            onChange={e => setNewPassword(e.target.value)}
-            className="settings__input"
-            required
-          />
+    <div>
+      <h2 style={{ margin: '0 0 20px', fontSize: '15px', fontWeight: '600', color: 'var(--text-primary)' }}>Change Password</h2>
+      <form onSubmit={handleChangePassword}>
+        <div style={{ marginBottom: '16px' }}>
+          <label style={labelStyle}>New Password</label>
+          <input type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)} style={inputStyle} required />
         </div>
-        <div className="settings__field">
-          <label htmlFor="CONFIRM_PASSWORD" className="settings__field-label">
-            Confirm Password
-          </label>
-          <input
-            id="CONFIRM_PASSWORD"
-            type="password"
-            value={confirmPassword}
-            onChange={e => setConfirmPassword(e.target.value)}
-            className="settings__input"
-            required
-          />
+        <div style={{ marginBottom: '20px' }}>
+          <label style={labelStyle}>Confirm Password</label>
+          <input type="password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} style={inputStyle} required />
         </div>
-
         {statusMessage && (
-          <div className={`settings__message ${isError ? 'settings__message--error' : 'settings__message--success'}`}>
-            {statusMessage}
-          </div>
+          <div style={{
+            marginBottom: '16px',
+            padding: '10px 14px',
+            background: isError ? '#fef2f2' : '#f0fdf4',
+            border: `1px solid ${isError ? '#fecaca' : '#bbf7d0'}`,
+            borderRadius: '8px',
+            color: isError ? '#dc2626' : '#16a34a',
+            fontSize: '13px',
+          }}>{statusMessage}</div>
         )}
-
-        <button
-          type="submit"
-          className="settings__submit"
-          disabled={isSubmitting}
-        >
-          {isSubmitting ? 'UPDATING...' : 'CHANGE PASSWORD'}
+        <button type="submit" disabled={isSubmitting} style={{
+          padding: '10px 20px',
+          background: isSubmitting ? '#94e0db' : '#2db8b0',
+          border: 'none',
+          borderRadius: '8px',
+          color: '#ffffff',
+          fontSize: '14px',
+          fontWeight: '600',
+          cursor: isSubmitting ? 'not-allowed' : 'pointer',
+        }}>
+          {isSubmitting ? 'Updating...' : 'Change Password'}
         </button>
       </form>
 
-      <div className="settings__danger-zone">
-        <h2 className="settings__panel-title settings__panel-title--danger">
-          Session
-        </h2>
-        <p className="settings__danger-text">
-          End your current session and return to the login screen.
+      <div style={{ marginTop: '32px', paddingTop: '24px', borderTop: '1px solid var(--border)' }}>
+        <h2 style={{ margin: '0 0 6px', fontSize: '15px', fontWeight: '600', color: '#ef4444' }}>Session</h2>
+        <p style={{ margin: '0 0 16px', fontSize: '13px', color: 'var(--text-secondary)' }}>
+          End your current session and return to the sign-in screen.
         </p>
         <button
           type="button"
-          className="settings__logout-button"
-          onClick={handleLogoutClick}
+          onClick={handleLogout}
+          style={{
+            padding: '10px 20px',
+            background: '#fef2f2',
+            border: '1px solid #fecaca',
+            borderRadius: '8px',
+            color: '#ef4444',
+            fontSize: '14px',
+            fontWeight: '600',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+          }}
         >
-          LOGOUT
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+            <polyline points="16 17 21 12 16 7"/>
+            <line x1="21" y1="12" x2="9" y2="12"/>
+          </svg>
+          Sign Out
         </button>
       </div>
     </div>
