@@ -72,6 +72,7 @@ export default function SimulatePage() {
 
   const params = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null
   const disasterType = params?.get('disaster') ?? 'fire'
+  const isEarthquakeMode = disasterType === 'earthquake'
   const isFireMode = disasterType === 'fire'
   const accentColor = isFireMode ? '#ff6b35' : '#f59e0b'
   const modeLabel = isFireMode ? 'Fire Simulation' : 'Earthquake Simulation'
@@ -114,7 +115,6 @@ export default function SimulatePage() {
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           fontSize: '22px',
         }}>
-          {isFireMode ? '🔥' : '🌎'}
         </div>
         <div>
           <h1 style={{ margin: 0, fontSize: '26px', fontWeight: '700', color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>{modeLabel}</h1>
@@ -256,9 +256,9 @@ export default function SimulatePage() {
           <span style={{ fontSize: '11px', fontWeight: '700', letterSpacing: '0.1em', color: 'var(--text-muted)', textTransform: 'uppercase' as const }}>Live Stats</span>
         </div>
         {[
-          { icon: '⏱', label: 'Step', value: step },
-          { icon: '👥', label: 'Evacuated', value: `${evacuated}/${applied.agents}` },
-          { icon: '⚠', label: 'Max Congestion', value: maxCongestion, color: maxCongestion > 10 ? '#ef4444' : '#2db8b0' },
+          { label: 'Step', value: step },
+          { label: 'Evacuated', value: `${evacuated}/${applied.agents}` },
+          { label: 'Max Congestion', value: maxCongestion, color: maxCongestion > 10 ? '#ef4444' : '#2db8b0' },
         ].map((stat, i) => (
           <div key={i} style={{
             display: 'flex',
@@ -269,7 +269,6 @@ export default function SimulatePage() {
             borderBottom: '1px solid var(--border)',
           }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: 'var(--text-secondary)' }}>
-              <span>{stat.icon}</span>
               <span>{stat.label}</span>
             </div>
             <span style={{ fontSize: '15px', fontWeight: '600', color: stat.color ?? 'var(--text-primary)' }}>{stat.value}</span>
@@ -277,8 +276,8 @@ export default function SimulatePage() {
         ))}
       </div>
 
-      </div>{/* end right column */}
-      </div>{/* end two-column grid */}
+      </div>
+      </div>
     </div>
   )
 }

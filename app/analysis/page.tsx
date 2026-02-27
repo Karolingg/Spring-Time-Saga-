@@ -5,9 +5,9 @@ import { useAuth } from '@/src/hooks/useAuth'
 
 const HEATMAP_ZONES = [
   { label: 'Main Entrance', intensity: 85, color: '#ef4444' },
-  { label: 'Stairwell A', intensity: 72, color: '#f97316' },
-  { label: 'Corridor B2', intensity: 58, color: '#f59e0b' },
-  { label: 'Exit 3 (East)', intensity: 44, color: '#eab308' },
+  { label: 'CSB', intensity: 72, color: '#f97316' },
+  { label: 'Management Building', intensity: 58, color: '#f59e0b' },
+  { label: 'Admin Building', intensity: 44, color: '#eab308' },
   { label: 'Cafeteria Door', intensity: 31, color: '#84cc16' },
   { label: 'Side Exit', intensity: 18, color: '#22c55e' },
 ]

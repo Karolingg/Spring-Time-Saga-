@@ -60,7 +60,7 @@ export default function MapPage() {
         </div>
         <div>
           <h1 style={{ margin: 0, fontSize: '26px', fontWeight: '700', color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>
-            Campus Map
+            University of the Philippines Cebu Campus Map
           </h1>
           <p style={{ margin: 0, fontSize: '14px', color: 'var(--text-secondary)' }}>
             UP High School – Cebu &nbsp;·&nbsp; Lahug, Cebu City, Philippines
@@ -77,8 +77,7 @@ export default function MapPage() {
       }}>
         {[
           { icon: '📍', label: 'Lahug, Cebu City, Philippines' },
-          { icon: '🗺', label: 'OpenStreetMap' },
-          { icon: '🏫', label: 'UP High School – Cebu' },
+          { label: 'UP High School – Cebu' },
         ].map(item => (
           <div key={item.label} style={{
             display: 'flex',
@@ -115,6 +114,8 @@ export default function MapPage() {
         Map data © <a href="https://www.openstreetmap.org" target="_blank" rel="noreferrer" style={{ color: '#2db8b0' }}>OpenStreetMap</a> contributors.
         Building outline sourced from OSM Way ID 12277630.
       </p>
+
+    <div className="div"></div>
     </div>
   )
 }
