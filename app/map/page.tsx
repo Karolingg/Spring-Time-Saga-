@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import dynamic from 'next/dynamic'
 import { useAuth } from '@/src/hooks/useAuth'
 
@@ -29,6 +29,7 @@ const MapView = dynamic(() => import('@/components/MapView'), {
 
 export default function MapPage() {
   const { isAuthenticated, isLoading } = useAuth()
+  const [showHeatmap, setShowHeatmap] = useState(false)
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
@@ -74,27 +75,65 @@ export default function MapPage() {
         gap: '10px',
         marginBottom: '16px',
         flexWrap: 'wrap',
+        alignItems: 'center',
+        justifyContent: 'space-between',
       }}>
-        {[
-          { icon: '📍', label: 'Lahug, Cebu City, Philippines' },
-          { label: 'UP High School – Cebu' },
-        ].map(item => (
-          <div key={item.label} style={{
+        <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+          {[
+            { icon: '📍', label: 'Lahug, Cebu City, Philippines' },
+            { label: 'UP High School – Cebu' },
+          ].map(item => (
+            <div key={item.label} style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '6px 12px',
+              background: '#ffffff',
+              border: '1px solid var(--border)',
+              borderRadius: '20px',
+              fontSize: '12px',
+              color: 'var(--text-secondary)',
+              boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
+            }}>
+              <span>{item.icon}</span>
+              <span>{item.label}</span>
+            </div>
+          ))}
+        </div>
+
+        {/* Heatmap toggle button */}
+        <button
+          onClick={() => setShowHeatmap(!showHeatmap)}
+          style={{
+            padding: '6px 14px',
+            background: showHeatmap ? 'rgba(45,184,176,0.15)' : '#ffffff',
+            bordeshowHeatmap={showHeatmap} r: `1px solid ${showHeatmap ? '#2db8b0' : 'var(--border)'}`,
+            borderRadius: '20px',
+            fontSize: '12px',
+            fontWeight: '500',
+            color: showHeatmap ? '#2db8b0' : 'var(--text-secondary)',
+            cursor: 'pointer',
+            boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
+            transition: 'all 0.2s ease',
             display: 'flex',
             alignItems: 'center',
             gap: '6px',
-            padding: '6px 12px',
-            background: '#ffffff',
-            border: '1px solid var(--border)',
-            borderRadius: '20px',
-            fontSize: '12px',
-            color: 'var(--text-secondary)',
-            boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
-          }}>
-            <span>{item.icon}</span>
-            <span>{item.label}</span>
-          </div>
-        ))}
+            flexShrink: 0,
+          }}
+          onMouseEnter={(e) => {
+            if (!showHeatmap) {
+              (e.target as HTMLButtonElement).style.background = '#f8fafc'
+            }
+          }}
+          onMouseLeave={(e) => {
+            if (!showHeatmap) {
+              (e.target as HTMLButtonElement).style.background = '#ffffff'
+            }
+          }}
+        >
+          <span>🔥</span>
+          <span>{showHeatmap ? 'Hide Heatmap' : 'Show Heatmap'}</span>
+        </button>
       </div>
 
       {/* Map container */}

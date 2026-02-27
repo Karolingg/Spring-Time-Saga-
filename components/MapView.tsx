@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { MapContainer, TileLayer, Polygon, Popup, useMap } from 'react-leaflet'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
+import 'leaflet.heat'
 
 // Fix default marker icons broken by webpack
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -28,7 +29,49 @@ function FlyToCenter({ center }: { center: LatLng }) {
   return null
 }
 
-export default function MapView() {
+// Sample heatmap data for disaster hotspots
+const SAMPLE_HEATMAP_DATA: [number, number, number][] = [
+  [10.3311, 123.9009, 0.9],  // Center - high density
+  [10.3315, 123.9015, 0.7],  // Northeast corner
+  [10.3308, 123.9005, 0.6],  // Southwest
+  [10.3312, 123.8995, 0.5],  // Southeast
+  [10.3318, 123.9020, 0.4],  // North entrance
+]
+
+function HeatmapLayer({ showHeatmap }: { showHeatmap: boolean }) {
+  const map = useMap()
+
+  useEffect(() => {
+    if (!map) return
+
+    if (showHeatmap) {
+      // Create heatmap layer with sample data
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const heat = (L as any).heatLayer(SAMPLE_HEATMAP_DATA, {
+        radius: 25,
+        blur: 15,
+        maxZoom: 17,
+        max: 1.0,
+        gradient: {
+          0.0: '#0000ff',   // Blue (cool)
+          0.33: '#00ff00',  // Green (warm)
+          0.66: '#ffff00',  // Yellow (hotter)
+          1.0: '#ff0000',   // Red (hottest)
+        }
+      })
+
+      heat.addTo(map)
+
+      return () => {
+        map.removeLayer(heat)
+      }
+    }
+  }, [map, showHeatmap])
+
+  return null
+}
+
+export default function MapView({ showHeatmap = false }: { showHeatmap?: boolean }) {
   const [polygonCoords, setPolygonCoords] = useState<LatLng[]>([])
   const [center, setCenter] = useState<LatLng>(FALLBACK_CENTER)
   const [loadState, setLoadState] = useState<'loading' | 'success' | 'error'>('loading')
@@ -128,6 +171,10 @@ export default function MapView() {
 
         {ready && polygonCoords.length > 0 && (
           <FlyToCenter center={center} />
+        )}
+
+        {showHeatmap && (
+          <HeatmapLayer showHeatmap={showHeatmap} />
         )}
 
         {polygonCoords.length > 0 && (
