@@ -1,81 +1,16 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { loginWithEmail, signUpWithEmail } from '@/src/services/auth.service';
-
-const ACCENT_COLOR = '#00ffb4';
-const BG_COLOR = '#080808';
-const BORDER_COLOR = 'rgba(0,255,180,0.08)';
-
-function GridBackground() {
-  return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 0, overflow: 'hidden' }}>
-      <div
-        style={{
-          position: 'absolute',
-          inset: 0,
-          backgroundImage: `
-            linear-gradient(rgba(0,255,180,0.03) 1px, transparent 1px),
-            linear-gradient(90deg, rgba(0,255,180,0.03) 1px, transparent 1px)
-          `,
-          backgroundSize: '40px 40px',
-        }}
-      />
-      <div
-        style={{
-          position: 'absolute',
-          top: '50%',
-          left: '50%',
-          transform: 'translate(-50%, -50%)',
-          width: '800px',
-          height: '800px',
-          background: 'radial-gradient(circle, rgba(0,255,160,0.04) 0%, transparent 70%)',
-          pointerEvents: 'none',
-        }}
-      />
-    </div>
-  );
-}
-
-function Cursor() {
-  const [isVisible, setIsVisible] = useState(true);
-
-  useEffect(() => {
-    const interval = setInterval(() => setIsVisible((v) => !v), 530);
-    return () => clearInterval(interval);
-  }, []);
-
-  return (
-    <span
-      style={{
-        display: 'inline-block',
-        width: '2px',
-        height: '1em',
-        background: ACCENT_COLOR,
-        marginLeft: '4px',
-        verticalAlign: 'middle',
-        opacity: isVisible ? 1 : 0,
-        transition: 'opacity 0.1s',
-      }}
-    />
-  );
-}
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [name, setName] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
   const [isRegisterMode, setIsRegisterMode] = useState(false);
-  const [isPageLoaded, setIsPageLoaded] = useState(false);
-  const [isFormVisible, setIsFormVisible] = useState(false);
-
-  useEffect(() => {
-    const t1 = setTimeout(() => setIsPageLoaded(true), 100);
-    const t2 = setTimeout(() => setIsFormVisible(true), 400);
-    return () => { clearTimeout(t1); clearTimeout(t2); };
-  }, []);
 
   async function handleFormSubmit(event: React.FormEvent) {
     event.preventDefault();
@@ -85,7 +20,7 @@ export default function LoginPage() {
     try {
       if (isRegisterMode) {
         await signUpWithEmail(email, password);
-        setSuccessMessage('Account created. Check your email to confirm, then log in.');
+        setSuccessMessage('Account created. Check your email to confirm, then sign in.');
         setIsRegisterMode(false);
       } else {
         await loginWithEmail(email, password);
@@ -99,312 +34,265 @@ export default function LoginPage() {
   }
 
   function handleToggleMode() {
-    setIsRegisterMode((prev) => !prev);
+    setIsRegisterMode(prev => !prev);
     setErrorMessage('');
     setSuccessMessage('');
   }
 
   return (
-    <div
-      style={{
-        minHeight: '100vh',
-        background: BG_COLOR,
-        color: '#e0e0e0',
-        fontFamily: 'monospace',
-        position: 'relative',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-      }}
-    >
-      <GridBackground />
-
-      {/* Top status bar */}
-      <div
-        style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          height: '40px',
-          borderBottom: `1px solid ${BORDER_COLOR}`,
-          background: 'rgba(8,8,8,0.9)',
-          backdropFilter: 'blur(10px)',
+    <div style={{
+      minHeight: '100vh',
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      justifyContent: 'center',
+      padding: '24px',
+      backgroundColor: '#eef0f2',
+      backgroundImage: `
+        linear-gradient(rgba(0,0,0,0.04) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0,0,0,0.04) 1px, transparent 1px)
+      `,
+      backgroundSize: '32px 32px',
+    }}>
+      {/* Logo */}
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: '36px', gap: '14px' }}>
+        <div style={{
+          width: '68px',
+          height: '68px',
+          borderRadius: '20px',
+          background: 'rgba(45,184,176,0.12)',
           display: 'flex',
           alignItems: 'center',
-          padding: '0 32px',
-          zIndex: 100,
-          opacity: isPageLoaded ? 1 : 0,
-          transition: 'opacity 0.5s ease',
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-          <div
-            style={{
-              width: '6px',
-              height: '6px',
-              borderRadius: '50%',
-              background: ACCENT_COLOR,
-              boxShadow: `0 0 8px ${ACCENT_COLOR}`,
-            }}
-          />
-          <span
-            style={{
-              fontSize: '10px',
-              letterSpacing: '0.2em',
-              color: '#444',
-              textTransform: 'uppercase',
-            }}
-          >
-            EVAC-SIM v1.0 — AUTH
-          </span>
+          justifyContent: 'center',
+        }}>
+          <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#2db8b0" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+          </svg>
+        </div>
+        <div style={{ textAlign: 'center' }}>
+          <div style={{ fontSize: '26px', fontWeight: '800', letterSpacing: '-0.03em', color: '#1a2332' }}>
+            EVAC<span style={{ color: '#2db8b0' }}>SIM</span>
+          </div>
+          <div style={{ fontSize: '13px', color: '#64748b', marginTop: '4px' }}>
+            Crowd Evacuation Simulator with Predictive Congestion Analysis
+          </div>
         </div>
       </div>
 
-      {/* Login card */}
-      <div
-        style={{
-          position: 'relative',
-          zIndex: 10,
-          width: '100%',
-          maxWidth: '400px',
-          padding: '0 24px',
-          opacity: isFormVisible ? 1 : 0,
-          transform: isFormVisible ? 'translateY(0)' : 'translateY(30px)',
-          transition: 'opacity 0.7s ease, transform 0.7s ease',
-        }}
-      >
-        {/* System label */}
-        <div
-          style={{
+      {/* Card */}
+      <div style={{
+        background: '#ffffff',
+        borderRadius: '20px',
+        border: '1px solid #e2e8f0',
+        boxShadow: '0 4px 24px rgba(0,0,0,0.08)',
+        padding: '44px 48px',
+        width: '100%',
+        maxWidth: '480px',
+      }}>
+        {/* Heading */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '24px' }}>
+          <div style={{
+            width: '24px',
+            height: '24px',
+            borderRadius: '50%',
+            border: '2px solid #2db8b0',
             display: 'flex',
             alignItems: 'center',
-            gap: '12px',
-            marginBottom: '24px',
-          }}
-        >
-          <div style={{ width: '32px', height: '1px', background: ACCENT_COLOR }} />
-          <span
-            style={{
-              fontSize: '10px',
-              letterSpacing: '0.3em',
-              color: ACCENT_COLOR,
-              textTransform: 'uppercase',
-            }}
-          >
-            Authentication Required
-          </span>
+            justifyContent: 'center',
+          }}>
+            <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#2db8b0' }} />
+          </div>
+          <h1 style={{ margin: 0, fontSize: '18px', fontWeight: '700', color: '#1a2332' }}>
+            {isRegisterMode ? 'Create Account' : 'Sign In'}
+          </h1>
         </div>
 
-        {/* Title */}
-        <h1
-          style={{
-            fontSize: '32px',
-            fontWeight: '800',
-            lineHeight: '1.0',
-            letterSpacing: '-0.03em',
-            color: '#f0f0f0',
-            fontFamily: 'monospace',
-            marginBottom: '12px',
-          }}
-        >
-          SYSTEM <span style={{ color: ACCENT_COLOR }}>{isRegisterMode ? 'REGISTER' : 'LOGIN'}</span>
-          <Cursor />
-        </h1>
-        <p
-          style={{
-            fontSize: '12px',
-            color: '#444',
-            letterSpacing: '0.08em',
-            lineHeight: '1.8',
-            marginBottom: '40px',
-          }}
-        >
-          {isRegisterMode
-            ? 'Create an account to access the evacuation simulation platform.'
-            : 'Enter credentials to access the evacuation simulation platform.'}
-        </p>
-
-        {/* Form */}
         <form onSubmit={handleFormSubmit}>
-          {/* Email field */}
-          <div style={{ marginBottom: '20px' }}>
-            <label
-              htmlFor="EMAIL_INPUT"
-              style={{
+          {/* Name field (register only) */}
+          {isRegisterMode && (
+            <div style={{ marginBottom: '16px' }}>
+              <label style={{
                 display: 'block',
-                fontSize: '10px',
-                letterSpacing: '0.15em',
-                color: '#666',
+                fontSize: '11px',
+                fontWeight: '600',
+                letterSpacing: '0.08em',
+                color: '#64748b',
                 textTransform: 'uppercase',
-                marginBottom: '8px',
-                fontFamily: 'monospace',
-              }}
-            >
+                marginBottom: '6px',
+              }}>
+                Name
+              </label>
+              <input
+                type="text"
+                value={name}
+                onChange={e => setName(e.target.value)}
+                placeholder="Operator name"
+                style={{
+                  width: '100%',
+                  padding: '10px 14px',
+                  background: '#f8fafc',
+                  border: '1px solid #e2e8f0',
+                  borderRadius: '8px',
+                  fontSize: '14px',
+                  color: '#1a2332',
+                  outline: 'none',
+                  boxSizing: 'border-box',
+                }}
+              />
+            </div>
+          )}
+
+          {/* Email */}
+          <div style={{ marginBottom: '16px' }}>
+            <label style={{
+              display: 'block',
+              fontSize: '11px',
+              fontWeight: '600',
+              letterSpacing: '0.08em',
+              color: '#64748b',
+              textTransform: 'uppercase',
+              marginBottom: '6px',
+            }}>
               Email
             </label>
             <input
-              id="EMAIL_INPUT"
               type="email"
               value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              onChange={e => setEmail(e.target.value)}
+              placeholder="operator@evacsim.io"
               required
               style={{
                 width: '100%',
-                padding: '12px 16px',
-                background: 'rgba(255,255,255,0.02)',
-                border: `1px solid ${BORDER_COLOR}`,
-                borderRadius: '2px',
-                color: '#e0e0e0',
-                fontFamily: 'monospace',
-                fontSize: '13px',
+                padding: '10px 14px',
+                background: '#f8fafc',
+                border: '1px solid #e2e8f0',
+                borderRadius: '8px',
+                fontSize: '14px',
+                color: '#1a2332',
                 outline: 'none',
                 boxSizing: 'border-box',
               }}
             />
           </div>
 
-          {/* Password field */}
-          <div style={{ marginBottom: '32px' }}>
-            <label
-              htmlFor="PASSWORD_INPUT"
-              style={{
-                display: 'block',
-                fontSize: '10px',
-                letterSpacing: '0.15em',
-                color: '#666',
-                textTransform: 'uppercase',
-                marginBottom: '8px',
-                fontFamily: 'monospace',
-              }}
-            >
+          {/* Password */}
+          <div style={{ marginBottom: '20px' }}>
+            <label style={{
+              display: 'block',
+              fontSize: '11px',
+              fontWeight: '600',
+              letterSpacing: '0.08em',
+              color: '#64748b',
+              textTransform: 'uppercase',
+              marginBottom: '6px',
+            }}>
               Password
             </label>
             <input
-              id="PASSWORD_INPUT"
               type="password"
               value={password}
-              onChange={(e) => setPassword(e.target.value)}
+              onChange={e => setPassword(e.target.value)}
+              placeholder="••••••••"
               required
               style={{
                 width: '100%',
-                padding: '12px 16px',
-                background: 'rgba(255,255,255,0.02)',
-                border: `1px solid ${BORDER_COLOR}`,
-                borderRadius: '2px',
-                color: '#e0e0e0',
-                fontFamily: 'monospace',
-                fontSize: '13px',
+                padding: '10px 14px',
+                background: '#f8fafc',
+                border: '1px solid #e2e8f0',
+                borderRadius: '8px',
+                fontSize: '14px',
+                color: '#1a2332',
                 outline: 'none',
                 boxSizing: 'border-box',
               }}
             />
           </div>
 
-          {/* Error message */}
+          {/* Error */}
           {errorMessage && (
-            <div
-              style={{
-                marginBottom: '20px',
-                padding: '12px 16px',
-                background: 'rgba(255,60,60,0.06)',
-                border: '1px solid rgba(255,60,60,0.2)',
-                borderRadius: '2px',
-                color: '#ff6b6b',
-                fontSize: '11px',
-                fontFamily: 'monospace',
-                letterSpacing: '0.05em',
-              }}
-            >
+            <div style={{
+              marginBottom: '16px',
+              padding: '10px 14px',
+              background: '#fef2f2',
+              border: '1px solid #fecaca',
+              borderRadius: '8px',
+              color: '#dc2626',
+              fontSize: '13px',
+            }}>
               {errorMessage}
             </div>
           )}
 
-          {/* Success message */}
+          {/* Success */}
           {successMessage && (
-            <div
-              style={{
-                marginBottom: '20px',
-                padding: '12px 16px',
-                background: 'rgba(0,255,180,0.06)',
-                border: `1px solid ${ACCENT_COLOR}33`,
-                borderRadius: '2px',
-                color: ACCENT_COLOR,
-                fontSize: '11px',
-                fontFamily: 'monospace',
-                letterSpacing: '0.05em',
-              }}
-            >
+            <div style={{
+              marginBottom: '16px',
+              padding: '10px 14px',
+              background: '#f0fdf4',
+              border: '1px solid #bbf7d0',
+              borderRadius: '8px',
+              color: '#16a34a',
+              fontSize: '13px',
+            }}>
               {successMessage}
             </div>
           )}
 
           {/* Submit button */}
           <button
-            id="SUBMIT_BUTTON"
             type="submit"
             disabled={isLoading}
             style={{
               width: '100%',
-              padding: '14px',
-              background: isLoading ? 'rgba(0,255,180,0.1)' : 'rgba(0,255,180,0.08)',
-              border: `1px solid ${ACCENT_COLOR}33`,
-              borderRadius: '2px',
-              color: ACCENT_COLOR,
-              fontFamily: 'monospace',
-              fontSize: '12px',
-              fontWeight: '700',
-              letterSpacing: '0.2em',
-              textTransform: 'uppercase',
+              padding: '12px',
+              background: isLoading ? '#94e0db' : '#2db8b0',
+              border: 'none',
+              borderRadius: '8px',
+              color: '#ffffff',
+              fontSize: '14px',
+              fontWeight: '600',
               cursor: isLoading ? 'not-allowed' : 'pointer',
-              transition: 'all 0.3s ease',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '8px',
+              transition: 'background 0.15s',
             }}
           >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+            </svg>
             {isLoading
-              ? (isRegisterMode ? 'REGISTERING...' : 'AUTHENTICATING...')
-              : (isRegisterMode ? 'CREATE ACCOUNT' : 'INITIALIZE SESSION')}
+              ? (isRegisterMode ? 'Creating...' : 'Signing in...')
+              : (isRegisterMode ? 'Create Account' : 'Sign In')}
+            {!isLoading && (
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
+              </svg>
+            )}
           </button>
         </form>
 
-        {/* Toggle login / register */}
-        <div style={{ marginTop: '24px', textAlign: 'center' }}>
+        {/* Divider */}
+        <div style={{ margin: '20px 0', borderTop: '1px solid #f1f5f9' }} />
+
+        {/* Toggle */}
+        <div style={{ textAlign: 'center' }}>
           <button
             type="button"
             onClick={handleToggleMode}
             style={{
               background: 'none',
               border: 'none',
-              color: '#555',
-              fontFamily: 'monospace',
-              fontSize: '11px',
-              letterSpacing: '0.08em',
+              color: '#64748b',
+              fontSize: '13px',
               cursor: 'pointer',
-              transition: 'color 0.2s ease',
             }}
           >
-            {isRegisterMode ? '← BACK TO LOGIN' : 'NO ACCOUNT? REGISTER →'}
+            {isRegisterMode
+              ? 'Already have an account? Sign in'
+              : "Don't have an account? Sign up"}
           </button>
-        </div>
-
-        {/* Bottom divider */}
-        <div
-          style={{
-            marginTop: '40px',
-            borderTop: '1px solid rgba(255,255,255,0.05)',
-            paddingTop: '20px',
-            textAlign: 'center',
-          }}
-        >
-          <span
-            style={{
-              fontSize: '9px',
-              color: '#2a2a2a',
-              letterSpacing: '0.15em',
-              textTransform: 'uppercase',
-            }}
-          >
-            Software Engineering Project © 2025
-          </span>
         </div>
       </div>
     </div>
