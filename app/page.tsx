@@ -1,71 +1,46 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useAuth } from '@/src/hooks/useAuth'
-
-const STAT_CARDS = [
-  {
-    icon: (
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2db8b0" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/>
-        <path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
-      </svg>
-    ),
-    label: 'TOTAL AGENTS',
-    value: '120',
-    sub: '120 configured',
-    color: '#2db8b0',
-  },
-  {
-    icon: (
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2db8b0" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-      </svg>
-    ),
-    label: 'EVACUATED',
-    value: '0%',
-    sub: '0 of 120',
-    color: '#2db8b0',
-    progress: 0,
-  },
-  {
-    icon: (
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2db8b0" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
-      </svg>
-    ),
-    label: 'AVG STEPS',
-    value: '0.0',
-    sub: 'to evacuate',
-    color: '#2db8b0',
-  },
-  {
-    icon: (
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
-        <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
-      </svg>
-    ),
-    label: 'BOTTLENECKS',
-    value: '0',
-    sub: 'detected zones',
-    color: '#f59e0b',
-  },
-]
-
-const BUILDINGS = [
-  'Science Hall', 'Library', 'Admin Building', 'Engineering',
-  'Cafeteria', 'Lecture Hall', 'Research Center',
-]
+import {
+  getLatestSimulationRun,
+  getSimulationHistory,
+} from '@/src/services/simulation.service'
+import type { SimulationRun } from '@/src/schema/simulation.types'
 
 export default function DashboardPage() {
   const { isAuthenticated, isLoading: isAuthLoading } = useAuth()
+  const [latestRun, setLatestRun] = useState<SimulationRun | null>(null)
+  const [recentRuns, setRecentRuns] = useState<SimulationRun[]>([])
+  const [, setIsLoadingData] = useState(true)
 
   useEffect(() => {
     if (!isAuthLoading && !isAuthenticated) {
       window.location.href = '/auth'
     }
   }, [isAuthLoading, isAuthenticated])
+
+  useEffect(() => {
+    if (!isAuthenticated) return
+
+    async function loadData() {
+      setIsLoadingData(true)
+      try {
+        const [latest, history] = await Promise.all([
+          getLatestSimulationRun(),
+          getSimulationHistory(5),
+        ])
+        setLatestRun(latest)
+        setRecentRuns(history)
+      } catch (err) {
+        console.error('Failed to load simulation data:', err)
+      } finally {
+        setIsLoadingData(false)
+      }
+    }
+
+    loadData()
+  }, [isAuthenticated])
 
   if (isAuthLoading) {
     return (
@@ -74,6 +49,63 @@ export default function DashboardPage() {
       </div>
     )
   }
+
+  // Compute stat cards from latest run
+  const statCards = [
+    {
+      icon: (
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2db8b0" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/>
+          <path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+        </svg>
+      ),
+      label: 'TOTAL AGENTS',
+      value: latestRun?.config?.agentCount?.toString() ?? '0',
+      sub: latestRun ? `${latestRun.config?.agentCount ?? 0} configured` : 'No simulation',
+      color: '#2db8b0',
+    },
+    {
+      icon: (
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2db8b0" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+        </svg>
+      ),
+      label: 'EVACUATED',
+      value: latestRun ? `${(((latestRun.results?.evacuatedCount ?? 0) / (latestRun.config?.agentCount ?? 1)) * 100).toFixed(0)}%` : '0%',
+      sub: latestRun ? `${latestRun.results?.evacuatedCount ?? 0} of ${latestRun.config?.agentCount ?? 0}` : '0 of 0',
+      color: '#2db8b0',
+      progress: latestRun ? ((latestRun.results?.evacuatedCount ?? 0) / (latestRun.config?.agentCount ?? 1)) * 100 : 0,
+    },
+    {
+      icon: (
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2db8b0" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+        </svg>
+      ),
+      label: 'AVG STEPS',
+      value: latestRun?.results?.totalSteps != null ? latestRun.results.totalSteps.toFixed(1) : '0.0',
+      sub: 'to evacuate',
+      color: '#2db8b0',
+    },
+    {
+      icon: (
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+          <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+        </svg>
+      ),
+      label: 'BOTTLENECKS',
+      value: latestRun?.zones ? latestRun.zones.reduce((sum, z) => sum + z.bottleneckCount, 0).toString() : '0',
+      sub: 'detected zones',
+      color: '#f59e0b',
+    },
+  ]
+
+  // Get zone names for buildings overview
+  const buildings = latestRun?.zones?.map(z => z.zoneName) ?? [
+    'Science Hall', 'Library', 'Admin Building', 'Engineering',
+    'Cafeteria', 'Lecture Hall', 'Research Center',
+  ]
 
   return (
     <div style={{
@@ -129,7 +161,7 @@ export default function DashboardPage() {
 
       {/* Stat cards */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px', marginBottom: '24px' }}>
-        {STAT_CARDS.map((card, i) => (
+        {statCards.map((card, i) => (
           <div key={i} style={{
             background: '#ffffff',
             border: '1px solid var(--border)',
@@ -190,24 +222,39 @@ export default function DashboardPage() {
             </tr>
           </thead>
           <tbody>
-            <tr>
-              <td style={{ padding: '12px 12px', fontSize: '13px', color: 'var(--text-primary)' }}>Current Run</td>
-              <td style={{ padding: '12px 12px', fontSize: '13px', color: 'var(--text-primary)' }}>120</td>
-              <td style={{ padding: '12px 12px', fontSize: '13px', color: '#2db8b0', fontWeight: '600' }}>0</td>
-              <td style={{ padding: '12px 12px', fontSize: '13px', color: 'var(--text-primary)' }}>0</td>
-              <td style={{ padding: '12px 12px' }}>
-                <span style={{
-                  display: 'inline-block',
-                  padding: '3px 10px',
-                  borderRadius: '20px',
-                  background: '#f1f5f9',
-                  color: 'var(--text-secondary)',
-                  fontSize: '11px',
-                  fontWeight: '600',
-                  letterSpacing: '0.04em',
-                }}>NOT STARTED</span>
-              </td>
-            </tr>
+            {recentRuns.length === 0 ? (
+              <tr>
+                <td colSpan={5} style={{ padding: '12px 12px', textAlign: 'center', fontSize: '13px', color: 'var(--text-secondary)' }}>
+                  No simulation runs yet
+                </td>
+              </tr>
+            ) : (
+              recentRuns.map((run) => (
+                <tr key={run.id} style={{ borderBottom: '1px solid var(--border)' }}>
+                  <td style={{ padding: '12px 12px', fontSize: '13px', color: 'var(--text-primary)' }}>{run.disasterType}</td>
+                  <td style={{ padding: '12px 12px', fontSize: '13px', color: 'var(--text-primary)' }}>{run.config?.agentCount ?? 0}</td>
+                  <td style={{ padding: '12px 12px', fontSize: '13px', color: '#2db8b0', fontWeight: '600' }}>
+                    {(((run.results?.evacuatedCount ?? 0) / (run.config?.agentCount ?? 1)) * 100).toFixed(0)}%
+                  </td>
+                  <td style={{ padding: '12px 12px', fontSize: '13px', color: 'var(--text-primary)' }}>{run.results?.totalSteps ?? 0}</td>
+                  <td style={{ padding: '12px 12px' }}>
+                    <span style={{
+                      display: 'inline-block',
+                      padding: '3px 10px',
+                      borderRadius: '20px',
+                      background: run.status === 'completed' ? '#f1f5f9' : '#fef3c7',
+                      color: run.status === 'completed' ? '#2db8b0' : '#f59e0b',
+                      fontSize: '11px',
+                      fontWeight: '600',
+                      letterSpacing: '0.04em',
+                      textTransform: 'uppercase' as const,
+                    }}>
+                      {run.status}
+                    </span>
+                  </td>
+                </tr>
+              ))
+            )}
           </tbody>
         </table>
       </div>
@@ -278,37 +325,50 @@ export default function DashboardPage() {
         <p style={{ margin: '0 0 16px', fontSize: '12px', color: 'var(--text-secondary)' }}>Building-level risk assessment based on simulation data</p>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px' }}>
-          {BUILDINGS.map(building => (
-            <div key={building} style={{
-              background: '#f8fafc',
-              border: '1px solid var(--border)',
-              borderRadius: '8px',
-              padding: '12px 14px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-            }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <rect x="2" y="7" width="20" height="14" rx="2" ry="2"/>
-                  <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/>
-                </svg>
-                <div>
-                  <div style={{ fontSize: '13px', fontWeight: '500', color: 'var(--text-primary)' }}>{building}</div>
-                  <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>1 exit</div>
+          {buildings.map((building) => {
+            const zone = latestRun?.zones?.find(z => z.zoneName === building)
+            const riskColor = zone ? (
+              zone.riskLevel === 'HIGH' ? '#ef4444' :
+              zone.riskLevel === 'MEDIUM' ? '#f59e0b' :
+              '#22c55e'
+            ) : '#2db8b0'
+            
+            return (
+              <div key={building} style={{
+                background: '#f8fafc',
+                border: '1px solid var(--border)',
+                borderRadius: '8px',
+                padding: '12px 14px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="2" y="7" width="20" height="14" rx="2" ry="2"/>
+                    <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/>
+                  </svg>
+                  <div>
+                    <div style={{ fontSize: '13px', fontWeight: '500', color: 'var(--text-primary)' }}>{building}</div>
+                    <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+                      {zone?.agentCount ?? 0} agents
+                    </div>
+                  </div>
                 </div>
+                <span style={{
+                  fontSize: '10px',
+                  fontWeight: '700',
+                  padding: '3px 8px',
+                  borderRadius: '20px',
+                  background: `${riskColor}18`,
+                  color: riskColor,
+                  letterSpacing: '0.04em',
+                }}>
+                  {zone?.riskLevel ?? 'LOW'}
+                </span>
               </div>
-              <span style={{
-                fontSize: '10px',
-                fontWeight: '700',
-                padding: '3px 8px',
-                borderRadius: '20px',
-                background: 'rgba(45,184,176,0.1)',
-                color: '#2db8b0',
-                letterSpacing: '0.04em',
-              }}>LOW</span>
-            </div>
-          ))}
+            )
+          })}
         </div>
       </div>
     </div>

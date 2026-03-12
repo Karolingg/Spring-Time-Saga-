@@ -1,0 +1,277 @@
+import { supabase } from '@/src/config/supabase'
+import type {
+  SimulationConfig,
+  SimulationRun,
+  SimulationZone,
+  SimulationBottleneck,
+  SimulationRunConfig,
+  SimulationRunResults,
+} from '@/src/schema/simulation.types'
+import type { RiskLevel, SeverityLevel, SimulationStatus } from '@/src/schema/enums'
+
+type Row = Record<string, unknown>
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+/** Ensures the authenticated user has a profiles row (handles pre-migration users). */
+async function ensureProfile(userId: string, email: string | undefined): Promise<void> {
+  const { error } = await supabase
+    .from('profiles')
+    .upsert({ id: userId, email: email ?? null }, { onConflict: 'id' })
+
+  if (error) throw new Error(`Failed to ensure profile: ${error.message}`)
+}
+
+// ---------------------------------------------------------------------------
+// Write
+// ---------------------------------------------------------------------------
+
+export async function createSimulationRun(config: SimulationConfig): Promise<string> {
+  const { data: session, error: authError } = await supabase.auth.getUser()
+  if (authError || !session.user) throw new Error('Not authenticated')
+
+  const user = session.user
+  await ensureProfile(user.id, user.email)
+
+  const { data: run, error: runError } = await supabase
+    .from('simulation_runs')
+    .insert({ user_id: user.id, disaster_type: config.disasterType, status: 'running' })
+    .select('id')
+    .single()
+  if (runError) throw new Error(runError.message)
+
+  const { error: cfgError } = await supabase
+    .from('simulation_configs')
+    .insert({
+      run_id: run.id,
+      agent_count: config.agentCount,
+      grid_width: config.gridWidth,
+      grid_height: config.gridHeight,
+      exit_count: config.exitCount,
+      wall_density: config.wallDensity,
+      speed_ms: config.speedMs,
+    })
+  if (cfgError) throw new Error(cfgError.message)
+
+  return run.id
+}
+
+export async function saveSimulationResults(
+  runId: string,
+  results: {
+    totalSteps: number
+    evacuatedCount: number
+    maxCongestion: number
+    evacuationTime: number
+    congestionExposure: number
+    globalPeakDensity: number
+    status: string
+  },
+  zones: Omit<SimulationZone, 'id' | 'runId'>[],
+  bottlenecks: Omit<SimulationBottleneck, 'id' | 'runId'>[],
+): Promise<void> {
+  // Make this operation idempotent:
+  // - upsert the single-row simulation_results by run_id
+  // - replace child rows (zones, bottlenecks) by deleting existing ones and inserting fresh
+
+  // 1) Upsert results (on conflict run_id -> update)
+  const { error: resErr } = await supabase
+    .from('simulation_results')
+    .upsert(
+      {
+        run_id: runId,
+        total_steps: results.totalSteps,
+        evacuated_count: results.evacuatedCount,
+        max_congestion: results.maxCongestion,
+        evacuation_time: results.evacuationTime,
+        congestion_exposure: results.congestionExposure,
+        global_peak_density: results.globalPeakDensity,
+      },
+      { onConflict: 'run_id' },
+    )
+
+  if (resErr) throw new Error(resErr.message)
+
+  // 2) Replace zones: delete existing then insert new
+  const { error: delZonesErr } = await supabase.from('simulation_zones').delete().eq('run_id', runId)
+  if (delZonesErr) throw new Error(delZonesErr.message)
+
+  if (zones.length > 0) {
+    const zoneRows = zones.map(z => ({
+      run_id: runId,
+      zone_name: z.zoneName,
+      intensity: z.intensity,
+      agent_count: z.agentCount,
+      bottleneck_count: z.bottleneckCount,
+      risk_level: z.riskLevel,
+      lat: z.lat,
+      lng: z.lng,
+    }))
+
+    const { error: zonesInsertErr } = await supabase.from('simulation_zones').insert(zoneRows)
+    if (zonesInsertErr) throw new Error(zonesInsertErr.message)
+  }
+
+  // 3) Replace bottlenecks: delete existing then insert new
+  const { error: delBnErr } = await supabase.from('simulation_bottlenecks').delete().eq('run_id', runId)
+  if (delBnErr) throw new Error(delBnErr.message)
+
+  if (bottlenecks.length > 0) {
+    const bnRows = bottlenecks.map(b => ({
+      run_id: runId,
+      zone_name: b.zoneName,
+      severity: b.severity,
+      cell_x: b.cellX,
+      cell_y: b.cellY,
+      description: b.description,
+    }))
+
+    const { error: bnInsertErr } = await supabase.from('simulation_bottlenecks').insert(bnRows)
+    if (bnInsertErr) throw new Error(bnInsertErr.message)
+  }
+
+  // 4) Update the run status and timestamps
+  const { error: statusErr } = await supabase
+    .from('simulation_runs')
+    .update({ status: results.status, updated_at: new Date().toISOString() })
+    .eq('id', runId)
+
+  if (statusErr) throw new Error(statusErr.message)
+}
+
+// ---------------------------------------------------------------------------
+// Read
+// ---------------------------------------------------------------------------
+
+function toConfig(row: Row): SimulationRunConfig {
+  return {
+    id: row.id as string,
+    runId: row.run_id as string,
+    agentCount: row.agent_count as number,
+    gridWidth: row.grid_width as number,
+    gridHeight: row.grid_height as number,
+    exitCount: row.exit_count as number,
+    wallDensity: row.wall_density as number,
+    speedMs: row.speed_ms as number,
+  }
+}
+
+function toResults(row: Row): SimulationRunResults {
+  return {
+    id: row.id as string,
+    runId: row.run_id as string,
+    totalSteps: row.total_steps as number,
+    evacuatedCount: row.evacuated_count as number,
+    maxCongestion: row.max_congestion as number,
+    evacuationTime: row.evacuation_time as number,
+    congestionExposure: row.congestion_exposure as number,
+    globalPeakDensity: row.global_peak_density as number,
+  }
+}
+
+function toZone(row: Row): SimulationZone {
+  return {
+    id: row.id as string,
+    runId: row.run_id as string,
+    zoneName: row.zone_name as string,
+    intensity: row.intensity as number,
+    agentCount: row.agent_count as number,
+    bottleneckCount: row.bottleneck_count as number,
+    riskLevel: (row.risk_level as RiskLevel) ?? 'LOW',
+    lat: (row.lat as number) ?? null,
+    lng: (row.lng as number) ?? null,
+  }
+}
+
+function toBottleneck(row: Row): SimulationBottleneck {
+  return {
+    id: row.id as string,
+    runId: row.run_id as string,
+    zoneName: row.zone_name as string,
+    severity: (row.severity as SeverityLevel) ?? 'LOW',
+    cellX: (row.cell_x as number) ?? null,
+    cellY: (row.cell_y as number) ?? null,
+    description: (row.description as string) ?? null,
+  }
+}
+
+function toSimulationRun(
+  row: Row,
+  config: Row | null,
+  result: Row | null,
+  zones: Row[],
+  bottlenecks: Row[],
+): SimulationRun {
+  return {
+    id: row.id as string,
+    userId: row.user_id as string,
+    disasterType: (row.disaster_type as SimulationRun['disasterType']) ?? 'fire',
+    status: (row.status as SimulationStatus) ?? 'pending',
+    createdAt: (row.created_at as string) ?? '',
+    updatedAt: (row.updated_at as string) ?? '',
+    config: config ? toConfig(config) : null,
+    results: result ? toResults(result) : null,
+    zones: zones.map(toZone),
+    bottlenecks: bottlenecks.map(toBottleneck),
+  }
+}
+
+async function fetchFullRun(runRow: Row): Promise<SimulationRun> {
+  const runId = runRow.id as string
+
+  const [cfgRes, resRes, zoneRes, bnRes] = await Promise.all([
+    supabase.from('simulation_configs').select('*').eq('run_id', runId).maybeSingle(),
+    supabase.from('simulation_results').select('*').eq('run_id', runId).maybeSingle(),
+    supabase.from('simulation_zones').select('*').eq('run_id', runId),
+    supabase.from('simulation_bottlenecks').select('*').eq('run_id', runId),
+  ])
+
+  return toSimulationRun(
+    runRow,
+    cfgRes.data as Row | null,
+    resRes.data as Row | null,
+    (zoneRes.data ?? []) as Row[],
+    (bnRes.data ?? []) as Row[],
+  )
+}
+
+export async function getSimulationRun(runId: string): Promise<SimulationRun> {
+  const { data, error } = await supabase
+    .from('simulation_runs')
+    .select('*')
+    .eq('id', runId)
+    .single()
+
+  if (error) throw new Error(error.message)
+  return fetchFullRun(data)
+}
+
+export async function getLatestSimulationRun(): Promise<SimulationRun | null> {
+  const { data, error } = await supabase
+    .from('simulation_runs')
+    .select('*')
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
+  if (error) throw new Error(error.message)
+  if (!data) return null
+  return fetchFullRun(data)
+}
+
+export async function getSimulationHistory(limit: number = 5): Promise<SimulationRun[]> {
+  const { data, error } = await supabase
+    .from('simulation_runs')
+    .select('*')
+    .order('created_at', { ascending: false })
+    .limit(limit)
+
+  if (error) throw new Error(error.message)
+  if (!data || data.length === 0) return []
+
+  const runs = await Promise.all(data.map(row => fetchFullRun(row)))
+  return runs
+}
+

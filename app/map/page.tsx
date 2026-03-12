@@ -115,7 +115,6 @@ export default function MapPage() {
         Building outline sourced from OSM Way ID 12277630.
       </p>
 
-    <div className="div"></div>
     </div>
   )
 }

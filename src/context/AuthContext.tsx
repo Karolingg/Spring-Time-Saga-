@@ -1,13 +1,14 @@
-'use client';
+'use client'
 
-import { createContext, useEffect, useState, ReactNode } from 'react';
-import { onAuthStateChange, getCurrentUser, logout } from '../services/auth.service';
+import { createContext, useEffect, useState, ReactNode } from 'react'
+import { onAuthStateChange, getCurrentUser, logout } from '@/src/services/auth.service'
+import type { User } from '@supabase/supabase-js'
 
 export interface AuthContextValue {
-  user: unknown;
-  isLoading: boolean;
-  isAuthenticated: boolean;
-  handleLogout: () => Promise<void>;
+  user: User | null
+  isLoading: boolean
+  isAuthenticated: boolean
+  handleLogout: () => Promise<void>
 }
 
 export const AuthContext = createContext<AuthContextValue>({
@@ -15,39 +16,37 @@ export const AuthContext = createContext<AuthContextValue>({
   isLoading: true,
   isAuthenticated: false,
   handleLogout: async () => {},
-});
+})
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<unknown>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [user, setUser] = useState<User | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
-    getCurrentUser().then((currentUser) => {
-      setUser(currentUser);
-      setIsLoading(false);
-    });
+    getCurrentUser().then(currentUser => {
+      setUser(currentUser)
+      setIsLoading(false)
+    })
 
     const { data: listener } = onAuthStateChange((_event, session) => {
-      const sessionUser = (session as { user?: unknown } | null)?.user ?? null;
-      setUser(sessionUser);
-      setIsLoading(false);
-    });
+      const sessionUser = (session as { user?: User } | null)?.user ?? null
+      setUser(sessionUser)
+      setIsLoading(false)
+    })
 
     return () => {
-      listener.subscription.unsubscribe();
-    };
-  }, []);
+      listener.subscription.unsubscribe()
+    }
+  }, [])
 
   async function handleLogout() {
-    await logout();
-    setUser(null);
+    await logout()
+    setUser(null)
   }
 
-  const isAuthenticated = !!user;
-
   return (
-    <AuthContext.Provider value={{ user, isLoading, isAuthenticated, handleLogout }}>
+    <AuthContext.Provider value={{ user, isLoading, isAuthenticated: !!user, handleLogout }}>
       {children}
     </AuthContext.Provider>
-  );
+  )
 }

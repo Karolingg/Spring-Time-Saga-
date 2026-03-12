@@ -1,36 +1,53 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# EVACSIM — Crowd Evacuation Simulator
 
-## Getting Started
+Agent-based crowd evacuation simulator with predictive congestion analysis for the UP Cebu campus.
 
-First, run the development server:
+## Quick Start
 
 ```bash
+# 1. Install dependencies
+npm install
+
+# 2. Set up environment variables
+cp .env.example .env.local
+# Then open .env.local and fill in your Supabase credentials
+# (Get them from https://supabase.com/dashboard → Project Settings → API)
+
+# 3. Run the development server
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000) in your browser.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Project Structure
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```
+app/              → Next.js pages (dashboard, simulate, analysis, map, auth, settings)
+components/       → Reusable UI components (Navbar, MapView, etc.)
+src/
+  config/         → Supabase client setup
+  context/        → React context providers (Auth)
+  hooks/          → Custom hooks (useAuth)
+  schema/         → TypeScript types & enums for the database
+  services/       → Data access layer (auth, simulation, user)
+styles/           → Global and component CSS
+supabase/         → Database migrations
+docs/             → Guidelines and documentation
+```
 
-## Learn More
+## Tech Stack
 
-To learn more about Next.js, take a look at the following resources:
+- **Framework:** Next.js 16 + React 19
+- **Language:** TypeScript 5
+- **Database:** Supabase (PostgreSQL + Auth + RLS)
+- **Styling:** Tailwind CSS 4 + CSS modules
+- **Maps:** Leaflet + react-leaflet
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Database Setup
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+The SQL migration lives in `supabase/migrations/`. To apply it:
 
-## Deploy on Vercel
+1. Go to your Supabase Dashboard → SQL Editor
+2. Paste and run the contents of `supabase/migrations/20260312142037_create_normalized_schema.sql`
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+This creates 7 normalized tables with row-level security.

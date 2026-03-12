@@ -2,6 +2,11 @@
 
 import { useEffect, useState } from 'react'
 import { useAuth } from '@/src/hooks/useAuth'
+import {
+  createSimulationRun,
+  saveSimulationResults,
+} from '@/src/services/simulation.service'
+import type { DisasterType, RiskLevel, SeverityLevel } from '@/src/schema/enums'
 
 function SliderRow({ label, value, min, max, onChange }: {
   label: string
@@ -44,6 +49,8 @@ export default function SimulatePage() {
   const [evacuated, setEvacuated] = useState(0)
   const [maxCongestion, setMaxCongestion] = useState(0)
   const [isRunning, setIsRunning] = useState(false)
+  const [runId, setRunId] = useState<string | null>(null)
+  const [isSaving, setIsSaving] = useState(false)
 
   useEffect(() => {
     if (!isAuthLoading && !isAuthenticated) {
@@ -56,10 +63,18 @@ export default function SimulatePage() {
     if (!isRunning) return
     const interval = setInterval(() => {
       setStep(s => s + 1)
-      setEvacuated(e => Math.min(e + Math.floor(Math.random() * 3), applied.agents))
+      setEvacuated(e => {
+        const next = Math.min(e + Math.floor(Math.random() * 3), applied.agents)
+        if (next >= applied.agents) {
+          setIsRunning(false)
+          setTimeout(() => handleSaveResults('completed'), 0)
+        }
+        return next
+      })
       setMaxCongestion(m => Math.min(m + Math.floor(Math.random() * 2), 20))
     }, applied.speed)
     return () => clearInterval(interval)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isRunning, applied])
 
   if (isAuthLoading) {
@@ -71,18 +86,18 @@ export default function SimulatePage() {
   }
 
   const params = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null
-  const disasterType = params?.get('disaster') ?? 'fire'
-  const isEarthquakeMode = disasterType === 'earthquake'
+  const disasterType = (params?.get('disaster') ?? 'fire') as DisasterType
   const isFireMode = disasterType === 'fire'
   const accentColor = isFireMode ? '#ff6b35' : '#f59e0b'
   const modeLabel = isFireMode ? 'Fire Simulation' : 'Earthquake Simulation'
 
-  function handleApply() {
+  async function handleApply() {
     setApplied({ agents, gridWidth, gridHeight, exits, wallDensity, speed })
     setStep(0)
     setEvacuated(0)
     setMaxCongestion(0)
     setIsRunning(false)
+    setRunId(null)
   }
 
   function handleReset() {
@@ -91,8 +106,99 @@ export default function SimulatePage() {
     setStep(0); setEvacuated(0); setMaxCongestion(0); setIsRunning(false)
   }
 
-  function handleToggleSim() {
-    setIsRunning(r => !r)
+  async function handleToggleSim() {
+    if (isRunning) {
+      setIsRunning(false)
+      await handleSaveResults('stopped')
+      return
+    }
+
+    if (!runId) {
+      try {
+        const id = await createSimulationRun({
+          disasterType,
+          agentCount: applied.agents,
+          gridWidth: applied.gridWidth,
+          gridHeight: applied.gridHeight,
+          exitCount: applied.exits,
+          wallDensity: applied.wallDensity,
+          speedMs: applied.speed,
+        })
+        setRunId(id)
+      } catch (err) {
+        console.error('Failed to create simulation run:', err)
+        return
+      }
+    }
+
+    setIsRunning(true)
+  }
+
+  const CAMPUS_ZONES = [
+    { zoneName: 'Main Entrance', lat: 10.33115, lng: 123.90095 },
+    { zoneName: 'Science Hall', lat: 10.33105, lng: 123.90080 },
+    { zoneName: 'Library', lat: 10.33120, lng: 123.90100 },
+    { zoneName: 'Admin Building', lat: 10.33100, lng: 123.90110 },
+    { zoneName: 'Engineering', lat: 10.33125, lng: 123.90075 },
+    { zoneName: 'Cafeteria', lat: 10.33110, lng: 123.90120 },
+  ]
+
+  async function handleSaveResults(finalStatus: 'completed' | 'stopped') {
+    if (!runId || isSaving) return
+    setIsSaving(true)
+
+    try {
+      const evacuationRate = evacuated / applied.agents
+      const congestionRatio = maxCongestion / 20
+
+      const zones = CAMPUS_ZONES.map((zone, i) => {
+        const baseIntensity = (1 - evacuationRate) * 100
+        const variation = ((i * 17 + step) % 30) - 15
+        const intensity = Math.max(0, Math.min(100, baseIntensity + variation))
+        const zoneAgents = Math.round((intensity / 100) * (applied.agents / CAMPUS_ZONES.length))
+        const bottleneckCount = intensity > 70 ? Math.ceil((intensity - 70) / 15) : 0
+        const riskLevel: RiskLevel = intensity > 75 ? 'HIGH' : intensity > 50 ? 'MEDIUM' : 'LOW'
+
+        return {
+          zoneName: zone.zoneName,
+          intensity,
+          agentCount: zoneAgents,
+          bottleneckCount,
+          riskLevel,
+          lat: zone.lat,
+          lng: zone.lng,
+        }
+      })
+
+      const bottleneckRecords = zones
+        .filter(z => z.bottleneckCount > 0)
+        .map(z => ({
+          zoneName: z.zoneName,
+          severity: z.riskLevel as SeverityLevel,
+          cellX: Math.floor(Math.random() * applied.gridWidth),
+          cellY: Math.floor(Math.random() * applied.gridHeight),
+          description: `Congestion detected near ${z.zoneName} (${z.intensity.toFixed(0)}% intensity)`,
+        }))
+
+      await saveSimulationResults(
+        runId,
+        {
+          totalSteps: step,
+          evacuatedCount: evacuated,
+          maxCongestion,
+          evacuationTime: step * (applied.speed / 1000),
+          congestionExposure: congestionRatio * 100,
+          globalPeakDensity: maxCongestion / 20,
+          status: finalStatus,
+        },
+        zones,
+        bottleneckRecords,
+      )
+    } catch (err) {
+      console.error('Failed to save simulation results:', err)
+    } finally {
+      setIsSaving(false)
+    }
   }
 
   const sectionCard = {
@@ -243,6 +349,22 @@ export default function SimulatePage() {
               <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
             </svg>
             Apply configuration, then press Start to begin simulation
+          </div>
+        )}
+        {isSaving && (
+          <div style={{
+            marginTop: '12px',
+            padding: '12px 14px',
+            background: 'rgba(45,184,176,0.08)',
+            border: '1px solid rgba(45,184,176,0.2)',
+            borderRadius: '8px',
+            fontSize: '12px',
+            color: '#115e59',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px',
+          }}>
+            Saving simulation results...
           </div>
         )}
       </div>
