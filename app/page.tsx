@@ -224,9 +224,9 @@ export default function DashboardPage() {
         <h2 style={{ margin: '0 0 14px', fontSize: '14px', fontWeight: '600', color: 'var(--text-primary)' }}>Quick Actions</h2>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px' }}>
           {[
-            { href: '/simulate?disaster=fire', label: 'Fire Simulation', sub: 'High urgency scenario', color: '#ff6b35', icon: '🔥' },
-            { href: '/simulate?disaster=earthquake', label: 'Earthquake Simulation', sub: 'Dynamic obstacles scenario', color: '#f59e0b', icon: '🌎' },
-            { href: '/analysis', label: 'Heatmap Analysis', sub: 'Density analysis', color: '#2db8b0', icon: '📊' },
+            { href: '/simulate?disaster=fire', label: 'Fire Simulation', sub: 'High urgency scenario', color: '#ff6b35'},
+            { href: '/simulate?disaster=earthquake', label: 'Earthquake Simulation', sub: 'Dynamic obstacles scenario', color: '#f59e0b'},
+            { href: '/analysis', label: 'Heatmap Analysis', sub: 'Density analysis', color: '#2db8b0' },
           ].map(item => (
             <a key={item.href} href={item.href} style={{
               display: 'flex',
@@ -249,7 +249,6 @@ export default function DashboardPage() {
                 fontSize: '18px',
                 flexShrink: 0,
               }}>
-                {item.icon}
               </div>
               <div>
                 <div style={{ fontSize: '13px', fontWeight: '600', color: 'var(--text-primary)' }}>{item.label}</div>

@@ -1,66 +1,99 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect } from 'react'
+import dynamic from 'next/dynamic'
+import { useRouter } from 'next/navigation'
 import { useAuth } from '@/src/hooks/useAuth'
+import type { MapMarker } from '@/components/MapView'
 
-function SliderRow({ label, value, min, max, onChange }: {
-  label: string
-  value: number
-  min: number
-  max: number
-  onChange: (v: number) => void
-}) {
-  return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '8px 0' }}>
-      <span style={{ fontSize: '13px', color: 'var(--text-primary)', minWidth: '110px' }}>{label}</span>
-      <input
-        type="range"
-        min={min}
-        max={max}
-        value={value}
-        onChange={e => onChange(Number(e.target.value))}
-        style={{ flex: 1, accentColor: '#2db8b0', cursor: 'pointer' }}
-      />
-      <span style={{ fontSize: '13px', fontWeight: '600', color: 'var(--text-primary)', minWidth: '36px', textAlign: 'right' }}>{value}</span>
+const MapView = dynamic(() => import('@/components/MapView'), {
+  ssr: false,
+  loading: () => (
+    <div style={{
+      height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center',
+      background: '#0f172a', borderRadius: '12px', color: '#94a3b8', fontSize: '14px', gap: '10px',
+    }}>
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2db8b0" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+        <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+      </svg>
+      Loading map...
     </div>
-  )
+  ),
+})
+
+/* Campus buildings with bounding boxes for coordinate-based matching */
+const CAMPUS_BUILDINGS = [
+  { id: 'social-sciences', name: 'Social Sciences Building', bounds: { south: 10.3255, north: 10.3219, west: 123.8971, east: 123.8987 } },
+  { id: 'arts-design', name: 'Arts and Design Workshop', bounds: { south: 10.3247, north: 10.3253, west: 123.8965, east: 123.8975 } },
+  { id: 'som-building-1', name: 'SOM Building 1', bounds: { south: 10.3241, north: 10.3218, west: 123.8969, east: 123.8987 } },
+  { id: 'som-admin', bounds: { south: 10.3237, north: 10.3218, west: 123.8972, east: 123.8983 } },
+  { id: 'som-building-2', name: 'SOM Building 2', bounds: { south: 10.3231, north: 10.3237, west: 123.8972, east: 123.8982 } },
+  { id: 'volleyball-court', name: 'UPC Volleyball Court', bounds: { south: 10.3243, north: 10.3251, west: 123.8982, east: 123.8992 } },
+  { id: 'as-west-wing', name: 'AS West Wing', bounds: { south: 10.3248, north: 10.3256, west: 123.8992, east: 123.9005 } },
+  { id: 'union-building', name: 'Union Building', bounds: { south: 10.3252, north: 10.3260, west: 123.9005, east: 123.9018 } },
+  { id: 'as-east-wing', name: 'AS East Wing', bounds: { south: 10.3242, north: 10.3250, west: 123.9005, east: 123.9018 } },
+  { id: 'soccer-field', name: 'UPC Soccer Field', bounds: { south: 10.3232, north: 10.3244, west: 123.9018, east: 123.9038 } },
+  { id: 'admin-building', name: 'Administration Building', bounds: { south: 10.3212, north: 10.3234, west: 123.8977, east: 123.8988 } },
+  { id: 'science-building', name: 'Science Building', bounds: { south: 10.3211, north: 10.3234, west: 123.8971, east: 123.8988 } },
+  { id: 'lihangin-hall', name: 'Liadlaw Hall', bounds: { south: 10.3201, north: 10.3231, west: 123.8962, east: 123.8988 } },
+  { id: 'balay-warangao', name: 'Balay Warangao', bounds: { south: 10.3212, north: 10.3220, west: 123.8975, east: 123.8988 } },
+  { id: 'tech-innovation', name: 'Technology Innovation Center', bounds: { south: 10.3206, north: 10.3214, west: 123.8975, east: 123.8988 } },
+  { id: 'malacanang-cottage', name: 'Malacanang Cottage', bounds: { south: 10.3218, north: 10.3226, west: 123.8998, east: 123.9012 } },
+  { id: 'computer-room', name: 'Computer Room', bounds: { south: 10.3212, north: 10.3220, west: 123.9012, east: 123.9025 } },
+  { id: 'cdcp-center', name: 'CDCP Center', bounds: { south: 10.3206, north: 10.3214, west: 123.9025, east: 123.9038 } },
+  { id: 'up-high-school', name: 'UP High School - Cebu', bounds: { south: 10.3212, north: 10.3224, west: 123.9028, east: 123.9048 } },
+  { id: 'covered-court', name: 'UP High Open Court', bounds: { south: 10.3206, north: 10.3216, west: 123.9038, east: 123.9055 } },
+  { id: 'up-cebu-library', name: 'UP Cebu Library', bounds: { south: 10.3203, north: 10.3224, west: 123.8963, east: 123.8997 } },
+]
+
+/* IDs of buildings that get a clickable marker icon */
+const MARKER_BUILDING_IDS = [
+  'admin-building',
+  'as-west-wing',
+  'as-east-wing',
+  'som-admin',
+  'som-building-1',
+  'union-building',
+  'social-sciences',
+  'science-building',
+  'lihangin-hall',
+  'up-cebu-library',
+  'up-high-school',
+]
+
+function findBuildingByCoords(lat: number, lng: number): string | null {
+  // Expand bounds slightly to be more forgiving with click targets
+  const pad = 0.0003
+  for (const b of CAMPUS_BUILDINGS) {
+    if (
+      lat >= b.bounds.south - pad && lat <= b.bounds.north + pad &&
+      lng >= b.bounds.west - pad && lng <= b.bounds.east + pad
+    ) {
+      return b.id
+    }
+  }
+  return null
 }
 
 export default function SimulatePage() {
   const { isAuthenticated, isLoading: isAuthLoading } = useAuth()
+  const router = useRouter()
 
-  const [agents, setAgents] = useState(120)
-  const [gridWidth, setGridWidth] = useState(60)
-  const [gridHeight, setGridHeight] = useState(45)
-  const [exits, setExits] = useState(6)
-  const [wallDensity, setWallDensity] = useState(10)
-  const [speed, setSpeed] = useState(200)
-
-  // Saved config (applied)
-  const [applied, setApplied] = useState({ agents: 120, gridWidth: 60, gridHeight: 45, exits: 6, wallDensity: 10, speed: 200 })
-
-  // Sim state
-  const [step, setStep] = useState(0)
-  const [evacuated, setEvacuated] = useState(0)
-  const [maxCongestion, setMaxCongestion] = useState(0)
-  const [isRunning, setIsRunning] = useState(false)
+  const markers: MapMarker[] = CAMPUS_BUILDINGS
+    .filter(b => MARKER_BUILDING_IDS.includes(b.id))
+    .map(b => ({
+      id: b.id,
+      label: b.name,
+      lat: (b.bounds.south + b.bounds.north) / 2,
+      lng: (b.bounds.west + b.bounds.east) / 2,
+      onClick: () => router.push(`/simulate/${encodeURIComponent(b.id)}/disaster`),
+    }))
 
   useEffect(() => {
     if (!isAuthLoading && !isAuthenticated) {
       window.location.href = '/auth'
     }
   }, [isAuthLoading, isAuthenticated])
-
-  // Simulate stepping
-  useEffect(() => {
-    if (!isRunning) return
-    const interval = setInterval(() => {
-      setStep(s => s + 1)
-      setEvacuated(e => Math.min(e + Math.floor(Math.random() * 3), applied.agents))
-      setMaxCongestion(m => Math.min(m + Math.floor(Math.random() * 2), 20))
-    }, applied.speed)
-    return () => clearInterval(interval)
-  }, [isRunning, applied])
 
   if (isAuthLoading) {
     return (
@@ -70,214 +103,72 @@ export default function SimulatePage() {
     )
   }
 
-  const params = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null
-  const disasterType = params?.get('disaster') ?? 'fire'
-  const isEarthquakeMode = disasterType === 'earthquake'
-  const isFireMode = disasterType === 'fire'
-  const accentColor = isFireMode ? '#ff6b35' : '#f59e0b'
-  const modeLabel = isFireMode ? 'Fire Simulation' : 'Earthquake Simulation'
-
-  function handleApply() {
-    setApplied({ agents, gridWidth, gridHeight, exits, wallDensity, speed })
-    setStep(0)
-    setEvacuated(0)
-    setMaxCongestion(0)
-    setIsRunning(false)
-  }
-
-  function handleReset() {
-    setAgents(120); setGridWidth(60); setGridHeight(45)
-    setExits(6); setWallDensity(10); setSpeed(200)
-    setStep(0); setEvacuated(0); setMaxCongestion(0); setIsRunning(false)
-  }
-
-  function handleToggleSim() {
-    setIsRunning(r => !r)
-  }
-
-  const sectionCard = {
-    background: '#ffffff',
-    border: '1px solid var(--border)',
-    borderRadius: '14px',
-    padding: '28px 32px',
-    boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
-    marginBottom: '20px',
-  } as React.CSSProperties
-
   return (
     <div style={{ minHeight: '100vh', padding: '88px 40px 56px', maxWidth: '1280px', margin: '0 auto' }}>
 
       {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '32px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '20px' }}>
         <div style={{
           width: '44px', height: '44px', borderRadius: '12px',
-          background: `${accentColor}18`,
+          background: 'rgba(45,184,176,0.1)',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontSize: '22px',
         }}>
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#2db8b0" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <polygon points="5 3 19 12 5 21 5 3"/>
+          </svg>
         </div>
         <div>
-          <h1 style={{ margin: 0, fontSize: '26px', fontWeight: '700', color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>{modeLabel}</h1>
-          <p style={{ margin: 0, fontSize: '14px', color: 'var(--text-secondary)' }}>Configure and run the evacuation simulation</p>
+          <h1 style={{ margin: '0 0 4px', fontSize: '22px', fontWeight: '700', color: 'var(--text-primary)' }}>
+            Simulation Setup
+          </h1>
+          <p style={{ margin: 0, fontSize: '13px', color: 'var(--text-secondary)' }}>
+            Select a building on the map to begin
+          </p>
         </div>
       </div>
 
-      {/* Two-column layout */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 380px', gap: '24px', alignItems: 'start' }}>
-      <div>
-
-      {/* Configuration */}
-      <div style={sectionCard}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#2db8b0" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <circle cx="12" cy="12" r="3"/>
-            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
-          </svg>
-          <span style={{ fontSize: '11px', fontWeight: '700', letterSpacing: '0.1em', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Configuration</span>
-        </div>
-        <div style={{ borderTop: '1px solid var(--border)' }}>
-          <SliderRow label="Agents" value={agents} min={10} max={500} onChange={setAgents} />
-          <SliderRow label="Grid Width" value={gridWidth} min={20} max={100} onChange={setGridWidth} />
-          <SliderRow label="Grid Height" value={gridHeight} min={20} max={100} onChange={setGridHeight} />
-          <SliderRow label="Exits" value={exits} min={1} max={12} onChange={setExits} />
-          <SliderRow label="Wall Density" value={wallDensity} min={0} max={40} onChange={setWallDensity} />
-          <SliderRow label="Speed (ms)" value={speed} min={50} max={1000} onChange={setSpeed} />
-        </div>
-        <button
-          onClick={handleApply}
-          style={{
-            marginTop: '16px',
-            width: '100%',
-            padding: '10px',
-            background: '#f1f5f9',
-            border: '1px solid var(--border)',
-            borderRadius: '8px',
-            fontSize: '12px',
-            fontWeight: '700',
-            letterSpacing: '0.08em',
-            color: 'var(--text-secondary)',
-            textTransform: 'uppercase' as const,
-            cursor: 'pointer',
+      {/* Map — no custom region overlays, only Mapbox 3D buildings are clickable */}
+      <div style={{
+        position: 'relative',
+        background: '#0f172a',
+        border: '1px solid #1e293b',
+        borderRadius: '14px',
+        boxShadow: '0 4px 24px rgba(0,0,0,0.2)',
+        overflow: 'hidden',
+        height: '640px',
+      }}>
+        <MapView
+          flat2d
+          markers={markers}
+          onBuildingClick={(_name, coords) => {
+            const [lat, lng] = coords
+            const buildingId = findBuildingByCoords(lat, lng)
+            if (buildingId) {
+              router.push(`/simulate/${encodeURIComponent(buildingId)}/disaster`)
+            }
           }}
-        >
-          Apply &amp; Reset
-        </button>
-      </div>
+        />
 
-
-      </div>{/* end left column */}
-
-      {/* Right column: Controls + Live Stats */}
-      <div>
-
-      {/* Controls */}
-      <div style={sectionCard}>
-        <span style={{ fontSize: '11px', fontWeight: '700', letterSpacing: '0.1em', color: 'var(--text-muted)', textTransform: 'uppercase' as const, display: 'block', marginBottom: '16px' }}>Controls</span>
-        <div style={{ display: 'flex', gap: '10px' }}>
-          <button
-            onClick={handleToggleSim}
-            style={{
-              flex: 1,
-              padding: '14px',
-              background: isRunning ? '#f59e0b' : '#2db8b0',
-              border: 'none',
-              borderRadius: '8px',
-              color: '#ffffff',
-              fontSize: '14px',
-              fontWeight: '600',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '8px',
-            }}
-          >
-            {isRunning ? (
-              <>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
-                Pause
-              </>
-            ) : (
-              <>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-                Start
-              </>
-            )}
-          </button>
-          <button
-            onClick={handleReset}
-            title="Reset"
-            style={{
-              width: '48px',
-              height: '48px',
-              background: '#f1f5f9',
-              border: '1px solid var(--border)',
-              borderRadius: '8px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              cursor: 'pointer',
-              color: 'var(--text-secondary)',
-            }}
-          >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-4.87L1 10"/>
-            </svg>
-          </button>
-        </div>
-        {!isRunning && step === 0 && (
-          <div style={{
-            marginTop: '12px',
-            padding: '12px 14px',
-            background: 'rgba(245,158,11,0.08)',
-            border: '1px solid rgba(245,158,11,0.2)',
-            borderRadius: '8px',
-            fontSize: '12px',
-            color: '#92400e',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '6px',
-          }}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
-              <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
-            </svg>
-            Apply configuration, then press Start to begin simulation
-          </div>
-        )}
-      </div>
-
-      {/* Live Stats */}
-      <div style={sectionCard}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '14px' }}>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#2db8b0" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+        {/* Prompt overlay */}
+        <div style={{
+          position: 'absolute', bottom: '20px', left: '50%', transform: 'translateX(-50%)',
+          zIndex: 1000, background: 'rgba(15, 23, 42, 0.95)', border: '1px solid #334155',
+          borderRadius: '12px', padding: '12px 24px',
+          boxShadow: '0 4px 16px rgba(0,0,0,0.3)',
+          backdropFilter: 'blur(12px)',
+          display: 'flex', alignItems: 'center', gap: '10px',
+          fontSize: '14px', color: '#94a3b8', fontWeight: '500',
+        }}>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2db8b0" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/>
           </svg>
-          <span style={{ fontSize: '11px', fontWeight: '700', letterSpacing: '0.1em', color: 'var(--text-muted)', textTransform: 'uppercase' as const }}>Live Stats</span>
+          Click a building to start simulation setup
         </div>
-        {[
-          { label: 'Step', value: step },
-          { label: 'Evacuated', value: `${evacuated}/${applied.agents}` },
-          { label: 'Max Congestion', value: maxCongestion, color: maxCongestion > 10 ? '#ef4444' : '#2db8b0' },
-        ].map((stat, i) => (
-          <div key={i} style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            padding: '12px 0',
-            borderTop: i === 0 ? '1px solid var(--border)' : 'none',
-            borderBottom: '1px solid var(--border)',
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: 'var(--text-secondary)' }}>
-              <span>{stat.label}</span>
-            </div>
-            <span style={{ fontSize: '15px', fontWeight: '600', color: stat.color ?? 'var(--text-primary)' }}>{stat.value}</span>
-          </div>
-        ))}
       </div>
 
-      </div>
-      </div>
+      <p style={{ marginTop: '12px', fontSize: '11px', color: 'var(--text-muted)', textAlign: 'center' }}>
+        Map powered by <a href="https://www.mapbox.com" target="_blank" rel="noreferrer" style={{ color: '#2db8b0' }}>Mapbox</a> &middot; Data &copy; <a href="https://www.openstreetmap.org" target="_blank" rel="noreferrer" style={{ color: '#2db8b0' }}>OpenStreetMap</a> contributors.
+      </p>
     </div>
   )
 }
