@@ -252,6 +252,7 @@ export async function getLatestSimulationRun(): Promise<SimulationRun | null> {
   const { data, error } = await supabase
     .from('simulation_runs')
     .select('*')
+    .eq('status', 'completed')
     .order('created_at', { ascending: false })
     .limit(1)
     .maybeSingle()
@@ -265,6 +266,7 @@ export async function getSimulationHistory(limit: number = 5): Promise<Simulatio
   const { data, error } = await supabase
     .from('simulation_runs')
     .select('*')
+    .eq('status', 'completed')
     .order('created_at', { ascending: false })
     .limit(limit)
 
@@ -273,5 +275,131 @@ export async function getSimulationHistory(limit: number = 5): Promise<Simulatio
 
   const runs = await Promise.all(data.map(row => fetchFullRun(row)))
   return runs
+}
+
+export async function deleteSimulationRun(runId: string): Promise<void> {
+  const { error } = await supabase
+    .from('simulation_runs')
+    .delete()
+    .eq('id', runId)
+
+  if (error) throw new Error(error.message)
+}
+
+export async function resetAllSimulationData(): Promise<void> {
+  const { data: session, error: authError } = await supabase.auth.getUser()
+  if (authError || !session.user) throw new Error('Not authenticated')
+
+  const { error } = await supabase
+    .from('simulation_runs')
+    .delete()
+    .eq('user_id', session.user.id)
+
+  if (error) throw new Error(error.message)
+}
+
+export async function getAggregateSimulationStats(): Promise<{
+  totalRuns: number
+  avgEvacuationRate: number
+  totalAgentsSimulated: number
+  avgBottlenecksPerRun: number
+  avgEvacuationTime: number
+}> {
+  const { data: runs, error: runsError } = await supabase
+    .from('simulation_runs')
+    .select('id')
+    .eq('status', 'completed')
+
+  if (runsError) throw new Error(runsError.message)
+  if (!runs || runs.length === 0) {
+    return { totalRuns: 0, avgEvacuationRate: 0, totalAgentsSimulated: 0, avgBottlenecksPerRun: 0, avgEvacuationTime: 0 }
+  }
+
+  const runIds = runs.map(r => r.id as string)
+
+  const [configRes, resultRes, zoneRes] = await Promise.all([
+    supabase.from('simulation_configs').select('run_id, agent_count').in('run_id', runIds),
+    supabase.from('simulation_results').select('run_id, evacuated_count, evacuation_time').in('run_id', runIds),
+    supabase.from('simulation_zones').select('run_id, bottleneck_count').in('run_id', runIds),
+  ])
+
+  if (configRes.error) throw new Error(configRes.error.message)
+  if (resultRes.error) throw new Error(resultRes.error.message)
+  if (zoneRes.error) throw new Error(zoneRes.error.message)
+
+  const configs = (configRes.data ?? []) as { run_id: string; agent_count: number }[]
+  const results = (resultRes.data ?? []) as { run_id: string; evacuated_count: number; evacuation_time: number }[]
+  const zones = (zoneRes.data ?? []) as { run_id: string; bottleneck_count: number }[]
+
+  const totalAgentsSimulated = configs.reduce((sum, c) => sum + c.agent_count, 0)
+
+  const evacuationRates = results.map(r => {
+    const cfg = configs.find(c => c.run_id === r.run_id)
+    const agentCount = cfg?.agent_count ?? 1
+    return (r.evacuated_count / agentCount) * 100
+  })
+  const avgEvacuationRate = evacuationRates.length > 0
+    ? evacuationRates.reduce((s, v) => s + v, 0) / evacuationRates.length
+    : 0
+
+  const totalBottlenecks = zones.reduce((sum, z) => sum + z.bottleneck_count, 0)
+  const avgBottlenecksPerRun = runs.length > 0 ? totalBottlenecks / runs.length : 0
+
+  const totalEvacTime = results.reduce((sum, r) => sum + r.evacuation_time, 0)
+  const avgEvacuationTime = results.length > 0 ? totalEvacTime / results.length : 0
+
+  return {
+    totalRuns: runs.length,
+    avgEvacuationRate,
+    totalAgentsSimulated,
+    avgBottlenecksPerRun,
+    avgEvacuationTime,
+  }
+}
+
+export async function getAggregateZoneStats(): Promise<{
+  zoneName: string
+  avgIntensity: number
+  avgAgentCount: number
+  totalBottlenecks: number
+  dominantRiskLevel: RiskLevel
+}[]> {
+  const { data: runs, error: runsError } = await supabase
+    .from('simulation_runs')
+    .select('id')
+    .eq('status', 'completed')
+
+  if (runsError) throw new Error(runsError.message)
+  if (!runs || runs.length === 0) return []
+
+  const runIds = runs.map(r => r.id as string)
+
+  const { data: zones, error: zonesError } = await supabase
+    .from('simulation_zones')
+    .select('zone_name, intensity, agent_count, bottleneck_count, risk_level')
+    .in('run_id', runIds)
+
+  if (zonesError) throw new Error(zonesError.message)
+  if (!zones || zones.length === 0) return []
+
+  const zoneMap = new Map<string, { intensities: number[]; agentCounts: number[]; bottlenecks: number; riskCounts: Record<string, number> }>()
+
+  for (const z of zones as { zone_name: string; intensity: number; agent_count: number; bottleneck_count: number; risk_level: string }[]) {
+    if (!zoneMap.has(z.zone_name)) {
+      zoneMap.set(z.zone_name, { intensities: [], agentCounts: [], bottlenecks: 0, riskCounts: {} })
+    }
+    const entry = zoneMap.get(z.zone_name)!
+    entry.intensities.push(z.intensity)
+    entry.agentCounts.push(z.agent_count)
+    entry.bottlenecks += z.bottleneck_count
+    entry.riskCounts[z.risk_level] = (entry.riskCounts[z.risk_level] ?? 0) + 1
+  }
+
+  return Array.from(zoneMap.entries()).map(([zoneName, data]) => {
+    const avgIntensity = data.intensities.reduce((s, v) => s + v, 0) / data.intensities.length
+    const avgAgentCount = data.agentCounts.reduce((s, v) => s + v, 0) / data.agentCounts.length
+    const dominantRiskLevel = (Object.entries(data.riskCounts).sort((a, b) => b[1] - a[1])[0]?.[0] ?? 'LOW') as RiskLevel
+    return { zoneName, avgIntensity, avgAgentCount: Math.round(avgAgentCount), totalBottlenecks: data.bottlenecks, dominantRiskLevel }
+  }).sort((a, b) => b.avgIntensity - a.avgIntensity)
 }
 
