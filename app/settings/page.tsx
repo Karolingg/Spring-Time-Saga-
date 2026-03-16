@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useAuth } from '@/src/hooks/useAuth'
 import { updateUserEmail, updateUserPassword } from '@/src/services/user.service'
 
@@ -37,6 +37,12 @@ export default function SettingsPage() {
   const { isAuthenticated, isLoading: isAuthLoading, user, handleLogout } = useAuth()
   const [activeTab, setActiveTab] = useState<TabId>('profile')
 
+  useEffect(() => {
+    if (!isAuthLoading && !isAuthenticated) {
+      window.location.href = '/auth'
+    }
+  }, [isAuthLoading, isAuthenticated])
+
   if (isAuthLoading) {
     return (
       <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg)' }}>
@@ -46,11 +52,10 @@ export default function SettingsPage() {
   }
 
   if (!isAuthenticated) {
-    if (typeof window !== 'undefined') window.location.href = '/auth'
     return null
   }
 
-  const userEmail = (user as { email?: string } | null)?.email ?? ''
+  const userEmail = user?.email ?? ''
 
   return (
     <div style={{ minHeight: '100vh', padding: '88px 40px 56px', maxWidth: '900px', margin: '0 auto' }}>
