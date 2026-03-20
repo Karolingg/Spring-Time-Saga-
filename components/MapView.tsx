@@ -61,7 +61,7 @@ const MAP_STYLES: MapStyleOption[] = [
 ]
 
 /* ── GeoJSON conversion ── */
-function regionsToGeoJSON(regions: MapRegion[]): GeoJSON.FeatureCollection {
+function regionsToGeoJSON(regions: MapRegion[], hoveredId?: string | null): GeoJSON.FeatureCollection {
   return {
     type: 'FeatureCollection',
     features: regions.map((r) => {
@@ -76,6 +76,7 @@ function regionsToGeoJSON(regions: MapRegion[]): GeoJSON.FeatureCollection {
         properties: {
           id: r.id,
           selected: r.selected ? 'true' : 'false',
+          hovered: r.id === hoveredId ? 'true' : 'false',
           floors: r.floors ?? 1,
         },
         geometry: {
@@ -112,9 +113,10 @@ interface MapViewProps {
   minZoom?: number
   lockedStyle?: string // force a single style and hide the switcher
   flat2d?: boolean // flat 2D view — no pitch, no extrusions, fill polygons only
+  hoverOnly?: boolean // regions invisible by default, shown only on hover or selection
 }
 
-export default function MapView({ regions, markers, onRegionClick, onBuildingClick, maxBounds, minZoom, lockedStyle, flat2d }: MapViewProps) {
+export default function MapView({ regions, markers, onRegionClick, onBuildingClick, maxBounds, minZoom, lockedStyle, flat2d, hoverOnly }: MapViewProps) {
   const mapRef = useRef<MapRef>(null)
   const [activeStyleId, setActiveStyleId] = useState(lockedStyle || 'outdoors')
   const [styleMenuOpen, setStyleMenuOpen] = useState(false)
@@ -125,7 +127,7 @@ export default function MapView({ regions, markers, onRegionClick, onBuildingCli
   const activeStyle = MAP_STYLES.find((s) => s.id === activeStyleId) || MAP_STYLES[0]
   const isDark = activeStyleId === 'outdoors'
 
-  const geojson = useMemo(() => regionsToGeoJSON(regions ?? []), [regions])
+  const geojson = useMemo(() => regionsToGeoJSON(regions ?? [], hoverOnly ? hoveredId : undefined), [regions, hoverOnly, hoveredId])
 
   const canRenderMarkers = useMemo(() => {
     if (!markersReady || !markers?.length) return false
@@ -252,9 +254,12 @@ export default function MapView({ regions, markers, onRegionClick, onBuildingCli
       } else if (flat2d && onBuildingClick) {
         // In flat 2D mode, query all features at click point and find buildings
         const map = mapRef.current?.getMap()
-        if (!map) return
-        const allFeatures = map.queryRenderedFeatures(e.point)
-        const building = allFeatures.find(f => f.sourceLayer === 'building')
+        if (!map || !e.point) return
+        let building: any
+        try {
+          const allFeatures = map.queryRenderedFeatures(e.point)
+          building = allFeatures.find(f => f.sourceLayer === 'building')
+        } catch { return }
         if (building) {
           const name = building.properties?.name || building.properties?.type || 'Building'
           const [lng, lat] = e.lngLat ? [e.lngLat.lng, e.lngLat.lat] : [0, 0]
@@ -285,11 +290,18 @@ export default function MapView({ regions, markers, onRegionClick, onBuildingCli
   const handleMouseMove = useCallback((e: MapMouseEvent) => {
     if (!flat2d || !onBuildingClick) return
     const map = mapRef.current?.getMap()
-    if (!map) return
-    const allFeatures = map.queryRenderedFeatures(e.point)
-    const hasBuilding = allFeatures.some(f => f.sourceLayer === 'building')
-    map.getCanvas().style.cursor = hasBuilding ? 'pointer' : ''
+    if (!map || !e.point) return
+    try {
+      const allFeatures = map.queryRenderedFeatures(e.point)
+      const hasBuilding = allFeatures.some(f => f.sourceLayer === 'building')
+      map.getCanvas().style.cursor = hasBuilding ? 'pointer' : ''
+    } catch {
+      // queryRenderedFeatures can throw if style isn't loaded yet
+    }
   }, [flat2d, onBuildingClick])
+
+  // Expression: feature is visible (hovered or selected)
+  const isVisible: any = ['any', ['==', ['get', 'selected'], 'true'], ['==', ['get', 'hovered'], 'true']]
 
   // Layer paint properties
   const glowLayer: LineLayerSpecification = {
@@ -303,11 +315,9 @@ export default function MapView({ regions, markers, onRegionClick, onBuildingCli
         ['==', ['get', 'selected'], 'true'], 10,
         4,
       ],
-      'line-opacity': [
-        'case',
-        ['==', ['get', 'selected'], 'true'], 0.5,
-        0.2,
-      ],
+      'line-opacity': hoverOnly
+        ? ['case', isVisible, ['case', ['==', ['get', 'selected'], 'true'], 0.5, 0.35], 0]
+        : ['case', ['==', ['get', 'selected'], 'true'], 0.5, 0.2],
       'line-blur': 6,
     },
   }
@@ -316,12 +326,9 @@ export default function MapView({ regions, markers, onRegionClick, onBuildingCli
     id: 'building-fills',
     type: 'fill-extrusion',
     source: 'campus-buildings',
+    ...(hoverOnly ? { filter: isVisible } : {}),
     paint: {
-      'fill-extrusion-color': [
-        'case',
-        ['==', ['get', 'selected'], 'true'], activeStyle.glowColor,
-        activeStyle.glowColor,
-      ],
+      'fill-extrusion-color': activeStyle.glowColor,
       'fill-extrusion-height': ['*', ['get', 'floors'], 12],
       'fill-extrusion-base': 0,
       'fill-extrusion-opacity': 0.6,
@@ -338,11 +345,9 @@ export default function MapView({ regions, markers, onRegionClick, onBuildingCli
         ['==', ['get', 'selected'], 'true'], activeStyle.glowColor,
         activeStyle.polygonColor,
       ],
-      'fill-opacity': [
-        'case',
-        ['==', ['get', 'selected'], 'true'], 0.6,
-        0.35,
-      ],
+      'fill-opacity': hoverOnly
+        ? ['case', isVisible, ['case', ['==', ['get', 'selected'], 'true'], 0.6, 0.35], 0]
+        : ['case', ['==', ['get', 'selected'], 'true'], 0.6, 0.35],
     },
   }
 
@@ -357,11 +362,9 @@ export default function MapView({ regions, markers, onRegionClick, onBuildingCli
         ['==', ['get', 'selected'], 'true'], 3,
         1.5,
       ],
-      'line-opacity': [
-        'case',
-        ['==', ['get', 'selected'], 'true'], 1,
-        0.7,
-      ],
+      'line-opacity': hoverOnly
+        ? ['case', isVisible, ['case', ['==', ['get', 'selected'], 'true'], 1, 0.7], 0]
+        : ['case', ['==', ['get', 'selected'], 'true'], 1, 0.7],
     },
   }
 
