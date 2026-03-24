@@ -8,12 +8,14 @@ import 'mapbox-gl/dist/mapbox-gl.css'
 
 const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || ''
 
-const FALLBACK_CENTER: [number, number] = [10.3230, 123.8995] // lat, lng — UP Cebu campus center
+const FALLBACK_CENTER: [number, number] = [10.3230, 123.8995] // lat, lng â€” UP Cebu campus center
 const DEFAULT_ZOOM = 16.5
 const DEFAULT_PITCH = 45
 const DEFAULT_BEARING = -15
+const SELECTED_REGION_ZOOM = 18.2
+const SELECTED_REGION_PITCH = 58
 
-/* ── Map style options ── */
+/* â”€â”€ Map style options â”€â”€ */
 interface MapStyleOption {
   id: string
   label: string
@@ -60,7 +62,7 @@ const MAP_STYLES: MapStyleOption[] = [
   },
 ]
 
-/* ── GeoJSON conversion ── */
+/* â”€â”€ GeoJSON conversion â”€â”€ */
 function regionsToGeoJSON(regions: MapRegion[], hoveredId?: string | null): GeoJSON.FeatureCollection {
   return {
     type: 'FeatureCollection',
@@ -88,7 +90,7 @@ function regionsToGeoJSON(regions: MapRegion[], hoveredId?: string | null): GeoJ
   }
 }
 
-/* ── Public types ── */
+/* â”€â”€ Public types â”€â”€ */
 export interface MapRegion {
   id: string
   polygon: [number, number][] // [lat, lng] pairs
@@ -112,17 +114,22 @@ interface MapViewProps {
   maxBounds?: [[number, number], [number, number]]
   minZoom?: number
   lockedStyle?: string // force a single style and hide the switcher
-  flat2d?: boolean // flat 2D view — no pitch, no extrusions, fill polygons only
+  flat2d?: boolean // flat 2D view â€” no pitch, no extrusions, fill polygons only
   hoverOnly?: boolean // regions invisible by default, shown only on hover or selection
 }
 
 export default function MapView({ regions, markers, onRegionClick, onBuildingClick, maxBounds, minZoom, lockedStyle, flat2d, hoverOnly }: MapViewProps) {
+  const containerRef = useRef<HTMLDivElement>(null)
   const mapRef = useRef<MapRef>(null)
+  const hadSelectedRegionRef = useRef(false)
   const [activeStyleId, setActiveStyleId] = useState(lockedStyle || 'outdoors')
   const [styleMenuOpen, setStyleMenuOpen] = useState(false)
   const [mapLoaded, setMapLoaded] = useState(false)
   const [markersReady, setMarkersReady] = useState(false)
   const [hoveredId, setHoveredId] = useState<string | null>(null)
+  const [selectedMapboxBuildingId, setSelectedMapboxBuildingId] = useState<string | number | null>(null)
+  const [selectedMapboxBuildingPropertyId, setSelectedMapboxBuildingPropertyId] = useState<string | number | null>(null)
+  const [defaultCenter, setDefaultCenter] = useState<[number, number]>([FALLBACK_CENTER[1], FALLBACK_CENTER[0]]) // [lng, lat]
 
   const activeStyle = MAP_STYLES.find((s) => s.id === activeStyleId) || MAP_STYLES[0]
   const isDark = activeStyleId === 'outdoors'
@@ -147,6 +154,49 @@ export default function MapView({ regions, markers, onRegionClick, onBuildingCli
     }, 100)
     return () => clearTimeout(timer)
   }, [mapLoaded])
+
+  // Keep WebGL canvas synced with layout changes (e.g., side panel open/close)
+  // so no blank strip appears when the map container width animates.
+  useEffect(() => {
+    if (!mapLoaded) return
+    const map = mapRef.current?.getMap()
+    const container = containerRef.current
+    if (!map || !container) return
+
+    let rafId: number | null = null
+    let settleTimer: ReturnType<typeof setTimeout> | null = null
+
+    const runResize = () => {
+      if (rafId !== null) cancelAnimationFrame(rafId)
+      rafId = requestAnimationFrame(() => {
+        map.resize()
+      })
+      if (settleTimer) clearTimeout(settleTimer)
+      settleTimer = setTimeout(() => {
+        map.resize()
+      }, 320)
+    }
+
+    runResize()
+
+    if (typeof ResizeObserver === 'undefined') {
+      window.addEventListener('resize', runResize)
+      return () => {
+        window.removeEventListener('resize', runResize)
+        if (rafId !== null) cancelAnimationFrame(rafId)
+        if (settleTimer) clearTimeout(settleTimer)
+      }
+    }
+
+    const observer = new ResizeObserver(() => runResize())
+    observer.observe(container)
+
+    return () => {
+      observer.disconnect()
+      if (rafId !== null) cancelAnimationFrame(rafId)
+      if (settleTimer) clearTimeout(settleTimer)
+    }
+  }, [mapLoaded, flat2d])
 
   // Add Mapbox built-in 3D buildings from vector tiles (skip in flat 2D mode)
   useEffect(() => {
@@ -205,13 +255,13 @@ export default function MapView({ regions, markers, onRegionClick, onBuildingCli
     }
   }, [mapLoaded])
 
-  // Fly to center using Nominatim (skip when style is locked — page controls its own bounds)
+  // Fly to center using Nominatim (skip when style is locked â€” page controls its own bounds)
   useEffect(() => {
     if (!mapLoaded || lockedStyle) return
 
     const searchUrl =
       `https://nominatim.openstreetmap.org/search` +
-      `?q=UP+High+School+Cebu&countrycodes=ph&format=json&limit=1` +
+      `?q=University+of+the+Philippines+Cebu%2C+Lahug%2C+Cebu+City&countrycodes=ph&format=json&limit=1` +
       `&polygon_geojson=1&addressdetails=0`
 
     fetch(searchUrl, { headers: { 'Accept-Language': 'en' } })
@@ -224,6 +274,7 @@ export default function MapView({ regions, markers, onRegionClick, onBuildingCli
         const result = results[0]
         const lat = parseFloat(result.lat)
         const lng = parseFloat(result.lon)
+        setDefaultCenter([lng, lat])
         mapRef.current?.flyTo({
           center: [lng, lat],
           zoom: DEFAULT_ZOOM,
@@ -234,24 +285,110 @@ export default function MapView({ regions, markers, onRegionClick, onBuildingCli
       })
       .catch(() => {
       })
-  }, [mapLoaded])
+  }, [mapLoaded, lockedStyle, flat2d])
+  // Smoothly zoom into selected regions and ease back to the default view on deselect.
+  useEffect(() => {
+    if (!mapLoaded || !regions?.length) return
+    const map = mapRef.current?.getMap()
+    if (!map) return
 
-  // Click handler — prioritise custom region features over Mapbox 3D buildings
+    const selectedRegion = regions.find((r) => Boolean(r.selected))
+
+    if (selectedRegion?.polygon?.length) {
+      hadSelectedRegionRef.current = true
+
+      const firstPoint = selectedRegion.polygon[0]
+      if (!firstPoint) return
+
+      let minLat = firstPoint[0]
+      let maxLat = firstPoint[0]
+      let minLng = firstPoint[1]
+      let maxLng = firstPoint[1]
+      let sumLat = 0
+      let sumLng = 0
+
+      for (const [lat, lng] of selectedRegion.polygon) {
+        minLat = Math.min(minLat, lat)
+        maxLat = Math.max(maxLat, lat)
+        minLng = Math.min(minLng, lng)
+        maxLng = Math.max(maxLng, lng)
+        sumLat += lat
+        sumLng += lng
+      }
+
+      const centerLat = sumLat / selectedRegion.polygon.length
+      const centerLng = sumLng / selectedRegion.polygon.length
+      const latSpan = Math.max(maxLat - minLat, 0.00008)
+      const lngSpan = Math.max(maxLng - minLng, 0.00008)
+      const isLargeRegion = latSpan > 0.001 || lngSpan > 0.001
+
+      if (isLargeRegion) {
+        map.fitBounds(
+          [[minLng, minLat], [maxLng, maxLat]],
+          {
+            padding: { top: 90, right: 90, bottom: 90, left: 90 },
+            duration: 1100,
+            maxZoom: flat2d ? 17.6 : 17.8,
+            pitch: flat2d ? 0 : SELECTED_REGION_PITCH,
+            bearing: flat2d ? 0 : DEFAULT_BEARING,
+            essential: true,
+          },
+        )
+        return
+      }
+
+      map.flyTo({
+        center: [centerLng, centerLat],
+        zoom: flat2d ? 17.6 : SELECTED_REGION_ZOOM,
+        pitch: flat2d ? 0 : SELECTED_REGION_PITCH,
+        bearing: flat2d ? 0 : DEFAULT_BEARING,
+        duration: 1000,
+        essential: true,
+      })
+      return
+    }
+
+    if (hadSelectedRegionRef.current) {
+      hadSelectedRegionRef.current = false
+      map.easeTo({
+        center: defaultCenter,
+        zoom: DEFAULT_ZOOM,
+        pitch: flat2d ? 0 : DEFAULT_PITCH,
+        bearing: flat2d ? 0 : DEFAULT_BEARING,
+        duration: 1300,
+        easing: (t) => 1 - Math.pow(1 - t, 3),
+        essential: true,
+      })
+    }
+  }, [mapLoaded, regions, flat2d, defaultCenter])
+
+  // Click handler: prioritise custom region features over Mapbox 3D buildings.
   const handleClick = useCallback(
     (e: MapMouseEvent) => {
+      // Prefer real Mapbox building feature for precise footprint highlighting.
+      const mapboxBuildingFeature = e.features?.find(
+        (f) => f.layer?.id === 'mapbox-3d-buildings' || f.sourceLayer === 'building',
+      )
+
+      if (mapboxBuildingFeature && onBuildingClick) {
+        setSelectedMapboxBuildingId(mapboxBuildingFeature.id ?? null)
+        setSelectedMapboxBuildingPropertyId((mapboxBuildingFeature.properties?.id as string | number | undefined) ?? null)
+        const name = mapboxBuildingFeature.properties?.name || mapboxBuildingFeature.properties?.type || 'Building'
+        const [lng, lat] = e.lngLat ? [e.lngLat.lng, e.lngLat.lat] : [0, 0]
+        onBuildingClick(name, [lat, lng])
+        return
+      }
+
       // Check ALL returned features for a custom region (has an id property)
       const regionFeature = e.features?.find(f => f.properties?.id)
       if (regionFeature?.properties?.id) {
+        setSelectedMapboxBuildingId(null)
+        setSelectedMapboxBuildingPropertyId(null)
         onRegionClick?.(regionFeature.properties.id)
         return
       }
 
-      const feature = e.features?.[0]
-      if (feature?.layer?.id === 'mapbox-3d-buildings' && onBuildingClick) {
-        const name = feature.properties?.name || feature.properties?.type || 'Building'
-        const [lng, lat] = e.lngLat ? [e.lngLat.lng, e.lngLat.lat] : [0, 0]
-        onBuildingClick(name, [lat, lng])
-      } else if (flat2d && onBuildingClick) {
+      if (flat2d && onBuildingClick) {
         // In flat 2D mode, query all features at click point and find buildings
         const map = mapRef.current?.getMap()
         if (!map || !e.point) return
@@ -261,6 +398,8 @@ export default function MapView({ regions, markers, onRegionClick, onBuildingCli
           building = allFeatures.find(f => f.sourceLayer === 'building')
         } catch { return }
         if (building) {
+          setSelectedMapboxBuildingId(building.id ?? null)
+          setSelectedMapboxBuildingPropertyId((building.properties?.id as string | number | undefined) ?? null)
           const name = building.properties?.name || building.properties?.type || 'Building'
           const [lng, lat] = e.lngLat ? [e.lngLat.lng, e.lngLat.lat] : [0, 0]
           onBuildingClick(name, [lat, lng])
@@ -300,8 +439,16 @@ export default function MapView({ regions, markers, onRegionClick, onBuildingCli
     }
   }, [flat2d, onBuildingClick])
 
+  // If a real Mapbox building is selected, suppress selected styling on custom polygons
+  // so the exact Mapbox footprint outline is visually authoritative.
+  const hasSelectedMapboxBuilding = selectedMapboxBuildingId !== null || selectedMapboxBuildingPropertyId !== null
+  const suppressCustomSelectedStyle = hasSelectedMapboxBuilding
+  const selectedExpr = suppressCustomSelectedStyle
+    ? ['==', ['get', 'id'], '__none__']
+    : ['==', ['get', 'selected'], 'true']
+
   // Expression: feature is visible (hovered or selected)
-  const isVisible: any = ['any', ['==', ['get', 'selected'], 'true'], ['==', ['get', 'hovered'], 'true']]
+  const isVisible = ['any', selectedExpr, ['==', ['get', 'hovered'], 'true']]
 
   // Layer paint properties
   const glowLayer: LineLayerSpecification = {
@@ -312,12 +459,12 @@ export default function MapView({ regions, markers, onRegionClick, onBuildingCli
       'line-color': activeStyle.glowColor,
       'line-width': [
         'case',
-        ['==', ['get', 'selected'], 'true'], 10,
+        selectedExpr, 10,
         4,
       ],
       'line-opacity': hoverOnly
-        ? ['case', isVisible, ['case', ['==', ['get', 'selected'], 'true'], 0.5, 0.35], 0]
-        : ['case', ['==', ['get', 'selected'], 'true'], 0.5, 0.2],
+        ? ['case', isVisible, ['case', selectedExpr, 0.5, 0.35], 0]
+        : ['case', selectedExpr, 0.5, 0.2],
       'line-blur': 6,
     },
   }
@@ -342,12 +489,12 @@ export default function MapView({ regions, markers, onRegionClick, onBuildingCli
     paint: {
       'fill-color': [
         'case',
-        ['==', ['get', 'selected'], 'true'], activeStyle.glowColor,
+        selectedExpr, activeStyle.glowColor,
         activeStyle.polygonColor,
       ],
       'fill-opacity': hoverOnly
-        ? ['case', isVisible, ['case', ['==', ['get', 'selected'], 'true'], 0.6, 0.35], 0]
-        : ['case', ['==', ['get', 'selected'], 'true'], 0.6, 0.35],
+        ? ['case', isVisible, ['case', selectedExpr, 0.6, 0.35], 0]
+        : ['case', selectedExpr, 0.6, 0.35],
     },
   }
 
@@ -359,17 +506,40 @@ export default function MapView({ regions, markers, onRegionClick, onBuildingCli
       'line-color': activeStyle.glowColor,
       'line-width': [
         'case',
-        ['==', ['get', 'selected'], 'true'], 3,
+        selectedExpr, 3,
         1.5,
       ],
       'line-opacity': hoverOnly
-        ? ['case', isVisible, ['case', ['==', ['get', 'selected'], 'true'], 1, 0.7], 0]
-        : ['case', ['==', ['get', 'selected'], 'true'], 1, 0.7],
+        ? ['case', isVisible, ['case', selectedExpr, 1, 0.7], 0]
+        : ['case', selectedExpr, 1, 0.7],
     },
   }
 
+  useEffect(() => {
+    if (!regions?.length) return
+    const hasSelectedRegion = regions.some((r) => Boolean(r.selected))
+    if (!hasSelectedRegion) {
+      setSelectedMapboxBuildingId(null)
+      setSelectedMapboxBuildingPropertyId(null)
+    }
+  }, [regions])
+
+  const selectedMapboxBuildingFilter = useMemo(() => {
+    const extrudeFilter = ['==', ['get', 'extrude'], 'true'] as const
+    if (selectedMapboxBuildingId !== null && selectedMapboxBuildingPropertyId !== null) {
+      return ['all', extrudeFilter, ['any', ['==', ['id'], selectedMapboxBuildingId], ['==', ['get', 'id'], selectedMapboxBuildingPropertyId]]]
+    }
+    if (selectedMapboxBuildingId !== null) {
+      return ['all', extrudeFilter, ['==', ['id'], selectedMapboxBuildingId]]
+    }
+    if (selectedMapboxBuildingPropertyId !== null) {
+      return ['all', extrudeFilter, ['==', ['get', 'id'], selectedMapboxBuildingPropertyId]]
+    }
+    return null
+  }, [selectedMapboxBuildingId, selectedMapboxBuildingPropertyId])
+
   return (
-    <div style={{ position: 'relative', height: '100%', width: '100%', borderRadius: '12px', overflow: 'hidden' }}>
+    <div ref={containerRef} style={{ position: 'relative', height: '100%', width: '100%', borderRadius: '12px', overflow: 'hidden' }}>
       {/* Token warning */}
       {!MAPBOX_TOKEN && (
         <div style={{
@@ -416,6 +586,39 @@ export default function MapView({ regions, markers, onRegionClick, onBuildingCli
         }}
       >
         <NavigationControl position="bottom-right" showCompass showZoom />
+
+        {/* Exact selected building footprint overlay (stays aligned in all map angles/styles). */}
+        {mapLoaded && selectedMapboxBuildingFilter && (
+          <>
+            {!flat2d && (
+              <Layer
+                id="selected-mapbox-building-fill"
+                type="fill-extrusion"
+                source="composite"
+                source-layer="building"
+                filter={selectedMapboxBuildingFilter as unknown as FillExtrusionLayerSpecification['filter']}
+                paint={{
+                  'fill-extrusion-color': activeStyle.glowColor,
+                  'fill-extrusion-height': ['get', 'height'],
+                  'fill-extrusion-base': ['coalesce', ['get', 'min_height'], 0],
+                  'fill-extrusion-opacity': 0.45,
+                } as FillExtrusionLayerSpecification['paint']}
+              />
+            )}
+            <Layer
+              id="selected-mapbox-building-outline"
+              type="line"
+              source="composite"
+              source-layer="building"
+              filter={selectedMapboxBuildingFilter as unknown as LineLayerSpecification['filter']}
+              paint={{
+                'line-color': activeStyle.glowColor,
+                'line-width': 3.5,
+                'line-opacity': 0.95,
+              } as LineLayerSpecification['paint']}
+            />
+          </>
+        )}
 
         {/* Building markers */}
         {canRenderMarkers && markers?.map((m) => (
@@ -466,7 +669,7 @@ export default function MapView({ regions, markers, onRegionClick, onBuildingCli
         )}
       </Map>
 
-      {/* Style switcher — hidden when style is locked or flat 2D mode */}
+      {/* Style switcher â€” hidden when style is locked or flat 2D mode */}
       {!lockedStyle && !flat2d && <div style={{ position: 'absolute', top: '12px', right: '12px', zIndex: 1000 }}>
         <button
           onClick={() => setStyleMenuOpen(!styleMenuOpen)}
@@ -545,3 +748,4 @@ export default function MapView({ regions, markers, onRegionClick, onBuildingCli
     </div>
   )
 }
+

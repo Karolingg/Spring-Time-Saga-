@@ -35,6 +35,13 @@ interface CampusBuilding {
   notes: string
 }
 
+interface PlaceholderAnalytics {
+  currentOccupancy: number
+  avgEvacuationTimeMin: number
+  congestionStatus: 'Stable' | 'Moderate' | 'Critical'
+  drillReadiness: number
+}
+
 const CAMPUS_BUILDINGS: CampusBuilding[] = [
   {
     id: 'social-sciences',
@@ -225,7 +232,7 @@ const CAMPUS_BUILDINGS: CampusBuilding[] = [
   },
   {
     id: 'science-building',
-    name: 'Science Building',
+    name: 'Social Sciences Building',
     type: 'Academic',
     polygon: [
       [10.3232, 123.8978],
@@ -242,7 +249,7 @@ const CAMPUS_BUILDINGS: CampusBuilding[] = [
   },
   {
     id: 'lihangin-hall',
-    name: 'Lihangin Hall',
+    name: 'Admin Building',
     type: 'Academic',
     polygon: [
       [10.3226, 123.8978],
@@ -416,6 +423,45 @@ const CLICKABLE_IDS = [
   'up-high-school',
 ]
 
+function pointInPolygon(point: [number, number], polygon: [number, number][]): boolean {
+  const [lat, lng] = point
+  let inside = false
+
+  for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+    const [latI, lngI] = polygon[i]
+    const [latJ, lngJ] = polygon[j]
+
+    const crosses =
+      ((lngI > lng) !== (lngJ > lng)) &&
+      (lat < (latJ - latI) * (lng - lngI) / ((lngJ - lngI) || Number.EPSILON) + latI)
+
+    if (crosses) inside = !inside
+  }
+
+  return inside
+}
+
+function findBuildingByCoords(lat: number, lng: number): CampusBuilding | null {
+  for (const b of CAMPUS_BUILDINGS) {
+    if (!CLICKABLE_IDS.includes(b.id)) continue
+    if (pointInPolygon([lat, lng], b.polygon)) return b
+  }
+  return null
+}
+
+function getPlaceholderAnalytics(building: CampusBuilding): PlaceholderAnalytics {
+  const occupancyRatio = building.riskLevel === 'HIGH' ? 0.86 : building.riskLevel === 'MEDIUM' ? 0.72 : 0.58
+  const congestionStatus =
+    building.riskLevel === 'HIGH' ? 'Critical' : building.riskLevel === 'MEDIUM' ? 'Moderate' : 'Stable'
+
+  return {
+    currentOccupancy: Math.max(1, Math.round(building.capacity * occupancyRatio)),
+    avgEvacuationTimeMin: Number((building.floors * 1.4 + building.exits * 0.8).toFixed(1)),
+    congestionStatus,
+    drillReadiness: building.riskLevel === 'HIGH' ? 78 : building.riskLevel === 'MEDIUM' ? 85 : 93,
+  }
+}
+
 export default function MapPage() {
   const { isAuthenticated, isLoading } = useAuth()
   const router = useRouter()
@@ -424,6 +470,17 @@ export default function MapPage() {
   useEffect(() => {
     if (!isLoading && !isAuthenticated) window.location.href = '/auth'
   }, [isLoading, isAuthenticated])
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setSelected(null)
+      }
+    }
+
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [])
 
   if (isLoading) {
     return (
@@ -434,6 +491,7 @@ export default function MapPage() {
   }
 
   const building = selected ? CAMPUS_BUILDINGS.find(b => b.id === selected) : null
+  const analytics = building ? getPlaceholderAnalytics(building) : null
 
   const regions: MapRegion[] = CAMPUS_BUILDINGS.map(b => ({
     id: b.id,
@@ -478,7 +536,13 @@ export default function MapPage() {
             hoverOnly
             onRegionClick={(id) => {
               if (CLICKABLE_IDS.includes(id)) {
-                setSelected(selected === id ? null : id)
+                setSelected((current) => (current === id ? null : id))
+              }
+            }}
+            onBuildingClick={(_, [lat, lng]) => {
+              const matchedBuilding = findBuildingByCoords(lat, lng)
+              if (matchedBuilding) {
+                setSelected((current) => current === matchedBuilding.id ? null : matchedBuilding.id)
               }
             }}
           />
@@ -570,6 +634,32 @@ export default function MapPage() {
                 {building.notes}
               </p>
             </div>
+
+            {/* Placeholder analytics */}
+            {analytics && (
+              <div style={{ padding: '0 22px 16px' }}>
+                <div style={{
+                  padding: '14px 16px',
+                  background: 'rgba(45,184,176,0.06)',
+                  border: '1px solid rgba(45,184,176,0.16)',
+                  borderRadius: '12px',
+                }}>
+                  <div style={{ fontSize: '11px', color: '#2db8b0', fontWeight: '700', letterSpacing: '0.7px', marginBottom: '10px' }}>
+                    BUILDING ANALYTICS (PLACEHOLDER)
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                    <div style={{ fontSize: '12px', color: '#cbd5e1' }}>Current Occupancy</div>
+                    <div style={{ fontSize: '12px', color: '#f1f5f9', fontWeight: '600', textAlign: 'right' }}>{analytics.currentOccupancy}</div>
+                    <div style={{ fontSize: '12px', color: '#cbd5e1' }}>Avg Evacuation Time</div>
+                    <div style={{ fontSize: '12px', color: '#f1f5f9', fontWeight: '600', textAlign: 'right' }}>{analytics.avgEvacuationTimeMin} min</div>
+                    <div style={{ fontSize: '12px', color: '#cbd5e1' }}>Congestion Status</div>
+                    <div style={{ fontSize: '12px', color: '#f1f5f9', fontWeight: '600', textAlign: 'right' }}>{analytics.congestionStatus}</div>
+                    <div style={{ fontSize: '12px', color: '#cbd5e1' }}>Drill Readiness</div>
+                    <div style={{ fontSize: '12px', color: '#f1f5f9', fontWeight: '600', textAlign: 'right' }}>{analytics.drillReadiness}%</div>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Divider */}
             <div style={{ height: '1px', background: 'rgba(255,255,255,0.06)', margin: '0 22px 16px' }} />
