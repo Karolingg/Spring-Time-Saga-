@@ -12,7 +12,6 @@ interface DisasterButtonProps {
 }
 
 export function DisasterButton({
-  type,
   icon,
   label,
   description,

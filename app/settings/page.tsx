@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useAuth } from '@/src/hooks/useAuth'
 import { updateUserEmail, updateUserPassword } from '@/src/services/user.service'
 
@@ -26,7 +26,6 @@ export default function SettingsPage() {
   }
 
   if (!isAuthenticated) {
-    if (typeof window !== 'undefined') window.location.href = '/auth'
     return null
   }
 
