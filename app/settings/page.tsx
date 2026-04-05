@@ -124,8 +124,9 @@ export default function SettingsPage() {
 }
 
 /* ── Profile ── */
-function ProfilePanel({ userEmail }: { userEmail: string }) {
+function ProfilePanel({ userEmail, userName }: { userEmail: string; userName: string }) {
   const [email, setEmail] = useState(userEmail)
+  const [name, setName] = useState(userName)
   const [submitting, setSubmitting] = useState(false)
   const [msg, setMsg] = useState('')
   const [err, setErr] = useState(false)
@@ -166,7 +167,6 @@ function ProfilePanel({ userEmail }: { userEmail: string }) {
           </div>
         </div>
       </div>
-
       <form onSubmit={save}>
         <div style={{ marginBottom: '20px' }}>
           <label style={{ display: 'block', fontSize: '13px', fontWeight: '500', color: 'var(--text-secondary)', marginBottom: '6px' }}>
