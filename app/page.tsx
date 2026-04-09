@@ -9,17 +9,17 @@ import {
 import type { SimulationRun } from '@/src/schema/simulation.types'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
-const SECTION_CARD: React.CSSProperties = {
-  background: '#ffffff',
+const CARD: React.CSSProperties = {
+  background: 'var(--bg-card)',
   border: '1px solid var(--border)',
-  borderRadius: '14px',
-  padding: '28px 32px',
-  boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
-  marginBottom: '24px',
+  borderRadius: 'var(--radius-lg)',
+  padding: '24px 28px',
+  boxShadow: 'var(--shadow)',
+  transition: 'box-shadow var(--transition)',
 }
 
 const TOTAL_CAMPUS_BUILDINGS = 21
-const BUILDINGS_WITH_FLOORPLANS = 1 // admin-building
+const BUILDINGS_WITH_FLOORPLANS = 1
 
 interface AggregateStats {
   totalRuns: number
@@ -66,6 +66,13 @@ function userName(email?: string | null): string {
   return local.charAt(0).toUpperCase() + local.slice(1)
 }
 
+function getGreeting(): string {
+  const h = new Date().getHours()
+  if (h < 12) return 'Good morning'
+  if (h < 18) return 'Good afternoon'
+  return 'Good evening'
+}
+
 // ─── Page ─────────────────────────────────────────────────────────────────────
 export default function DashboardPage() {
   const { user, isAuthenticated, isLoading: isAuthLoading } = useAuth()
@@ -73,9 +80,7 @@ export default function DashboardPage() {
   const [recentRuns, setRecentRuns] = useState<SimulationRun[]>([])
 
   useEffect(() => {
-    if (!isAuthLoading && !isAuthenticated) {
-      window.location.href = '/auth'
-    }
+    if (!isAuthLoading && !isAuthenticated) window.location.href = '/auth'
   }, [isAuthLoading, isAuthenticated])
 
   useEffect(() => {
@@ -106,114 +111,119 @@ export default function DashboardPage() {
   const readiness = computeReadiness(stats)
   const rl = readinessLabel(readiness)
   const statCards = buildStatCards(stats)
-  const greeting = getGreeting()
 
   return (
-    <div style={{ minHeight: '100vh', padding: '88px 40px 56px', maxWidth: '1280px', margin: '0 auto' }}>
+    <div style={{ minHeight: '100vh', padding: '92px 40px 64px', maxWidth: '1280px', margin: '0 auto' }}>
 
       {/* ── Welcome Header ── */}
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '32px', gap: '16px', flexWrap: 'wrap' }}>
+      <div style={{
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        marginBottom: '28px', gap: '16px', flexWrap: 'wrap',
+      }}>
         <div>
-          <h1 style={{ margin: '0 0 4px', fontSize: '26px', fontWeight: '700', color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>
-            {greeting}, {userName(user?.email)}
+          <h1 style={{
+            margin: '0 0 4px', fontSize: '24px', fontWeight: '700',
+            color: 'var(--text-primary)', letterSpacing: '-0.025em',
+          }}>
+            {getGreeting()}, {userName(user?.email)}
           </h1>
-          <p style={{ margin: 0, fontSize: '14px', color: 'var(--text-secondary)' }}>
-            Campus evacuation overview &amp; drill analytics
+          <p style={{ margin: 0, fontSize: '13.5px', color: 'var(--text-secondary)' }}>
+            Campus evacuation overview and drill analytics
           </p>
         </div>
         <a href="/simulate" style={{
-          display: 'flex', alignItems: 'center', gap: '8px',
-          padding: '10px 20px', background: '#2db8b0', color: '#fff',
-          borderRadius: '8px', textDecoration: 'none', fontSize: '14px', fontWeight: '600', flexShrink: 0,
+          display: 'inline-flex', alignItems: 'center', gap: '8px',
+          padding: '10px 22px', background: 'var(--teal)', color: '#fff',
+          borderRadius: 'var(--radius-sm)', textDecoration: 'none',
+          fontSize: '13.5px', fontWeight: '600', flexShrink: 0,
+          boxShadow: '0 1px 3px rgba(45,184,176,0.3)',
+          transition: 'all var(--transition)',
         }}>
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
             <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
           </svg>
           Run Simulation
         </a>
       </div>
 
-      {/* ── Readiness + Coverage row ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '24px' }}>
+      {/* ── Readiness + Coverage ── */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
 
-        {/* Campus Readiness Score */}
-        <div style={{
-          ...SECTION_CARD, marginBottom: 0,
-          display: 'flex', alignItems: 'center', gap: '28px',
-        }}>
-          {/* Circular progress ring */}
-          <div style={{ position: 'relative', width: '96px', height: '96px', flexShrink: 0 }}>
+        {/* Campus Readiness */}
+        <div style={{ ...CARD, display: 'flex', alignItems: 'center', gap: '24px' }}>
+          <div style={{ position: 'relative', width: '88px', height: '88px', flexShrink: 0 }}>
             <svg viewBox="0 0 100 100" style={{ width: '100%', height: '100%', transform: 'rotate(-90deg)' }}>
-              <circle cx="50" cy="50" r="42" fill="none" stroke="#f1f5f9" strokeWidth="8" />
-              <circle cx="50" cy="50" r="42" fill="none" stroke={rl.color} strokeWidth="8"
+              <circle cx="50" cy="50" r="40" fill="none" stroke="var(--bg)" strokeWidth="9" />
+              <circle cx="50" cy="50" r="40" fill="none" stroke={rl.color} strokeWidth="9"
                 strokeLinecap="round"
-                strokeDasharray={`${readiness * 2.64} ${264 - readiness * 2.64}`} />
+                strokeDasharray={`${readiness * 2.51} ${251 - readiness * 2.51}`}
+                style={{ transition: 'stroke-dasharray 0.6s ease' }} />
             </svg>
             <div style={{
               position: 'absolute', inset: 0,
               display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
             }}>
-              <span style={{ fontSize: '24px', fontWeight: '700', color: 'var(--text-primary)', lineHeight: 1 }}>{readiness}</span>
-              <span style={{ fontSize: '10px', color: 'var(--text-secondary)', marginTop: '2px' }}>/ 100</span>
+              <span style={{ fontSize: '22px', fontWeight: '700', color: 'var(--text-primary)', lineHeight: 1 }}>{readiness}</span>
+              <span style={{ fontSize: '9px', color: 'var(--text-muted)', marginTop: '2px', fontWeight: '500' }}>/ 100</span>
             </div>
           </div>
-          <div>
-            <div style={{ fontSize: '11px', fontWeight: '600', letterSpacing: '0.08em', color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '6px' }}>
+          <div style={{ minWidth: 0 }}>
+            <div style={{ fontSize: '10.5px', fontWeight: '600', letterSpacing: '0.08em', color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '4px' }}>
               Campus Readiness
             </div>
-            <div style={{ fontSize: '20px', fontWeight: '700', color: rl.color, marginBottom: '4px' }}>
+            <div style={{ fontSize: '18px', fontWeight: '700', color: rl.color, marginBottom: '4px', letterSpacing: '-0.01em' }}>
               {rl.text}
             </div>
-            <div style={{ fontSize: '12px', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
-              Based on evacuation rate, bottleneck frequency, and drill response time across all completed runs.
+            <div style={{ fontSize: '12px', color: 'var(--text-secondary)', lineHeight: 1.55 }}>
+              Composite score from evacuation rate, bottleneck frequency, and response time.
             </div>
           </div>
         </div>
 
         {/* Building Coverage */}
-        <div style={{ ...SECTION_CARD, marginBottom: 0 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#2db8b0" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <div style={CARD}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--teal)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
               <line x1="3" y1="9" x2="21" y2="9" />
               <line x1="9" y1="21" x2="9" y2="9" />
             </svg>
-            <span style={{ fontSize: '11px', fontWeight: '600', letterSpacing: '0.08em', color: 'var(--text-muted)', textTransform: 'uppercase' }}>
+            <span style={{ fontSize: '10.5px', fontWeight: '600', letterSpacing: '0.08em', color: 'var(--text-muted)', textTransform: 'uppercase' }}>
               Building Coverage
             </span>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px', marginBottom: '6px' }}>
-            <span style={{ fontSize: '32px', fontWeight: '700', color: 'var(--text-primary)', lineHeight: 1 }}>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: '6px', marginBottom: '8px' }}>
+            <span style={{ fontSize: '28px', fontWeight: '700', color: 'var(--text-primary)', lineHeight: 1, letterSpacing: '-0.02em' }}>
               {BUILDINGS_WITH_FLOORPLANS}
             </span>
-            <span style={{ fontSize: '14px', color: 'var(--text-secondary)' }}>
+            <span style={{ fontSize: '13px', color: 'var(--text-secondary)', fontWeight: '500' }}>
               / {TOTAL_CAMPUS_BUILDINGS} buildings
             </span>
           </div>
 
-          <div style={{ height: '6px', background: '#f1f5f9', borderRadius: '3px', marginBottom: '10px' }}>
+          <div style={{ height: '5px', background: 'var(--bg)', borderRadius: '3px', marginBottom: '10px' }}>
             <div style={{
-              height: '100%', borderRadius: '3px', background: '#2db8b0',
+              height: '100%', borderRadius: '3px', background: 'var(--teal)',
               width: `${(BUILDINGS_WITH_FLOORPLANS / TOTAL_CAMPUS_BUILDINGS) * 100}%`,
-              transition: 'width 0.3s',
+              transition: 'width 0.4s ease',
             }} />
           </div>
 
-          <div style={{ fontSize: '12px', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
-            Floor plans with simulation support. More buildings will be added for comprehensive campus-wide drills.
+          <div style={{ fontSize: '12px', color: 'var(--text-secondary)', lineHeight: 1.55, marginBottom: '10px' }}>
+            Floor plans with simulation support ready for evacuation drills.
           </div>
 
-          <div style={{ display: 'flex', gap: '6px', marginTop: '12px', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
             <span style={{
               padding: '3px 10px', borderRadius: '6px', fontSize: '11px', fontWeight: '600',
-              background: 'rgba(45,184,176,0.1)', color: '#2db8b0',
+              background: 'var(--teal-light)', color: 'var(--teal)',
             }}>
               Admin Building
             </span>
             <span style={{
               padding: '3px 10px', borderRadius: '6px', fontSize: '11px', fontWeight: '500',
-              background: '#f1f5f9', color: 'var(--text-muted)',
+              background: 'var(--bg)', color: 'var(--text-muted)',
             }}>
               +20 pending
             </span>
@@ -222,31 +232,23 @@ export default function DashboardPage() {
       </div>
 
       {/* ── Stat Cards ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px', marginBottom: '24px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px', marginBottom: '16px' }}>
         {statCards.map((card, i) => (
           <StatCard key={i} {...card} />
         ))}
       </div>
 
       {/* ── Drill Activity Timeline ── */}
-      <div style={SECTION_CARD}>
+      <div style={{ ...CARD, marginBottom: '16px' }}>
         <DrillTimeline runs={recentRuns} />
       </div>
 
       {/* ── Quick Actions ── */}
-      <div style={SECTION_CARD}>
+      <div style={CARD}>
         <QuickActions />
       </div>
     </div>
   )
-}
-
-// ─── Greeting based on time of day ───────────────────────────────────────────
-function getGreeting(): string {
-  const h = new Date().getHours()
-  if (h < 12) return 'Good morning'
-  if (h < 18) return 'Good afternoon'
-  return 'Good evening'
 }
 
 // ─── Stat Card ────────────────────────────────────────────────────────────────
@@ -262,27 +264,29 @@ interface StatCardData {
 function StatCard({ icon, label, value, sub, color, progress }: StatCardData) {
   return (
     <div style={{
-      background: '#ffffff',
-      border: '1px solid var(--border)',
-      borderRadius: '14px',
-      padding: '24px 28px',
-      boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+      ...CARD,
+      padding: '20px 22px',
     }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
-        {icon}
-        <span style={{ fontSize: '11px', fontWeight: '600', letterSpacing: '0.08em', color: 'var(--text-muted)', textTransform: 'uppercase' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '14px' }}>
+        <div style={{
+          width: '30px', height: '30px', borderRadius: '8px',
+          background: `${color}12`, display: 'flex', alignItems: 'center', justifyContent: 'center',
+        }}>
+          {icon}
+        </div>
+        <span style={{ fontSize: '10.5px', fontWeight: '600', letterSpacing: '0.08em', color: 'var(--text-muted)', textTransform: 'uppercase' }}>
           {label}
         </span>
       </div>
-      <div style={{ fontSize: '32px', fontWeight: '700', color: 'var(--text-primary)', letterSpacing: '-0.02em', lineHeight: 1 }}>
+      <div style={{ fontSize: '28px', fontWeight: '700', color: 'var(--text-primary)', letterSpacing: '-0.02em', lineHeight: 1 }}>
         {value}
       </div>
       {progress !== undefined && (
-        <div style={{ margin: '10px 0 4px', height: '4px', background: '#f1f5f9', borderRadius: '2px' }}>
-          <div style={{ height: '100%', width: `${Math.min(progress, 100)}%`, background: color, borderRadius: '2px' }} />
+        <div style={{ margin: '10px 0 4px', height: '4px', background: 'var(--bg)', borderRadius: '2px' }}>
+          <div style={{ height: '100%', width: `${Math.min(progress, 100)}%`, background: color, borderRadius: '2px', transition: 'width 0.4s ease' }} />
         </div>
       )}
-      <div style={{ fontSize: '13px', color: 'var(--text-secondary)', marginTop: '6px' }}>{sub}</div>
+      <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '8px' }}>{sub}</div>
     </div>
   )
 }
@@ -291,18 +295,18 @@ function buildStatCards(stats: AggregateStats | null): StatCardData[] {
   return [
     {
       icon: (
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2db8b0" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#2db8b0" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <path d="M3 3v18h18" /><path d="M18.7 8l-5.1 5.2-2.8-2.7L7 14.3" />
         </svg>
       ),
-      label: 'SIMULATIONS RUN',
+      label: 'SIMULATIONS',
       value: stats?.totalRuns.toString() ?? '0',
       sub: stats && stats.totalRuns > 0 ? 'completed runs' : 'No data yet',
       color: '#2db8b0',
     },
     {
       icon: (
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2db8b0" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6366f1" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" />
           <path d="M23 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" />
         </svg>
@@ -310,23 +314,23 @@ function buildStatCards(stats: AggregateStats | null): StatCardData[] {
       label: 'TOTAL AGENTS',
       value: stats?.totalAgentsSimulated.toLocaleString() ?? '0',
       sub: 'across all simulations',
-      color: '#2db8b0',
+      color: '#6366f1',
     },
     {
       icon: (
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2db8b0" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
         </svg>
       ),
       label: 'AVG EVACUATION',
       value: stats ? `${stats.avgEvacuationRate.toFixed(0)}%` : '0%',
       sub: 'average success rate',
-      color: '#2db8b0',
+      color: '#22c55e',
       progress: stats?.avgEvacuationRate ?? 0,
     },
     {
       icon: (
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
           <line x1="12" y1="9" x2="12" y2="13" /><line x1="12" y1="17" x2="12.01" y2="17" />
         </svg>
@@ -340,45 +344,52 @@ function buildStatCards(stats: AggregateStats | null): StatCardData[] {
 }
 
 // ─── Drill Activity Timeline ─────────────────────────────────────────────────
-const DISASTER_ICON: Record<string, { color: string; bg: string; label: string }> = {
-  fire:       { color: '#ff6b35', bg: 'rgba(255,107,53,0.1)',  label: 'Fire Drill' },
-  earthquake: { color: '#f59e0b', bg: 'rgba(245,158,11,0.1)', label: 'Earthquake Drill' },
+const DISASTER_META: Record<string, { color: string; bg: string; label: string }> = {
+  fire:       { color: '#ef4444', bg: 'rgba(239,68,68,0.08)',  label: 'Fire Drill' },
+  earthquake: { color: '#f59e0b', bg: 'rgba(245,158,11,0.08)', label: 'Earthquake Drill' },
 }
 
 function DrillTimeline({ runs }: { runs: SimulationRun[] }) {
   return (
     <>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#2db8b0" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" />
-        </svg>
-        <span style={{ fontSize: '14px', fontWeight: '600', color: 'var(--text-primary)' }}>Recent Drill Activity</span>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--teal)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" />
+          </svg>
+          <span style={{ fontSize: '14px', fontWeight: '600', color: 'var(--text-primary)', letterSpacing: '-0.01em' }}>
+            Recent Drill Activity
+          </span>
+        </div>
+        <span style={{ fontSize: '11.5px', color: 'var(--text-muted)' }}>
+          {runs.length > 0 ? `${runs.length} runs` : ''}
+        </span>
       </div>
-      <p style={{ margin: '0 0 16px', fontSize: '12px', color: 'var(--text-secondary)' }}>
-        Latest simulation runs and their outcomes
-      </p>
 
       {runs.length === 0 ? (
         <div style={{
-          padding: '32px 16px', textAlign: 'center',
-          background: '#f8fafc', borderRadius: '10px',
+          padding: '40px 16px', textAlign: 'center',
+          background: 'var(--bg-subtle)', borderRadius: 'var(--radius)',
+          border: '1px dashed var(--border)',
         }}>
-          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginBottom: '8px' }}>
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--border-strong)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginBottom: '10px' }}>
             <circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" />
           </svg>
-          <div style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>No drill activity yet</div>
-          <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '4px' }}>Run your first simulation to see results here</div>
+          <div style={{ fontSize: '13px', color: 'var(--text-secondary)', fontWeight: '500' }}>No drill activity yet</div>
+          <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '4px' }}>
+            Run your first simulation to see results here
+          </div>
         </div>
       ) : (
-        <div style={{ position: 'relative', paddingLeft: '24px' }}>
+        <div style={{ position: 'relative', paddingLeft: '28px' }}>
           {/* Timeline line */}
           <div style={{
-            position: 'absolute', left: '7px', top: '8px', bottom: '8px',
-            width: '2px', background: '#e2e8f0', borderRadius: '1px',
+            position: 'absolute', left: '8px', top: '6px', bottom: '6px',
+            width: '2px', background: 'var(--border)', borderRadius: '1px',
           }} />
 
           {runs.map((run, i) => {
-            const dt = DISASTER_ICON[run.disasterType] ?? DISASTER_ICON.fire
+            const dt = DISASTER_META[run.disasterType] ?? DISASTER_META.fire
             const agents = run.config?.agentCount ?? 0
             const evacuated = run.results?.evacuatedCount ?? 0
             const evacRate = agents > 0 ? Math.round((evacuated / agents) * 100) : 0
@@ -388,46 +399,46 @@ function DrillTimeline({ runs }: { runs: SimulationRun[] }) {
             return (
               <div key={run.id} style={{
                 position: 'relative',
-                paddingBottom: i < runs.length - 1 ? '20px' : '0',
+                paddingBottom: i < runs.length - 1 ? '12px' : '0',
               }}>
                 {/* Timeline dot */}
                 <div style={{
-                  position: 'absolute', left: '-21px', top: '6px',
-                  width: '12px', height: '12px', borderRadius: '50%',
-                  background: dt.bg, border: `2px solid ${dt.color}`,
+                  position: 'absolute', left: '-24px', top: '14px',
+                  width: '10px', height: '10px', borderRadius: '50%',
+                  background: 'var(--bg-card)', border: `2.5px solid ${dt.color}`,
+                  boxShadow: 'var(--shadow-xs)',
                 }} />
 
                 {/* Card */}
                 <div style={{
-                  padding: '14px 16px',
-                  background: '#f8fafc',
-                  border: '1px solid #e2e8f0',
-                  borderRadius: '10px',
+                  padding: '14px 18px',
+                  background: 'var(--bg-subtle)',
+                  border: '1px solid var(--border)',
+                  borderRadius: 'var(--radius)',
+                  transition: 'border-color var(--transition)',
                 }}>
-                  {/* Top row: type + time */}
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                       <span style={{
-                        padding: '2px 8px', borderRadius: '5px', fontSize: '11px', fontWeight: '600',
+                        padding: '3px 10px', borderRadius: '6px', fontSize: '11px', fontWeight: '600',
                         background: dt.bg, color: dt.color,
                       }}>
                         {dt.label}
                       </span>
                       <span style={{
-                        padding: '2px 8px', borderRadius: '5px', fontSize: '11px', fontWeight: '500',
-                        background: evacRate >= 80 ? 'rgba(34,197,94,0.1)' : evacRate >= 50 ? 'rgba(245,158,11,0.1)' : 'rgba(239,68,68,0.1)',
-                        color: evacRate >= 80 ? '#22c55e' : evacRate >= 50 ? '#f59e0b' : '#ef4444',
+                        padding: '3px 10px', borderRadius: '6px', fontSize: '11px', fontWeight: '600',
+                        background: evacRate >= 80 ? 'rgba(34,197,94,0.08)' : evacRate >= 50 ? 'rgba(245,158,11,0.08)' : 'rgba(239,68,68,0.08)',
+                        color: evacRate >= 80 ? '#16a34a' : evacRate >= 50 ? '#d97706' : '#dc2626',
                       }}>
                         {evacRate}% evacuated
                       </span>
                     </div>
-                    <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+                    <span style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: '500' }}>
                       {timeAgo(run.createdAt)}
                     </span>
                   </div>
 
-                  {/* Metrics row */}
-                  <div style={{ display: 'flex', gap: '16px' }}>
+                  <div style={{ display: 'flex', gap: '20px' }}>
                     <MetricChip label="Agents" value={agents.toString()} />
                     <MetricChip label="Steps" value={steps.toString()} />
                     <MetricChip label="Time" value={evacTime != null ? `${evacTime.toFixed(1)}s` : '—'} />
@@ -446,10 +457,10 @@ function DrillTimeline({ runs }: { runs: SimulationRun[] }) {
 function MetricChip({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <div style={{ fontSize: '10px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '1px' }}>
+      <div style={{ fontSize: '10px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '2px', fontWeight: '500' }}>
         {label}
       </div>
-      <div style={{ fontSize: '13px', fontWeight: '600', color: 'var(--text-primary)' }}>
+      <div style={{ fontSize: '13px', fontWeight: '600', color: 'var(--text-primary)', letterSpacing: '-0.01em' }}>
         {value}
       </div>
     </div>
@@ -458,33 +469,50 @@ function MetricChip({ label, value }: { label: string; value: string }) {
 
 // ─── Quick Actions ────────────────────────────────────────────────────────────
 const QUICK_ACTIONS = [
-  { href: '/simulate', label: 'Fire Simulation', sub: 'High urgency scenario', color: '#ff6b35', icon: '🔥' },
-  { href: '/simulate', label: 'Earthquake Drill', sub: 'Dynamic obstacles scenario', color: '#f59e0b', icon: '🌎' },
-  { href: '/analysis', label: 'Heatmap Analysis', sub: 'View density & bottlenecks', color: '#2db8b0', icon: '📊' },
+  { href: '/simulate', label: 'Fire Simulation', sub: 'High urgency scenario', color: '#ef4444', iconPath: 'M12 2c.5 2.5 2 4.5 2 7a4 4 0 1 1-8 0c0-2.5 2-4.5 2-7 1.5 1.5 2.5 3 4 0z' },
+  { href: '/simulate', label: 'Earthquake Drill', sub: 'Dynamic obstacles scenario', color: '#f59e0b', iconPath: 'M2 12h4l2-5 3 10 3-10 2 5h4' },
+  { href: '/analysis', label: 'Heatmap Analysis', sub: 'View density & bottlenecks', color: '#2db8b0', iconPath: 'M3 3v18h18M18.7 8l-5.1 5.2-2.8-2.7L7 14.3' },
 ]
 
 function QuickActions() {
   return (
     <>
-      <h2 style={{ margin: '0 0 14px', fontSize: '14px', fontWeight: '600', color: 'var(--text-primary)' }}>Quick Actions</h2>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '14px' }}>
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--teal)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+        </svg>
+        <h2 style={{ margin: 0, fontSize: '14px', fontWeight: '600', color: 'var(--text-primary)', letterSpacing: '-0.01em' }}>Quick Actions</h2>
+      </div>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px' }}>
         {QUICK_ACTIONS.map(item => (
           <a key={item.label} href={item.href} style={{
             display: 'flex', alignItems: 'center', gap: '14px',
-            padding: '12px 14px', background: '#f8fafc',
-            borderRadius: '8px', textDecoration: 'none',
+            padding: '14px 16px', background: 'var(--bg-subtle)',
+            borderRadius: 'var(--radius)', textDecoration: 'none',
+            border: '1px solid transparent',
+            transition: 'all var(--transition)',
+          }}
+          onMouseEnter={e => {
+            e.currentTarget.style.borderColor = 'var(--border)'
+            e.currentTarget.style.boxShadow = 'var(--shadow)'
+          }}
+          onMouseLeave={e => {
+            e.currentTarget.style.borderColor = 'transparent'
+            e.currentTarget.style.boxShadow = 'none'
           }}>
             <div style={{
-              width: '36px', height: '36px', borderRadius: '8px',
-              background: `${item.color}18`,
+              width: '38px', height: '38px', borderRadius: '10px',
+              background: `${item.color}10`,
               display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: '18px', flexShrink: 0,
+              flexShrink: 0,
             }}>
-              {item.icon}
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={item.color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d={item.iconPath} />
+              </svg>
             </div>
             <div>
-              <div style={{ fontSize: '13px', fontWeight: '600', color: 'var(--text-primary)' }}>{item.label}</div>
-              <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>{item.sub}</div>
+              <div style={{ fontSize: '13px', fontWeight: '600', color: 'var(--text-primary)', letterSpacing: '-0.01em' }}>{item.label}</div>
+              <div style={{ fontSize: '11.5px', color: 'var(--text-secondary)', marginTop: '1px' }}>{item.sub}</div>
             </div>
           </a>
         ))}

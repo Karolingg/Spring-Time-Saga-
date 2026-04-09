@@ -468,6 +468,15 @@ export default function SimulatePage() {
       lng: (b.bounds.west + b.bounds.east) / 2,
       onClick: () => openPanel(b.id),
     }))
+  // Config inputs
+  const [agents, setAgents] = useState(120)
+  const [gridWidth, setGridWidth] = useState(60)
+  const [gridHeight, setGridHeight] = useState(45)
+  const [exits, setExits] = useState(6)
+  const [wallDensity, setWallDensity] = useState(10)
+  const [speed, setSpeed] = useState(200)
+  // Saved config (applied)
+  const [applied, setApplied] = useState({ agents: 120, gridWidth: 60, gridHeight: 45, exits: 6, wallDensity: 10, speed: 200 })
   // Sim state
   const [step, setStep] = useState(0)
   const [evacuated, setEvacuated] = useState(0)
@@ -713,7 +722,7 @@ export default function SimulatePage() {
         )}
       </div>
 
-        {/* Building details panel */}
+      {/* Building details panel */}
         {selectedBuilding && selectedBuildingId && (
           <BuildingPanel
             detail={selectedBuilding}
@@ -722,10 +731,9 @@ export default function SimulatePage() {
             onSimulate={() => router.push(`/simulate/${encodeURIComponent(selectedBuildingId)}/disaster`)}
           />
         )}
-      </div>
 
       <p style={{ marginTop: '12px', fontSize: '11px', color: 'var(--text-muted)', textAlign: 'center' }}>
-        Map powered by <a href="https://www.mapbox.com" target="_blank" rel="noreferrer" style={{ color: '#2db8b0' }}>Mapbox</a> &middot; Data &copy; <a href="https://www.openstreetmap.org" target="_blank" rel="noreferrer" style={{ color: '#2db8b0' }}>OpenStreetMap</a> contributors.
+        Map powered by <a href="https://www.mapbox.com" target="_blank" rel="noreferrer" style={{ color: '#2db8b0' }}>Mapbox</a> {'\u00B7'} Data {'\u00A9'} <a href="https://www.openstreetmap.org" target="_blank" rel="noreferrer" style={{ color: '#2db8b0' }}>OpenStreetMap</a> contributors.
       </p>
     </div>
   )

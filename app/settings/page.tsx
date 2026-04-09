@@ -115,7 +115,7 @@ export default function SettingsPage() {
           background: '#fff', border: '1px solid var(--border)', borderRadius: '12px',
           padding: '28px 32px', boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
         }}>
-          {section === 'profile' && <ProfilePanel userEmail={email} />}
+          {section === 'profile' && <ProfilePanel userEmail={email} userName="" />}
           {section === 'security' && <SecurityPanel />}
         </div>
       </div>
