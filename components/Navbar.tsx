@@ -2,6 +2,7 @@
 
 import { useAuth } from '@/src/hooks/useAuth'
 import { usePathname } from 'next/navigation'
+import Link from 'next/link'
 
 const NAV_ITEMS = [
   {
@@ -82,7 +83,7 @@ export function Navbar() {
       boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
     }}>
       {/* Logo */}
-      <a href="/" style={{
+      <Link href="/" style={{
         display: 'flex',
         alignItems: 'center',
         gap: '8px',
@@ -106,7 +107,7 @@ export function Navbar() {
         <span style={{ fontSize: '15px', fontWeight: '700', color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>
           EVAC<span style={{ color: 'var(--teal)' }}>SIM</span>
         </span>
-      </a>
+      </Link>
 
       {/* Nav items */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '2px', flex: 1 }}>
