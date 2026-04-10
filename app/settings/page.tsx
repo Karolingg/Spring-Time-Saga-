@@ -2,15 +2,41 @@
 
 import { useState, useEffect } from 'react'
 import { useAuth } from '@/src/hooks/useAuth'
-import { updateUserEmail, updateUserPassword } from '@/src/services/user.service'
+import { updateUserEmail, updateUserPassword, getUserProfile, updateUserProfile } from '@/src/services/user.service'
 
-type Section = 'profile' | 'security'
+type Section = 'profile' | 'security' | 'notifications' | 'simulation' | 'about'
 
 const inputBase: React.CSSProperties = {
   width: '100%', padding: '10px 14px', background: '#f8fafc',
   border: '1px solid #e2e8f0', borderRadius: '8px', fontSize: '14px',
-  color: '#1a2332', outline: 'none', boxSizing: 'border-box',
+  color: '#0f172a', outline: 'none', boxSizing: 'border-box',
   transition: 'border-color 0.15s',
+}
+
+const labelStyle: React.CSSProperties = {
+  display: 'block', fontSize: '13px', fontWeight: '500',
+  color: 'var(--text-secondary)', marginBottom: '6px',
+}
+
+const sectionTitle: React.CSSProperties = {
+  margin: '0 0 4px', fontSize: '16px', fontWeight: '600', color: 'var(--text-primary)',
+}
+
+const sectionDesc: React.CSSProperties = {
+  margin: '0 0 24px', fontSize: '13px', color: 'var(--text-secondary)',
+}
+
+const btnPrimary = (enabled: boolean): React.CSSProperties => ({
+  padding: '10px 20px', border: 'none', borderRadius: '8px',
+  background: enabled ? '#2db8b0' : '#e2e8f0',
+  color: enabled ? '#fff' : '#94a3b8',
+  fontSize: '13px', fontWeight: '600',
+  cursor: enabled ? 'pointer' : 'default',
+  transition: 'background 0.15s',
+})
+
+const divider: React.CSSProperties = {
+  border: 'none', borderTop: '1px solid var(--border)', margin: '24px 0',
 }
 
 export default function SettingsPage() {
@@ -41,15 +67,38 @@ export default function SettingsPage() {
       id: 'security', label: 'Security',
       icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>,
     },
+    {
+      id: 'notifications', label: 'Notifications',
+      icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>,
+    },
+    {
+      id: 'simulation', label: 'Simulation',
+      icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>,
+    },
+    {
+      id: 'about', label: 'About',
+      icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>,
+    },
   ]
 
   return (
     <div style={{ minHeight: '100vh', padding: '88px 40px 56px', maxWidth: '860px', margin: '0 auto' }}>
 
       {/* Header */}
-      <div style={{ marginBottom: '24px' }}>
-        <h1 style={{ margin: '0 0 4px', fontSize: '22px', fontWeight: '700', color: 'var(--text-primary)' }}>Settings</h1>
-        <p style={{ margin: 0, fontSize: '13px', color: 'var(--text-secondary)' }}>Manage your account</p>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '24px' }}>
+        <div style={{
+          width: '44px', height: '44px', borderRadius: '12px',
+          background: 'rgba(45,184,176,0.1)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+        }}>
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#2db8b0" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+          </svg>
+        </div>
+        <div>
+          <h1 style={{ margin: '0 0 4px', fontSize: '22px', fontWeight: '700', color: 'var(--text-primary)' }}>Settings</h1>
+          <p style={{ margin: 0, fontSize: '13px', color: 'var(--text-secondary)' }}>Manage your account and preferences</p>
+        </div>
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '200px 1fr', gap: '20px', alignItems: 'start' }}>
@@ -115,8 +164,11 @@ export default function SettingsPage() {
           background: '#fff', border: '1px solid var(--border)', borderRadius: '12px',
           padding: '28px 32px', boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
         }}>
-          {section === 'profile' && <ProfilePanel userEmail={email} userName="" />}
+          {section === 'profile' && <ProfilePanel userEmail={email} />}
           {section === 'security' && <SecurityPanel />}
+          {section === 'notifications' && <NotificationsPanel />}
+          {section === 'simulation' && <SimulationDefaultsPanel />}
+          {section === 'about' && <AboutPanel />}
         </div>
       </div>
     </div>
@@ -124,32 +176,50 @@ export default function SettingsPage() {
 }
 
 /* ── Profile ── */
-function ProfilePanel({ userEmail, userName }: { userEmail: string; userName: string }) {
+function ProfilePanel({ userEmail }: { userEmail: string }) {
   const [email, setEmail] = useState(userEmail)
-  const [name, setName] = useState(userName)
+  const [displayName, setDisplayName] = useState('')
+  const [loadingProfile, setLoadingProfile] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [msg, setMsg] = useState('')
   const [err, setErr] = useState(false)
+
+  useEffect(() => {
+    getUserProfile()
+      .then(profile => {
+        if (profile?.display_name) setDisplayName(profile.display_name)
+      })
+      .catch(() => {})
+      .finally(() => setLoadingProfile(false))
+  }, [])
+
+  const initial = userEmail.charAt(0).toUpperCase() || '?'
+  const hasChanges = email !== userEmail || displayName.length > 0
 
   async function save(e: React.FormEvent) {
     e.preventDefault()
     setSubmitting(true); setMsg(''); setErr(false)
     try {
-      await updateUserEmail(email)
-      setMsg('Check your inbox to confirm the new email.')
+      if (displayName.trim()) {
+        await updateUserProfile(displayName.trim())
+      }
+      if (email !== userEmail) {
+        await updateUserEmail(email)
+        setMsg('Check your inbox to confirm the new email.')
+      } else {
+        setMsg('Profile updated successfully.')
+      }
     } catch (ex) {
       setErr(true); setMsg((ex as Error).message)
     } finally { setSubmitting(false) }
   }
 
-  const initial = userEmail.charAt(0).toUpperCase() || '?'
-
   return (
     <div>
-      <h2 style={{ margin: '0 0 4px', fontSize: '16px', fontWeight: '600', color: 'var(--text-primary)' }}>Profile</h2>
-      <p style={{ margin: '0 0 24px', fontSize: '13px', color: 'var(--text-secondary)' }}>Your public account details.</p>
+      <h2 style={sectionTitle}>Profile</h2>
+      <p style={sectionDesc}>Your public account details.</p>
 
-      {/* Avatar + name row */}
+      {/* Avatar + info row */}
       <div style={{
         display: 'flex', alignItems: 'center', gap: '16px',
         padding: '16px', background: '#f8fafc', borderRadius: '10px',
@@ -161,22 +231,62 @@ function ProfilePanel({ userEmail, userName }: { userEmail: string; userName: st
           fontSize: '20px', fontWeight: '700', color: '#fff',
         }}>{initial}</div>
         <div>
-          <div style={{ fontSize: '14px', fontWeight: '600', color: 'var(--text-primary)' }}>{userEmail}</div>
+          <div style={{ fontSize: '14px', fontWeight: '600', color: 'var(--text-primary)' }}>
+            {displayName || userEmail}
+          </div>
           <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '2px' }}>
-            Registered account
+            {displayName ? userEmail : 'Registered account'}
           </div>
         </div>
       </div>
+
       <form onSubmit={save}>
         <div style={{ marginBottom: '20px' }}>
-          <label style={{ display: 'block', fontSize: '13px', fontWeight: '500', color: 'var(--text-secondary)', marginBottom: '6px' }}>
-            Email address
-          </label>
+          <label style={labelStyle}>Display name</label>
+          <input
+            type="text"
+            value={loadingProfile ? '' : displayName}
+            onChange={e => setDisplayName(e.target.value)}
+            style={inputBase}
+            placeholder={loadingProfile ? 'Loading...' : 'Enter your name'}
+            disabled={loadingProfile}
+            onFocus={e => e.currentTarget.style.borderColor = '#2db8b0'}
+            onBlur={e => e.currentTarget.style.borderColor = '#e2e8f0'}
+          />
+        </div>
+
+        <div style={{ marginBottom: '20px' }}>
+          <label style={labelStyle}>Email address</label>
           <input type="email" value={email} onChange={e => setEmail(e.target.value)}
             style={inputBase} required
             onFocus={e => e.currentTarget.style.borderColor = '#2db8b0'}
             onBlur={e => e.currentTarget.style.borderColor = '#e2e8f0'}
           />
+        </div>
+
+        <hr style={divider} />
+
+        <div style={{ marginBottom: '20px' }}>
+          <label style={labelStyle}>Role</label>
+          <div style={{
+            padding: '10px 14px', background: '#f8fafc', border: '1px solid #e2e8f0',
+            borderRadius: '8px', fontSize: '14px', color: 'var(--text-secondary)',
+          }}>
+            Administrator
+          </div>
+          <span style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px', display: 'block' }}>
+            Contact your system admin to change roles.
+          </span>
+        </div>
+
+        <div style={{ marginBottom: '20px' }}>
+          <label style={labelStyle}>Account created</label>
+          <div style={{
+            padding: '10px 14px', background: '#f8fafc', border: '1px solid #e2e8f0',
+            borderRadius: '8px', fontSize: '14px', color: 'var(--text-secondary)',
+          }}>
+            {new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
+          </div>
         </div>
 
         {msg && (
@@ -188,13 +298,7 @@ function ProfilePanel({ userEmail, userName }: { userEmail: string; userName: st
           }}>{msg}</div>
         )}
 
-        <button type="submit" disabled={submitting || email === userEmail} style={{
-          padding: '10px 20px', border: 'none', borderRadius: '8px',
-          background: submitting || email === userEmail ? '#e2e8f0' : '#2db8b0',
-          color: submitting || email === userEmail ? '#94a3b8' : '#fff',
-          fontSize: '13px', fontWeight: '600',
-          cursor: submitting || email === userEmail ? 'default' : 'pointer',
-        }}>
+        <button type="submit" disabled={submitting || !hasChanges} style={btnPrimary(!submitting && hasChanges)}>
           {submitting ? 'Saving...' : 'Save changes'}
         </button>
       </form>
@@ -231,14 +335,12 @@ function SecurityPanel() {
 
   return (
     <div>
-      <h2 style={{ margin: '0 0 4px', fontSize: '16px', fontWeight: '600', color: 'var(--text-primary)' }}>Security</h2>
-      <p style={{ margin: '0 0 24px', fontSize: '13px', color: 'var(--text-secondary)' }}>Update your password.</p>
+      <h2 style={sectionTitle}>Security</h2>
+      <p style={sectionDesc}>Update your password.</p>
 
       <form onSubmit={save}>
         <div style={{ marginBottom: '16px' }}>
-          <label style={{ display: 'block', fontSize: '13px', fontWeight: '500', color: 'var(--text-secondary)', marginBottom: '6px' }}>
-            New password
-          </label>
+          <label style={labelStyle}>New password</label>
           <input type="password" value={pw} onChange={e => setPw(e.target.value)}
             style={inputBase} required placeholder="At least 6 characters"
             onFocus={e => e.currentTarget.style.borderColor = '#2db8b0'}
@@ -252,9 +354,7 @@ function SecurityPanel() {
         </div>
 
         <div style={{ marginBottom: '20px' }}>
-          <label style={{ display: 'block', fontSize: '13px', fontWeight: '500', color: 'var(--text-secondary)', marginBottom: '6px' }}>
-            Confirm password
-          </label>
+          <label style={labelStyle}>Confirm password</label>
           <input type="password" value={confirm} onChange={e => setConfirm(e.target.value)}
             style={{
               ...inputBase,
@@ -297,16 +397,363 @@ function SecurityPanel() {
           }}>{msg}</div>
         )}
 
-        <button type="submit" disabled={!canSubmit} style={{
-          padding: '10px 20px', border: 'none', borderRadius: '8px',
-          background: canSubmit ? '#2db8b0' : '#e2e8f0',
-          color: canSubmit ? '#fff' : '#94a3b8',
-          fontSize: '13px', fontWeight: '600',
-          cursor: canSubmit ? 'pointer' : 'default',
-        }}>
+        <button type="submit" disabled={!canSubmit} style={btnPrimary(canSubmit)}>
           {submitting ? 'Updating...' : 'Update password'}
         </button>
       </form>
+
+      <hr style={divider} />
+
+      {/* Active sessions info */}
+      <h3 style={{ margin: '0 0 8px', fontSize: '14px', fontWeight: '600', color: 'var(--text-primary)' }}>
+        Active sessions
+      </h3>
+      <p style={{ margin: '0 0 12px', fontSize: '12px', color: 'var(--text-muted)' }}>
+        Manage where you are signed in.
+      </p>
+      <div style={{
+        display: 'flex', alignItems: 'center', gap: '12px',
+        padding: '12px 14px', background: '#f8fafc', borderRadius: '8px',
+        border: '1px solid #e2e8f0',
+      }}>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2db8b0" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/>
+        </svg>
+        <div style={{ flex: 1 }}>
+          <div style={{ fontSize: '13px', fontWeight: '500', color: 'var(--text-primary)' }}>Current session</div>
+          <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Web browser — Active now</div>
+        </div>
+        <div style={{
+          width: '8px', height: '8px', borderRadius: '50%', background: '#22c55e',
+        }} />
+      </div>
+    </div>
+  )
+}
+
+/* ── Notifications ── */
+function NotificationsPanel() {
+  const [emailAlerts, setEmailAlerts] = useState(true)
+  const [drillReminders, setDrillReminders] = useState(true)
+  const [simComplete, setSimComplete] = useState(true)
+  const [weeklyReport, setWeeklyReport] = useState(false)
+  const [saved, setSaved] = useState(false)
+
+  function handleSave() {
+    setSaved(true)
+    setTimeout(() => setSaved(false), 2000)
+  }
+
+  const toggles: { label: string; desc: string; value: boolean; onChange: (v: boolean) => void }[] = [
+    { label: 'Email alerts', desc: 'Receive email notifications for critical events and system updates.', value: emailAlerts, onChange: setEmailAlerts },
+    { label: 'Drill reminders', desc: 'Get notified before scheduled evacuation drills.', value: drillReminders, onChange: setDrillReminders },
+    { label: 'Simulation complete', desc: 'Notify when a simulation run finishes processing.', value: simComplete, onChange: setSimComplete },
+    { label: 'Weekly summary report', desc: 'Receive a weekly digest of simulation activity and campus readiness.', value: weeklyReport, onChange: setWeeklyReport },
+  ]
+
+  return (
+    <div>
+      <h2 style={sectionTitle}>Notifications</h2>
+      <p style={sectionDesc}>Choose what alerts and updates you receive.</p>
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '0' }}>
+        {toggles.map((t, i) => (
+          <div key={t.label}>
+            <div style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+              padding: '16px 0',
+            }}>
+              <div style={{ flex: 1, marginRight: '16px' }}>
+                <div style={{ fontSize: '14px', fontWeight: '500', color: 'var(--text-primary)', marginBottom: '2px' }}>
+                  {t.label}
+                </div>
+                <div style={{ fontSize: '12px', color: 'var(--text-muted)', lineHeight: '1.4' }}>
+                  {t.desc}
+                </div>
+              </div>
+              <button
+                onClick={() => t.onChange(!t.value)}
+                style={{
+                  width: '44px', height: '24px', borderRadius: '12px', border: 'none',
+                  background: t.value ? '#2db8b0' : '#e2e8f0',
+                  position: 'relative', cursor: 'pointer', flexShrink: 0,
+                  transition: 'background 0.2s',
+                }}
+              >
+                <div style={{
+                  width: '18px', height: '18px', borderRadius: '50%', background: '#fff',
+                  position: 'absolute', top: '3px',
+                  left: t.value ? '23px' : '3px',
+                  transition: 'left 0.2s',
+                  boxShadow: '0 1px 3px rgba(0,0,0,0.15)',
+                }} />
+              </button>
+            </div>
+            {i < toggles.length - 1 && <hr style={{ ...divider, margin: '0' }} />}
+          </div>
+        ))}
+      </div>
+
+      <div style={{ marginTop: '24px' }}>
+        {saved && (
+          <div style={{
+            marginBottom: '12px', padding: '10px 14px', borderRadius: '8px', fontSize: '13px',
+            background: '#f0fdf4', border: '1px solid #bbf7d0', color: '#16a34a',
+          }}>
+            Notification preferences saved.
+          </div>
+        )}
+        <button onClick={handleSave} style={btnPrimary(true)}>
+          Save preferences
+        </button>
+      </div>
+    </div>
+  )
+}
+
+/* ── Simulation Defaults ── */
+function SimulationDefaultsPanel() {
+  const [agentCount, setAgentCount] = useState(120)
+  const [simSpeed, setSimSpeed] = useState(200)
+  const [defaultDisaster, setDefaultDisaster] = useState<'fire' | 'earthquake'>('fire')
+  const [autoSave, setAutoSave] = useState(true)
+  const [saved, setSaved] = useState(false)
+
+  function handleSave() {
+    setSaved(true)
+    setTimeout(() => setSaved(false), 2000)
+  }
+
+  return (
+    <div>
+      <h2 style={sectionTitle}>Simulation Defaults</h2>
+      <p style={sectionDesc}>Set default parameters for new simulation runs.</p>
+
+      <div style={{ marginBottom: '20px' }}>
+        <label style={labelStyle}>Default agent count</label>
+        <input
+          type="number"
+          value={agentCount}
+          onChange={e => setAgentCount(Math.max(1, parseInt(e.target.value) || 1))}
+          style={inputBase}
+          min={1} max={500}
+          onFocus={e => e.currentTarget.style.borderColor = '#2db8b0'}
+          onBlur={e => e.currentTarget.style.borderColor = '#e2e8f0'}
+        />
+        <span style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px', display: 'block' }}>
+          Number of agents spawned per simulation (1-500).
+        </span>
+      </div>
+
+      <div style={{ marginBottom: '20px' }}>
+        <label style={labelStyle}>Simulation speed (ms per step)</label>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <input
+            type="range"
+            min={50} max={500} step={10}
+            value={simSpeed}
+            onChange={e => setSimSpeed(parseInt(e.target.value))}
+            style={{ flex: 1, accentColor: '#2db8b0' }}
+          />
+          <span style={{
+            fontSize: '13px', fontWeight: '600', color: 'var(--text-primary)',
+            minWidth: '48px', textAlign: 'right',
+          }}>
+            {simSpeed}ms
+          </span>
+        </div>
+        <span style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px', display: 'block' }}>
+          Lower values run faster. Default: 200ms.
+        </span>
+      </div>
+
+      <div style={{ marginBottom: '20px' }}>
+        <label style={labelStyle}>Default disaster type</label>
+        <div style={{ display: 'flex', gap: '8px' }}>
+          {(['fire', 'earthquake'] as const).map(type => (
+            <button
+              key={type}
+              onClick={() => setDefaultDisaster(type)}
+              style={{
+                flex: 1, padding: '10px 16px', border: '1px solid',
+                borderColor: defaultDisaster === type
+                  ? (type === 'fire' ? '#ff6b35' : '#f59e0b')
+                  : '#e2e8f0',
+                borderRadius: '8px',
+                background: defaultDisaster === type
+                  ? (type === 'fire' ? 'rgba(255,107,53,0.06)' : 'rgba(245,158,11,0.06)')
+                  : '#fff',
+                cursor: 'pointer', fontSize: '13px', fontWeight: '500',
+                color: defaultDisaster === type
+                  ? (type === 'fire' ? '#c2410c' : '#92400e')
+                  : 'var(--text-secondary)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
+                transition: 'all 0.15s',
+              }}
+            >
+              {type === 'fire' ? (
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/>
+                </svg>
+              ) : (
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M2 12h2l3-9 4 18 4-18 3 9h2"/>
+                </svg>
+              )}
+              {type.charAt(0).toUpperCase() + type.slice(1)}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <hr style={divider} />
+
+      <div style={{
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        marginBottom: '24px',
+      }}>
+        <div>
+          <div style={{ fontSize: '14px', fontWeight: '500', color: 'var(--text-primary)', marginBottom: '2px' }}>
+            Auto-save results
+          </div>
+          <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
+            Automatically save simulation results to the database when a run completes.
+          </div>
+        </div>
+        <button
+          onClick={() => setAutoSave(!autoSave)}
+          style={{
+            width: '44px', height: '24px', borderRadius: '12px', border: 'none',
+            background: autoSave ? '#2db8b0' : '#e2e8f0',
+            position: 'relative', cursor: 'pointer', flexShrink: 0,
+            transition: 'background 0.2s',
+          }}
+        >
+          <div style={{
+            width: '18px', height: '18px', borderRadius: '50%', background: '#fff',
+            position: 'absolute', top: '3px',
+            left: autoSave ? '23px' : '3px',
+            transition: 'left 0.2s',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.15)',
+          }} />
+        </button>
+      </div>
+
+      {saved && (
+        <div style={{
+          marginBottom: '12px', padding: '10px 14px', borderRadius: '8px', fontSize: '13px',
+          background: '#f0fdf4', border: '1px solid #bbf7d0', color: '#16a34a',
+        }}>
+          Simulation defaults saved.
+        </div>
+      )}
+      <button onClick={handleSave} style={btnPrimary(true)}>
+        Save defaults
+      </button>
+    </div>
+  )
+}
+
+/* ── About ── */
+function AboutPanel() {
+  return (
+    <div>
+      <h2 style={sectionTitle}>About EVACSIM</h2>
+      <p style={sectionDesc}>System information and project details.</p>
+
+      {/* Logo / branding */}
+      <div style={{
+        display: 'flex', alignItems: 'center', gap: '14px',
+        padding: '20px', background: 'linear-gradient(135deg, rgba(45,184,176,0.08) 0%, rgba(45,184,176,0.02) 100%)',
+        borderRadius: '12px', border: '1px solid rgba(45,184,176,0.15)',
+        marginBottom: '24px',
+      }}>
+        <div style={{
+          width: '48px', height: '48px', borderRadius: '12px', flexShrink: 0,
+          background: '#2db8b0', display: 'flex', alignItems: 'center', justifyContent: 'center',
+        }}>
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M12 22s-8-4.5-8-11.8A8 8 0 0 1 12 2a8 8 0 0 1 8 8.2c0 7.3-8 11.8-8 11.8z"/>
+            <circle cx="12" cy="10" r="3"/>
+          </svg>
+        </div>
+        <div>
+          <div style={{ fontSize: '18px', fontWeight: '700', color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>
+            EVACSIM
+          </div>
+          <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '2px' }}>
+            Agent-Based Crowd Evacuation Simulator
+          </div>
+        </div>
+      </div>
+
+      {/* Info rows */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '0' }}>
+        {[
+          { label: 'Version', value: '1.0.0-beta' },
+          { label: 'Campus', value: 'University of the Philippines Cebu' },
+          { label: 'Framework', value: 'Next.js 16 + React 19' },
+          { label: 'Database', value: 'Supabase (PostgreSQL)' },
+          { label: 'Map Provider', value: 'Mapbox GL JS' },
+        ].map((row, i, arr) => (
+          <div key={row.label}>
+            <div style={{
+              display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+              padding: '12px 0',
+            }}>
+              <span style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>{row.label}</span>
+              <span style={{ fontSize: '13px', fontWeight: '500', color: 'var(--text-primary)' }}>{row.value}</span>
+            </div>
+            {i < arr.length - 1 && <hr style={{ ...divider, margin: '0' }} />}
+          </div>
+        ))}
+      </div>
+
+      <hr style={divider} />
+
+      {/* Project description */}
+      <h3 style={{ margin: '0 0 8px', fontSize: '14px', fontWeight: '600', color: 'var(--text-primary)' }}>
+        Project Description
+      </h3>
+      <p style={{ margin: '0 0 16px', fontSize: '13px', color: 'var(--text-secondary)', lineHeight: '1.6' }}>
+        EVACSIM is an agent-based crowd evacuation simulator designed for the University of the Philippines Cebu campus.
+        It enables administrators to model disaster scenarios, simulate crowd evacuation behavior across campus buildings,
+        and evaluate emergency preparedness through data-driven analysis.
+      </p>
+
+      {/* Key features */}
+      <h3 style={{ margin: '0 0 10px', fontSize: '14px', fontWeight: '600', color: 'var(--text-primary)' }}>
+        Key Features
+      </h3>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '24px' }}>
+        {[
+          { icon: '🗺️', text: 'Interactive campus map with 3D building visualization' },
+          { icon: '🏃', text: 'Agent-based pathfinding with exit selection and rerouting' },
+          { icon: '🔥', text: 'Fire and earthquake disaster scenario modeling' },
+          { icon: '📊', text: 'Real-time simulation metrics and drill evaluation' },
+          { icon: '📈', text: 'Campus readiness scoring and analytics dashboard' },
+        ].map(f => (
+          <div key={f.text} style={{
+            display: 'flex', alignItems: 'flex-start', gap: '10px',
+            padding: '8px 12px', background: '#f8fafc', borderRadius: '8px',
+            fontSize: '13px', color: 'var(--text-secondary)', lineHeight: '1.4',
+          }}>
+            <span style={{ fontSize: '14px', flexShrink: 0 }}>{f.icon}</span>
+            {f.text}
+          </div>
+        ))}
+      </div>
+
+      {/* Footer */}
+      <div style={{
+        padding: '14px 16px', background: '#f8fafc', borderRadius: '8px',
+        border: '1px solid #e2e8f0',
+        fontSize: '12px', color: 'var(--text-muted)', textAlign: 'center', lineHeight: '1.6',
+      }}>
+        Built for academic research at UP Cebu.
+        <br />
+        For questions or feedback, contact your system administrator.
+      </div>
     </div>
   )
 }
