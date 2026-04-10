@@ -1,30 +1,14 @@
 'use client'
 
 import React, { useEffect, useState } from 'react'
-import dynamic from 'next/dynamic'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/src/hooks/useAuth'
-import type { MapMarker } from '@/components/MapView'
+import MapView, { type MapMarker } from '@/components/MapView'
 import {
   createSimulationRun,
   saveSimulationResults,
 } from '@/src/services/simulation.service'
 import type { DisasterType, RiskLevel, SeverityLevel } from '@/src/schema/enums'
-
-const MapView = dynamic(() => import('@/components/MapView'), {
-  ssr: false,
-  loading: () => (
-    <div style={{
-      height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center',
-      background: '#0f172a', borderRadius: '12px', color: '#94a3b8', fontSize: '14px', gap: '10px',
-    }}>
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2db8b0" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
-        <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
-      </svg>
-      Loading map...
-    </div>
-  ),
-})
 
 /* Campus buildings with bounding boxes for coordinate-based matching */
 const CAMPUS_BUILDINGS = [
@@ -36,8 +20,8 @@ const CAMPUS_BUILDINGS = [
   { id: 'volleyball-court', name: 'UPC Volleyball Court', bounds: { south: 10.3243, north: 10.3251, west: 123.8982, east: 123.8992 } },
   { id: 'as-west-wing', name: '', bounds: { south: 10.3212, north: 10.3256, west: 123.8984, east: 123.9005 } },
   { id: 'as-east-wing', name: '', bounds: { south: 10.3212, north: 10.3250, west: 123.8985, east: 123.9007 } },
-  { id: 'union-building', name: 'Union Building', bounds: { south: 10.3252, north: 10.3260, west: 123.9005, east: 123.9018 } },
-  { id: 'soccer-field', name: 'UPC Soccer Field', bounds: { south: 10.3232, north: 10.3244, west: 123.9018, east: 123.9038 } },
+  { id: 'cultural-center', name: '', bounds: { south: 10.3190, north: 10.3260, west: 123.8987, east: 123.8997 } },
+  { id: 'soccer-field', name: 'UPC Soccer Field', bounds: { south: 10.3187, north: 10.3260, west: 123.8988, east: 123.8997 } },
   { id: 'admin-building', name: '', bounds: { south: 10.3212, north: 10.3234, west: 123.8977, east: 123.8988 } },
   { id: 'science-building', name: '', bounds: { south: 10.3211, north: 10.3234, west: 123.8971, east: 123.8988 } },
   { id: 'liadlaw-hall', name: '', bounds: { south: 10.3201, north: 10.3231, west: 123.8962, east: 123.8988 } },
@@ -48,7 +32,7 @@ const CAMPUS_BUILDINGS = [
   { id: 'cdcp-center', name: 'CDCP Center', bounds: { south: 10.3206, north: 10.3214, west: 123.9025, east: 123.9038 } },
   { id: 'up-high-school', name: '', bounds: { south: 10.3213, north: 10.3224, west: 123.8942, east: 123.9048 } },
   { id: 'covered-court', name: 'UP High Open Court', bounds: { south: 10.3206, north: 10.3216, west: 123.9038, east: 123.9055 } },
-  { id: 'up-cebu-library', name: '', bounds: { south: 10.3203, north: 10.3224, west: 123.8962, east: 123.8997 } },
+  { id: 'up-cebu-library', name: '', bounds: { south: 10.3204, north: 10.3224, west: 123.8962, east: 123.8997 } },
 ]
 
 /* IDs of buildings that get a clickable marker icon */
@@ -58,7 +42,7 @@ const MARKER_BUILDING_IDS = [
   'as-east-wing',
   'som-admin',
   'som-building-1',
-  'union-building',
+  'cultural-center',
   'social-sciences',
   'science-building',
   'liadlaw-hall',
@@ -74,7 +58,7 @@ interface BuildingDetail {
   capacity: number
   floors: number
   yearBuilt: string
-  riskLevel: 'Low' | 'Medium' | 'High'
+  riskLevel: 'Low' | 'Medium' | 'High' | 'N/A'
   facilities: string[]
 }
 
@@ -134,16 +118,16 @@ const BUILDING_DETAILS: Record<string, BuildingDetail> = {
     riskLevel: 'Medium',
     facilities: ['Tiered Lecture Halls', 'Case-Study Rooms', 'Presentation Suites', 'Student Lounge'],
   },
-  'union-building': {
-    name: 'Union Building',
-    type: 'Student Services',
+  'cultural-center': {
+    name: 'Cebu Cultural Center',
+    type: 'N/A',
     description:
-      'The social heart of the UP Cebu campus. Home to student councils, organization offices, the canteen, and multipurpose event spaces widely used for university activities, assemblies, and cultural performances.',
-    capacity: 500,
-    floors: 2,
-    yearBuilt: '1988',
-    riskLevel: 'High',
-    facilities: ['Student Canteen', 'Org Offices', 'Event Hall', 'Student Council'],
+      'Closed',
+    capacity: 0,
+    floors: 1,
+    yearBuilt: '-',
+    riskLevel: 'N/A',
+    facilities: [], 
   },
   'social-sciences': {
     name: 'Social Sciences Building',
@@ -468,15 +452,15 @@ export default function SimulatePage() {
       lng: (b.bounds.west + b.bounds.east) / 2,
       onClick: () => openPanel(b.id),
     }))
-  // Config inputs
+  // Sim parameters
   const [agents, setAgents] = useState(120)
   const [gridWidth, setGridWidth] = useState(60)
   const [gridHeight, setGridHeight] = useState(45)
   const [exits, setExits] = useState(6)
   const [wallDensity, setWallDensity] = useState(10)
   const [speed, setSpeed] = useState(200)
-  // Saved config (applied)
   const [applied, setApplied] = useState({ agents: 120, gridWidth: 60, gridHeight: 45, exits: 6, wallDensity: 10, speed: 200 })
+
   // Sim state
   const [step, setStep] = useState(0)
   const [evacuated, setEvacuated] = useState(0)
@@ -720,9 +704,8 @@ export default function SimulatePage() {
             Saving simulation results...
           </div>
         )}
-      </div>
 
-      {/* Building details panel */}
+        {/* Building details panel */}
         {selectedBuilding && selectedBuildingId && (
           <BuildingPanel
             detail={selectedBuilding}
@@ -731,9 +714,10 @@ export default function SimulatePage() {
             onSimulate={() => router.push(`/simulate/${encodeURIComponent(selectedBuildingId)}/disaster`)}
           />
         )}
+      </div>
 
       <p style={{ marginTop: '12px', fontSize: '11px', color: 'var(--text-muted)', textAlign: 'center' }}>
-        Map powered by <a href="https://www.mapbox.com" target="_blank" rel="noreferrer" style={{ color: '#2db8b0' }}>Mapbox</a> {'\u00B7'} Data {'\u00A9'} <a href="https://www.openstreetmap.org" target="_blank" rel="noreferrer" style={{ color: '#2db8b0' }}>OpenStreetMap</a> contributors.
+        Map powered by <a href="https://www.mapbox.com" target="_blank" rel="noreferrer" style={{ color: '#2db8b0' }}>Mapbox</a> &middot; Data &copy; <a href="https://www.openstreetmap.org" target="_blank" rel="noreferrer" style={{ color: '#2db8b0' }}>OpenStreetMap</a> contributors.
       </p>
     </div>
   )

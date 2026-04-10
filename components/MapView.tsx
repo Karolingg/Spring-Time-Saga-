@@ -3,13 +3,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import Map, { Source, Layer, NavigationControl, Marker } from 'react-map-gl/mapbox'
 import type { MapRef, MapMouseEvent } from 'react-map-gl/mapbox'
-import type { FillExtrusionLayerSpecification, FillLayerSpecification, LineLayerSpecification } from 'mapbox-gl'
+import type { FillExtrusionLayerSpecification, FillLayerSpecification, GeoJSONFeature, LineLayerSpecification, SymbolLayerSpecification } from 'mapbox-gl'
 import 'mapbox-gl/dist/mapbox-gl.css'
 
 const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || ''
 
 const FALLBACK_CENTER: [number, number] = [10.3230, 123.8995] // lat, lng â€” UP Cebu campus center
-const DEFAULT_ZOOM = 16.5
+const DEFAULT_ZOOM = 18
 const DEFAULT_PITCH = 45
 const DEFAULT_BEARING = -15
 const SELECTED_REGION_ZOOM = 18.2
@@ -45,13 +45,6 @@ const MAP_STYLES: MapStyleOption[] = [
     url: 'mapbox://styles/mapbox/light-v11',
     polygonColor: 'rgba(45,184,176,0.12)',
     glowColor: '#2db8b0',
-  },
-  {
-    id: 'satellite',
-    label: 'Satellite',
-    url: 'mapbox://styles/mapbox/satellite-streets-v12',
-    polygonColor: 'rgba(250,204,21,0.2)',
-    glowColor: '#facc15',
   },
   {
     id: 'streets',
@@ -111,14 +104,16 @@ interface MapViewProps {
   markers?: MapMarker[]
   onRegionClick?: (id: string) => void
   onBuildingClick?: (name: string, coords: [number, number]) => void
+  focusCenter?: [number, number] | null
   maxBounds?: [[number, number], [number, number]]
   minZoom?: number
   lockedStyle?: string // force a single style and hide the switcher
   flat2d?: boolean // flat 2D view â€” no pitch, no extrusions, fill polygons only
   hoverOnly?: boolean // regions invisible by default, shown only on hover or selection
+  uiOffsetRight?: number
 }
 
-export default function MapView({ regions, markers, onRegionClick, onBuildingClick, maxBounds, minZoom, lockedStyle, flat2d, hoverOnly }: MapViewProps) {
+export default function MapView({ regions, markers, onRegionClick, onBuildingClick, focusCenter, maxBounds, minZoom, lockedStyle, flat2d, hoverOnly, uiOffsetRight = 0 }: MapViewProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const mapRef = useRef<MapRef>(null)
   const hadSelectedRegionRef = useRef(false)
@@ -132,22 +127,14 @@ export default function MapView({ regions, markers, onRegionClick, onBuildingCli
   const [defaultCenter, setDefaultCenter] = useState<[number, number]>([FALLBACK_CENTER[1], FALLBACK_CENTER[0]]) // [lng, lat]
 
   const activeStyle = MAP_STYLES.find((s) => s.id === activeStyleId) || MAP_STYLES[0]
-  const isDark = activeStyleId === 'outdoors'
 
   const geojson = useMemo(() => regionsToGeoJSON(regions ?? [], hoverOnly ? hoveredId : undefined), [regions, hoverOnly, hoveredId])
-
-  const canRenderMarkers = useMemo(() => {
-    if (!markersReady || !markers?.length) return false
-    const map = mapRef.current?.getMap()
-    return Boolean(map?.getCanvasContainer())
-  }, [markersReady, markers])
+  const canRenderMarkers = mapLoaded && markersReady && Boolean(markers?.length)
+  const uiTransform = uiOffsetRight > 0 ? `translateX(-${uiOffsetRight}px)` : 'translateX(0px)'
 
   // Delay marker rendering until map is fully ready
   useEffect(() => {
-    if (!mapLoaded) {
-      setMarkersReady(false)
-      return
-    }
+    if (!mapLoaded) return
     const timer = setTimeout(() => {
       const map = mapRef.current?.getMap()
       setMarkersReady(Boolean(map?.getCanvasContainer()))
@@ -205,45 +192,48 @@ export default function MapView({ regions, markers, onRegionClick, onBuildingCli
     if (!map) return
 
     const add3DBuildings = () => {
-      if (map.getLayer('mapbox-3d-buildings')) return
+      if (map.getLayer('mapbox-3d-buildings')) {
+        return
+      }
 
       // Insert below the first symbol layer so labels stay on top
       const layers = map.getStyle()?.layers
       let labelLayerId: string | undefined
       if (layers) {
         for (const layer of layers) {
-          if (layer.type === 'symbol' && (layer as any).layout?.['text-field']) {
+          if (layer.type === 'symbol') {
+            const symbolLayer = layer as SymbolLayerSpecification
+            if (!symbolLayer.layout?.['text-field']) continue
             labelLayerId = layer.id
             break
           }
         }
       }
 
-      map.addLayer(
-        {
-          id: 'mapbox-3d-buildings',
-          source: 'composite',
-          'source-layer': 'building',
-          filter: ['==', 'extrude', 'true'],
-          type: 'fill-extrusion',
-          minzoom: 14,
-          paint: {
-            'fill-extrusion-color': '#aaa',
-            'fill-extrusion-height': [
-              'interpolate', ['linear'], ['zoom'],
-              14, 0,
-              14.05, ['get', 'height'],
-            ],
-            'fill-extrusion-base': [
-              'interpolate', ['linear'], ['zoom'],
-              14, 0,
-              14.05, ['get', 'min_height'],
-            ],
-            'fill-extrusion-opacity': 0.5,
-          },
-        } as any,
-        labelLayerId,
-      )
+      const mapboxBuildingsLayer: FillExtrusionLayerSpecification = {
+        id: 'mapbox-3d-buildings',
+        source: 'composite',
+        'source-layer': 'building',
+        filter: ['==', 'extrude', 'true'],
+        type: 'fill-extrusion',
+        minzoom: 14,
+        paint: {
+          'fill-extrusion-color': '#aaa',
+          'fill-extrusion-height': [
+            'interpolate', ['linear'], ['zoom'],
+            14, 0,
+            14.05, ['get', 'height'],
+          ],
+          'fill-extrusion-base': [
+            'interpolate', ['linear'], ['zoom'],
+            14, 0,
+            14.05, ['get', 'min_height'],
+          ],
+          'fill-extrusion-opacity': 0.5,
+        },
+      }
+
+      map.addLayer(mapboxBuildingsLayer, labelLayerId)
     }
 
     if (map.isStyleLoaded()) {
@@ -253,7 +243,7 @@ export default function MapView({ regions, markers, onRegionClick, onBuildingCli
     return () => {
       map.off('style.load', add3DBuildings)
     }
-  }, [mapLoaded])
+  }, [mapLoaded, flat2d])
 
   // Fly to center using Nominatim (skip when style is locked â€” page controls its own bounds)
   useEffect(() => {
@@ -286,6 +276,18 @@ export default function MapView({ regions, markers, onRegionClick, onBuildingCli
       .catch(() => {
       })
   }, [mapLoaded, lockedStyle, flat2d])
+
+  useEffect(() => {
+    if (!mapLoaded || !focusCenter) return
+    mapRef.current?.flyTo({
+      center: focusCenter,
+      zoom: flat2d ? 17.6 : 18.3,
+      pitch: flat2d ? 0 : 55,
+      bearing: flat2d ? 0 : DEFAULT_BEARING,
+      duration: 1200,
+      essential: true,
+    })
+  }, [mapLoaded, focusCenter, flat2d])
   // Smoothly zoom into selected regions and ease back to the default view on deselect.
   useEffect(() => {
     if (!mapLoaded || !regions?.length) return
@@ -392,7 +394,7 @@ export default function MapView({ regions, markers, onRegionClick, onBuildingCli
         // In flat 2D mode, query all features at click point and find buildings
         const map = mapRef.current?.getMap()
         if (!map || !e.point) return
-        let building: any
+        let building: GeoJSONFeature | undefined
         try {
           const allFeatures = map.queryRenderedFeatures(e.point)
           building = allFeatures.find(f => f.sourceLayer === 'building')
@@ -515,16 +517,13 @@ export default function MapView({ regions, markers, onRegionClick, onBuildingCli
     },
   }
 
-  useEffect(() => {
-    if (!regions?.length) return
-    const hasSelectedRegion = regions.some((r) => Boolean(r.selected))
-    if (!hasSelectedRegion) {
-      setSelectedMapboxBuildingId(null)
-      setSelectedMapboxBuildingPropertyId(null)
-    }
-  }, [regions])
+  const hasSelectedRegion = useMemo(
+    () => regions?.some((r) => Boolean(r.selected)) ?? false,
+    [regions],
+  )
 
   const selectedMapboxBuildingFilter = useMemo(() => {
+    if (!hasSelectedRegion) return null
     const extrudeFilter = ['==', ['get', 'extrude'], 'true'] as const
     if (selectedMapboxBuildingId !== null && selectedMapboxBuildingPropertyId !== null) {
       return ['all', extrudeFilter, ['any', ['==', ['id'], selectedMapboxBuildingId], ['==', ['get', 'id'], selectedMapboxBuildingPropertyId]]]
@@ -536,10 +535,16 @@ export default function MapView({ regions, markers, onRegionClick, onBuildingCli
       return ['all', extrudeFilter, ['==', ['get', 'id'], selectedMapboxBuildingPropertyId]]
     }
     return null
-  }, [selectedMapboxBuildingId, selectedMapboxBuildingPropertyId])
+  }, [hasSelectedRegion, selectedMapboxBuildingId, selectedMapboxBuildingPropertyId])
 
   return (
-    <div ref={containerRef} style={{ position: 'relative', height: '100%', width: '100%', borderRadius: '12px', overflow: 'hidden' }}>
+    <div ref={containerRef} className="map-view-shell" style={{ position: 'relative', height: '100%', width: '100%', borderRadius: '12px', overflow: 'hidden' }}>
+      <style>{`
+        .map-view-shell .mapboxgl-ctrl-bottom-right {
+          transform: ${uiTransform};
+          transition: transform 320ms cubic-bezier(0.22, 1, 0.36, 1);
+        }
+      `}</style>
       {/* Token warning */}
       {!MAPBOX_TOKEN && (
         <div style={{
@@ -670,17 +675,17 @@ export default function MapView({ regions, markers, onRegionClick, onBuildingCli
       </Map>
 
       {/* Style switcher â€” hidden when style is locked or flat 2D mode */}
-      {!lockedStyle && !flat2d && <div style={{ position: 'absolute', top: '12px', right: '12px', zIndex: 1000 }}>
+      {!lockedStyle && !flat2d && <div style={{ position: 'absolute', top: '12px', right: '12px', zIndex: 1000, transform: uiTransform, transition: 'transform 320ms cubic-bezier(0.22, 1, 0.36, 1)', willChange: 'transform' }}>
         <button
           onClick={() => setStyleMenuOpen(!styleMenuOpen)}
           style={{
-            background: isDark ? 'rgba(15,23,42,0.9)' : '#fff',
-            color: isDark ? '#e2e8f0' : '#1a2332',
-            border: `1px solid ${isDark ? '#334155' : '#e2e8f0'}`,
-            borderRadius: '10px', padding: '8px 14px', fontSize: '13px',
+            background: 'rgba(248,250,252,0.95)',
+            color: '#1e293b',
+            border: '1px solid rgba(148,163,184,0.22)',
+            borderRadius: '12px', padding: '9px 14px', fontSize: '13px',
             fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px',
-            boxShadow: '0 2px 8px rgba(0,0,0,0.2)', transition: 'all 0.2s',
-            backdropFilter: 'blur(8px)',
+            boxShadow: '0 10px 24px rgba(15,23,42,0.14)', transition: 'all 0.2s',
+            backdropFilter: 'blur(10px)',
           }}
         >
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -697,10 +702,10 @@ export default function MapView({ regions, markers, onRegionClick, onBuildingCli
         {styleMenuOpen && (
           <div style={{
             position: 'absolute', top: '44px', right: '0',
-            background: isDark ? 'rgba(15,23,42,0.95)' : '#fff',
-            border: `1px solid ${isDark ? '#334155' : '#e2e8f0'}`,
-            borderRadius: '10px', overflow: 'hidden', minWidth: '160px',
-            boxShadow: '0 4px 16px rgba(0,0,0,0.25)',
+            background: 'rgba(248,250,252,0.97)',
+            border: '1px solid rgba(148,163,184,0.22)',
+            borderRadius: '12px', overflow: 'hidden', minWidth: '168px',
+            boxShadow: '0 14px 30px rgba(15,23,42,0.16)',
             backdropFilter: 'blur(12px)',
           }}>
             {MAP_STYLES.map((style) => (
@@ -711,15 +716,15 @@ export default function MapView({ regions, markers, onRegionClick, onBuildingCli
                   display: 'flex', alignItems: 'center', gap: '10px',
                   width: '100%', padding: '10px 14px', border: 'none',
                   background: style.id === activeStyleId
-                    ? (isDark ? 'rgba(45,184,176,0.1)' : '#f0fdfa')
+                    ? 'rgba(45,184,176,0.12)'
                     : 'transparent',
-                  color: isDark ? '#e2e8f0' : '#1a2332',
+                  color: '#1e293b',
                   fontSize: '13px', fontWeight: style.id === activeStyleId ? 600 : 400,
                   cursor: 'pointer', textAlign: 'left', transition: 'background 0.15s',
                 }}
                 onMouseEnter={(e) => {
                   if (style.id !== activeStyleId)
-                    e.currentTarget.style.background = isDark ? 'rgba(255,255,255,0.05)' : '#f8fafc'
+                    e.currentTarget.style.background = 'rgba(226,232,240,0.55)'
                 }}
                 onMouseLeave={(e) => {
                   if (style.id !== activeStyleId)
@@ -730,7 +735,7 @@ export default function MapView({ regions, markers, onRegionClick, onBuildingCli
                   width: '8px', height: '8px', borderRadius: '50%',
                   background: style.glowColor,
                   boxShadow: style.id === activeStyleId
-                    ? `0 0 0 2px ${isDark ? 'rgba(15,23,42,0.9)' : '#fff'}, 0 0 0 4px ${style.glowColor}`
+                    ? `0 0 0 2px rgba(248,250,252,0.98), 0 0 0 4px ${style.glowColor}`
                     : 'none',
                 }} />
                 {style.label}
@@ -748,4 +753,5 @@ export default function MapView({ regions, markers, onRegionClick, onBuildingCli
     </div>
   )
 }
+
 

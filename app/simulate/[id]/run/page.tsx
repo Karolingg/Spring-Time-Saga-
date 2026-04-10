@@ -124,77 +124,74 @@ const ADMIN_2F: FloorConfig = {
 }
 
 // ─── Science Building (CSB) Configs ─────────────────────────────────────────
-// Layout: Left rooms — Vertical corridor — Horizontal hallway — Right labs/lecture
-// Agent paths route through corridor/hallway doors, never through walls
+// Uses actual SVG floor plan as background (viewBox 1200x675)
+// Coordinates mapped from csb-2f.svg: Room 204 left, Rooms 201-203 right,
+// toilet top-center, stairs center, exits at green markers
 
 const CSB_1F: FloorConfig = {
-  viewWidth: 900, viewHeight: 600,
+  viewWidth: 1200, viewHeight: 675,
   floorLabel: '1st Floor',
   exits: {
-    E1: { x: 258, y: 590, label: 'E1', desc: 'South Exit \u00B7 Main' },
-    E2: { x: 888, y: 280, label: 'E2', desc: 'East Exit \u00B7 Side' },
-    S1: { x: 165, y: 565, label: 'S1', desc: 'SW Stairwell \u00B7 Up' },
-    S2: { x: 545, y: 565, label: 'S2', desc: 'SE Stairwell \u00B7 Up' },
+    E1: { x: 350, y: 85, label: 'E1', desc: 'North Exit \u00B7 Corridor' },
+    E2: { x: 350, y: 595, label: 'E2', desc: 'South Exit \u00B7 Left' },
+    E3: { x: 610, y: 595, label: 'E3', desc: 'South Exit \u00B7 Right' },
   },
-  startPos: { x: 258, y: 280 },
+  startPos: { x: 500, y: 430 },
   primaryPaths: {
-    // corridor south to main exit
-    E1: [{ x: 258, y: 280 },{ x: 258, y: 380 },{ x: 258, y: 480 },{ x: 258, y: 590 }],
-    // corridor → hallway east → east exit
-    E2: [{ x: 258, y: 280 },{ x: 322, y: 280 },{ x: 500, y: 280 },{ x: 710, y: 280 },{ x: 888, y: 280 }],
-    // corridor south → SW stair
-    S1: [{ x: 258, y: 280 },{ x: 258, y: 380 },{ x: 258, y: 500 },{ x: 200, y: 540 },{ x: 165, y: 565 }],
-    // corridor → hallway → SE stair
-    S2: [{ x: 258, y: 280 },{ x: 322, y: 280 },{ x: 500, y: 280 },{ x: 545, y: 400 },{ x: 545, y: 500 },{ x: 545, y: 565 }],
+    // corridor up past stairs → Exit 1
+    E1: [{ x: 500, y: 430 },{ x: 500, y: 350 },{ x: 460, y: 200 },{ x: 400, y: 130 },{ x: 350, y: 85 }],
+    // corridor down → left → Exit 2
+    E2: [{ x: 500, y: 430 },{ x: 460, y: 520 },{ x: 400, y: 565 },{ x: 350, y: 595 }],
+    // corridor down → right → Exit 3
+    E3: [{ x: 500, y: 430 },{ x: 540, y: 520 },{ x: 580, y: 565 },{ x: 610, y: 595 }],
   },
   reroutes: {
-    E1: { to: 'E2', path: [{ x: 258, y: 380 },{ x: 258, y: 280 },{ x: 322, y: 280 },{ x: 500, y: 280 },{ x: 710, y: 280 },{ x: 888, y: 280 }] },
-    E2: { to: 'E1', path: [{ x: 500, y: 280 },{ x: 322, y: 280 },{ x: 258, y: 280 },{ x: 258, y: 480 },{ x: 258, y: 590 }] },
-    S1: { to: 'E1', path: [{ x: 200, y: 540 },{ x: 258, y: 500 },{ x: 258, y: 590 }] },
-    S2: { to: 'E2', path: [{ x: 545, y: 400 },{ x: 545, y: 280 },{ x: 710, y: 280 },{ x: 888, y: 280 }] },
+    E1: { to: 'E2', path: [{ x: 400, y: 130 },{ x: 460, y: 200 },{ x: 500, y: 350 },{ x: 500, y: 430 },{ x: 460, y: 520 },{ x: 400, y: 565 },{ x: 350, y: 595 }] },
+    E2: { to: 'E3', path: [{ x: 400, y: 565 },{ x: 460, y: 520 },{ x: 540, y: 520 },{ x: 580, y: 565 },{ x: 610, y: 595 }] },
+    E3: { to: 'E2', path: [{ x: 580, y: 565 },{ x: 540, y: 520 },{ x: 460, y: 520 },{ x: 400, y: 565 },{ x: 350, y: 595 }] },
   },
-  blockT: { E1: 0.50, E2: 0.55, S1: 0.55, S2: 0.55 },
+  blockT: { E1: 0.50, E2: 0.50, E3: 0.55 },
   obstacles: {
     fire: [
-      { id: 'fire-lab', x: 530, y: 35, w: 180, h: 150, type: 'fire', label: 'Lab Fire', blocksExits: [] },
-      { id: 'smoke-corridor-s', x: 215, y: 440, w: 90, h: 60, type: 'smoke', label: 'Smoke', blocksExits: ['E1'] },
+      { id: 'fire-corridor-top', x: 330, y: 100, w: 160, h: 100, type: 'fire', label: 'Fire', blocksExits: ['E1'] },
+      { id: 'smoke-corridor', x: 420, y: 350, w: 120, h: 60, type: 'smoke', label: 'Smoke', blocksExits: [] },
     ],
     earthquake: [
-      { id: 'debris-corridor-s', x: 220, y: 430, w: 80, h: 50, type: 'debris', label: 'Debris', blocksExits: ['E1'] },
-      { id: 'debris-hallway-e', x: 680, y: 255, w: 100, h: 50, type: 'debris', label: 'Debris', blocksExits: ['E2'] },
+      { id: 'debris-exit2', x: 310, y: 550, w: 100, h: 55, type: 'debris', label: 'Debris', blocksExits: ['E2'] },
+      { id: 'debris-stairs', x: 410, y: 250, w: 160, h: 50, type: 'debris', label: 'Structural Damage', blocksExits: [] },
     ],
   },
-  efficiency: { E1: 0.95, E2: 0.82, S1: 0.78, S2: 0.72 },
+  efficiency: { E1: 0.90, E2: 0.88, E3: 0.82 },
 }
 
 const CSB_2F: FloorConfig = {
-  viewWidth: 900, viewHeight: 600,
+  viewWidth: 1200, viewHeight: 675,
   floorLabel: '2nd Floor',
   exits: {
-    S1: { x: 165, y: 565, label: 'S1', desc: 'SW Stairwell \u00B7 Down' },
-    S2: { x: 545, y: 565, label: 'S2', desc: 'SE Stairwell \u00B7 Down' },
-    E3: { x: 888, y: 120, label: 'E3', desc: 'Fire Escape \u00B7 East' },
+    S1: { x: 350, y: 85, label: 'S1', desc: 'NW Stairwell \u00B7 Down' },
+    S2: { x: 350, y: 595, label: 'S2', desc: 'SW Stairwell \u00B7 Down' },
+    E3: { x: 610, y: 595, label: 'E3', desc: 'Fire Escape \u00B7 South' },
   },
-  startPos: { x: 258, y: 280 },
+  startPos: { x: 500, y: 430 },
   primaryPaths: {
-    S1: [{ x: 258, y: 280 },{ x: 258, y: 380 },{ x: 258, y: 500 },{ x: 200, y: 540 },{ x: 165, y: 565 }],
-    S2: [{ x: 258, y: 280 },{ x: 322, y: 280 },{ x: 500, y: 280 },{ x: 545, y: 400 },{ x: 545, y: 500 },{ x: 545, y: 565 }],
-    E3: [{ x: 258, y: 280 },{ x: 322, y: 280 },{ x: 500, y: 280 },{ x: 700, y: 200 },{ x: 800, y: 140 },{ x: 888, y: 120 }],
+    S1: [{ x: 500, y: 430 },{ x: 500, y: 350 },{ x: 460, y: 200 },{ x: 400, y: 130 },{ x: 350, y: 85 }],
+    S2: [{ x: 500, y: 430 },{ x: 460, y: 520 },{ x: 400, y: 565 },{ x: 350, y: 595 }],
+    E3: [{ x: 500, y: 430 },{ x: 540, y: 520 },{ x: 580, y: 565 },{ x: 610, y: 595 }],
   },
   reroutes: {
-    S1: { to: 'S2', path: [{ x: 200, y: 540 },{ x: 258, y: 500 },{ x: 258, y: 280 },{ x: 322, y: 280 },{ x: 500, y: 280 },{ x: 545, y: 400 },{ x: 545, y: 565 }] },
-    S2: { to: 'S1', path: [{ x: 545, y: 400 },{ x: 500, y: 280 },{ x: 322, y: 280 },{ x: 258, y: 280 },{ x: 258, y: 500 },{ x: 200, y: 540 },{ x: 165, y: 565 }] },
-    E3: { to: 'S1', path: [{ x: 700, y: 200 },{ x: 500, y: 280 },{ x: 322, y: 280 },{ x: 258, y: 280 },{ x: 258, y: 500 },{ x: 165, y: 565 }] },
+    S1: { to: 'S2', path: [{ x: 400, y: 130 },{ x: 460, y: 200 },{ x: 500, y: 350 },{ x: 500, y: 430 },{ x: 460, y: 520 },{ x: 400, y: 565 },{ x: 350, y: 595 }] },
+    S2: { to: 'E3', path: [{ x: 400, y: 565 },{ x: 460, y: 520 },{ x: 540, y: 520 },{ x: 580, y: 565 },{ x: 610, y: 595 }] },
+    E3: { to: 'S2', path: [{ x: 580, y: 565 },{ x: 540, y: 520 },{ x: 460, y: 520 },{ x: 400, y: 565 },{ x: 350, y: 595 }] },
   },
   blockT: { S1: 0.50, S2: 0.50, E3: 0.45 },
   obstacles: {
     fire: [
-      { id: 'fire-chem-lab', x: 530, y: 35, w: 190, h: 155, type: 'fire', label: 'Lab Fire', blocksExits: ['E3'] },
-      { id: 'smoke-hallway', x: 600, y: 190, w: 100, h: 50, type: 'smoke', label: 'Smoke', blocksExits: ['E3'] },
+      { id: 'fire-corridor-top', x: 330, y: 100, w: 160, h: 100, type: 'fire', label: 'Fire', blocksExits: ['S1'] },
+      { id: 'smoke-corridor', x: 420, y: 350, w: 120, h: 60, type: 'smoke', label: 'Smoke', blocksExits: ['S1'] },
     ],
     earthquake: [
-      { id: 'debris-sw-stair', x: 135, y: 530, w: 65, h: 55, type: 'debris', label: 'Debris', blocksExits: ['S1'] },
-      { id: 'debris-ceiling', x: 350, y: 250, w: 120, h: 40, type: 'debris', label: 'Structural Damage', blocksExits: [] },
+      { id: 'debris-exit2', x: 310, y: 550, w: 100, h: 55, type: 'debris', label: 'Debris', blocksExits: ['S2'] },
+      { id: 'debris-stairs', x: 410, y: 250, w: 160, h: 50, type: 'debris', label: 'Structural Damage', blocksExits: ['E3'] },
     ],
   },
   efficiency: { S1: 0.90, S2: 0.85, E3: 0.72 },
@@ -531,125 +528,27 @@ function AdminFloorPlan(props: FloorPlanProps) {
 }
 
 // ─── Science Building (CSB) Floor Plan ───────────────────────────────────────
+// Uses actual SVG floor plan as background image with simulation overlay on top
 function CSBFloorPlan(props: FloorPlanProps) {
   const { config } = props
-  const is2F = config.floorLabel === '2nd Floor'
 
   return (
-    <svg viewBox={`0 0 ${config.viewWidth} ${config.viewHeight}`}
-      style={{ width: '100%', height: '100%', display: 'block' }}>
-
-      {/* Outer shell */}
-      <rect x="20" y="20" width="860" height="560" rx="6" fill="#131c2e" stroke="#2d3f5a" strokeWidth="2.5" />
-
-      {/* ── Vertical main corridor (left spine) ── */}
-      <rect x="200" y="30" width="120" height="540" fill="#0f1824" stroke="#2d3f5a" strokeWidth="1.5" />
-      <text x="260" y="300" textAnchor="middle" fill="#334e6a" fontSize="8"
-        fontFamily="system-ui, sans-serif" letterSpacing="2"
-        transform="rotate(-90, 260, 300)">MAIN CORRIDOR</text>
-
-      {/* ── Left wing rooms ── */}
-      <rect x="25" y="35" width="175" height="120" fill="#18253a" stroke="#2d3f5a" strokeWidth="1.5" />
-      <text x="112" y="95" textAnchor="middle" fill="#4a6080" fontSize="10" fontFamily="system-ui, sans-serif">
-        {is2F ? 'Room 201' : 'Room 101'}
-      </text>
-      <rect x="198" y="75" width="4" height="35" fill="#0f1824" />
-
-      <rect x="25" y="155" width="175" height="120" fill="#18253a" stroke="#2d3f5a" strokeWidth="1.5" />
-      <text x="112" y="215" textAnchor="middle" fill="#4a6080" fontSize="10" fontFamily="system-ui, sans-serif">
-        {is2F ? 'Room 202' : 'Room 102'}
-      </text>
-      <rect x="198" y="195" width="4" height="35" fill="#0f1824" />
-
-      <rect x="25" y="275" width="175" height="120" fill="#18253a" stroke="#2d3f5a" strokeWidth="1.5" />
-      <text x="112" y="335" textAnchor="middle" fill="#4a6080" fontSize="10" fontFamily="system-ui, sans-serif">
-        {is2F ? 'Room 203' : 'Room 103'}
-      </text>
-      <rect x="198" y="315" width="4" height="35" fill="#0f1824" />
-
-      <rect x="25" y="395" width="175" height="175" fill="#18253a" stroke="#2d3f5a" strokeWidth="1.5" />
-      <text x="112" y="482" textAnchor="middle" fill="#4a6080" fontSize="10" fontFamily="system-ui, sans-serif">
-        {is2F ? 'Room 204' : 'Room 104'}
-      </text>
-      <rect x="198" y="450" width="4" height="35" fill="#0f1824" />
-
-      {/* ── Horizontal hallway (connects to right wing) ── */}
-      <rect x="320" y="250" width="400" height="60" fill="#0f1824" stroke="#2d3f5a" strokeWidth="1.5" />
-      <text x="520" y="284" textAnchor="middle" fill="#334e6a" fontSize="8"
-        fontFamily="system-ui, sans-serif" letterSpacing="1.5">HALLWAY</text>
-      {/* Door from vertical corridor → hallway */}
-      <rect x="318" y="268" width="4" height="30" fill="#0f1824" />
-
-      {/* ── Faculty office (top center) ── */}
-      <rect x="340" y="35" width="175" height="100" fill="#18253a" stroke="#2d3f5a" strokeWidth="1.5" />
-      <text x="427" y="82" textAnchor="middle" fill="#4a6080" fontSize="10" fontFamily="system-ui, sans-serif">Faculty Office</text>
-      <text x="427" y="96" textAnchor="middle" fill="#3a5070" fontSize="8" fontFamily="system-ui, sans-serif">
-        {is2F ? '(Room 208)' : '(Room 108)'}
-      </text>
-
-      {/* Restrooms */}
-      <rect x="340" y="145" width="85" height="55" fill="#162030" stroke="#2d3f5a" strokeWidth="1" />
-      <text x="382" y="177" textAnchor="middle" fill="#3a5070" fontSize="8" fontFamily="system-ui, sans-serif">WC</text>
-      <rect x="425" y="145" width="85" height="55" fill="#162030" stroke="#2d3f5a" strokeWidth="1" />
-      <text x="467" y="177" textAnchor="middle" fill="#3a5070" fontSize="8" fontFamily="system-ui, sans-serif">WC</text>
-
-      {/* ── Right wing: Labs ── */}
-      <rect x="535" y="35" width="170" height="165" fill={is2F ? '#1a2840' : '#18253a'} stroke="#2d3f5a" strokeWidth="1.5" />
-      <text x="620" y="110" textAnchor="middle" fill="#4a6080" fontSize="10" fontFamily="system-ui, sans-serif">
-        {is2F ? 'Chemistry Lab' : 'Physics Lab'}
-      </text>
-      <text x="620" y="125" textAnchor="middle" fill="#3a5070" fontSize="8" fontFamily="system-ui, sans-serif">
-        {is2F ? '(Room 205)' : '(Room 105)'}
-      </text>
-
-      {/* Lab prep */}
-      <rect x="705" y="35" width="170" height="165" fill="#1a2b42" stroke="#2d3f5a" strokeWidth="1.5" />
-      <text x="790" y="110" textAnchor="middle" fill="#4a6080" fontSize="10" fontFamily="system-ui, sans-serif">
-        {is2F ? 'Chem Prep' : 'Physics Prep'}
-      </text>
-      <text x="790" y="125" textAnchor="middle" fill="#3a5070" fontSize="8" fontFamily="system-ui, sans-serif">Room</text>
-      <rect x="703" y="95" width="4" height="35" fill="#1a2b42" />
-
-      {/* Biology/Computer lab */}
-      <rect x="535" y="200" width="340" height="50" fill="#18253a" stroke="#2d3f5a" strokeWidth="1" />
-      <text x="705" y="230" textAnchor="middle" fill="#4a6080" fontSize="9" fontFamily="system-ui, sans-serif">
-        {is2F ? 'Biology Lab (Room 206)' : 'Computer Lab (Room 106)'}
-      </text>
-      <rect x="630" y="248" width="40" height="4" fill="#0f1824" />
-
-      {/* Lecture hall */}
-      <rect x="535" y="310" width="340" height="180" fill="#1a2b42" stroke="#2d3f5a" strokeWidth="1.5" />
-      <text x="705" y="395" textAnchor="middle" fill="#4a6080" fontSize="10" fontFamily="system-ui, sans-serif">
-        {is2F ? 'Lecture Hall 2' : 'Lecture Hall 1'}
-      </text>
-      <text x="705" y="410" textAnchor="middle" fill="#3a5070" fontSize="8" fontFamily="system-ui, sans-serif">
-        {is2F ? '(Room 207)' : '(Room 107)'}
-      </text>
-      <rect x="630" y="308" width="40" height="4" fill="#0f1824" />
-
-      {/* Storage/utility */}
-      <rect x="340" y="490" width="170" height="80" fill="#18253a" stroke="#2d3f5a" strokeWidth="1" />
-      <text x="425" y="534" textAnchor="middle" fill="#4a6080" fontSize="9" fontFamily="system-ui, sans-serif">
-        {is2F ? 'Storage' : 'Utility'}
-      </text>
-
-      {/* ── Stairwells ── */}
-      <StairwellSymbol x={135} y={545} w={65} h={30} />
-      <StairwellSymbol x={515} y={545} w={65} h={30} />
-
-      {/* ── Exit wall gaps ── */}
-      {!is2F && <rect x="235" y="568" width="50" height="4" fill="#131c2e" />}
-      {!is2F && <rect x="878" y="260" width="4" height="40" fill="#131c2e" />}
-      {is2F && <rect x="878" y="100" width="4" height="45" fill="#131c2e" />}
-
-      {/* Floor label */}
-      <text x="850" y="560" textAnchor="end" fill="#1e2f46" fontSize="11"
-        fontFamily="system-ui, sans-serif" fontWeight="700" letterSpacing="0.05em">
-        {config.floorLabel.toUpperCase()}
-      </text>
-
-      <SimOverlay {...props} />
-    </svg>
+    <div style={{ position: 'relative', width: '100%', height: '100%' }}>
+      {/* Actual floor plan SVG — untouched */}
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src="/floorplans/csb-2f.svg"
+        alt="CSB Floor Plan"
+        style={{ width: '100%', height: '100%', display: 'block', position: 'absolute', top: 0, left: 0 }}
+      />
+      {/* Simulation overlay — exits, agent, routes, obstacles */}
+      <svg
+        viewBox={`0 0 ${config.viewWidth} ${config.viewHeight}`}
+        style={{ width: '100%', height: '100%', display: 'block', position: 'absolute', top: 0, left: 0 }}
+      >
+        <SimOverlay {...props} />
+      </svg>
+    </div>
   )
 }
 
