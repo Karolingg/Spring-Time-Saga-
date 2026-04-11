@@ -25,6 +25,8 @@ export interface SimulationRun {
   userId: string
   disasterType: DisasterType
   status: SimulationStatus
+  buildingId: string | null
+  notes: string | null
   createdAt: string
   updatedAt: string
   config: SimulationRunConfig | null

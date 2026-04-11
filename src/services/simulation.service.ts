@@ -6,8 +6,10 @@ import type {
   SimulationBottleneck,
   SimulationRunConfig,
   SimulationRunResults,
+  DensityCell,
 } from '@/src/schema/simulation.types'
 import type { RiskLevel, SeverityLevel, SimulationStatus } from '@/src/schema/enums'
+import { logAction } from '@/src/services/audit.service'
 
 type Row = Record<string, unknown>
 
@@ -28,7 +30,7 @@ async function ensureProfile(userId: string, email: string | undefined): Promise
 // Write
 // ---------------------------------------------------------------------------
 
-export async function createSimulationRun(config: SimulationConfig): Promise<string> {
+export async function createSimulationRun(config: SimulationConfig, buildingId?: string): Promise<string> {
   const { data: session, error: authError } = await supabase.auth.getUser()
   if (authError || !session.user) throw new Error('Not authenticated')
 
@@ -37,7 +39,7 @@ export async function createSimulationRun(config: SimulationConfig): Promise<str
 
   const { data: run, error: runError } = await supabase
     .from('simulation_runs')
-    .insert({ user_id: user.id, disaster_type: config.disasterType, status: 'running' })
+    .insert({ user_id: user.id, disaster_type: config.disasterType, status: 'running', building_id: buildingId ?? null })
     .select('id')
     .single()
   if (runError) throw new Error(runError.message)
@@ -54,6 +56,9 @@ export async function createSimulationRun(config: SimulationConfig): Promise<str
       speed_ms: config.speedMs,
     })
   if (cfgError) throw new Error(cfgError.message)
+
+  // Log the action
+  await logAction('create', 'run', run.id, { buildingId, disasterType: config.disasterType })
 
   return run.id
 }
@@ -139,6 +144,13 @@ export async function saveSimulationResults(
     .eq('id', runId)
 
   if (statusErr) throw new Error(statusErr.message)
+
+  // Log the action
+  await logAction('complete', 'run', runId, {
+    status: results.status,
+    evacuatedCount: results.evacuatedCount,
+    evacuationTime: results.evacuationTime,
+  })
 }
 
 // ---------------------------------------------------------------------------
@@ -209,6 +221,8 @@ function toSimulationRun(
     userId: row.user_id as string,
     disasterType: (row.disaster_type as SimulationRun['disasterType']) ?? 'fire',
     status: (row.status as SimulationStatus) ?? 'pending',
+    buildingId: (row.building_id as string) ?? null,
+    notes: (row.notes as string) ?? null,
     createdAt: (row.created_at as string) ?? '',
     updatedAt: (row.updated_at as string) ?? '',
     config: config ? toConfig(config) : null,
@@ -284,6 +298,9 @@ export async function deleteSimulationRun(runId: string): Promise<void> {
     .eq('id', runId)
 
   if (error) throw new Error(error.message)
+
+  // Log the action
+  await logAction('delete', 'run', runId)
 }
 
 export async function resetAllSimulationData(): Promise<void> {
@@ -296,6 +313,9 @@ export async function resetAllSimulationData(): Promise<void> {
     .eq('user_id', session.user.id)
 
   if (error) throw new Error(error.message)
+
+  // Log the action
+  await logAction('reset', 'run', 'all')
 }
 
 export async function getAggregateSimulationStats(): Promise<{
@@ -401,5 +421,153 @@ export async function getAggregateZoneStats(): Promise<{
     const dominantRiskLevel = (Object.entries(data.riskCounts).sort((a, b) => b[1] - a[1])[0]?.[0] ?? 'LOW') as RiskLevel
     return { zoneName, avgIntensity, avgAgentCount: Math.round(avgAgentCount), totalBottlenecks: data.bottlenecks, dominantRiskLevel }
   }).sort((a, b) => b.avgIntensity - a.avgIntensity)
+}
+
+// ---------------------------------------------------------------------------
+// Run Tags
+// ---------------------------------------------------------------------------
+
+export async function addRunTag(runId: string, tag: string): Promise<void> {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error } = await (supabase as any)
+      .from('run_tags')
+      .insert({ run_id: runId, tag })
+
+    if (error) {
+      // Ignore unique constraint violations (tag already exists on this run)
+      if (!error.message.includes('duplicate')) throw new Error(error.message)
+    }
+  } catch (err) {
+    console.error(`Failed to add tag: ${err}`)
+  }
+}
+
+export async function removeRunTag(runId: string, tag: string): Promise<void> {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error } = await (supabase as any)
+      .from('run_tags')
+      .delete()
+      .eq('run_id', runId)
+      .eq('tag', tag)
+
+    if (error) throw new Error(error.message)
+  } catch (err) {
+    console.error(`Failed to remove tag: ${err}`)
+  }
+}
+
+export async function getRunTags(runId: string): Promise<string[]> {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data, error } = await (supabase as any)
+      .from('run_tags')
+      .select('tag')
+      .eq('run_id', runId)
+      .order('tag', { ascending: true })
+
+    if (error) throw new Error(error.message)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return ((data as any[]) ?? []).map((row: any) => row.tag as string)
+  } catch (err) {
+    console.error(`Failed to get tags: ${err}`)
+    return []
+  }
+}
+
+export async function getRunsByTag(tag: string): Promise<SimulationRun[]> {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: tagRows, error: tagError } = await (supabase as any)
+      .from('run_tags')
+      .select('run_id')
+      .eq('tag', tag)
+
+    if (tagError) throw new Error(tagError.message)
+    if (!tagRows || tagRows.length === 0) return []
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const runIds = ((tagRows as any[]) ?? []).map((row: any) => row.run_id as string)
+
+    const { data: runs, error: runsError } = await supabase
+      .from('simulation_runs')
+      .select('*')
+      .in('id', runIds)
+
+    if (runsError) throw new Error(runsError.message)
+    if (!runs) return []
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return await Promise.all(runs.map((row: any) => fetchFullRun(row)))
+  } catch (err) {
+    console.error(`Failed to get runs by tag: ${err}`)
+    return []
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Run Notes
+// ---------------------------------------------------------------------------
+
+export async function updateRunNotes(runId: string, notes: string): Promise<void> {
+  const { error } = await supabase
+    .from('simulation_runs')
+    .update({ notes, updated_at: new Date().toISOString() })
+    .eq('id', runId)
+
+  if (error) throw new Error(error.message)
+
+  await logAction('update', 'run', runId, { notes })
+}
+
+// ---------------------------------------------------------------------------
+// Density Cells (fine-grained spatial data from simulation)
+// ---------------------------------------------------------------------------
+
+export async function saveDensityCells(runId: string, cells: Omit<DensityCell, 'id' | 'runId'>[]): Promise<void> {
+  if (cells.length === 0) return
+
+  try {
+    const cellRows = cells.map(c => ({
+      run_id: runId,
+      cell_x: c.cellX,
+      cell_y: c.cellY,
+      peak_density: c.peakDensity,
+      step: c.step,
+    }))
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error } = await (supabase as any).from('density_cells').insert(cellRows)
+
+    if (error) throw new Error(`Failed to save density cells: ${error.message}`)
+  } catch (err) {
+    console.error(`Failed to save density cells: ${err}`)
+  }
+}
+
+export async function getDensityCells(runId: string): Promise<DensityCell[]> {
+  try {
+    const { data, error } = await supabase
+      .from('density_cells')
+      .select('*')
+      .eq('run_id', runId)
+      .order('step', { ascending: true })
+
+    if (error) throw new Error(`Failed to fetch density cells: ${error.message}`)
+    if (!data) return []
+
+    return (data as Row[]).map(row => ({
+      id: row.id as string,
+      runId: row.run_id as string,
+      cellX: row.cell_x as number,
+      cellY: row.cell_y as number,
+      peakDensity: row.peak_density as number,
+      step: row.step as number,
+    }))
+  } catch (err) {
+    console.error(`Failed to get density cells: ${err}`)
+    return []
+  }
 }
 
