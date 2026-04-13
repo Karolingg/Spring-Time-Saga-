@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html>
+<head>
+<style>
+  body { margin: 0; background: #111; overflow: hidden; }
+  #wrap { position: relative; display: inline-block; }
+  #wrap img { display: block; width: 100vw; height: auto; }
+  #crosshair { position: fixed; pointer-events: none; z-index: 10; }
+  #coords {
+    position: fixed; top: 10px; left: 10px; z-index: 20;
+    background: rgba(0,0,0,0.85); color: #0f0; font: bold 16px monospace;
+    padding: 10px 16px; border-radius: 8px; border: 1px solid #0f0;
+  }
+  #points {
+    position: fixed; top: 10px; right: 10px; z-index: 20;
+    background: rgba(0,0,0,0.85); color: #fff; font: 13px monospace;
+    padding: 10px 16px; border-radius: 8px; border: 1px solid #555;
+    max-height: 90vh; overflow-y: auto; min-width: 200px;
+  }
+  .dot {
+    position: absolute; width: 10px; height: 10px; border-radius: 50%;
+    background: red; border: 2px solid #fff; transform: translate(-50%,-50%);
+    pointer-events: none; z-index: 5;
+  }
+  .dot-label {
+    position: absolute; color: #ff0; font: bold 11px monospace;
+    transform: translate(-50%, -120%); pointer-events: none; z-index: 5;
+    text-shadow: 0 0 4px #000, 0 0 4px #000;
+  }
+</style>
+</head>
+<body>
+<div id="coords">SVG: (0, 0)</div>
+<div id="points">
+  <b>Clicked Points:</b><br>
+  <em style="color:#888">Click to mark points</em>
+  <div id="point-list"></div>
+  <br><button onclick="clearPoints()" style="font:12px monospace;padding:4px 8px">Clear</button>
+</div>
+<div id="wrap">
+  <img id="svg" src="/floorplans/csb-2f.svg" />
+</div>
+
+<script>
+const img = document.getElementById('svg');
+const coordsEl = document.getElementById('coords');
+const wrap = document.getElementById('wrap');
+const pointList = document.getElementById('point-list');
+const SVG_W = 1200, SVG_H = 675;
+let points = [];
+let counter = 1;
+
+function toSVG(clientX, clientY) {
+  const rect = img.getBoundingClientRect();
+  const px = (clientX - rect.left) / rect.width;
+  const py = (clientY - rect.top) / rect.height;
+  return { x: Math.round(px * SVG_W), y: Math.round(py * SVG_H) };
+}
+
+document.addEventListener('mousemove', (e) => {
+  const s = toSVG(e.clientX, e.clientY);
+  coordsEl.textContent = `SVG: (${s.x}, ${s.y})`;
+});
+
+wrap.addEventListener('click', (e) => {
+  const s = toSVG(e.clientX, e.clientY);
+  const rect = img.getBoundingClientRect();
+  const pxX = e.clientX - rect.left + wrap.offsetLeft;
+  const pxY = e.clientY - rect.top + wrap.offsetTop;
+
+  // Add visual dot
+  const dot = document.createElement('div');
+  dot.className = 'dot';
+  dot.style.left = pxX + 'px';
+  dot.style.top = pxY + 'px';
+  wrap.appendChild(dot);
+
+  const label = document.createElement('div');
+  label.className = 'dot-label';
+  label.style.left = pxX + 'px';
+  label.style.top = pxY + 'px';
+  label.textContent = '#' + counter;
+  wrap.appendChild(label);
+
+  // Add to list
+  const entry = document.createElement('div');
+  entry.style.color = '#0f0';
+  entry.textContent = `#${counter}: (${s.x}, ${s.y})`;
+  pointList.appendChild(entry);
+
+  points.push({ id: counter, ...s });
+  counter++;
+});
+
+function clearPoints() {
+  document.querySelectorAll('.dot, .dot-label').forEach(el => el.remove());
+  pointList.innerHTML = '';
+  points = [];
+  counter = 1;
+}
+</script>
+</body>
+</html>
