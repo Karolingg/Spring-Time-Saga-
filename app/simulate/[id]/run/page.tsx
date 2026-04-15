@@ -228,16 +228,16 @@ const CSB_2F: FloorConfig = {
     S1: { x: 490, y: 266.5, label: 'S1', desc: '' },
     S2: { x: 365, y: 520, label: 'E2', desc: '' },
     S3: { x: 608, y: 520, label: 'E3', desc: '' },
-    S5: { x: 390, y: 450, label: 'E', desc: 'test node' },
+    S5: { x: 365, y: 80, label: 'E', desc: 'test node' },
   },
   startPos: { x: 0, y: 0 },
   primaryPaths: {
-    // Center stairwell: drop straight down from Near Stairs
-    S1: [{ x: 482, y: 173 },{ x: 482, y: 266.5 },{ x: 490, y: 266.5 }],
+    // Center stairwell: connect directly from Near Stairs to S1
+    S1: [{ x: 482, y: 173 },{ x: 490, y: 266.5 }],
     // Left corridor lane to SW stairs (S2)
-    S2: [{ x: 365, y: 369 },{ x: 430, y: 470 },{ x: 370, y: 490 }],
+    S2: [{ x: 365, y: 255 },{ x: 365, y: 490 }, {x: 365, y: 170}],
     // East corridor lane to SE stairs (S3)
-    S3: [{ x: 613, y: 412 },{ x: 550, y: 470 },{ x: 610, y: 490 }],
+    S3: [{ x: 613, y: 420 },{ x: 613, y: 490 },{ x: 613, y: 310}],
   },
   reroutes: {
     S1: { to: 'S2', path: [{ x: 482, y: 220 },{ x: 482, y: 300 },{ x: 490, y: 350 },{ x: 490, y: 410 },{ x: 490, y: 455 },{ x: 430, y: 470 },{ x: 370, y: 490 }] },
@@ -262,16 +262,17 @@ const CSB_2F: FloorConfig = {
     corridor: { label: 'Corridor',     x: 490, y: 350 },
     r204:     { label: 'Room 204',     x: 220, y: 360, corridorEntryNode: 'Left Corridor' },
     r203:     { label: 'Room 203',     x: 730, y: 173, corridorEntryNode: 'Near Toilet' },
-    r202:     { label: 'Room 202',     x: 720, y: 305, corridorEntryNode: 'Near Room 202' },
+    r202:     { label: 'Room 202',     x: 720, y: 310, corridorEntryNode: 'Near Room 201' },
     r201:     { label: 'Room 201',     x: 730, y: 420, corridorEntryNode: 'East Corridor' },
   },
   corridorNodes: [
     { label: 'Left Corridor',    x: 365, y: 360, neighbors: ['Near Room 204'] },
+    // Keep Near Room 204 isolated from Near Toilet; route must pass through Upper Corridor/Near Stairs.
     { label: 'Near Room 204',    x: 365, y: 255, neighbors: ['Left Corridor', 'Upper Corridor'] },
     { label: 'Upper Corridor',   x: 365, y: 173, neighbors: ['Near Room 204', 'Near Stairs'] },
-    { label: 'Near Stairs',      x: 482, y: 173, neighbors: ['Upper Corridor', 'Near Toilet'] },
-    { label: 'Near Room 202',    x: 613, y: 220, neighbors: ['Near Toilet', 'Near Room 201'] },
-    { label: 'Near Room 201',    x: 613, y: 310, neighbors: ['Near Room 202', 'East Corridor'] },
+    { label: 'Near Stairs',      x: 482, y: 173, neighbors: ['Upper Corridor', 'Near Toilet', 'S1 Exit'] },
+    { label: 'S1 Exit',          x: 490, y: 266.5, neighbors: ['Near Stairs'] },
+    { label: 'Near Room 201',    x: 613, y: 310, neighbors: ['Near Toilet', 'East Corridor'] },
     { label: 'Near Toilet',      x: 613, y: 173, neighbors: ['Near Stairs', 'Near Room 202'] },
     { label: 'East Corridor',    x: 613, y: 420, neighbors: ['Near Room 201'] },
   ],
@@ -427,6 +428,7 @@ interface RouteAnalysis {
   exitKey: string
   totalLength: number
   isBlocked: boolean
+  mayBlock: boolean
   efficiency: number
   hazardExposure: boolean
   estimatedTime: number
@@ -436,17 +438,30 @@ function analyzeRoutes(
   config: FloorConfig,
   selectedRoom: string | null,
   disaster: DisasterType,
+  potentialBlockedExits: Set<string>,
   blockedExits: Set<string>,
 ): RouteAnalysis[] {
-  const roomPrefix = selectedRoom && config.rooms[selectedRoom]
-    ? [{ x: config.rooms[selectedRoom].x, y: config.rooms[selectedRoom].y }]
-    : []
-  const roomPrefixLen = pathLength(roomPrefix)
+  const room = selectedRoom ? config.rooms[selectedRoom] : null
   const SPEED = 80
 
   return Object.keys(config.exits).map(key => {
     const exitPath = config.primaryPaths[key]
+    const start = exitPath?.[0]
+    let roomPrefixLen = 0
+    if (room && start) {
+      if (room.corridorEntryNode && config.corridorNodes) {
+        const entry = config.corridorNodes.find(n => n.label === room.corridorEntryNode)
+        if (entry) {
+          roomPrefixLen = Math.hypot(room.x - entry.x, room.y - entry.y) + Math.hypot(entry.x - start.x, entry.y - start.y)
+        } else {
+          roomPrefixLen = Math.hypot(room.x - start.x, room.y - start.y)
+        }
+      } else {
+        roomPrefixLen = Math.hypot(room.x - start.x, room.y - start.y)
+      }
+    }
     const totalLen = roomPrefixLen + pathLength(exitPath)
+    const mayBlock = potentialBlockedExits.has(key)
     const isBlocked = blockedExits.has(key)
     const efficiency = config.efficiency[key] || 0.5
     const hazardExposure = config.obstacles[disaster].some(obs =>
@@ -456,6 +471,7 @@ function analyzeRoutes(
       exitKey: key,
       totalLength: totalLen,
       isBlocked,
+      mayBlock,
       efficiency,
       hazardExposure,
       estimatedTime: parseFloat((totalLen / SPEED).toFixed(1)),
@@ -465,15 +481,38 @@ function analyzeRoutes(
 
 function getRecommendedExit(routes: RouteAnalysis[], mode: 'fastest' | 'safest'): string {
   if (mode === 'fastest') {
-    const sorted = [...routes].sort((a, b) => a.totalLength - b.totalLength)
+    const candidates = routes.filter(r => !r.isBlocked)
+    const source = candidates.length > 0 ? candidates : routes
+    const sorted = [...source].sort((a, b) => {
+      if (a.estimatedTime !== b.estimatedTime) return a.estimatedTime - b.estimatedTime
+      if (a.totalLength !== b.totalLength) return a.totalLength - b.totalLength
+      if (a.mayBlock !== b.mayBlock) return a.mayBlock ? 1 : -1
+      if (a.hazardExposure !== b.hazardExposure) return a.hazardExposure ? 1 : -1
+      return b.efficiency - a.efficiency
+    })
     return sorted[0].exitKey
   }
-  // Safest: prefer unblocked, no hazard exposure, highest efficiency
-  const safe = routes.filter(r => !r.isBlocked && !r.hazardExposure)
-  if (safe.length > 0) return safe.sort((a, b) => b.efficiency - a.efficiency)[0].exitKey
-  const unblocked = routes.filter(r => !r.isBlocked)
-  if (unblocked.length > 0) return unblocked.sort((a, b) => b.efficiency - a.efficiency)[0].exitKey
-  return routes.sort((a, b) => b.efficiency - a.efficiency)[0].exitKey
+
+  // Safest: risk-first scoring, then efficiency/time tie-breakers.
+  const ranked = [...routes].sort((a, b) => {
+    const riskScore = (r: RouteAnalysis) => {
+      let score = 0
+      if (r.isBlocked) score += 1000
+      if (r.hazardExposure) score += 200
+      if (r.mayBlock) score += 40
+      score += r.estimatedTime * 0.6
+      score += (1 - r.efficiency) * 25
+      return score
+    }
+
+    const diff = riskScore(a) - riskScore(b)
+    if (Math.abs(diff) > 0.0001) return diff
+    if (a.estimatedTime !== b.estimatedTime) return a.estimatedTime - b.estimatedTime
+    if (a.totalLength !== b.totalLength) return a.totalLength - b.totalLength
+    return b.efficiency - a.efficiency
+  })
+
+  return ranked[0].exitKey
 }
 
 function buildFullPath(
@@ -497,6 +536,8 @@ function buildFullPath(
       : [roomOrigin]
     : []
   const exitPath = config.primaryPaths[exitKey] || []
+  const explicitExit = config.exits[exitKey]
+  const finalExitPoint = explicitExit ? { x: explicitExit.x, y: explicitExit.y } : (exitPath[exitPath.length - 1] || null)
   // Strip forbidden anchor points so the agent never routes through them.
   const exitPathFiltered = exitPath.filter(p => !isForbiddenAnchor(p))
   if (exitPath.length === 0) return [...roomPrefix]
@@ -507,7 +548,7 @@ function buildFullPath(
   const nodeIndex = new Map(nodes.map((n, i) => [n.label, i]))
   const dist = (a: Point, b: Point) => Math.hypot(a.x - b.x, a.y - b.y)
   const roomPoint = roomPrefix[roomPrefix.length - 1]
-  const exitPoint = exitPathFiltered[0] || exitPath[0]
+  const exitPoint = finalExitPoint || exitPathFiltered[0] || exitPath[0]
 
   const findNearestIndex = (pt: Point) => {
     let best = 0; let bestD = Infinity
@@ -609,7 +650,7 @@ function buildFullPath(
       }
     }
 
-    exitPathFiltered.forEach(p => pushIfDifferent(parts, p))
+    if (finalExitPoint) pushIfDifferent(parts, finalExitPoint)
     return avoidForbiddenZones(parts, config)
   }
 
@@ -618,7 +659,7 @@ function buildFullPath(
     if (!roomPoint || !exitPoint) {
       const parts: Point[] = []
       roomPrefix.forEach(p => pushIfDifferent(parts, p))
-      exitPathFiltered.forEach(p => pushIfDifferent(parts, p))
+      if (finalExitPoint) pushIfDifferent(parts, finalExitPoint)
       return avoidForbiddenZones(parts, config)
     }
 
@@ -629,14 +670,14 @@ function buildFullPath(
     const parts: Point[] = []
     roomPrefix.forEach(p => pushIfDifferent(parts, p))
     if (idxChain) for (const i of idxChain) pushIfDifferent(parts, { x: nodes[i].x, y: nodes[i].y })
-    exitPathFiltered.forEach(p => pushIfDifferent(parts, p))
+    if (finalExitPoint) pushIfDifferent(parts, finalExitPoint)
     return avoidForbiddenZones(parts, config)
   }
 
   // Fallback: direct room center -> exit path
   const parts: Point[] = []
   roomPrefix.forEach(p => pushIfDifferent(parts, p))
-    exitPathFiltered.forEach(p => pushIfDifferent(parts, p))
+    if (finalExitPoint) pushIfDifferent(parts, finalExitPoint)
   return avoidForbiddenZones(parts, config)
 }
 
@@ -818,7 +859,7 @@ function ObstacleLayer({ obstacles }: { obstacles: ObstacleDef[] }) {
 function SimOverlay({ config, disaster, selectedExit, selectedRoom, agentPos, phase, blockedExits, onExitClick, selectedVias, onViaClick, activeNode, neighborOptions, onRequestNeighbors, onChooseNeighbor }: FloorPlanProps) {
   const obstacles = config.obstacles[disaster]
   const isPlanning = phase === 'planning'
-  const showHazards = phase !== 'planning'
+  const showHazards = false
   const pathD = (points: Point[]) => points.map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x},${p.y}`).join(' ')
 
   return (
@@ -840,12 +881,10 @@ function SimOverlay({ config, disaster, selectedExit, selectedRoom, agentPos, ph
       {/* Hazards only visible during simulation, not planning */}
       {showHazards && <ObstacleLayer obstacles={obstacles} />}
 
-      {/* Planning phase: show ALL exit paths as clickable previews so user can plan */}
-      {isPlanning && selectedRoom && Object.keys(config.primaryPaths).map(exitKey => {
+      {/* Planning phase: show all previews only until an exit is chosen */}
+      {isPlanning && selectedRoom && !selectedExit && Object.keys(config.primaryPaths).map(exitKey => {
         const fullPath = buildFullPath(config, selectedRoom, exitKey, selectedVias, { previewFromCorridorEntry: true })
-        const isSelected = selectedExit === exitKey
         const isBlocked = blockedExits.has(exitKey)
-        if (isSelected) return null // drawn separately below with stronger style
         return (
           <g key={`preview-${exitKey}`}
             onClick={() => onExitClick(exitKey)}
@@ -1192,6 +1231,7 @@ export default function SimulationRunPage() {
   const [metrics,       setMetrics]       = useState<SimMetrics | null>(null)
   const [events,        setEvents]        = useState<SimEvent[]>([])
   const [elapsedSec,    setElapsedSec]    = useState(0)
+  const [activeBlockedExits, setActiveBlockedExits] = useState<Set<string>>(new Set())
 
   const animRef   = useRef<ReturnType<typeof setInterval> | null>(null)
   const phase2Ref = useRef<SimPhase>('planning')
@@ -1221,11 +1261,17 @@ export default function SimulationRunPage() {
     setNeighborOptions(null)
   }, [selectedRoom])
 
-  const blockedExits = config
-    ? new Set(config.obstacles[disaster].flatMap(o => o.blocksExits))
-    : new Set<string>()
+  const potentialBlockedExits = useMemo(() => {
+    return config
+      ? new Set(config.obstacles[disaster].flatMap(o => o.blocksExits))
+      : new Set<string>()
+  }, [config, disaster])
 
-  const routes = config ? analyzeRoutes(config, selectedRoom, disaster, blockedExits) : []
+  const blockedExits = useMemo(() => {
+    return phase === 'planning' ? new Set<string>() : activeBlockedExits
+  }, [phase, activeBlockedExits])
+
+  const routes = config ? analyzeRoutes(config, selectedRoom, disaster, potentialBlockedExits, blockedExits) : []
   const fastestExit = routes.length > 0 ? getRecommendedExit(routes, 'fastest') : null
   const safestExit = routes.length > 0 ? getRecommendedExit(routes, 'safest') : null
   const fastestRoute = routes.find(r => r.exitKey === fastestExit)
@@ -1296,9 +1342,10 @@ export default function SimulationRunPage() {
     if (!selectedExit || !config) return
     setPhase('running')
     setEvents([])
+    setActiveBlockedExits(new Set())
 
     const primaryPath     = buildFullPath(config, selectedRoom, selectedExit, selectedVias)
-    const isBlocked       = blockedExits.has(selectedExit)
+    const isBlocked       = potentialBlockedExits.has(selectedExit)
     const totalPrimary    = pathLength(primaryPath)
     const SPEED           = 80
 
@@ -1337,6 +1384,11 @@ export default function SimulationRunPage() {
 
       if (isBlocked && t >= blockT && !hasRerouted) {
         hasRerouted = true
+        setActiveBlockedExits(prev => {
+          const next = new Set(prev)
+          next.add(selectedExit)
+          return next
+        })
         setPhase('rerouting')
         phase2Ref.current = 'rerouting'
 
@@ -1374,7 +1426,7 @@ export default function SimulationRunPage() {
         finishSimulation(selectedExit, selectedExit, false, elapsed / 1000)
       }
     }, TICK)
-  }, [selectedExit, selectedRoom, selectedVias, config, disaster, blockedExits, pushEvent, finishSimulation])
+  }, [selectedExit, selectedRoom, selectedVias, config, disaster, potentialBlockedExits, pushEvent, finishSimulation])
 
   const reset = () => {
     if (animRef.current) clearInterval(animRef.current)
@@ -1392,6 +1444,7 @@ export default function SimulationRunPage() {
     setMetrics(null)
     setEvents([])
     setElapsedSec(0)
+    setActiveBlockedExits(new Set())
   }
 
   // Undo last planning action: removes last via, or clears manual exit/routeMode if none
@@ -1419,6 +1472,7 @@ export default function SimulationRunPage() {
     setMetrics(null)
     setEvents([])
     setElapsedSec(0)
+    setActiveBlockedExits(new Set())
     if (config) {
       if (selectedRoom && config.rooms[selectedRoom]) {
         const room = config.rooms[selectedRoom]
@@ -1647,7 +1701,7 @@ export default function SimulationRunPage() {
                         <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '2px' }}>Fastest Route</div>
                         <div style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
                           Exit {fastestExit} {'\u00B7'} {fastestRoute ? `~${fastestRoute.estimatedTime}s` : ''} {'\u00B7'} Shortest path
-                          {fastestRoute?.isBlocked ? ' \u00B7 May be blocked' : ''}
+                          {fastestRoute?.mayBlock ? ' \u00B7 May be blocked' : ''}
                         </div>
                       </div>
                       {routeMode === 'fastest' && <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>}
@@ -1659,8 +1713,9 @@ export default function SimulationRunPage() {
                       <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
                         {Object.keys(config.exits).map(key => {
                           const blocked = blockedExits.has(key)
+                          const mayBlock = potentialBlockedExits.has(key)
                           const selected = selectedExit === key && routeMode === null
-                          const color = blocked ? '#ef4444' : '#64748b'
+                          const color = blocked ? '#ef4444' : mayBlock ? '#f59e0b' : '#64748b'
                           return (
                             <button key={key} onClick={() => { setRouteMode(null); setSelectedExit(key) }}
                               style={{
@@ -1671,7 +1726,7 @@ export default function SimulationRunPage() {
                                 cursor: 'pointer', transition: 'all 0.15s',
                               }}>
                               {key} {'\u00B7'} {config.exits[key].desc.split('\u00B7')[0].trim()}
-                              {blocked && ' (blocked)'}
+                              {blocked ? ' (blocked)' : mayBlock ? ' (risk)' : ''}
                             </button>
                           )
                         })}
