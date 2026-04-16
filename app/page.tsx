@@ -265,57 +265,7 @@ function RecentRunsTable({ runs }: RecentRunsTableProps) {
                 No completed simulation runs yet
               </td>
             </tr>
-          </tbody>
-        </table>
-      </div>
-
-      {/* Quick Actions */}
-      <div style={{
-        background: '#ffffff',
-        border: '1px solid var(--border)',
-        borderRadius: '14px',
-        padding: '28px 32px',
-        boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
-        marginBottom: '24px',
-      }}>
-        <h2 style={{ margin: '0 0 14px', fontSize: '14px', fontWeight: '600', color: 'var(--text-primary)' }}>Quick Actions</h2>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px' }}>
-          {[
-            { href: '/simulate?disaster=fire', label: 'Fire Simulation', sub: 'High urgency scenario', color: '#ff6b35'},
-            { href: '/simulate?disaster=earthquake', label: 'Earthquake Simulation', sub: 'Dynamic obstacles scenario', color: '#f59e0b'},
-            { href: '/analysis', label: 'Heatmap Analysis', sub: 'Density analysis', color: '#2db8b0' },
-          ].map(item => (
-            <a key={item.href} href={item.href} style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '14px',
-              padding: '12px 14px',
-              background: '#f8fafc',
-              borderRadius: '8px',
-              textDecoration: 'none',
-              transition: 'background 0.15s',
-            }}>
-              <div style={{
-                width: '36px',
-                height: '36px',
-                borderRadius: '8px',
-                background: `${item.color}18`,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: '18px',
-                flexShrink: 0,
-              }}>
-              </div>
-              <div>
-                <div style={{ fontSize: '13px', fontWeight: '600', color: 'var(--text-primary)' }}>{item.label}</div>
-                <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>{item.sub}</div>
-              </div>
-            </a>
-          ))}
-        </div>
-      </div>
-          /*) : (
+          ) : (
             runs.map(run => (
               <tr key={run.id} style={{ borderBottom: '1px solid var(--border)' }}>
                 <td style={{ padding: '12px', fontSize: '13px', color: 'var(--text-primary)', fontWeight: '500', textTransform: 'capitalize' }}>
@@ -334,7 +284,7 @@ function RecentRunsTable({ runs }: RecentRunsTableProps) {
           )}
         </tbody>
       </table>
-    </> */
+    </>
   )
 }
 

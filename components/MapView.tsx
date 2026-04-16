@@ -3,8 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import Map, { Source, Layer, NavigationControl, Marker } from 'react-map-gl/mapbox'
 import type { MapRef, MapMouseEvent } from 'react-map-gl/mapbox'
-import type { FillExtrusionLayerSpecification, FillLayerSpecification, LineLayerSpecification } from 'mapbox-gl'
-import 'mapbox-gl/dist/mapbox-gl.css'
+import type { FillExtrusionLayerSpecification, FillLayerSpecification, LineLayerSpecification, MapboxGeoJSONFeature } from 'mapbox-gl'
 
 const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || ''
 
@@ -136,18 +135,11 @@ export default function MapView({ regions, markers, onRegionClick, onBuildingCli
 
   const geojson = useMemo(() => regionsToGeoJSON(regions ?? [], hoverOnly ? hoveredId : undefined), [regions, hoverOnly, hoveredId])
 
-  const canRenderMarkers = useMemo(() => {
-    if (!markersReady || !markers?.length) return false
-    const map = mapRef.current?.getMap()
-    return Boolean(map?.getCanvasContainer())
-  }, [markersReady, markers])
+  const canRenderMarkers = markersReady && Boolean(markers?.length)
 
   // Delay marker rendering until map is fully ready
   useEffect(() => {
-    if (!mapLoaded) {
-      setMarkersReady(false)
-      return
-    }
+    if (!mapLoaded) return
     const timer = setTimeout(() => {
       const map = mapRef.current?.getMap()
       setMarkersReady(Boolean(map?.getCanvasContainer()))
@@ -212,36 +204,38 @@ export default function MapView({ regions, markers, onRegionClick, onBuildingCli
       let labelLayerId: string | undefined
       if (layers) {
         for (const layer of layers) {
-          if (layer.type === 'symbol' && (layer as any).layout?.['text-field']) {
+          if (layer.type === 'symbol' && layer.layout && 'text-field' in layer.layout) {
             labelLayerId = layer.id
             break
           }
         }
       }
 
+      const mapbox3DBuildingsLayer: FillExtrusionLayerSpecification = {
+        id: 'mapbox-3d-buildings',
+        source: 'composite',
+        'source-layer': 'building',
+        filter: ['==', 'extrude', 'true'],
+        type: 'fill-extrusion',
+        minzoom: 14,
+        paint: {
+          'fill-extrusion-color': '#aaa',
+          'fill-extrusion-height': [
+            'interpolate', ['linear'], ['zoom'],
+            14, 0,
+            14.05, ['get', 'height'],
+          ],
+          'fill-extrusion-base': [
+            'interpolate', ['linear'], ['zoom'],
+            14, 0,
+            14.05, ['get', 'min_height'],
+          ],
+          'fill-extrusion-opacity': 0.5,
+        },
+      }
+
       map.addLayer(
-        {
-          id: 'mapbox-3d-buildings',
-          source: 'composite',
-          'source-layer': 'building',
-          filter: ['==', 'extrude', 'true'],
-          type: 'fill-extrusion',
-          minzoom: 14,
-          paint: {
-            'fill-extrusion-color': '#aaa',
-            'fill-extrusion-height': [
-              'interpolate', ['linear'], ['zoom'],
-              14, 0,
-              14.05, ['get', 'height'],
-            ],
-            'fill-extrusion-base': [
-              'interpolate', ['linear'], ['zoom'],
-              14, 0,
-              14.05, ['get', 'min_height'],
-            ],
-            'fill-extrusion-opacity': 0.5,
-          },
-        } as any,
+        mapbox3DBuildingsLayer,
         labelLayerId,
       )
     }
@@ -253,7 +247,7 @@ export default function MapView({ regions, markers, onRegionClick, onBuildingCli
     return () => {
       map.off('style.load', add3DBuildings)
     }
-  }, [mapLoaded])
+  }, [mapLoaded, flat2d])
 
   // Fly to center using Nominatim (skip when style is locked â€” page controls its own bounds)
   useEffect(() => {
@@ -392,7 +386,7 @@ export default function MapView({ regions, markers, onRegionClick, onBuildingCli
         // In flat 2D mode, query all features at click point and find buildings
         const map = mapRef.current?.getMap()
         if (!map || !e.point) return
-        let building: any
+        let building: MapboxGeoJSONFeature | undefined
         try {
           const allFeatures = map.queryRenderedFeatures(e.point)
           building = allFeatures.find(f => f.sourceLayer === 'building')
@@ -515,16 +509,10 @@ export default function MapView({ regions, markers, onRegionClick, onBuildingCli
     },
   }
 
-  useEffect(() => {
-    if (!regions?.length) return
-    const hasSelectedRegion = regions.some((r) => Boolean(r.selected))
-    if (!hasSelectedRegion) {
-      setSelectedMapboxBuildingId(null)
-      setSelectedMapboxBuildingPropertyId(null)
-    }
-  }, [regions])
+  const hasSelectedCustomRegion = regions?.some((r) => Boolean(r.selected)) ?? false
 
   const selectedMapboxBuildingFilter = useMemo(() => {
+    if (regions?.length && !hasSelectedCustomRegion) return null
     const extrudeFilter = ['==', ['get', 'extrude'], 'true'] as const
     if (selectedMapboxBuildingId !== null && selectedMapboxBuildingPropertyId !== null) {
       return ['all', extrudeFilter, ['any', ['==', ['id'], selectedMapboxBuildingId], ['==', ['get', 'id'], selectedMapboxBuildingPropertyId]]]
@@ -536,7 +524,7 @@ export default function MapView({ regions, markers, onRegionClick, onBuildingCli
       return ['all', extrudeFilter, ['==', ['get', 'id'], selectedMapboxBuildingPropertyId]]
     }
     return null
-  }, [selectedMapboxBuildingId, selectedMapboxBuildingPropertyId])
+  }, [selectedMapboxBuildingId, selectedMapboxBuildingPropertyId, regions, hasSelectedCustomRegion])
 
   return (
     <div ref={containerRef} style={{ position: 'relative', height: '100%', width: '100%', borderRadius: '12px', overflow: 'hidden' }}>
