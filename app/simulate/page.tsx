@@ -186,18 +186,97 @@ const BUILDING_DETAILS: Record<string, BuildingDetail> = {
   },
 }
 
+interface BuildingBounds {
+  south: number
+  north: number
+  west: number
+  east: number
+}
+
+function normalizeBounds(bounds: BuildingBounds): BuildingBounds {
+  return {
+    south: Math.min(bounds.south, bounds.north),
+    north: Math.max(bounds.south, bounds.north),
+    west: Math.min(bounds.west, bounds.east),
+    east: Math.max(bounds.west, bounds.east),
+  }
+}
+
+function boundsCenter(bounds: BuildingBounds): { lat: number; lng: number } {
+  const b = normalizeBounds(bounds)
+  return {
+    lat: (b.south + b.north) / 2,
+    lng: (b.west + b.east) / 2,
+  }
+}
+
+function boundsArea(bounds: BuildingBounds): number {
+  const b = normalizeBounds(bounds)
+  return Math.abs((b.north - b.south) * (b.east - b.west))
+}
+
 function findBuildingByCoords(lat: number, lng: number): string | null {
   // Expand bounds slightly to be more forgiving with click targets
   const pad = 0.0003
-  for (const b of CAMPUS_BUILDINGS) {
-    if (
-      lat >= b.bounds.south - pad && lat <= b.bounds.north + pad &&
-      lng >= b.bounds.west - pad && lng <= b.bounds.east + pad
-    ) {
-      return b.id
-    }
+  const matches = CAMPUS_BUILDINGS.filter(b => {
+    const n = normalizeBounds(b.bounds)
+    return (
+      lat >= n.south - pad && lat <= n.north + pad &&
+      lng >= n.west - pad && lng <= n.east + pad
+    )
+  })
+
+  if (matches.length === 0) return null
+  if (matches.length === 1) return matches[0].id
+
+  // If bounds overlap, pick the most specific (smallest) bounding box.
+  matches.sort((a, b) => boundsArea(a.bounds) - boundsArea(b.bounds))
+  return matches[0].id
+}
+
+function hasBuildingDetail(buildingId: string): boolean {
+  return Boolean(BUILDING_DETAILS[buildingId])
+}
+
+function hasMarker(buildingId: string): boolean {
+  return MARKER_BUILDING_IDS.includes(buildingId)
+}
+
+function buildBoundsMarkers(): MapMarker[] {
+  return CAMPUS_BUILDINGS
+    .filter(b => hasMarker(b.id))
+    .map((b) => {
+      const c = boundsCenter(b.bounds)
+      return {
+        id: b.id,
+        label: b.name as string,
+        lat: c.lat,
+        lng: c.lng,
+      }
+    })
+}
+
+function attachMarkerClicks(markers: MapMarker[], onOpenPanel: (buildingId: string) => void): MapMarker[] {
+  return markers.map((m) => ({
+    ...m,
+    onClick: () => onOpenPanel(m.id),
+  }))
+}
+
+function openBuildingFromCoords(coords: [number, number], onOpenPanel: (buildingId: string) => void): void {
+  const [lat, lng] = coords
+  const buildingId = findBuildingByCoords(lat, lng)
+  if (buildingId) onOpenPanel(buildingId)
+}
+
+function handleBuildingClickFromMap(coords: [number, number], onOpenPanel: (buildingId: string) => void): void {
+  openBuildingFromCoords(coords, onOpenPanel)
+}
+
+function toPanelOpenHandler(setter: (id: string | null) => void): (buildingId: string) => void {
+  return (buildingId: string) => {
+    if (hasBuildingDetail(buildingId)) setter(buildingId)
   }
-  return null
 }
 
 /* ── Building detail side-panel ─────────────────────────────────────────── */
@@ -237,12 +316,10 @@ const TYPE_ICONS: Record<string, React.ReactElement> = {
 
 function BuildingPanel({
   detail,
-  buildingId,
   onClose,
   onSimulate,
 }: {
   detail: BuildingDetail
-  buildingId: string
   onClose: () => void
   onSimulate: () => void
 }) {
@@ -436,22 +513,10 @@ export default function SimulatePage() {
   const { isAuthenticated, isLoading: isAuthLoading } = useAuth()
   const router = useRouter()
   const [selectedBuildingId, setSelectedBuildingId] = useState<string | null>(null)
+  const openPanel = toPanelOpenHandler(setSelectedBuildingId)
 
   const selectedBuilding = selectedBuildingId ? BUILDING_DETAILS[selectedBuildingId] : null
-
-  const openPanel = (id: string) => {
-    if (BUILDING_DETAILS[id]) setSelectedBuildingId(id)
-  }
-
-  const markers: MapMarker[] = CAMPUS_BUILDINGS
-    .filter(b => MARKER_BUILDING_IDS.includes(b.id) && b.name !== undefined)
-    .map(b => ({
-      id: b.id,
-      label: b.name as string,
-      lat: (b.bounds.south + b.bounds.north) / 2,
-      lng: (b.bounds.west + b.bounds.east) / 2,
-      onClick: () => openPanel(b.id),
-    }))
+  const markers: MapMarker[] = attachMarkerClicks(buildBoundsMarkers(), openPanel)
   // Sim parameters
   const [agents, setAgents] = useState(120)
   const [gridWidth, setGridWidth] = useState(60)
@@ -665,9 +730,7 @@ export default function SimulatePage() {
           flat2d
           markers={markers}
           onBuildingClick={(_name, coords) => {
-            const [lat, lng] = coords
-            const buildingId = findBuildingByCoords(lat, lng)
-            if (buildingId) openPanel(buildingId)
+            handleBuildingClickFromMap(coords, openPanel)
           }}
         />
 
@@ -709,7 +772,6 @@ export default function SimulatePage() {
         {selectedBuilding && selectedBuildingId && (
           <BuildingPanel
             detail={selectedBuilding}
-            buildingId={selectedBuildingId}
             onClose={() => setSelectedBuildingId(null)}
             onSimulate={() => router.push(`/simulate/${encodeURIComponent(selectedBuildingId)}/disaster`)}
           />

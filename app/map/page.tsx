@@ -153,8 +153,8 @@ const CAMPUS_BUILDINGS: CampusBuilding[] = [
     polygon: [
       [10.3258, 123.8990],
       [10.3258, 123.9000],
-      [10.3210, 123.9000],
-      [10.3210, 123.8990],
+      [10.3242, 123.9000],
+      [10.3242, 123.8990],
     ],
     capacity: 200,
     floors: 3,
@@ -215,21 +215,21 @@ const CAMPUS_BUILDINGS: CampusBuilding[] = [
     notes: 'Central administrative offices. Houses the registrar, cashier, and chancellor\'s office. Main entrance faces the campus quadrangle.',
   },
   {
-    id: 'cultural-center',
-    name: 'Cebu Cultural Center',
-    type: 'Closed',
+    id: 'science-building',
+    name: 'Science Building',
+    type: 'Academic',
     polygon: [
       [10.3232, 123.8978],
       [10.3232, 123.8992],
       [10.3224, 123.8992],
       [10.3224, 123.8978],
     ],
-    capacity: 0,
-    floors: 1,
-    exits: 1,
-    riskLevel: 'N/A',
-    lastDrillDate: 'N/A',
-    notes: 'N/A',
+    capacity: 320,
+    floors: 3,
+    exits: 3,
+    riskLevel: 'HIGH',
+    lastDrillDate: '2025-10-12',
+    notes: 'Core facility for natural sciences instruction. Contains chemistry, biology, and physics laboratories with stricter evacuation constraints.',
   },
   {
     id: 'admin-building',
@@ -402,7 +402,6 @@ const CLICKABLE_IDS = [
   'cultural-center',
   'social-sciences',
   'science-building',
-  'lihangin-hall',
   'up-cebu-library',
   'up-high-school',
 ]
@@ -425,12 +424,44 @@ function pointInPolygon(point: [number, number], polygon: [number, number][]): b
   return inside
 }
 
-function findBuildingByCoords(lat: number, lng: number): CampusBuilding | null {
-  for (const b of CAMPUS_BUILDINGS) {
-    if (!CLICKABLE_IDS.includes(b.id)) continue
-    if (pointInPolygon([lat, lng], b.polygon)) return b
+function polygonArea(polygon: [number, number][]): number {
+  if (polygon.length < 3) return Number.POSITIVE_INFINITY
+  let area = 0
+  for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+    const [latI, lngI] = polygon[i]
+    const [latJ, lngJ] = polygon[j]
+    area += lngJ * latI - lngI * latJ
   }
-  return null
+  return Math.abs(area) / 2
+}
+
+function centroidDistance(point: [number, number], polygon: [number, number][]): number {
+  if (polygon.length === 0) return Number.POSITIVE_INFINITY
+  let latSum = 0
+  let lngSum = 0
+  for (const [lat, lng] of polygon) {
+    latSum += lat
+    lngSum += lng
+  }
+  const cLat = latSum / polygon.length
+  const cLng = lngSum / polygon.length
+  return Math.hypot(point[0] - cLat, point[1] - cLng)
+}
+
+function findBuildingByCoords(lat: number, lng: number): CampusBuilding | null {
+  const candidates = CAMPUS_BUILDINGS
+    .filter(b => CLICKABLE_IDS.includes(b.id))
+    .filter(b => pointInPolygon([lat, lng], b.polygon))
+
+  if (candidates.length === 0) return null
+  if (candidates.length === 1) return candidates[0]
+
+  return [...candidates]
+    .sort((a, b) => {
+      const areaDelta = polygonArea(a.polygon) - polygonArea(b.polygon)
+      if (Math.abs(areaDelta) > Number.EPSILON) return areaDelta
+      return centroidDistance([lat, lng], a.polygon) - centroidDistance([lat, lng], b.polygon)
+    })[0]
 }
 
 function getPlaceholderAnalytics(building: CampusBuilding): PlaceholderAnalytics {
@@ -491,7 +522,9 @@ export default function MapPage() {
   )
   const regions: MapRegion[] = useMemo(
     () =>
-      CAMPUS_BUILDINGS.map((b) => ({
+      [...CAMPUS_BUILDINGS]
+        .sort((a, b) => polygonArea(b.polygon) - polygonArea(a.polygon))
+        .map((b) => ({
         id: b.id,
         polygon: b.polygon as [number, number][],
         selected: b.id === selected,

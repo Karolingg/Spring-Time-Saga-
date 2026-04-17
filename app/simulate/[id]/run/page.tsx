@@ -213,7 +213,7 @@ const CSB_1F: FloorConfig = {
     { label: 'Left Corridor',    x: 364, y: 369, neighbors: ['Near Room 204'] },
     { label: 'Near Room 204',    x: 364, y: 255, neighbors: ['Left Corridor', 'Upper Corridor'] },
     { label: 'Upper Corridor',   x: 364, y: 173, neighbors: ['Near Room 204', 'Near Stairs'] },
-    { label: 'Near Stairs',      x: 482, y: 173, neighbors: ['Upper Corridor', 'Near Toilet'] },
+    { label: 'Near Stairs',      x: 485, y: 173, neighbors: ['Upper Corridor', 'Near Toilet'] },
     { label: 'Near Toilet',      x: 613, y: 173, neighbors: ['Near Stairs', 'Near Room 202'] },
     { label: 'Near Room 202',    x: 613, y: 220, neighbors: ['Near Toilet', 'Near Room 201'] },
     { label: 'Near Room 201',    x: 613, y: 310, neighbors: ['Near Room 202', 'East Corridor'] },
@@ -225,24 +225,23 @@ const CSB_2F: FloorConfig = {
   viewWidth: 1200, viewHeight: 675,
   floorLabel: '2nd Floor',
   exits: {
-    S1: { x: 490, y: 266.5, label: 'S1', desc: '' },
-    S2: { x: 365, y: 520, label: 'E2', desc: '' },
-    S3: { x: 608, y: 520, label: 'E3', desc: '' },
-    S5: { x: 365, y: 80, label: 'E', desc: 'test node' },
+    S1: { x: 490, y: 266.5, label: 'S1', desc: 'Center Stairs · Down' },
+    S2: { x: 360, y: 520, label: 'S2', desc: 'SW Stairs · Down' },
+    S3: { x: 613, y: 520, label: 'S3', desc: 'SE Stairs · Down' },
   },
   startPos: { x: 0, y: 0 },
   primaryPaths: {
     // Center stairwell: connect directly from Near Stairs to S1
-    S1: [{ x: 482, y: 173 },{ x: 490, y: 266.5 }],
+    S1: [{ x: 482, y: 173 },{ x: 490, y: 220 },{ x: 490, y: 266.5 }],
     // Left corridor lane to SW stairs (S2)
-    S2: [{ x: 365, y: 255 },{ x: 365, y: 490 }, {x: 365, y: 170}],
+    S2: [{ x: 365, y: 360 },{ x: 365, y: 420 },{ x: 365, y: 490 },{ x: 365, y: 520 }],
     // East corridor lane to SE stairs (S3)
-    S3: [{ x: 613, y: 420 },{ x: 613, y: 490 },{ x: 613, y: 310}],
+    S3: [{ x: 613, y: 420 },{ x: 613, y: 490 },{ x: 608, y: 520 }],
   },
   reroutes: {
-    S1: { to: 'S2', path: [{ x: 482, y: 220 },{ x: 482, y: 300 },{ x: 490, y: 350 },{ x: 490, y: 410 },{ x: 490, y: 455 },{ x: 430, y: 470 },{ x: 370, y: 490 }] },
-    S2: { to: 'S3', path: [{ x: 430, y: 470 },{ x: 490, y: 455 },{ x: 550, y: 470 },{ x: 610, y: 490 }] },
-    S3: { to: 'S2', path: [{ x: 550, y: 470 },{ x: 490, y: 455 },{ x: 430, y: 470 },{ x: 370, y: 490 }] },
+    S1: { to: 'S2', path: [{ x: 482, y: 220 },{ x: 482, y: 300 },{ x: 430, y: 360 },{ x: 365, y: 420 },{ x: 365, y: 490 },{ x: 365, y: 520 }] },
+    S2: { to: 'S3', path: [{ x: 365, y: 490 },{ x: 430, y: 490 },{ x: 490, y: 490 },{ x: 550, y: 490 },{ x: 608, y: 520 }] },
+    S3: { to: 'S2', path: [{ x: 608, y: 520 },{ x: 550, y: 490 },{ x: 490, y: 490 },{ x: 430, y: 490 },{ x: 365, y: 490 },{ x: 365, y: 520 }] },
   },
   blockT: { S1: 0.55, S2: 0.50, S3: 0.50 },
   obstacles: {
@@ -266,14 +265,15 @@ const CSB_2F: FloorConfig = {
     r201:     { label: 'Room 201',     x: 730, y: 420, corridorEntryNode: 'East Corridor' },
   },
   corridorNodes: [
-    { label: 'Left Corridor',    x: 365, y: 360, neighbors: ['Near Room 204'] },
+    { label: 'Left Corridor',    x: 360, y: 360, neighbors: ['Near Room 204'] },
     // Keep Near Room 204 isolated from Near Toilet; route must pass through Upper Corridor/Near Stairs.
-    { label: 'Near Room 204',    x: 365, y: 255, neighbors: ['Left Corridor', 'Upper Corridor'] },
-    { label: 'Upper Corridor',   x: 365, y: 173, neighbors: ['Near Room 204', 'Near Stairs'] },
-    { label: 'Near Stairs',      x: 482, y: 173, neighbors: ['Upper Corridor', 'Near Toilet', 'S1 Exit'] },
+    { label: 'Near Room 204',    x: 360, y: 255, neighbors: ['Left Corridor', 'Upper Corridor'] },
+    { label: 'Upper Corridor',   x: 360, y: 173, neighbors: ['Near Room 204', 'Near Stairs'] },
+    { label: 'Near Stairs',      x: 490, y: 173, neighbors: ['Upper Corridor', 'Near Toilet', 'S1 Exit'] },
     { label: 'S1 Exit',          x: 490, y: 266.5, neighbors: ['Near Stairs'] },
-    { label: 'Near Room 201',    x: 613, y: 310, neighbors: ['Near Toilet', 'East Corridor'] },
     { label: 'Near Toilet',      x: 613, y: 173, neighbors: ['Near Stairs', 'Near Room 202'] },
+    { label: 'Near Room 202',    x: 613, y: 220, neighbors: ['Near Toilet', 'Near Room 201'] },
+    { label: 'Near Room 201',    x: 613, y: 310, neighbors: ['Near Room 202', 'East Corridor'] },
     { label: 'East Corridor',    x: 613, y: 420, neighbors: ['Near Room 201'] },
   ],
 }
@@ -375,12 +375,80 @@ const BUILDING_FLOORS: Record<string, FloorConfig[]> = {
   'science-building': [CSB_1F, CSB_2F],
 }
 
+function validateFloorConfig(config: FloorConfig, buildingId: string, floorIndex: number) {
+  const issues: string[] = []
+  const exitKeys = new Set(Object.keys(config.exits))
+
+  const mapsToValidate: Array<{ name: string; keys: string[] }> = [
+    { name: 'primaryPaths', keys: Object.keys(config.primaryPaths) },
+    { name: 'reroutes', keys: Object.keys(config.reroutes) },
+    { name: 'blockT', keys: Object.keys(config.blockT) },
+    { name: 'efficiency', keys: Object.keys(config.efficiency) },
+  ]
+
+  for (const { name, keys } of mapsToValidate) {
+    for (const exitKey of exitKeys) {
+      if (!keys.includes(exitKey)) {
+        issues.push(`${name} is missing key "${exitKey}"`)
+      }
+    }
+    for (const key of keys) {
+      if (!exitKeys.has(key)) {
+        issues.push(`${name} has unknown exit key "${key}"`)
+      }
+    }
+  }
+
+  for (const [from, reroute] of Object.entries(config.reroutes)) {
+    if (!exitKeys.has(reroute.to)) {
+      issues.push(`reroutes.${from}.to points to unknown exit "${reroute.to}"`)
+    }
+    if (from !== reroute.to && reroute.path.length === 0) {
+      issues.push(`reroutes.${from}.path is empty`)
+    }
+  }
+
+  if (config.corridorNodes && config.corridorNodes.length > 0) {
+    const labelSet = new Set<string>()
+    for (const node of config.corridorNodes) {
+      if (labelSet.has(node.label)) {
+        issues.push(`corridorNodes has duplicate label "${node.label}"`)
+      }
+      labelSet.add(node.label)
+    }
+
+    for (const node of config.corridorNodes) {
+      for (const neighbor of node.neighbors || []) {
+        if (!labelSet.has(neighbor)) {
+          issues.push(`corridorNodes.${node.label} references missing neighbor "${neighbor}"`)
+        }
+      }
+    }
+
+    for (const [roomKey, room] of Object.entries(config.rooms)) {
+      if (room.corridorEntryNode && !labelSet.has(room.corridorEntryNode)) {
+        issues.push(`rooms.${roomKey}.corridorEntryNode references missing node "${room.corridorEntryNode}"`)
+      }
+    }
+  }
+
+  if (issues.length > 0) {
+    const floorName = config.floorLabel || `floor-${floorIndex + 1}`
+    console.warn(`[sim-config] ${buildingId}/${floorName}`, issues)
+  }
+}
+
+function validateFloorConfigs(buildingId: string, floors: FloorConfig[]): FloorConfig[] {
+  floors.forEach((floor, index) => validateFloorConfig(floor, buildingId, index))
+  return floors
+}
+
 function getFloorConfigs(buildingId: string): FloorConfig[] {
-  if (BUILDING_FLOORS[buildingId]) return BUILDING_FLOORS[buildingId]
+  if (BUILDING_FLOORS[buildingId]) return validateFloorConfigs(buildingId, BUILDING_FLOORS[buildingId])
   const count = BUILDING_FLOOR_COUNT[buildingId]
-  if (count) return Array.from({ length: count }, (_, i) => makePlaceholderFloor(i))
+  if (count) return validateFloorConfigs(buildingId, Array.from({ length: count }, (_, i) => makePlaceholderFloor(i)))
   // Fallback: 2-floor placeholder
-  return [makePlaceholderFloor(0), makePlaceholderFloor(1)]
+  return validateFloorConfigs(buildingId, [makePlaceholderFloor(0), makePlaceholderFloor(1)])
 }
 
 // ─── Path Math ───────────────────────────────────────────────────────────────
@@ -573,11 +641,24 @@ function buildFullPath(
   const getNeighborIndexes = (u: number): number[] => {
     const currentNode = nodes[u]
     if (!currentNode) return []
-    const raw = (currentNode.neighbors && currentNode.neighbors.length > 0)
-      ? currentNode.neighbors
-          .map(lbl => nodeIndex.get(lbl))
-          .filter((idx): idx is number => idx !== undefined)
-      : Array.from({ length: nodes.length }, (_, i) => i).filter(i => i !== u)
+
+    const direct = (currentNode.neighbors || [])
+      .map(lbl => nodeIndex.get(lbl))
+      .filter((idx): idx is number => idx !== undefined)
+
+    const reverse = nodes
+      .map((n, i) => ({ n, i }))
+      .filter(({ i }) => i !== u)
+      .filter(({ n }) => (n.neighbors || []).includes(currentNode.label))
+      .map(({ i }) => i)
+
+    const explicit = Array.from(new Set([...direct, ...reverse]))
+    if (explicit.length > 0) {
+      return explicit.filter(v => !!nodes[v])
+    }
+
+    // Fallback for configs without explicit graph links.
+    const raw = Array.from({ length: nodes.length }, (_, i) => i).filter(i => i !== u)
     return raw.filter(v => {
       const target = nodes[v]
       return !!target && isNodeConnectionAllowed(currentNode, target, config)
@@ -681,6 +762,154 @@ function buildFullPath(
   return avoidForbiddenZones(parts, config)
 }
 
+function buildNodeProgressPreviewPath(
+  config: FloorConfig,
+  selectedRoom: string | null,
+  selectedVias: string[] | undefined,
+  entryNodeLabel: string | null | undefined,
+): Point[] {
+  if (!selectedRoom || !selectedVias || selectedVias.length === 0) return []
+  const room = config.rooms[selectedRoom]
+  if (!room) return []
+
+  const nodes = config.corridorNodes?.filter(n => !isForbiddenAnchor(n)) ?? []
+  const nodeByLabel = new Map(nodes.map(n => [n.label, n]))
+  const out: Point[] = []
+  const pushIfDifferent = (p: Point) => {
+    const last = out[out.length - 1]
+    if (!last || last.x !== p.x || last.y !== p.y) out.push(p)
+  }
+
+  pushIfDifferent({ x: room.x, y: room.y })
+  if (entryNodeLabel) {
+    const entry = nodeByLabel.get(entryNodeLabel)
+    if (entry) pushIfDifferent({ x: entry.x, y: entry.y })
+  }
+
+  for (const label of selectedVias) {
+    const node = nodeByLabel.get(label)
+    if (node) pushIfDifferent({ x: node.x, y: node.y })
+  }
+
+  return out
+}
+
+function buildNodeOnlyReroutePath(
+  config: FloorConfig,
+  fromPoint: Point,
+  toExitKey: string,
+): Point[] {
+  const exit = config.exits[toExitKey]
+  if (!exit) return [fromPoint]
+
+  const nodes = config.corridorNodes?.filter(n => !isForbiddenAnchor(n)) ?? []
+  if (nodes.length === 0) {
+    return [fromPoint, { x: exit.x, y: exit.y }]
+  }
+
+  const nodeIndex = new Map(nodes.map((n, i) => [n.label, i]))
+  const findNearestIndex = (pt: Point) => {
+    let best = 0
+    let bestDist = Infinity
+    for (let i = 0; i < nodes.length; i++) {
+      const d = Math.hypot(pt.x - nodes[i].x, pt.y - nodes[i].y)
+      if (d < bestDist) {
+        bestDist = d
+        best = i
+      }
+    }
+    return best
+  }
+
+  const getNeighborIndexes = (u: number): number[] => {
+    const currentNode = nodes[u]
+    if (!currentNode) return []
+
+    const direct = (currentNode.neighbors || [])
+      .map(lbl => nodeIndex.get(lbl))
+      .filter((idx): idx is number => idx !== undefined)
+
+    const reverse = nodes
+      .map((n, i) => ({ n, i }))
+      .filter(({ i }) => i !== u)
+      .filter(({ n }) => (n.neighbors || []).includes(currentNode.label))
+      .map(({ i }) => i)
+
+    const explicit = Array.from(new Set([...direct, ...reverse]))
+    if (explicit.length > 0) {
+      return explicit.filter(v => !!nodes[v])
+    }
+
+    const raw = Array.from({ length: nodes.length }, (_, i) => i).filter(i => i !== u)
+    return raw.filter(v => {
+      const target = nodes[v]
+      return !!target && isNodeConnectionAllowed(currentNode, target, config)
+    })
+  }
+
+  const shortestNodeChain = (s: number, t: number): number[] | null => {
+    const n = nodes.length
+    const D = Array(n).fill(Infinity)
+    const prev = Array(n).fill(-1)
+    const used = Array(n).fill(false)
+    D[s] = 0
+
+    for (;;) {
+      let u = -1
+      let best = Infinity
+      for (let i = 0; i < n; i++) {
+        if (!used[i] && D[i] < best) {
+          best = D[i]
+          u = i
+        }
+      }
+      if (u === -1) break
+      if (u === t) break
+      used[u] = true
+
+      const neighbors = getNeighborIndexes(u)
+      for (const v of neighbors) {
+        if (used[v]) continue
+        const w = Math.hypot(nodes[u].x - nodes[v].x, nodes[u].y - nodes[v].y)
+        if (D[u] + w < D[v]) {
+          D[v] = D[u] + w
+          prev[v] = u
+        }
+      }
+    }
+
+    if (prev[t] === -1 && s !== t) return null
+    const chain: number[] = []
+    let cur = t
+    while (cur !== -1) {
+      chain.push(cur)
+      cur = prev[cur]
+    }
+    chain.reverse()
+    return chain
+  }
+
+  const s = findNearestIndex(fromPoint)
+  const t = findNearestIndex({ x: exit.x, y: exit.y })
+  const idxChain = shortestNodeChain(s, t)
+
+  const out: Point[] = []
+  const pushIfDifferent = (p: Point) => {
+    const last = out[out.length - 1]
+    if (!last || last.x !== p.x || last.y !== p.y) out.push(p)
+  }
+
+  pushIfDifferent(fromPoint)
+  if (idxChain) {
+    for (const i of idxChain) {
+      pushIfDifferent({ x: nodes[i].x, y: nodes[i].y })
+    }
+  }
+  pushIfDifferent({ x: exit.x, y: exit.y })
+
+  return out
+}
+
 // --- Forbidden-zone helpers: avoid simple rectangular "railing/stairs" areas derived from corridorNodes
 function buildForbiddenRects(config: FloorConfig) {
   const rects: { x: number; y: number; w: number; h: number }[] = []
@@ -780,12 +1009,11 @@ interface FloorPlanProps {
   blockedExits: Set<string>
   onExitClick: (e: string) => void
   selectedVias?: string[]
-  onViaClick?: (label: string) => void
-  // Active corridor node for neighbor choices
-  activeNode?: string | null
-  neighborOptions?: string[] | null
-  onRequestNeighbors?: (label: string) => void
   onChooseNeighbor?: (label: string) => void
+  selectableNodeLabels?: string[]
+  entryNodeLabel?: string | null
+  currentNodeLabel?: string | null
+  backNodeLabel?: string | null
 }
 
 function ObstacleLayer({ obstacles }: { obstacles: ObstacleDef[] }) {
@@ -856,11 +1084,14 @@ function ObstacleLayer({ obstacles }: { obstacles: ObstacleDef[] }) {
   )
 }
 
-function SimOverlay({ config, disaster, selectedExit, selectedRoom, agentPos, phase, blockedExits, onExitClick, selectedVias, onViaClick, activeNode, neighborOptions, onRequestNeighbors, onChooseNeighbor }: FloorPlanProps) {
+function SimOverlay({ config, disaster, selectedExit, selectedRoom, agentPos, phase, blockedExits, onExitClick, selectedVias, onChooseNeighbor, selectableNodeLabels, entryNodeLabel, currentNodeLabel, backNodeLabel }: FloorPlanProps) {
   const obstacles = config.obstacles[disaster]
   const isPlanning = phase === 'planning'
   const showHazards = false
   const pathD = (points: Point[]) => points.map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x},${p.y}`).join(' ')
+  const nodeProgressPath = isPlanning && !selectedExit
+    ? buildNodeProgressPreviewPath(config, selectedRoom, selectedVias, entryNodeLabel)
+    : []
 
   return (
     <>
@@ -881,30 +1112,27 @@ function SimOverlay({ config, disaster, selectedExit, selectedRoom, agentPos, ph
       {/* Hazards only visible during simulation, not planning */}
       {showHazards && <ObstacleLayer obstacles={obstacles} />}
 
-      {/* Planning phase: show all previews only until an exit is chosen */}
-      {isPlanning && selectedRoom && !selectedExit && Object.keys(config.primaryPaths).map(exitKey => {
-        const fullPath = buildFullPath(config, selectedRoom, exitKey, selectedVias, { previewFromCorridorEntry: true })
-        const isBlocked = blockedExits.has(exitKey)
-        return (
-          <g key={`preview-${exitKey}`}
-            onClick={() => onExitClick(exitKey)}
-            style={{ cursor: 'pointer' }}>
-            {/* Invisible thick hitbox for easy clicking */}
-            <path d={pathD(fullPath)} fill="none" stroke="transparent" strokeWidth="18" />
-            {/* Visible dashed preview line */}
-            <path d={pathD(fullPath)} fill="none"
-              stroke={isBlocked ? '#ef444460' : '#4a608060'}
-              strokeWidth="2.2" strokeDasharray="4 6" strokeLinecap="round" opacity="0.7"
-            />
-            {/* Exit label along path */}
-            <text x={config.exits[exitKey].x} y={config.exits[exitKey].y - 20}
-              textAnchor="middle" fill={isBlocked ? '#ef444488' : '#4a608088'}
-              fontSize="9" fontFamily="system-ui, sans-serif" fontWeight="600">
-              {exitKey} {isBlocked ? '(blocked)' : ''}
-            </text>
-          </g>
-        )
-      })}
+      {/* Node-step preview path (shown while selecting corridor nodes before choosing an exit) */}
+      {isPlanning && !selectedExit && nodeProgressPath.length >= 2 && (
+        <>
+          <path
+            d={pathD(nodeProgressPath)}
+            fill="none"
+            stroke="#0ea5e955"
+            strokeWidth="6"
+            strokeLinecap="round"
+          />
+          <path
+            d={pathD(nodeProgressPath)}
+            fill="none"
+            stroke="#0ea5e9"
+            strokeWidth="2.4"
+            strokeDasharray="6 5"
+            strokeLinecap="round"
+            opacity="0.9"
+          />
+        </>
+      )}
 
       {/* Selected route — stronger highlight */}
       {selectedExit && isPlanning && config.primaryPaths[selectedExit] && (() => {
@@ -987,36 +1215,31 @@ function SimOverlay({ config, disaster, selectedExit, selectedRoom, agentPos, ph
           {config.corridorNodes.filter(n => !isForbiddenAnchor(n)).map(node => {
             const index = selectedVias ? selectedVias.indexOf(node.label) : -1
             const selected = index !== -1
-            const isActive = activeNode === node.label
+            const isEntry = entryNodeLabel === node.label
+            const isCurrent = currentNodeLabel === node.label
+            const canSelect = selectableNodeLabels ? selectableNodeLabels.includes(node.label) : true
             return (
-              <g key={`node-${node.label}`} style={{ cursor: 'pointer' }}>
-                <g onClick={() => onRequestNeighbors ? onRequestNeighbors(node.label) : onViaClick?.(node.label)}>
+              <g key={`node-${node.label}`} style={{ cursor: canSelect ? 'pointer' : 'default' }}>
+                <g onClick={() => canSelect && onChooseNeighbor?.(node.label)}>
+                  {(isEntry || isCurrent) && (
+                    <circle cx={node.x} cy={node.y} r={selected ? 13 : 11}
+                      fill="none" stroke={isCurrent ? '#2db8b0' : '#3b82f6'} strokeWidth={1.8} opacity={0.65} />
+                  )}
                   <circle cx={node.x} cy={node.y} r={selected ? 8 : 5}
-                    fill={selected ? '#f59e0b' : '#334155'} stroke={selected ? '#fff' : '#1e2f46'} strokeWidth={1.5} />
+                    fill={selected ? '#f59e0b' : isCurrent ? '#2db8b0' : canSelect ? '#334155' : '#94a3b8'} stroke={selected ? '#fff' : '#1e2f46'} strokeWidth={1.5} />
                   {selected && (
                     <text x={node.x} y={node.y + 4} textAnchor="middle" fill="#fff" fontSize="8" fontFamily="system-ui, sans-serif" fontWeight={700}>{index + 1}</text>
                   )}
                   {!selected && (
-                    <text x={node.x} y={node.y - 10} textAnchor="middle" fill="#64748b" fontSize="9" fontFamily="system-ui, sans-serif">{node.label}</text>
+                    <text x={node.x} y={node.y - 10} textAnchor="middle" fill={isCurrent ? '#0f766e' : '#64748b'} fontSize="9" fontFamily="system-ui, sans-serif" fontWeight={isCurrent ? 700 : 500}>
+                      {isEntry ? `${node.label} (Start)` : node.label}
+                    </text>
                   )}
                 </g>
-                {/* Neighbor choices overlay */}
-                {isActive && neighborOptions && neighborOptions.length > 0 && (
-                  <g>
-                    {neighborOptions.map((nl) => {
-                      const nnode = config.corridorNodes!.filter(n => !isForbiddenAnchor(n)).find(n => n.label === nl)
-                      if (!nnode) return null
-                      // Place small rect directionally between node and neighbor
-                      const mx = (node.x + nnode.x) / 2
-                      const my = (node.y + nnode.y) / 2
-                      return (
-                        <g key={`choice-${nl}`} onClick={() => onChooseNeighbor && onChooseNeighbor(nl)} style={{ cursor: 'pointer' }}>
-                          <rect x={mx - 28} y={my - 12} width={56} height={24} rx={6} fill="#ffffff" stroke="#c9dae6" />
-                          <text x={mx} y={my + 5} textAnchor="middle" fill="#0f172a" fontSize="10" fontFamily="system-ui, sans-serif" fontWeight={700}>{nl}</text>
-                        </g>
-                      )
-                    })}
-                  </g>
+                {backNodeLabel === node.label && (
+                  <text x={node.x} y={node.y + 18} textAnchor="middle" fill="#c2410c" fontSize="9" fontFamily="system-ui, sans-serif" fontWeight={700}>
+                    Back
+                  </text>
                 )}
               </g>
             )
@@ -1225,8 +1448,6 @@ export default function SimulationRunPage() {
   const [routeMode,     setRouteMode]     = useState<RouteMode>(null)
   const [selectedExit,  setSelectedExit]  = useState<string | null>(null)
   const [selectedVias,  setSelectedVias]   = useState<string[]>([])
-  const [activeNode,    setActiveNode]     = useState<string | null>(null)
-  const [neighborOptions, setNeighborOptions] = useState<string[] | null>(null)
   const [agentPos,      setAgentPos]      = useState<Point>({ x: 0, y: 0 })
   const [metrics,       setMetrics]       = useState<SimMetrics | null>(null)
   const [events,        setEvents]        = useState<SimEvent[]>([])
@@ -1234,32 +1455,41 @@ export default function SimulationRunPage() {
   const [activeBlockedExits, setActiveBlockedExits] = useState<Set<string>>(new Set())
 
   const animRef   = useRef<ReturnType<typeof setInterval> | null>(null)
+  const rerouteTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const runTokenRef = useRef(0)
   const phase2Ref = useRef<SimPhase>('planning')
 
-  const config = hasFloors ? floors[floorIdx] : null
+  const clearSimulationTimers = useCallback(() => {
+    if (animRef.current) {
+      clearInterval(animRef.current)
+      animRef.current = null
+    }
+    if (rerouteTimeoutRef.current) {
+      clearTimeout(rerouteTimeoutRef.current)
+      rerouteTimeoutRef.current = null
+    }
+  }, [])
 
-  useEffect(() => {
-    if (!config) return
-    if (selectedRoom && config.rooms[selectedRoom]) {
-      const room = config.rooms[selectedRoom]
-      setAgentPos({ x: room.x, y: room.y })
-    } else {
+  const invalidateActiveRun = useCallback(() => {
+    runTokenRef.current += 1
+  }, [])
+
+  const config = hasFloors ? floors[floorIdx] : null
+  const planningAgentPos = useMemo<Point>(() => {
+    if (!config || !selectedRoom || !config.rooms[selectedRoom]) {
       // Do not default to corridor/startPos — require user to select a room.
       // Reset position to origin (off-map) so no implicit starting point is used.
-      setAgentPos({ x: 0, y: 0 })
+      return { x: 0, y: 0 }
     }
+    const room = config.rooms[selectedRoom]
+    return { x: room.x, y: room.y }
   }, [config, selectedRoom])
   useEffect(() => { if (!isLoading && !isAuthenticated) window.location.href = '/auth' }, [isLoading, isAuthenticated])
   useEffect(() => { phase2Ref.current = phase }, [phase])
-  useEffect(() => () => { if (animRef.current) clearInterval(animRef.current) }, [])
-
-  // Clear any selected corridor via nodes when the room is cleared
-  useEffect(() => {
-    if (!selectedRoom) setSelectedVias([])
-    // clear active node when room changes
-    setActiveNode(null)
-    setNeighborOptions(null)
-  }, [selectedRoom])
+  useEffect(() => () => {
+    invalidateActiveRun()
+    clearSimulationTimers()
+  }, [clearSimulationTimers, invalidateActiveRun])
 
   const potentialBlockedExits = useMemo(() => {
     return config
@@ -1271,9 +1501,147 @@ export default function SimulationRunPage() {
     return phase === 'planning' ? new Set<string>() : activeBlockedExits
   }, [phase, activeBlockedExits])
 
+  const corridorNodes = useMemo(() => {
+    return (config?.corridorNodes || []).filter(n => !isForbiddenAnchor(n))
+  }, [config])
+
+  const corridorNodeByLabel = useMemo(() => {
+    return new Map(corridorNodes.map(n => [n.label, n]))
+  }, [corridorNodes])
+
+  const resolveEntryNodeForRoom = useCallback((roomKey: string): string | null => {
+    if (!config || !config.rooms[roomKey] || corridorNodes.length === 0) return null
+    const room = config.rooms[roomKey]
+    if (room.corridorEntryNode && corridorNodeByLabel.has(room.corridorEntryNode)) {
+      return room.corridorEntryNode
+    }
+
+    // Fallback to nearest corridor node for rooms without explicit corridor entry metadata.
+    let nearest = corridorNodes[0]
+    let bestDist = Infinity
+    for (const node of corridorNodes) {
+      const d = Math.hypot(node.x - room.x, node.y - room.y)
+      if (d < bestDist) {
+        bestDist = d
+        nearest = node
+      }
+    }
+    return nearest?.label || null
+  }, [config, corridorNodes, corridorNodeByLabel])
+
+  const entryNodeLabel = useMemo(() => {
+    if (!selectedRoom) return null
+    return resolveEntryNodeForRoom(selectedRoom)
+  }, [selectedRoom, resolveEntryNodeForRoom])
+
+  const currentNodeLabel = useMemo(() => {
+    return selectedVias.length > 0 ? selectedVias[selectedVias.length - 1] : entryNodeLabel
+  }, [selectedVias, entryNodeLabel])
+
+  const backNodeLabel = useMemo(() => {
+    if (selectedVias.length === 0) return null
+    if (selectedVias.length === 1) return entryNodeLabel
+    return selectedVias[selectedVias.length - 2]
+  }, [selectedVias, entryNodeLabel])
+
+  const getNeighborLabels = useCallback((label: string, fallbackLimit = 2): string[] => {
+    if (!config) return []
+    const node = corridorNodeByLabel.get(label)
+    if (!node) return []
+
+    const direct = (node.neighbors || []).filter(lbl => {
+      const neighbor = corridorNodeByLabel.get(lbl)
+      return !!neighbor && !isForbiddenAnchor(neighbor)
+    })
+
+    const reverse = corridorNodes
+      .filter(n => n.label !== label)
+      .filter(n => (n.neighbors || []).includes(label))
+      .map(n => n.label)
+
+    let options = Array.from(new Set([...direct, ...reverse]))
+
+    if (options.length === 0) {
+      // Fallback for configs without explicit graph links.
+      const others = corridorNodes
+        .filter(n => n.label !== label)
+        .filter(n => isNodeConnectionAllowed(node, n, config))
+      others.sort((a, b) => Math.hypot(a.x - node.x, a.y - node.y) - Math.hypot(b.x - node.x, b.y - node.y))
+      const sliced = Number.isFinite(fallbackLimit) ? others.slice(0, fallbackLimit) : others
+      options = sliced.map(n => n.label)
+    }
+
+    return options
+  }, [config, corridorNodeByLabel, corridorNodes])
+
+  const hasNodePath = useCallback((fromLabel: string, toLabel: string): boolean => {
+    if (fromLabel === toLabel) return true
+    if (!corridorNodeByLabel.has(fromLabel) || !corridorNodeByLabel.has(toLabel)) return false
+
+    const queue: string[] = [fromLabel]
+    const visited = new Set<string>([fromLabel])
+
+    while (queue.length > 0) {
+      const current = queue.shift()!
+      for (const next of getNeighborLabels(current, Number.POSITIVE_INFINITY)) {
+        if (next === toLabel) return true
+        if (!visited.has(next)) {
+          visited.add(next)
+          queue.push(next)
+        }
+      }
+    }
+
+    return false
+  }, [corridorNodeByLabel, getNeighborLabels])
+
+  const reachableExitKeys = useMemo(() => {
+    if (!config) return new Set<string>()
+    const exitKeys = Object.keys(config.exits)
+    if (!selectedRoom || !currentNodeLabel || corridorNodes.length === 0) return new Set(exitKeys)
+
+    const reachable = new Set<string>()
+    for (const key of exitKeys) {
+      const exit = config.exits[key]
+      if (!exit) continue
+
+      let nearest = corridorNodes[0]
+      let best = Infinity
+      for (const node of corridorNodes) {
+        const d = Math.hypot(node.x - exit.x, node.y - exit.y)
+        if (d < best) {
+          best = d
+          nearest = node
+        }
+      }
+
+      if (nearest && hasNodePath(currentNodeLabel, nearest.label)) {
+        reachable.add(key)
+      }
+    }
+
+    return reachable
+  }, [config, selectedRoom, currentNodeLabel, corridorNodes, hasNodePath])
+
+  const selectableNodeLabels = useMemo(() => {
+    const labels = new Set<string>()
+    const anchor = currentNodeLabel || entryNodeLabel
+    if (entryNodeLabel) labels.add(entryNodeLabel)
+    if (!anchor) return Array.from(labels)
+
+    for (const lbl of getNeighborLabels(anchor)) {
+      labels.add(lbl)
+    }
+    if (backNodeLabel) labels.add(backNodeLabel)
+    return Array.from(labels)
+  }, [currentNodeLabel, entryNodeLabel, backNodeLabel, getNeighborLabels])
+
   const routes = config ? analyzeRoutes(config, selectedRoom, disaster, potentialBlockedExits, blockedExits) : []
-  const fastestExit = routes.length > 0 ? getRecommendedExit(routes, 'fastest') : null
-  const safestExit = routes.length > 0 ? getRecommendedExit(routes, 'safest') : null
+  const selectableRoutes = routes.filter(r => reachableExitKeys.has(r.exitKey))
+  const enforceReachability = Boolean(selectedRoom && currentNodeLabel && corridorNodes.length > 0)
+  const candidateRoutes = enforceReachability ? selectableRoutes : routes
+  const fastestExit = candidateRoutes.length > 0 ? getRecommendedExit(candidateRoutes, 'fastest') : null
+  const safestExit = candidateRoutes.length > 0 ? getRecommendedExit(candidateRoutes, 'safest') : null
   const fastestRoute = routes.find(r => r.exitKey === fastestExit)
   const safestRoute = routes.find(r => r.exitKey === safestExit)
 
@@ -1281,31 +1649,30 @@ export default function SimulationRunPage() {
     setEvents(prev => [...prev, { time: Date.now(), message, type }])
   }, [])
 
-  const requestNeighbors = (label: string) => {
-    if (!config || !config.corridorNodes) return
-    const node = config.corridorNodes.find(n => n.label === label)
-    if (!node) return
-    // Prefer explicit graph neighbors for predictable corridor progression.
-    let options = (node.neighbors || []).filter(lbl => {
-      const n = config.corridorNodes!.find(nn => nn.label === lbl)
-      return !!n && !isForbiddenAnchor(n) && isNodeConnectionAllowed(node, n, config)
-    })
-    if (options.length === 0) {
-      // Fallback for configs without explicit neighbors.
-      const others = config.corridorNodes.filter(n => n.label !== label && !isForbiddenAnchor(n))
-        .filter(n => isNodeConnectionAllowed(node, n, config))
-      others.sort((a, b) => Math.hypot(a.x - node.x, a.y - node.y) - Math.hypot(b.x - node.x, b.y - node.y))
-      options = others.slice(0, 2).map(n => n.label)
-    }
-    setActiveNode(label)
-    setNeighborOptions(options)
-  }
-
   const chooseNeighbor = (label: string) => {
-    // append neighbor to selected vias preserving order
-    setSelectedVias(prev => prev.includes(label) ? prev : [...prev, label])
-    setActiveNode(null)
-    setNeighborOptions(null)
+    const anchorLabel = currentNodeLabel || entryNodeLabel
+    if (!anchorLabel) return
+
+    if (entryNodeLabel && label === entryNodeLabel) {
+      // Clicking start node returns planning state to room entry.
+      setRouteMode(null)
+      setSelectedExit(null)
+      setSelectedVias([])
+      return
+    }
+
+    const allowed = new Set(getNeighborLabels(anchorLabel))
+    if (backNodeLabel && backNodeLabel !== anchorLabel) allowed.add(backNodeLabel)
+    if (!allowed.has(label)) return
+
+    setRouteMode(null)
+    setSelectedExit(null)
+
+    if (backNodeLabel && label === backNodeLabel) {
+      setSelectedVias(prev => prev.slice(0, -1))
+    } else {
+      setSelectedVias(prev => prev.includes(label) ? prev : [...prev, label])
+    }
   }
 
   const finishSimulation = useCallback((chosen: string, actual: string, rerouted: boolean, time: number) => {
@@ -1340,7 +1707,12 @@ export default function SimulationRunPage() {
 
   const startSimulation = useCallback(() => {
     if (!selectedExit || !config) return
+    invalidateActiveRun()
+    clearSimulationTimers()
+    const runToken = runTokenRef.current
+
     setPhase('running')
+    phase2Ref.current = 'running'
     setEvents([])
     setActiveBlockedExits(new Set())
 
@@ -1374,6 +1746,8 @@ export default function SimulationRunPage() {
     }
 
     animRef.current = setInterval(() => {
+      if (runTokenRef.current !== runToken) return
+
       elapsed += TICK
       setElapsedSec(Math.floor(elapsed / 1000))
 
@@ -1384,6 +1758,7 @@ export default function SimulationRunPage() {
 
       if (isBlocked && t >= blockT && !hasRerouted) {
         hasRerouted = true
+        const rerouteStart = interpolatePath(primaryPath, t)
         setActiveBlockedExits(prev => {
           const next = new Set(prev)
           next.add(selectedExit)
@@ -1395,8 +1770,11 @@ export default function SimulationRunPage() {
         const reroute = config.reroutes[selectedExit]
         pushEvent(`Route to ${selectedExit} is BLOCKED \u2014 rerouting to ${reroute.to}`, 'danger')
 
-        setTimeout(() => {
-          const reroutePath  = avoidForbiddenZones(reroute.path.filter(p => !isForbiddenAnchor(p)), config)
+        rerouteTimeoutRef.current = setTimeout(() => {
+          rerouteTimeoutRef.current = null
+          if (runTokenRef.current !== runToken) return
+
+          const reroutePath = buildNodeOnlyReroutePath(config, rerouteStart, reroute.to)
           const rerouteDur   = (pathLength(reroutePath) / SPEED) * 1000
           let rerouteElapsed = 0
 
@@ -1404,8 +1782,13 @@ export default function SimulationRunPage() {
           setPhase('running')
           phase2Ref.current = 'running'
 
-          if (animRef.current) clearInterval(animRef.current)
+          if (animRef.current) {
+            clearInterval(animRef.current)
+            animRef.current = null
+          }
           animRef.current = setInterval(() => {
+            if (runTokenRef.current !== runToken) return
+
             rerouteElapsed += TICK
             elapsed += TICK
             setElapsedSec(Math.floor(elapsed / 1000))
@@ -1414,7 +1797,7 @@ export default function SimulationRunPage() {
             setAgentPos(interpolatePath(reroutePath, rt))
 
             if (rt >= 1) {
-              if (animRef.current) clearInterval(animRef.current)
+              clearSimulationTimers()
               finishSimulation(selectedExit, reroute.to, true, elapsed / 1000)
             }
           }, TICK)
@@ -1422,15 +1805,17 @@ export default function SimulationRunPage() {
       }
 
       if (!isBlocked && t >= 1) {
-        if (animRef.current) clearInterval(animRef.current)
+        clearSimulationTimers()
         finishSimulation(selectedExit, selectedExit, false, elapsed / 1000)
       }
     }, TICK)
-  }, [selectedExit, selectedRoom, selectedVias, config, disaster, potentialBlockedExits, pushEvent, finishSimulation])
+  }, [selectedExit, config, invalidateActiveRun, clearSimulationTimers, selectedRoom, selectedVias, potentialBlockedExits, pushEvent, disaster, finishSimulation])
 
   const reset = () => {
-    if (animRef.current) clearInterval(animRef.current)
+    invalidateActiveRun()
+    clearSimulationTimers()
     setPhase('planning')
+    phase2Ref.current = 'planning'
     setSelectedExit(null)
     setRouteMode(null)
     if (config) {
@@ -1451,6 +1836,8 @@ export default function SimulationRunPage() {
   const undoLast = () => {
     if (selectedVias.length > 0) {
       setSelectedVias(prev => prev.slice(0, -1))
+      setRouteMode(null)
+      setSelectedExit(null)
       return
     }
     if (selectedExit && routeMode === null) {
@@ -1481,6 +1868,13 @@ export default function SimulationRunPage() {
         setAgentPos({ x: 0, y: 0 })
       }
     }
+  }
+
+  const selectRoom = (roomKey: string) => {
+    setSelectedRoom(roomKey)
+    setSelectedExit(null)
+    setRouteMode(null)
+    setSelectedVias([])
   }
 
   const switchFloor = (idx: number) => {
@@ -1536,6 +1930,8 @@ export default function SimulationRunPage() {
   const formatEventTime = (time: number) =>
     new Date(time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
 
+  const canBackOneNode = selectedVias.length > 0
+
   return (
     <div style={{ minHeight: '100vh', padding: '80px 32px 48px', maxWidth: '1600px', margin: '0 auto', background: 'linear-gradient(180deg, #f6fbff 0%, #f7fafc 44%, #eef4f8 100%)', borderRadius: '20px' }}>
 
@@ -1567,20 +1963,56 @@ export default function SimulationRunPage() {
 
         {/* Floor picker */}
         {floors.length > 1 && (
-          <div style={{ display: 'flex', gap: '4px', marginLeft: '12px', background: '#f1f5f9', borderRadius: '10px', padding: '3px', border: '1px solid #c9dae6' }}>
-            {floors.map((f, i) => (
-              <button key={i} onClick={() => switchFloor(i)} disabled={phase !== 'planning'}
-                style={{
-                  padding: '6px 14px', borderRadius: '8px', fontSize: '12px', fontWeight: 600,
-                  border: floorIdx === i ? '1px solid rgba(0,0,0,0.06)' : '1px solid transparent', cursor: phase !== 'planning' ? 'not-allowed' : 'pointer',
-                  background: floorIdx === i ? '#2db8b0' : '#f1f5f9',
-                  color: floorIdx === i ? '#fff' : '#0f172a',
-                  transition: 'all 0.15s',
-                  opacity: phase !== 'planning' && floorIdx !== i ? 0.4 : 1,
-                }}>
-                {f.floorLabel}
-              </button>
-            ))}
+          <div
+            onMouseEnter={e => {
+              if (phase !== 'planning') return
+              e.currentTarget.style.background = `${meta.color}12`
+              e.currentTarget.style.borderColor = `${meta.color}55`
+            }}
+            onMouseLeave={e => {
+              if (phase !== 'planning') return
+              e.currentTarget.style.background = `${meta.color}08`
+              e.currentTarget.style.borderColor = `${meta.color}33`
+            }}
+            style={{ display: 'flex', alignItems: 'center', gap: '8px', marginLeft: '12px', background: `${meta.color}08`, borderRadius: '12px', padding: '6px 10px', border: `1px solid ${meta.color}33`, boxShadow: '0 1px 0 rgba(0,0,0,0.02)', transition: 'all 0.15s' }}>
+            <label htmlFor="floor-select" style={{ fontSize: '10px', fontWeight: 700, color: meta.color, letterSpacing: '0.06em', textTransform: 'uppercase' }}>Floor</label>
+            <select
+              id="floor-select"
+              value={floorIdx}
+              onChange={e => switchFloor(Number(e.target.value))}
+              onFocus={e => {
+                e.currentTarget.style.borderColor = meta.color
+                e.currentTarget.style.boxShadow = `0 0 0 3px ${meta.color}22`
+                e.currentTarget.style.background = `${meta.color}06`
+              }}
+              onBlur={e => {
+                e.currentTarget.style.borderColor = `${meta.color}55`
+                e.currentTarget.style.boxShadow = 'none'
+                e.currentTarget.style.background = '#ffffff'
+              }}
+              onMouseEnter={e => {
+                if (phase !== 'planning') return
+                e.currentTarget.style.borderColor = meta.color
+                e.currentTarget.style.background = `${meta.color}06`
+              }}
+              onMouseLeave={e => {
+                if (phase !== 'planning') return
+                e.currentTarget.style.borderColor = `${meta.color}55`
+                e.currentTarget.style.background = '#ffffff'
+              }}
+              disabled={phase !== 'planning'}
+              style={{
+                padding: '6px 26px 6px 10px', borderRadius: '8px', fontSize: '12.5px', fontWeight: 700,
+                border: `1.5px solid ${meta.color}55`, background: '#ffffff', color: '#0f172a',
+                letterSpacing: '0.01em',
+                cursor: phase !== 'planning' ? 'not-allowed' : 'pointer',
+                transition: 'all 0.15s',
+                opacity: phase !== 'planning' ? 0.6 : 1,
+              }}>
+              {floors.map((f, i) => (
+                <option key={i} value={i}>{f.floorLabel}</option>
+              ))}
+            </select>
           </div>
         )}
 
@@ -1597,23 +2029,20 @@ export default function SimulationRunPage() {
             buildingId={regionId} config={config!} disaster={disaster}
             selectedExit={selectedExit} selectedRoom={selectedRoom}
             selectedVias={selectedVias}
-            agentPos={agentPos} phase={phase}
+            agentPos={phase === 'planning' ? planningAgentPos : agentPos} phase={phase}
             blockedExits={blockedExits}
             onExitClick={key => phase === 'planning' && setSelectedExit(key)}
-            onViaClick={label => phase === 'planning' && setSelectedVias(prev => {
-              // If already included, remove it (toggle off). Otherwise append to preserve order clicked.
-              if (prev.includes(label)) return prev.filter(l => l !== label)
-              return [...prev, label]
-            })}
-            activeNode={activeNode} neighborOptions={neighborOptions}
-            onRequestNeighbors={label => phase === 'planning' && requestNeighbors(label)}
             onChooseNeighbor={label => phase === 'planning' && chooseNeighbor(label)}
+            selectableNodeLabels={selectableNodeLabels}
+            entryNodeLabel={entryNodeLabel}
+            currentNodeLabel={currentNodeLabel}
+            backNodeLabel={backNodeLabel}
           />
 
           <div style={{ position: 'absolute', top: '10px', left: '10px', display: 'flex', gap: '6px', flexWrap: 'wrap', pointerEvents: 'none' }}>
             <span style={{ background: '#ffffffdd', border: '1px solid #d8e4ec', borderRadius: '999px', padding: '4px 9px', fontSize: '10px', fontWeight: 700, color: '#0f172a' }}>Live Drill View</span>
-            <span style={{ background: '#ffffffdd', border: '1px solid #d8e4ec', borderRadius: '999px', padding: '4px 9px', fontSize: '10px', fontWeight: 600, color: '#2db8b0' }}>Selected route</span>
-            <span style={{ background: '#ffffffdd', border: '1px solid #d8e4ec', borderRadius: '999px', padding: '4px 9px', fontSize: '10px', fontWeight: 600, color: '#ef4444' }}>Blocked path</span>
+            <span style={{ background: '#ffffffdd', border: '1px solid #d8e4ec', borderRadius: '999px', padding: '4px 9px', fontSize: '10px', fontWeight: 600, color: '#2db8b0' }}>Selected Route</span>
+            <span style={{ background: '#ffffffdd', border: '1px solid #d8e4ec', borderRadius: '999px', padding: '4px 9px', fontSize: '10px', fontWeight: 600, color: '#ef4444' }}>Blocked Path</span>
           </div>
         </div>
 
@@ -1621,22 +2050,22 @@ export default function SimulationRunPage() {
 
           {phase === 'planning' && config && (
             <>
-              <div style={{ background: 'linear-gradient(145deg, #0f172a 0%, #1f2e44 100%)', border: '1px solid #23344d', borderRadius: '12px', padding: '14px', boxShadow: '0 6px 20px rgba(15,23,42,0.18)' }}>
-                <div style={{ fontSize: '11px', fontWeight: 700, color: '#8fb7d9', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Simulation Brief</div>
-                <div style={{ fontSize: '12px', color: '#e2e8f0', lineHeight: 1.55 }}>
-                  Start from your room, review all route previews, then launch the drill. Paths now follow corridor movement to mimic realistic evacuation behavior.
+              <div style={{ background: 'linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%)', border: '1px solid #c9dae6', borderRadius: '12px', padding: '14px', boxShadow: '0 1px 0 rgba(0,0,0,0.02)' }}>
+                <div style={{ fontSize: '11px', fontWeight: 700, color: '#64748b', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Simulation Brief</div>
+                <div style={{ fontSize: '12px', color: '#334155', lineHeight: 1.55 }}>
+                  Start from your room, click corridor nodes to build your route step by step, then choose an exit and launch the drill.
                 </div>
               </div>
 
               {/* Step 1: Room Selection */}
               <div style={{ background: '#f8fafc', border: '1px solid #c9dae6', borderRadius: '12px', padding: '16px', boxShadow: '0 1px 0 rgba(0,0,0,0.02)' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
-                  <div style={{ width: '22px', height: '22px', borderRadius: '50%', background: selectedRoom ? '#2db8b0' : '#334155', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: 700, color: selectedRoom ? '#fff' : '#64748b', flexShrink: 0 }}>1</div>
+                  <div style={{ width: '22px', height: '22px', borderRadius: '50%', background: selectedRoom ? '#2db8b0' : '#e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: 700, color: selectedRoom ? '#fff' : '#475569', flexShrink: 0 }}>1</div>
                   <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)' }}>Where Are You?</div>
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px' }}>
                   {Object.entries(config.rooms).filter(([key]) => key !== 'corridor').map(([key, room]) => (
-                    <button key={key} onClick={() => { setSelectedRoom(key); setSelectedExit(null); setRouteMode(null); setSelectedVias([]) }}
+                    <button key={key} onClick={() => selectRoom(key)}
                       style={{
                         padding: '8px 10px', borderRadius: '8px', fontSize: '11px', fontWeight: 600,
                         background: selectedRoom === key ? '#2db8b015' : '#f1f5f9',
@@ -1657,16 +2086,42 @@ export default function SimulationRunPage() {
                     <div style={{ width: '22px', height: '22px', borderRadius: '50%', background: routeMode ? '#2db8b0' : '#334155', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: 700, color: routeMode ? '#fff' : '#64748b', flexShrink: 0 }}>2</div>
                     <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)' }}>Choose Route</div>
                   </div>
+                  <div style={{ background: '#ffffff', border: '1px solid #dbe7ee', borderRadius: '9px', padding: '10px 12px', marginBottom: '10px' }}>
+                    <div style={{ fontSize: '10px', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '6px' }}>Corridor Node State</div>
+                    <div style={{ fontSize: '11px', color: '#334155', marginBottom: '6px', lineHeight: 1.45 }}>
+                      Start: {entryNodeLabel || 'N/A'} {'\u00B7'} Current: {currentNodeLabel || 'N/A'}
+                    </div>
+                    <div style={{ fontSize: '10.5px', color: '#64748b', marginBottom: '6px', lineHeight: 1.45 }}>
+                      Click highlighted corridor nodes directly on the map to build your route in sequence.
+                    </div>
+                    <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                      <button
+                        onClick={() => {
+                          if (backNodeLabel) chooseNeighbor(backNodeLabel)
+                        }}
+                        disabled={!canBackOneNode || !backNodeLabel}
+                        style={{
+                          padding: '6px 10px', borderRadius: '7px', fontSize: '11px', fontWeight: 700,
+                          background: canBackOneNode ? '#fff7ed' : '#f1f5f9',
+                          border: `1px solid ${canBackOneNode ? '#fdba74' : '#cbd5e1'}`,
+                          color: canBackOneNode ? '#c2410c' : '#94a3b8',
+                          cursor: canBackOneNode ? 'pointer' : 'not-allowed',
+                        }}>
+                        Back One Node
+                      </button>
+                    </div>
+                  </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                     {/* Safest Route */}
                     <button
                       onClick={() => { setRouteMode('safest'); setSelectedExit(safestExit) }}
+                      disabled={!safestExit}
                       style={{
                         display: 'flex', alignItems: 'center', gap: '12px',
                         padding: '12px 14px', borderRadius: '10px',
                         background: routeMode === 'safest' ? '#22c55e10' : '#f1f5f9',
                         border: `1.5px solid ${routeMode === 'safest' ? '#22c55e' : '#c9dae6'}`,
-                        cursor: 'pointer', textAlign: 'left', transition: 'all 0.15s',
+                        cursor: safestExit ? 'pointer' : 'not-allowed', textAlign: 'left', transition: 'all 0.15s', opacity: safestExit ? 1 : 0.55,
                       }}>
                       <div style={{ width: '36px', height: '36px', borderRadius: '10px', background: '#22c55e15', border: '1px solid #22c55e30', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -1685,12 +2140,13 @@ export default function SimulationRunPage() {
                     {/* Fastest Route */}
                     <button
                       onClick={() => { setRouteMode('fastest'); setSelectedExit(fastestExit) }}
+                      disabled={!fastestExit}
                       style={{
                         display: 'flex', alignItems: 'center', gap: '12px',
                         padding: '12px 14px', borderRadius: '10px',
                         background: routeMode === 'fastest' ? '#3b82f610' : '#f1f5f9',
                         border: `1.5px solid ${routeMode === 'fastest' ? '#3b82f6' : '#c9dae6'}`,
-                        cursor: 'pointer', textAlign: 'left', transition: 'all 0.15s',
+                        cursor: fastestExit ? 'pointer' : 'not-allowed', textAlign: 'left', transition: 'all 0.15s', opacity: fastestExit ? 1 : 0.55,
                       }}>
                       <div style={{ width: '36px', height: '36px', borderRadius: '10px', background: '#3b82f615', border: '1px solid #3b82f630', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -1715,18 +2171,19 @@ export default function SimulationRunPage() {
                           const blocked = blockedExits.has(key)
                           const mayBlock = potentialBlockedExits.has(key)
                           const selected = selectedExit === key && routeMode === null
+                          const reachableFromNode = reachableExitKeys.has(key)
                           const color = blocked ? '#ef4444' : mayBlock ? '#f59e0b' : '#64748b'
                           return (
-                            <button key={key} onClick={() => { setRouteMode(null); setSelectedExit(key) }}
+                            <button key={key} onClick={() => { setRouteMode(null); setSelectedExit(key) }} disabled={!reachableFromNode}
                               style={{
                                 padding: '6px 12px', borderRadius: '6px', fontSize: '11px', fontWeight: 600,
-                                background: selected ? `${color}15` : '#f1f5f9',
-                                border: `1.5px solid ${selected ? color : '#c9dae6'}`,
-                                color: selected ? (blocked ? '#ef4444' : 'var(--text-primary)') : '#0f172a',
-                                cursor: 'pointer', transition: 'all 0.15s',
+                                background: selected ? `${color}15` : reachableFromNode ? '#f1f5f9' : '#f8fafc',
+                                border: `1.5px solid ${selected ? color : reachableFromNode ? '#c9dae6' : '#e2e8f0'}`,
+                                color: selected ? (blocked ? '#ef4444' : 'var(--text-primary)') : reachableFromNode ? '#0f172a' : '#94a3b8',
+                                cursor: reachableFromNode ? 'pointer' : 'not-allowed', transition: 'all 0.15s',
                               }}>
                               {key} {'\u00B7'} {config.exits[key].desc.split('\u00B7')[0].trim()}
-                              {blocked ? ' (blocked)' : mayBlock ? ' (risk)' : ''}
+                              {!reachableFromNode ? ' (unreachable)' : blocked ? ' (blocked)' : mayBlock ? ' (risk)' : ''}
                             </button>
                           )
                         })}
@@ -1782,13 +2239,13 @@ export default function SimulationRunPage() {
                 <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '14px' }}>Live Metrics</div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
                   {[
-                    { label: 'Elapsed', value: `${elapsedSec}s` },
-                    { label: 'Target', value: selectedExit ?? '\u2014' },
-                    { label: 'Status', value: phase === 'rerouting' ? 'Rerouting' : 'Moving', color: phase === 'rerouting' ? '#f59e0b' : '#2db8b0' },
-                    { label: 'Floor', value: config?.floorLabel || '1F' },
+                    { label: 'Elapsed', value: `${elapsedSec}s`, accent: '#3b82f6' },
+                    { label: 'Target', value: selectedExit ?? '\u2014', accent: '#8b5cf6' },
+                    { label: 'Status', value: phase === 'rerouting' ? 'Rerouting' : 'Moving', color: phase === 'rerouting' ? '#f59e0b' : '#2db8b0', accent: phase === 'rerouting' ? '#f59e0b' : '#2db8b0' },
+                    { label: 'Floor', value: config?.floorLabel || '1F', accent: meta.color },
                   ].map(m => (
-                    <div key={m.label} style={{ background: '#ffffff', border: '1px solid #e6edf2', borderRadius: '8px', padding: '10px 12px' }}>
-                      <div style={{ fontSize: '10px', color: 'var(--text-secondary)', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{m.label}</div>
+                    <div key={m.label} style={{ background: `${(m as { accent?: string }).accent ?? '#ffffff'}08`, border: `1px solid ${((m as { accent?: string }).accent ?? '#e6edf2')}35`, borderRadius: '8px', padding: '10px 12px' }}>
+                      <div style={{ fontSize: '10px', color: (m as { accent?: string }).accent ?? 'var(--text-secondary)', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{m.label}</div>
                       <div style={{ fontSize: '16px', fontWeight: 700, color: (m as { color?: string }).color ?? 'var(--text-primary)' }}>{m.value}</div>
                     </div>
                   ))}
@@ -1848,12 +2305,12 @@ export default function SimulationRunPage() {
 
               {/* Detailed metrics */}
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px' }}>
-                <div style={{ background: '#ffffff', border: '1px solid #c9dae6', borderRadius: '8px', padding: '10px 12px', boxShadow: '0 1px 0 rgba(0,0,0,0.02)' }}>
-                  <div style={{ fontSize: '9px', color: '#475569', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '3px' }}>Congestion</div>
+                <div style={{ background: `${congestionColor(metrics.congestionLevel)}12`, border: `1px solid ${congestionColor(metrics.congestionLevel)}35`, borderRadius: '8px', padding: '10px 12px', boxShadow: '0 1px 0 rgba(0,0,0,0.02)' }}>
+                  <div style={{ fontSize: '9px', color: congestionColor(metrics.congestionLevel), textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '3px' }}>Congestion</div>
                   <div style={{ fontSize: '13px', fontWeight: 700, color: congestionColor(metrics.congestionLevel) }}>{metrics.congestionLevel}</div>
                 </div>
-                <div style={{ background: '#ffffff', border: '1px solid #c9dae6', borderRadius: '8px', padding: '10px 12px', boxShadow: '0 1px 0 rgba(0,0,0,0.02)' }}>
-                  <div style={{ fontSize: '9px', color: '#475569', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '3px' }}>Hazard Exposure</div>
+                <div style={{ background: `${metrics.hazardExposure ? '#ef4444' : '#22c55e'}12`, border: `1px solid ${metrics.hazardExposure ? '#ef4444' : '#22c55e'}35`, borderRadius: '8px', padding: '10px 12px', boxShadow: '0 1px 0 rgba(0,0,0,0.02)' }}>
+                  <div style={{ fontSize: '9px', color: metrics.hazardExposure ? '#ef4444' : '#22c55e', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '3px' }}>Hazard Exposure</div>
                   <div style={{ fontSize: '13px', fontWeight: 700, color: metrics.hazardExposure ? '#ef4444' : '#22c55e' }}>{metrics.hazardExposure ? 'Exposed' : 'None'}</div>
                 </div>
               </div>
