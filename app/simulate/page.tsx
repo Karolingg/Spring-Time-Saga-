@@ -540,25 +540,6 @@ export default function SimulatePage() {
     }
   }, [isAuthLoading, isAuthenticated])
 
-  // Simulate stepping
-  useEffect(() => {
-    if (!isRunning) return
-    const interval = setInterval(() => {
-      setStep(s => s + 1)
-      setEvacuated(e => {
-        const next = Math.min(e + Math.floor(Math.random() * 3), applied.agents)
-        if (next >= applied.agents) {
-          setIsRunning(false)
-          setTimeout(() => handleSaveResults('completed'), 0)
-        }
-        return next
-      })
-      setMaxCongestion(m => Math.min(m + Math.floor(Math.random() * 2), 20))
-    }, applied.speed)
-    return () => clearInterval(interval)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isRunning, applied])
-
   if (isAuthLoading) {
     return (
       <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg)' }}>
@@ -566,131 +547,6 @@ export default function SimulatePage() {
       </div>
     )
   }
-
-  const params = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null
-  const disasterType = (params?.get('disaster') ?? 'fire') as DisasterType
-  const isFireMode = disasterType === 'fire'
-  const accentColor = isFireMode ? '#ff6b35' : '#f59e0b'
-  const modeLabel = isFireMode ? 'Fire Simulation' : 'Earthquake Simulation'
-
-  async function handleApply() {
-    setApplied({ agents, gridWidth, gridHeight, exits, wallDensity, speed })
-    setStep(0)
-    setEvacuated(0)
-    setMaxCongestion(0)
-    setIsRunning(false)
-    setRunId(null)
-  }
-
-  function handleReset() {
-    setAgents(120); setGridWidth(60); setGridHeight(45)
-    setExits(6); setWallDensity(10); setSpeed(200)
-    setStep(0); setEvacuated(0); setMaxCongestion(0); setIsRunning(false)
-  }
-
-  async function handleToggleSim() {
-    if (isRunning) {
-      setIsRunning(false)
-      await handleSaveResults('stopped')
-      return
-    }
-
-    if (!runId) {
-      try {
-        const id = await createSimulationRun({
-          disasterType,
-          agentCount: applied.agents,
-          gridWidth: applied.gridWidth,
-          gridHeight: applied.gridHeight,
-          exitCount: applied.exits,
-          wallDensity: applied.wallDensity,
-          speedMs: applied.speed,
-        })
-        setRunId(id)
-      } catch (err) {
-        console.error('Failed to create simulation run:', err)
-        return
-      }
-    }
-
-    setIsRunning(true)
-  }
-
-  const CAMPUS_ZONES = [
-    { zoneName: 'Main Entrance', lat: 10.33115, lng: 123.90095 },
-    { zoneName: 'Science Hall', lat: 10.33105, lng: 123.90080 },
-    { zoneName: 'Library', lat: 10.33120, lng: 123.90100 },
-    { zoneName: 'Admin Building', lat: 10.33100, lng: 123.90110 },
-    { zoneName: 'Engineering', lat: 10.33125, lng: 123.90075 },
-    { zoneName: 'Cafeteria', lat: 10.33110, lng: 123.90120 },
-  ]
-
-  async function handleSaveResults(finalStatus: 'completed' | 'stopped') {
-    if (!runId || isSaving) return
-    setIsSaving(true)
-
-    try {
-      const evacuationRate = evacuated / applied.agents
-      const congestionRatio = maxCongestion / 20
-
-      const zones = CAMPUS_ZONES.map((zone, i) => {
-        const baseIntensity = (1 - evacuationRate) * 100
-        const variation = ((i * 17 + step) % 30) - 15
-        const intensity = Math.max(0, Math.min(100, baseIntensity + variation))
-        const zoneAgents = Math.round((intensity / 100) * (applied.agents / CAMPUS_ZONES.length))
-        const bottleneckCount = intensity > 70 ? Math.ceil((intensity - 70) / 15) : 0
-        const riskLevel: RiskLevel = intensity > 75 ? 'HIGH' : intensity > 50 ? 'MEDIUM' : 'LOW'
-
-        return {
-          zoneName: zone.zoneName,
-          intensity,
-          agentCount: zoneAgents,
-          bottleneckCount,
-          riskLevel,
-          lat: zone.lat,
-          lng: zone.lng,
-        }
-      })
-
-      const bottleneckRecords = zones
-        .filter(z => z.bottleneckCount > 0)
-        .map(z => ({
-          zoneName: z.zoneName,
-          severity: z.riskLevel as SeverityLevel,
-          cellX: Math.floor(Math.random() * applied.gridWidth),
-          cellY: Math.floor(Math.random() * applied.gridHeight),
-          description: `Congestion detected near ${z.zoneName} (${z.intensity.toFixed(0)}% intensity)`,
-        }))
-
-      await saveSimulationResults(
-        runId,
-        {
-          totalSteps: step,
-          evacuatedCount: evacuated,
-          maxCongestion,
-          evacuationTime: step * (applied.speed / 1000),
-          congestionExposure: congestionRatio * 100,
-          globalPeakDensity: maxCongestion / 20,
-          status: finalStatus,
-        },
-        zones,
-        bottleneckRecords,
-      )
-    } catch (err) {
-      console.error('Failed to save simulation results:', err)
-    } finally {
-      setIsSaving(false)
-    }
-  }
-
-  const sectionCard = {
-    background: '#ffffff',
-    border: '1px solid var(--border)',
-    borderRadius: '14px',
-    padding: '28px 32px',
-    boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
-    marginBottom: '20px',
-  } as React.CSSProperties
 
   return (
     <div style={{ minHeight: '100vh', padding: '88px 40px 56px', maxWidth: '1280px', margin: '0 auto' }}>
@@ -776,7 +632,6 @@ export default function SimulatePage() {
             onSimulate={() => router.push(`/simulate/${encodeURIComponent(selectedBuildingId)}/disaster`)}
           />
         )}
-      </div>
 
       <p style={{ marginTop: '12px', fontSize: '11px', color: 'var(--text-muted)', textAlign: 'center' }}>
         Map powered by <a href="https://www.mapbox.com" target="_blank" rel="noreferrer" style={{ color: '#2db8b0' }}>Mapbox</a> &middot; Data &copy; <a href="https://www.openstreetmap.org" target="_blank" rel="noreferrer" style={{ color: '#2db8b0' }}>OpenStreetMap</a> contributors.

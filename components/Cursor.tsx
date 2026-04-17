@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react'
-import '@/styles/components.css'
 
 export function BlinkingCursor() {
   const [on, setOn] = useState(true)

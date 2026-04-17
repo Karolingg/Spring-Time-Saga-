@@ -1,5 +1,7 @@
 ﻿import type { Metadata } from "next";
 import "../styles/globals.css";
+import "../styles/components.css";
+import "mapbox-gl/dist/mapbox-gl.css";
 import { Providers } from "./providers";
 
 export const dynamic = 'force-dynamic';
