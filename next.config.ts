@@ -1,10 +1,7 @@
-﻿import type { NextConfig } from "next";
+import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  experimental: {
-    workerThreads: false,
-  },
+  /* config options here */
 };
 
 export default nextConfig;
-
