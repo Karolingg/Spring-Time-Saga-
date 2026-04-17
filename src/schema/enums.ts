@@ -1,7 +1,7 @@
 export const DISASTER_TYPES = ['fire', 'earthquake'] as const
 export type DisasterType = (typeof DISASTER_TYPES)[number]
 
-export const RISK_LEVELS = ['LOW', 'MEDIUM', 'HIGH'] as const
+export const RISK_LEVELS = ['LOW', 'MEDIUM', 'HIGH', 'N/A'] as const
 export type RiskLevel = (typeof RISK_LEVELS)[number]
 
 export const SEVERITY_LEVELS = ['LOW', 'MEDIUM', 'HIGH'] as const

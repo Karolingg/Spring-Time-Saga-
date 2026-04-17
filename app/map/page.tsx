@@ -1,25 +1,9 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import dynamic from 'next/dynamic'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/src/hooks/useAuth'
-import type { MapRegion } from '@/components/MapView'
-
-const MapView = dynamic(() => import('@/components/MapView'), {
-  ssr: false,
-  loading: () => (
-    <div style={{
-      height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center',
-      background: '#0f172a', borderRadius: '12px', color: '#94a3b8', fontSize: '14px', gap: '10px',
-    }}>
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2db8b0" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
-        <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
-      </svg>
-      Loading map...
-    </div>
-  ),
-})
+import MapView, { type MapRegion } from '@/components/MapView'
 
 /* ── Building data ── */
 interface CampusBuilding {
@@ -30,7 +14,7 @@ interface CampusBuilding {
   capacity: number
   floors: number
   exits: number
-  riskLevel: 'LOW' | 'MEDIUM' | 'HIGH'
+  riskLevel: 'LOW' | 'MEDIUM' | 'HIGH' | 'N/A' 
   lastDrillDate: string
   notes: string
 }
@@ -145,41 +129,7 @@ const CAMPUS_BUILDINGS: CampusBuilding[] = [
     lastDrillDate: '2025-06-05',
     notes: 'Open-air volleyball court. Can serve as a secondary evacuation assembly point.',
   },
-  {
-    id: 'as-west-wing',
-    name: 'AS West Wing',
-    type: 'Academic',
-    polygon: [
-      [10.3256, 123.8992],
-      [10.3256, 123.9005],
-      [10.3248, 123.9005],
-      [10.3248, 123.8992],
-    ],
-    capacity: 200,
-    floors: 3,
-    exits: 4,
-    riskLevel: 'MEDIUM',
-    lastDrillDate: '2025-10-05',
-    notes: 'Arts and Sciences wing with laboratories. Chemical storage on 2nd floor requires extra caution during evacuation.',
-  },
-  {
-    id: 'union-building',
-    name: 'Union Building',
-    type: 'Administrative',
-    polygon: [
-      [10.3260, 123.9005],
-      [10.3260, 123.9018],
-      [10.3252, 123.9018],
-      [10.3252, 123.9005],
-    ],
-    capacity: 150,
-    floors: 2,
-    exits: 3,
-    riskLevel: 'LOW',
-    lastDrillDate: '2025-09-01',
-    notes: 'Student union offices and activity rooms. Central location provides quick access to multiple evacuation routes.',
-  },
-  {
+    {
     id: 'as-east-wing',
     name: 'AS East Wing',
     type: 'Academic',
@@ -195,6 +145,40 @@ const CAMPUS_BUILDINGS: CampusBuilding[] = [
     riskLevel: 'MEDIUM',
     lastDrillDate: '2025-10-05',
     notes: 'Classrooms and research labs. Connected to West Wing via covered bridge on 2nd floor.',
+  },
+  {
+    id: 'as-west-wing',
+    name: 'AS West Wing',
+    type: 'Academic',
+    polygon: [
+      [10.3258, 123.8990],
+      [10.3258, 123.9000],
+      [10.3242, 123.9000],
+      [10.3242, 123.8990],
+    ],
+    capacity: 200,
+    floors: 3,
+    exits: 4,
+    riskLevel: 'MEDIUM',
+    lastDrillDate: '2025-10-05',
+    notes: 'Arts and Sciences wing with laboratories. Chemical storage on 2nd floor requires extra caution during evacuation.',
+  },
+  {
+    id: 'cultural-center',
+    name: 'Cebu Cultural Center',
+    type: 'Closed',
+    polygon: [
+      [10.3250, 123.8992],
+      [10.3250, 123.9005],
+      [10.3248, 123.9000],
+      [10.3248, 123.8980],
+    ],
+    capacity: 150,
+    floors: 2,
+    exits: 3,
+    riskLevel: 'LOW',
+    lastDrillDate: '2025-09-01',
+    notes: 'Student union offices and activity rooms. Central location provides quick access to multiple evacuation routes.',
   },
   {
     id: 'soccer-field',
@@ -214,7 +198,7 @@ const CAMPUS_BUILDINGS: CampusBuilding[] = [
     notes: 'Open field used as the primary evacuation assembly point for the upper campus. Wide clearance on all sides.',
   },
   {
-    id: 'admin-building',
+    id: 'admin-building-1',
     name: 'Administration Building',
     type: 'Administrative',
     polygon: [
@@ -232,7 +216,7 @@ const CAMPUS_BUILDINGS: CampusBuilding[] = [
   },
   {
     id: 'science-building',
-    name: 'Social Sciences Building',
+    name: 'Science Building',
     type: 'Academic',
     polygon: [
       [10.3232, 123.8978],
@@ -240,15 +224,15 @@ const CAMPUS_BUILDINGS: CampusBuilding[] = [
       [10.3224, 123.8992],
       [10.3224, 123.8978],
     ],
-    capacity: 200,
+    capacity: 320,
     floors: 3,
-    exits: 4,
-    riskLevel: 'MEDIUM',
-    lastDrillDate: '2025-10-05',
-    notes: 'Contains laboratories with chemical storage. Extra caution required during fire evacuation.',
+    exits: 3,
+    riskLevel: 'HIGH',
+    lastDrillDate: '2025-10-12',
+    notes: 'Core facility for natural sciences instruction. Contains chemistry, biology, and physics laboratories with stricter evacuation constraints.',
   },
   {
-    id: 'lihangin-hall',
+    id: 'admin-building',
     name: 'Admin Building',
     type: 'Academic',
     polygon: [
@@ -354,10 +338,10 @@ const CAMPUS_BUILDINGS: CampusBuilding[] = [
     name: 'UP High School – Cebu',
     type: 'Academic',
     polygon: [
-      [10.3224, 123.9028],
+      [10.3224, 123.8900],
       [10.3224, 123.9048],
-      [10.3212, 123.9048],
-      [10.3212, 123.9028],
+      [10.3213, 123.9048],
+      [10.3213, 123.8900],
     ],
     capacity: 350,
     floors: 3,
@@ -415,10 +399,9 @@ const CLICKABLE_IDS = [
   'as-east-wing',
   'som-admin',
   'som-building-1',
-  'union-building',
+  'cultural-center',
   'social-sciences',
   'science-building',
-  'lihangin-hall',
   'up-cebu-library',
   'up-high-school',
 ]
@@ -441,12 +424,44 @@ function pointInPolygon(point: [number, number], polygon: [number, number][]): b
   return inside
 }
 
-function findBuildingByCoords(lat: number, lng: number): CampusBuilding | null {
-  for (const b of CAMPUS_BUILDINGS) {
-    if (!CLICKABLE_IDS.includes(b.id)) continue
-    if (pointInPolygon([lat, lng], b.polygon)) return b
+function polygonArea(polygon: [number, number][]): number {
+  if (polygon.length < 3) return Number.POSITIVE_INFINITY
+  let area = 0
+  for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+    const [latI, lngI] = polygon[i]
+    const [latJ, lngJ] = polygon[j]
+    area += lngJ * latI - lngI * latJ
   }
-  return null
+  return Math.abs(area) / 2
+}
+
+function centroidDistance(point: [number, number], polygon: [number, number][]): number {
+  if (polygon.length === 0) return Number.POSITIVE_INFINITY
+  let latSum = 0
+  let lngSum = 0
+  for (const [lat, lng] of polygon) {
+    latSum += lat
+    lngSum += lng
+  }
+  const cLat = latSum / polygon.length
+  const cLng = lngSum / polygon.length
+  return Math.hypot(point[0] - cLat, point[1] - cLng)
+}
+
+function findBuildingByCoords(lat: number, lng: number): CampusBuilding | null {
+  const candidates = CAMPUS_BUILDINGS
+    .filter(b => CLICKABLE_IDS.includes(b.id))
+    .filter(b => pointInPolygon([lat, lng], b.polygon))
+
+  if (candidates.length === 0) return null
+  if (candidates.length === 1) return candidates[0]
+
+  return [...candidates]
+    .sort((a, b) => {
+      const areaDelta = polygonArea(a.polygon) - polygonArea(b.polygon)
+      if (Math.abs(areaDelta) > Number.EPSILON) return areaDelta
+      return centroidDistance([lat, lng], a.polygon) - centroidDistance([lat, lng], b.polygon)
+    })[0]
 }
 
 function getPlaceholderAnalytics(building: CampusBuilding): PlaceholderAnalytics {
@@ -466,6 +481,7 @@ export default function MapPage() {
   const { isAuthenticated, isLoading } = useAuth()
   const router = useRouter()
   const [selected, setSelected] = useState<string | null>(null)
+  const [userCenter, setUserCenter] = useState<[number, number] | null>(null)
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) window.location.href = '/auth'
@@ -482,6 +498,54 @@ export default function MapPage() {
     return () => window.removeEventListener('keydown', onKeyDown)
   }, [])
 
+  const handleCenterUser = () => {
+    if (!navigator.geolocation) {
+      return
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        setUserCenter([position.coords.longitude, position.coords.latitude])
+      },
+      () => {},
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 },
+    )
+  }
+
+  const building = useMemo(
+    () => (selected ? CAMPUS_BUILDINGS.find((b) => b.id === selected) ?? null : null),
+    [selected],
+  )
+  const analytics = useMemo(
+    () => (building ? getPlaceholderAnalytics(building) : null),
+    [building],
+  )
+  const regions: MapRegion[] = useMemo(
+    () =>
+      [...CAMPUS_BUILDINGS]
+        .sort((a, b) => polygonArea(b.polygon) - polygonArea(a.polygon))
+        .map((b) => ({
+        id: b.id,
+        polygon: b.polygon as [number, number][],
+        selected: b.id === selected,
+        floors: b.floors,
+      })),
+    [selected],
+  )
+  const riskColor = building ? RISK_COLORS[building.riskLevel] : '#22c55e'
+  const panelOffset = building ? 416 : 0
+
+  const handleRegionClick = useCallback((id: string) => {
+    if (!CLICKABLE_IDS.includes(id)) return
+    setSelected((current) => (current === id ? null : id))
+  }, [])
+
+  const handleBuildingClick = useCallback((_: string, [lat, lng]: [number, number]) => {
+    const matchedBuilding = findBuildingByCoords(lat, lng)
+    if (!matchedBuilding) return
+    setSelected((current) => (current === matchedBuilding.id ? null : matchedBuilding.id))
+  }, [])
+
   if (isLoading) {
     return (
       <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg)' }}>
@@ -489,18 +553,6 @@ export default function MapPage() {
       </div>
     )
   }
-
-  const building = selected ? CAMPUS_BUILDINGS.find(b => b.id === selected) : null
-  const analytics = building ? getPlaceholderAnalytics(building) : null
-
-  const regions: MapRegion[] = CAMPUS_BUILDINGS.map(b => ({
-    id: b.id,
-    polygon: b.polygon as [number, number][],
-    selected: b.id === selected,
-    floors: b.floors,
-  }))
-
-  const riskColor = building ? RISK_COLORS[building.riskLevel] : '#22c55e'
 
   return (
     <div style={{ minHeight: '100vh', padding: '88px 40px 56px', maxWidth: '1400px', margin: '0 auto' }}>
@@ -518,56 +570,109 @@ export default function MapPage() {
       </div>
 
       {/* Map + detail panel layout */}
-      <div style={{ display: 'flex', gap: '20px', alignItems: 'flex-start' }}>
+      <div style={{
+        position: 'relative',
+        background: '#0f172a',
+        border: '1px solid #1e293b',
+        borderRadius: '14px',
+        boxShadow: '0 4px 24px rgba(0,0,0,0.2)',
+        overflow: 'hidden',
+        height: '640px',
+      }}>
         {/* Map container */}
         <div style={{
           position: 'relative',
-          flex: building ? '1 1 0' : '1 1 100%',
-          background: '#0f172a',
-          border: '1px solid #1e293b',
-          borderRadius: '14px',
-          boxShadow: '0 4px 24px rgba(0,0,0,0.2)',
+          width: '100%',
+          height: '100%',
           overflow: 'hidden',
-          height: '640px',
-          transition: 'flex 0.3s ease',
         }}>
+          <button
+            onClick={handleCenterUser}
+            style={{
+              position: 'absolute',
+              right: '12px',
+              bottom: '104px',
+              zIndex: 1001,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              width: '42px',
+              height: '42px',
+              borderRadius: '14px',
+              border: '1px solid rgba(15,23,42,0.08)',
+              background: '#ffffff',
+              color: '#1e293b',
+              cursor: 'pointer',
+              boxShadow: '0 8px 20px rgba(15,23,42,0.18)',
+              transform: `translateX(-${panelOffset}px)`,
+              transition: 'transform 320ms cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.15s ease',
+              willChange: 'transform',
+            }}
+            title="Center on my location"
+            onMouseEnter={e => {
+              e.currentTarget.style.transform = `translateX(-${panelOffset}px) translateY(-1px)`
+              e.currentTarget.style.boxShadow = '0 10px 24px rgba(15,23,42,0.24)'
+            }}
+            onMouseLeave={e => {
+              e.currentTarget.style.transform = `translateX(-${panelOffset}px) translateY(0)`
+              e.currentTarget.style.boxShadow = '0 8px 20px rgba(15,23,42,0.18)'
+            }}
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0f766e" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M12 2v3" />
+              <path d="M12 19v3" />
+              <path d="M4.93 4.93l2.12 2.12" />
+              <path d="M16.95 16.95l2.12 2.12" />
+              <path d="M2 12h3" />
+              <path d="M19 12h3" />
+              <path d="M4.93 19.07l2.12-2.12" />
+              <path d="M16.95 7.05l2.12-2.12" />
+              <circle cx="12" cy="12" r="4" />
+            </svg>
+          </button>
           <MapView
             regions={regions}
             hoverOnly
-            onRegionClick={(id) => {
-              if (CLICKABLE_IDS.includes(id)) {
-                setSelected((current) => (current === id ? null : id))
-              }
-            }}
-            onBuildingClick={(_, [lat, lng]) => {
-              const matchedBuilding = findBuildingByCoords(lat, lng)
-              if (matchedBuilding) {
-                setSelected((current) => current === matchedBuilding.id ? null : matchedBuilding.id)
-              }
-            }}
+            focusCenter={userCenter}
+            uiOffsetRight={panelOffset}
+            onRegionClick={handleRegionClick}
+            onBuildingClick={handleBuildingClick}
           />
         </div>
 
         {/* Detail panel — slides in from right */}
-        {building && (
-          <div style={{
-            width: '400px', flexShrink: 0,
-            background: 'rgba(10, 15, 28, 0.98)',
-            border: '1px solid rgba(45, 184, 176, 0.12)',
-            borderRadius: '14px',
-            boxShadow: '0 8px 40px rgba(0,0,0,0.4), 0 0 60px rgba(45,184,176,0.05)',
+        <div style={{
+            position: 'absolute',
+            top: 0,
+            right: 0,
+            bottom: 0,
+            width: '400px',
+            background: 'linear-gradient(180deg, rgba(241,245,249,0.97) 0%, rgba(232,240,247,0.95) 100%)',
+            borderLeft: '1px solid rgba(148,163,184,0.24)',
+            borderRadius: '0 14px 14px 0',
+            boxShadow: 'inset 1px 0 0 rgba(255,255,255,0.35)',
             display: 'flex', flexDirection: 'column',
-            maxHeight: '640px', overflowY: 'auto',
+            maxHeight: '100%',
+            overflowY: 'auto',
+            zIndex: 1000,
+            opacity: building ? 1 : 0,
+            pointerEvents: building ? 'auto' : 'none',
+            transform: building ? 'translateX(0)' : 'translateX(104%)',
+            transition: 'transform 320ms cubic-bezier(0.22, 1, 0.36, 1), opacity 220ms ease',
+            willChange: 'transform, opacity',
+            backdropFilter: 'blur(10px)',
           }}>
+          {building && (
+            <>
             {/* Accent bar at top */}
-            <div style={{ height: '3px', background: `linear-gradient(90deg, ${riskColor}, #2db8b0)`, borderRadius: '14px 14px 0 0' }} />
+            <div style={{ height: '3px', background: `linear-gradient(90deg, ${riskColor}, #2db8b0)`, borderRadius: '0 14px 0 0' }} />
 
             {/* Header */}
             <div style={{ padding: '20px 22px 0' }}>
               {/* Close */}
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '4px' }}>
                 <div style={{ flex: 1 }}>
-                  <h2 style={{ margin: '0 0 2px', fontSize: '20px', fontWeight: '700', color: '#f1f5f9', lineHeight: 1.3 }}>
+                  <h2 style={{ margin: '0 0 2px', fontSize: '20px', fontWeight: '700', color: '#0f172a', lineHeight: 1.3 }}>
                     {building.name}
                   </h2>
                   <p style={{ margin: '0', fontSize: '12px', color: '#64748b' }}>
@@ -576,12 +681,12 @@ export default function MapPage() {
                 </div>
                 <button onClick={() => setSelected(null)} style={{
                   width: '28px', height: '28px', borderRadius: '8px', flexShrink: 0,
-                  background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)',
+                  background: 'rgba(255,255,255,0.72)', border: '1px solid rgba(148,163,184,0.24)',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  cursor: 'pointer', color: '#94a3b8', transition: 'background 0.2s',
+                  cursor: 'pointer', color: '#64748b', transition: 'background 0.2s',
                 }}
-                onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.12)'}
-                onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,255,255,0.06)'}
+                onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.95)'}
+                onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,255,255,0.72)'}
                 >
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
                 </button>
@@ -616,9 +721,10 @@ export default function MapPage() {
             {/* Prominent stat: Capacity */}
             <div style={{
               margin: '0 22px 16px', padding: '20px',
-              background: 'rgba(45,184,176,0.04)',
-              border: '1px solid rgba(45,184,176,0.1)',
+              background: 'rgba(255,255,255,0.58)',
+              border: '1px solid rgba(148,163,184,0.18)',
               borderRadius: '12px', textAlign: 'center',
+              boxShadow: '0 10px 24px rgba(15,23,42,0.06)',
             }}>
               <div style={{ fontSize: '42px', fontWeight: '800', color: '#2db8b0', lineHeight: 1, marginBottom: '4px' }}>
                 {building.capacity}
@@ -630,7 +736,7 @@ export default function MapPage() {
 
             {/* Description */}
             <div style={{ padding: '0 22px 16px' }}>
-              <p style={{ margin: 0, fontSize: '13px', color: '#94a3b8', lineHeight: 1.7 }}>
+              <p style={{ margin: 0, fontSize: '13px', color: '#475569', lineHeight: 1.7 }}>
                 {building.notes}
               </p>
             </div>
@@ -640,45 +746,47 @@ export default function MapPage() {
               <div style={{ padding: '0 22px 16px' }}>
                 <div style={{
                   padding: '14px 16px',
-                  background: 'rgba(45,184,176,0.06)',
+                  background: 'rgba(255,255,255,0.58)',
                   border: '1px solid rgba(45,184,176,0.16)',
                   borderRadius: '12px',
+                  boxShadow: '0 10px 24px rgba(15,23,42,0.05)',
                 }}>
                   <div style={{ fontSize: '11px', color: '#2db8b0', fontWeight: '700', letterSpacing: '0.7px', marginBottom: '10px' }}>
                     BUILDING ANALYTICS (PLACEHOLDER)
                   </div>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-                    <div style={{ fontSize: '12px', color: '#cbd5e1' }}>Current Occupancy</div>
-                    <div style={{ fontSize: '12px', color: '#f1f5f9', fontWeight: '600', textAlign: 'right' }}>{analytics.currentOccupancy}</div>
-                    <div style={{ fontSize: '12px', color: '#cbd5e1' }}>Avg Evacuation Time</div>
-                    <div style={{ fontSize: '12px', color: '#f1f5f9', fontWeight: '600', textAlign: 'right' }}>{analytics.avgEvacuationTimeMin} min</div>
-                    <div style={{ fontSize: '12px', color: '#cbd5e1' }}>Congestion Status</div>
-                    <div style={{ fontSize: '12px', color: '#f1f5f9', fontWeight: '600', textAlign: 'right' }}>{analytics.congestionStatus}</div>
-                    <div style={{ fontSize: '12px', color: '#cbd5e1' }}>Drill Readiness</div>
-                    <div style={{ fontSize: '12px', color: '#f1f5f9', fontWeight: '600', textAlign: 'right' }}>{analytics.drillReadiness}%</div>
+                    <div style={{ fontSize: '12px', color: '#475569' }}>Current Occupancy</div>
+                    <div style={{ fontSize: '12px', color: '#0f172a', fontWeight: '600', textAlign: 'right' }}>{analytics.currentOccupancy}</div>
+                    <div style={{ fontSize: '12px', color: '#475569' }}>Avg Evacuation Time</div>
+                    <div style={{ fontSize: '12px', color: '#0f172a', fontWeight: '600', textAlign: 'right' }}>{analytics.avgEvacuationTimeMin} min</div>
+                    <div style={{ fontSize: '12px', color: '#475569' }}>Congestion Status</div>
+                    <div style={{ fontSize: '12px', color: '#0f172a', fontWeight: '600', textAlign: 'right' }}>{analytics.congestionStatus}</div>
+                    <div style={{ fontSize: '12px', color: '#475569' }}>Drill Readiness</div>
+                    <div style={{ fontSize: '12px', color: '#0f172a', fontWeight: '600', textAlign: 'right' }}>{analytics.drillReadiness}%</div>
                   </div>
                 </div>
               </div>
             )}
 
             {/* Divider */}
-            <div style={{ height: '1px', background: 'rgba(255,255,255,0.06)', margin: '0 22px 16px' }} />
+            <div style={{ height: '1px', background: 'rgba(148,163,184,0.18)', margin: '0 22px 16px' }} />
 
             {/* Stats grid */}
             <div style={{ padding: '0 22px' }}>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '16px' }}>
                 {/* Floors */}
                 <div style={{
-                  padding: '16px', background: 'rgba(255,255,255,0.03)', borderRadius: '12px',
-                  border: '1px solid rgba(255,255,255,0.06)',
+                  padding: '16px', background: 'rgba(255,255,255,0.58)', borderRadius: '12px',
+                  border: '1px solid rgba(148,163,184,0.16)',
                   display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px',
+                  boxShadow: '0 10px 24px rgba(15,23,42,0.05)',
                 }}>
                   <svg width="64" height="64" viewBox="0 0 64 64">
                     <circle cx="32" cy="32" r="24" fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="5" />
                     <circle cx="32" cy="32" r="24" fill="none" stroke="#f59e0b" strokeWidth="5"
                       strokeDasharray={`${(building.floors / 5) * 150.8} 150.8`}
                       strokeLinecap="round" transform="rotate(-90 32 32)" />
-                    <text x="32" y="30" textAnchor="middle" fill="#f1f5f9" fontSize="16" fontWeight="700">{building.floors}</text>
+                    <text x="32" y="30" textAnchor="middle" fill="#0f172a" fontSize="16" fontWeight="700">{building.floors}</text>
                     <text x="32" y="42" textAnchor="middle" fill="#64748b" fontSize="7" fontWeight="500">levels</text>
                   </svg>
                   <span style={{ fontSize: '10px', color: '#64748b', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Floors</span>
@@ -686,16 +794,17 @@ export default function MapPage() {
 
                 {/* Exits */}
                 <div style={{
-                  padding: '16px', background: 'rgba(255,255,255,0.03)', borderRadius: '12px',
-                  border: '1px solid rgba(255,255,255,0.06)',
+                  padding: '16px', background: 'rgba(255,255,255,0.58)', borderRadius: '12px',
+                  border: '1px solid rgba(148,163,184,0.16)',
                   display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px',
+                  boxShadow: '0 10px 24px rgba(15,23,42,0.05)',
                 }}>
                   <svg width="64" height="64" viewBox="0 0 64 64">
                     <circle cx="32" cy="32" r="24" fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="5" />
                     <circle cx="32" cy="32" r="24" fill="none" stroke={riskColor} strokeWidth="5"
                       strokeDasharray={`${(building.exits / 6) * 150.8} 150.8`}
                       strokeLinecap="round" transform="rotate(-90 32 32)" />
-                    <text x="32" y="30" textAnchor="middle" fill="#f1f5f9" fontSize="16" fontWeight="700">{building.exits}</text>
+                    <text x="32" y="30" textAnchor="middle" fill="#0f172a" fontSize="16" fontWeight="700">{building.exits}</text>
                     <text x="32" y="42" textAnchor="middle" fill="#64748b" fontSize="7" fontWeight="500">exits</text>
                   </svg>
                   <span style={{ fontSize: '10px', color: '#64748b', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Exit Points</span>
@@ -704,14 +813,15 @@ export default function MapPage() {
 
               {/* Last drill */}
               <div style={{
-                padding: '14px 16px', background: 'rgba(255,255,255,0.03)', borderRadius: '12px',
-                border: '1px solid rgba(255,255,255,0.06)',
+                padding: '14px 16px', background: 'rgba(255,255,255,0.58)', borderRadius: '12px',
+                border: '1px solid rgba(148,163,184,0.16)',
                 display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '18px',
+                boxShadow: '0 10px 24px rgba(15,23,42,0.05)',
               }}>
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#64748b" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
                 <div>
                   <div style={{ fontSize: '10px', color: '#64748b', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '2px' }}>Last Evacuation Drill</div>
-                  <div style={{ fontSize: '14px', fontWeight: '700', color: '#f1f5f9' }}>
+                  <div style={{ fontSize: '14px', fontWeight: '700', color: '#0f172a' }}>
                     {new Date(building.lastDrillDate).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
                   </div>
                 </div>
@@ -740,8 +850,9 @@ export default function MapPage() {
                 Run Simulation
               </button>
             </div>
-          </div>
-        )}
+            </>
+          )}
+        </div>
       </div>
 
       <p style={{ marginTop: '12px', fontSize: '11px', color: 'var(--text-muted)', textAlign: 'center' }}>
