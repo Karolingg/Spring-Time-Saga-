@@ -1,14 +1,25 @@
 'use client'
 
 import React, { useEffect, useState } from 'react'
+import dynamic from 'next/dynamic'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/src/hooks/useAuth'
-import MapView, { type MapMarker } from '@/components/MapView'
-import {
-  createSimulationRun,
-  saveSimulationResults,
-} from '@/src/services/simulation.service'
-import type { DisasterType, RiskLevel, SeverityLevel } from '@/src/schema/enums'
+import type { MapMarker } from '@/components/MapView'
+
+const MapView = dynamic(() => import('@/components/MapView'), {
+  ssr: false,
+  loading: () => (
+    <div style={{
+      height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center',
+      background: '#0f172a', borderRadius: '12px', color: '#94a3b8', fontSize: '14px', gap: '10px',
+    }}>
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2db8b0" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+        <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+      </svg>
+      Loading map...
+    </div>
+  ),
+})
 
 /* Campus buildings with bounding boxes for coordinate-based matching */
 const CAMPUS_BUILDINGS = [
@@ -20,8 +31,8 @@ const CAMPUS_BUILDINGS = [
   { id: 'volleyball-court', name: 'UPC Volleyball Court', bounds: { south: 10.3243, north: 10.3251, west: 123.8982, east: 123.8992 } },
   { id: 'as-west-wing', name: '', bounds: { south: 10.3212, north: 10.3256, west: 123.8984, east: 123.9005 } },
   { id: 'as-east-wing', name: '', bounds: { south: 10.3212, north: 10.3250, west: 123.8985, east: 123.9007 } },
-  { id: 'cultural-center', name: '', bounds: { south: 10.3190, north: 10.3260, west: 123.8987, east: 123.8997 } },
-  { id: 'soccer-field', name: 'UPC Soccer Field', bounds: { south: 10.3187, north: 10.3260, west: 123.8988, east: 123.8997 } },
+  { id: 'union-building', name: 'Union Building', bounds: { south: 10.3252, north: 10.3260, west: 123.9005, east: 123.9018 } },
+  { id: 'soccer-field', name: 'UPC Soccer Field', bounds: { south: 10.3232, north: 10.3244, west: 123.9018, east: 123.9038 } },
   { id: 'admin-building', name: '', bounds: { south: 10.3212, north: 10.3234, west: 123.8977, east: 123.8988 } },
   { id: 'science-building', name: '', bounds: { south: 10.3211, north: 10.3234, west: 123.8971, east: 123.8988 } },
   { id: 'liadlaw-hall', name: '', bounds: { south: 10.3201, north: 10.3231, west: 123.8962, east: 123.8988 } },
@@ -32,7 +43,7 @@ const CAMPUS_BUILDINGS = [
   { id: 'cdcp-center', name: 'CDCP Center', bounds: { south: 10.3206, north: 10.3214, west: 123.9025, east: 123.9038 } },
   { id: 'up-high-school', name: '', bounds: { south: 10.3213, north: 10.3224, west: 123.8942, east: 123.9048 } },
   { id: 'covered-court', name: 'UP High Open Court', bounds: { south: 10.3206, north: 10.3216, west: 123.9038, east: 123.9055 } },
-  { id: 'up-cebu-library', name: '', bounds: { south: 10.3204, north: 10.3224, west: 123.8962, east: 123.8997 } },
+  { id: 'up-cebu-library', name: '', bounds: { south: 10.3203, north: 10.3224, west: 123.8962, east: 123.8997 } },
 ]
 
 /* IDs of buildings that get a clickable marker icon */
@@ -42,7 +53,7 @@ const MARKER_BUILDING_IDS = [
   'as-east-wing',
   'som-admin',
   'som-building-1',
-  'cultural-center',
+  'union-building',
   'social-sciences',
   'science-building',
   'liadlaw-hall',
@@ -58,7 +69,7 @@ interface BuildingDetail {
   capacity: number
   floors: number
   yearBuilt: string
-  riskLevel: 'Low' | 'Medium' | 'High' | 'N/A'
+  riskLevel: 'Low' | 'Medium' | 'High'
   facilities: string[]
 }
 
@@ -118,16 +129,16 @@ const BUILDING_DETAILS: Record<string, BuildingDetail> = {
     riskLevel: 'Medium',
     facilities: ['Tiered Lecture Halls', 'Case-Study Rooms', 'Presentation Suites', 'Student Lounge'],
   },
-  'cultural-center': {
-    name: 'Cebu Cultural Center',
-    type: 'N/A',
+  'union-building': {
+    name: 'Union Building',
+    type: 'Student Services',
     description:
-      'Closed',
-    capacity: 0,
-    floors: 1,
-    yearBuilt: '-',
-    riskLevel: 'N/A',
-    facilities: [], 
+      'The social heart of the UP Cebu campus. Home to student councils, organization offices, the canteen, and multipurpose event spaces widely used for university activities, assemblies, and cultural performances.',
+    capacity: 500,
+    floors: 2,
+    yearBuilt: '1988',
+    riskLevel: 'High',
+    facilities: ['Student Canteen', 'Org Offices', 'Event Hall', 'Student Council'],
   },
   'social-sciences': {
     name: 'Social Sciences Building',
@@ -186,97 +197,18 @@ const BUILDING_DETAILS: Record<string, BuildingDetail> = {
   },
 }
 
-interface BuildingBounds {
-  south: number
-  north: number
-  west: number
-  east: number
-}
-
-function normalizeBounds(bounds: BuildingBounds): BuildingBounds {
-  return {
-    south: Math.min(bounds.south, bounds.north),
-    north: Math.max(bounds.south, bounds.north),
-    west: Math.min(bounds.west, bounds.east),
-    east: Math.max(bounds.west, bounds.east),
-  }
-}
-
-function boundsCenter(bounds: BuildingBounds): { lat: number; lng: number } {
-  const b = normalizeBounds(bounds)
-  return {
-    lat: (b.south + b.north) / 2,
-    lng: (b.west + b.east) / 2,
-  }
-}
-
-function boundsArea(bounds: BuildingBounds): number {
-  const b = normalizeBounds(bounds)
-  return Math.abs((b.north - b.south) * (b.east - b.west))
-}
-
 function findBuildingByCoords(lat: number, lng: number): string | null {
   // Expand bounds slightly to be more forgiving with click targets
   const pad = 0.0003
-  const matches = CAMPUS_BUILDINGS.filter(b => {
-    const n = normalizeBounds(b.bounds)
-    return (
-      lat >= n.south - pad && lat <= n.north + pad &&
-      lng >= n.west - pad && lng <= n.east + pad
-    )
-  })
-
-  if (matches.length === 0) return null
-  if (matches.length === 1) return matches[0].id
-
-  // If bounds overlap, pick the most specific (smallest) bounding box.
-  matches.sort((a, b) => boundsArea(a.bounds) - boundsArea(b.bounds))
-  return matches[0].id
-}
-
-function hasBuildingDetail(buildingId: string): boolean {
-  return Boolean(BUILDING_DETAILS[buildingId])
-}
-
-function hasMarker(buildingId: string): boolean {
-  return MARKER_BUILDING_IDS.includes(buildingId)
-}
-
-function buildBoundsMarkers(): MapMarker[] {
-  return CAMPUS_BUILDINGS
-    .filter(b => hasMarker(b.id))
-    .map((b) => {
-      const c = boundsCenter(b.bounds)
-      return {
-        id: b.id,
-        label: b.name as string,
-        lat: c.lat,
-        lng: c.lng,
-      }
-    })
-}
-
-function attachMarkerClicks(markers: MapMarker[], onOpenPanel: (buildingId: string) => void): MapMarker[] {
-  return markers.map((m) => ({
-    ...m,
-    onClick: () => onOpenPanel(m.id),
-  }))
-}
-
-function openBuildingFromCoords(coords: [number, number], onOpenPanel: (buildingId: string) => void): void {
-  const [lat, lng] = coords
-  const buildingId = findBuildingByCoords(lat, lng)
-  if (buildingId) onOpenPanel(buildingId)
-}
-
-function handleBuildingClickFromMap(coords: [number, number], onOpenPanel: (buildingId: string) => void): void {
-  openBuildingFromCoords(coords, onOpenPanel)
-}
-
-function toPanelOpenHandler(setter: (id: string | null) => void): (buildingId: string) => void {
-  return (buildingId: string) => {
-    if (hasBuildingDetail(buildingId)) setter(buildingId)
+  for (const b of CAMPUS_BUILDINGS) {
+    if (
+      lat >= b.bounds.south - pad && lat <= b.bounds.north + pad &&
+      lng >= b.bounds.west - pad && lng <= b.bounds.east + pad
+    ) {
+      return b.id
+    }
   }
+  return null
 }
 
 /* ── Building detail side-panel ─────────────────────────────────────────── */
@@ -513,26 +445,22 @@ export default function SimulatePage() {
   const { isAuthenticated, isLoading: isAuthLoading } = useAuth()
   const router = useRouter()
   const [selectedBuildingId, setSelectedBuildingId] = useState<string | null>(null)
-  const openPanel = toPanelOpenHandler(setSelectedBuildingId)
 
   const selectedBuilding = selectedBuildingId ? BUILDING_DETAILS[selectedBuildingId] : null
-  const markers: MapMarker[] = attachMarkerClicks(buildBoundsMarkers(), openPanel)
-  // Sim parameters
-  const [agents, setAgents] = useState(120)
-  const [gridWidth, setGridWidth] = useState(60)
-  const [gridHeight, setGridHeight] = useState(45)
-  const [exits, setExits] = useState(6)
-  const [wallDensity, setWallDensity] = useState(10)
-  const [speed, setSpeed] = useState(200)
-  const [applied, setApplied] = useState({ agents: 120, gridWidth: 60, gridHeight: 45, exits: 6, wallDensity: 10, speed: 200 })
 
-  // Sim state
-  const [step, setStep] = useState(0)
-  const [evacuated, setEvacuated] = useState(0)
-  const [maxCongestion, setMaxCongestion] = useState(0)
-  const [isRunning, setIsRunning] = useState(false)
-  const [runId, setRunId] = useState<string | null>(null)
-  const [isSaving, setIsSaving] = useState(false)
+  const openPanel = (id: string) => {
+    if (BUILDING_DETAILS[id]) setSelectedBuildingId(id)
+  }
+
+  const markers: MapMarker[] = CAMPUS_BUILDINGS
+    .filter(b => MARKER_BUILDING_IDS.includes(b.id) && b.name !== undefined)
+    .map(b => ({
+      id: b.id,
+      label: b.name as string,
+      lat: (b.bounds.south + b.bounds.north) / 2,
+      lng: (b.bounds.west + b.bounds.east) / 2,
+      onClick: () => openPanel(b.id),
+    }))
 
   useEffect(() => {
     if (!isAuthLoading && !isAuthenticated) {
@@ -586,7 +514,9 @@ export default function SimulatePage() {
           flat2d
           markers={markers}
           onBuildingClick={(_name, coords) => {
-            handleBuildingClickFromMap(coords, openPanel)
+            const [lat, lng] = coords
+            const buildingId = findBuildingByCoords(lat, lng)
+            if (buildingId) openPanel(buildingId)
           }}
         />
 
@@ -607,22 +537,7 @@ export default function SimulatePage() {
           Click a building to start simulation setup
         </div>
         )}
-        {isSaving && (
-          <div style={{
-            marginTop: '12px',
-            padding: '12px 14px',
-            background: 'rgba(45,184,176,0.08)',
-            border: '1px solid rgba(45,184,176,0.2)',
-            borderRadius: '8px',
-            fontSize: '12px',
-            color: '#115e59',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '6px',
-          }}>
-            Saving simulation results...
-          </div>
-        )}
+      </div>
 
         {/* Building details panel */}
         {selectedBuilding && selectedBuildingId && (

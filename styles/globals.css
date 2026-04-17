@@ -1,8 +1,6 @@
 @import "tailwindcss";
 
 :root {
-  --font-geist-sans: "Segoe UI";
-  --font-geist-mono: "Consolas";
   --bg: #eef0f2;
   --bg-card: #ffffff;
   --teal: #2db8b0;
