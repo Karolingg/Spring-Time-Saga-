@@ -3,6 +3,9 @@
 import { useEffect, useState, useRef, useCallback, useMemo } from 'react'
 import { useParams, useSearchParams, useRouter } from 'next/navigation'
 import { useAuth } from '@/src/hooks/useAuth'
+import { BUILDING_FLOOR_COUNT } from '@/src/config/building-floor-counts'
+import { makePlaceholderFloor } from '@/src/simulation/floor-config/placeholder'
+import { loadBuildingFloorConfigs } from '@/src/simulation/floor-config/buildings/loaders'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type SimPhase = 'planning' | 'running' | 'rerouting' | 'completed'
@@ -75,305 +78,7 @@ interface SimMetrics {
   congestionLevel: 'Low' | 'Medium' | 'High'
 }
 
-// ─── Admin Building Configs ─────────────────────────────────────────────────
-
-const ADMIN_1F: FloorConfig = {
-  viewWidth: 780, viewHeight: 500,
-  floorLabel: '1st Floor',
-  exits: {
-    E1: { x: 390, y: 492, label: 'E1', desc: 'Main Exit \u00B7 South' },
-    E2: { x: 18,  y: 257, label: 'E2', desc: 'Side Exit \u00B7 West' },
-    E3: { x: 762, y: 112, label: 'E3', desc: 'Emergency Exit \u00B7 East' },
-  },
-  startPos: { x: 390, y: 257 },
-  primaryPaths: {
-    E1: [{ x: 390, y: 257 },{ x: 390, y: 295 },{ x: 390, y: 370 },{ x: 390, y: 445 },{ x: 390, y: 492 }],
-    E2: [{ x: 390, y: 257 },{ x: 280, y: 257 },{ x: 150, y: 257 },{ x: 55, y: 257 },{ x: 18, y: 257 }],
-    E3: [{ x: 390, y: 257 },{ x: 530, y: 257 },{ x: 665, y: 257 },{ x: 700, y: 200 },{ x: 700, y: 112 },{ x: 762, y: 112 }],
-  },
-  reroutes: {
-    E2: { to: 'E1', path: [{ x: 150, y: 257 },{ x: 280, y: 257 },{ x: 390, y: 257 },{ x: 390, y: 350 },{ x: 390, y: 445 },{ x: 390, y: 492 }] },
-    E3: { to: 'E1', path: [{ x: 665, y: 257 },{ x: 530, y: 257 },{ x: 390, y: 257 },{ x: 390, y: 350 },{ x: 390, y: 445 },{ x: 390, y: 492 }] },
-    E1: { to: 'E1', path: [] },
-  },
-  blockT: { E2: 0.45, E3: 0.50, E1: 1 },
-  obstacles: {
-    fire: [
-      { id: 'fire-accounting', x: 22, y: 345, w: 225, h: 130, type: 'fire', label: 'Fire', blocksExits: ['E2'] },
-      { id: 'smoke-west-corridor', x: 22, y: 232, w: 130, h: 55, type: 'smoke', label: 'Smoke', blocksExits: ['E2'] },
-      { id: 'smoke-records', x: 248, y: 290, w: 130, h: 80, type: 'smoke', label: 'Smoke', blocksExits: [] },
-    ],
-    earthquake: [
-      { id: 'debris-west-corridor', x: 72, y: 234, w: 95, h: 46, type: 'debris', label: 'Debris', blocksExits: ['E2'] },
-      { id: 'debris-east-corridor', x: 524, y: 224, w: 75, h: 66, type: 'debris', label: 'Debris', blocksExits: ['E3'] },
-      { id: 'debris-lobby-ceiling', x: 248, y: 22, w: 262, h: 22, type: 'debris', label: 'Structural Damage', blocksExits: [] },
-    ],
-  },
-  efficiency: { E1: 0.95, E2: 0.88, E3: 0.72 },
-  rooms: {
-    corridor:   { label: 'Main Corridor',     x: 390, y: 257 },
-    chancellors:{ label: "Chancellor's Office",x: 134, y: 118 },
-    lobby:      { label: 'Main Lobby',         x: 390, y: 122 },
-    registrar:  { label: 'Registrar',          x: 646, y: 122 },
-    accounting: { label: 'Accounting',         x: 134, y: 385 },
-    records:    { label: 'Records Room',       x: 390, y: 385 },
-    hr:         { label: 'HR Department',      x: 646, y: 385 },
-  },
-}
-
-const ADMIN_2F: FloorConfig = {
-  viewWidth: 780, viewHeight: 500,
-  floorLabel: '2nd Floor',
-  exits: {
-    S1: { x: 90,  y: 257, label: 'S1', desc: 'West Stairwell \u00B7 Down' },
-    S2: { x: 690, y: 257, label: 'S2', desc: 'East Stairwell \u00B7 Down' },
-    E3: { x: 762, y: 112, label: 'E3', desc: 'Fire Escape \u00B7 East' },
-  },
-  startPos: { x: 390, y: 257 },
-  primaryPaths: {
-    S1: [{ x: 390, y: 257 },{ x: 280, y: 257 },{ x: 150, y: 257 },{ x: 90, y: 257 }],
-    S2: [{ x: 390, y: 257 },{ x: 530, y: 257 },{ x: 690, y: 257 }],
-    E3: [{ x: 390, y: 257 },{ x: 530, y: 257 },{ x: 665, y: 257 },{ x: 700, y: 200 },{ x: 700, y: 112 },{ x: 762, y: 112 }],
-  },
-  reroutes: {
-    S1: { to: 'S2', path: [{ x: 150, y: 257 },{ x: 280, y: 257 },{ x: 390, y: 257 },{ x: 530, y: 257 },{ x: 690, y: 257 }] },
-    S2: { to: 'S1', path: [{ x: 530, y: 257 },{ x: 390, y: 257 },{ x: 280, y: 257 },{ x: 150, y: 257 },{ x: 90, y: 257 }] },
-    E3: { to: 'S1', path: [{ x: 665, y: 257 },{ x: 530, y: 257 },{ x: 390, y: 257 },{ x: 280, y: 257 },{ x: 90, y: 257 }] },
-  },
-  blockT: { S1: 0.50, S2: 0.50, E3: 0.50 },
-  obstacles: {
-    fire: [
-      { id: 'fire-office-west', x: 22, y: 30, w: 210, h: 190, type: 'fire', label: 'Fire', blocksExits: ['S1'] },
-      { id: 'smoke-corridor-west', x: 22, y: 232, w: 140, h: 55, type: 'smoke', label: 'Smoke', blocksExits: ['S1'] },
-    ],
-    earthquake: [
-      { id: 'debris-stair-east', x: 640, y: 230, w: 100, h: 55, type: 'debris', label: 'Debris', blocksExits: ['S2'] },
-      { id: 'debris-ceiling', x: 250, y: 100, w: 280, h: 30, type: 'debris', label: 'Structural Damage', blocksExits: [] },
-    ],
-  },
-  efficiency: { S1: 0.90, S2: 0.88, E3: 0.70 },
-  rooms: {
-    corridor:   { label: 'Main Corridor',    x: 390, y: 257 },
-    conference: { label: 'Conference Room',  x: 134, y: 118 },
-    openoffice: { label: 'Open Office',      x: 390, y: 122 },
-    it:         { label: 'IT Office',        x: 646, y: 122 },
-    storage:    { label: 'Storage',          x: 134, y: 385 },
-    meeting:    { label: 'Meeting Room',     x: 390, y: 385 },
-    supply:     { label: 'Supply Room',      x: 646, y: 385 },
-  },
-}
-
-// ─── Science Building (CSB) Configs ─────────────────────────────────────────
-// Uses actual SVG floor plan as background (viewBox 1200x675)
-// Coordinates mapped from csb-2f.svg: Room 204 left, Rooms 201-203 right,
-// toilet top-center, stairs center, exits at green markers
-
-const CSB_1F: FloorConfig = {
-  viewWidth: 1200, viewHeight: 675,
-  floorLabel: '1st Floor',
-  exits: {
-    E1: { x: 410, y: 52, label: 'E1', desc: 'North Exit · Main' },
-    E2: { x: 370, y: 490, label: 'E2', desc: 'SW Exit · Left' },
-    E3: { x: 610, y: 490, label: 'E3', desc: 'SE Exit · Right' },
-  },
-  startPos: { x: 0, y: 0 },
-  primaryPaths: {
-    // Up corridor, go left of stairs, up to Exit 1
-    E1: [{ x: 490, y: 350 },{ x: 490, y: 295 },{ x: 420, y: 270 },{ x: 410, y: 210 },{ x: 410, y: 120 },{ x: 410, y: 52 }],
-    // Down corridor, fork left to Exit 2
-    E2: [{ x: 490, y: 350 },{ x: 490, y: 410 },{ x: 490, y: 455 },{ x: 430, y: 470 },{ x: 370, y: 490 }],
-    // Down corridor, fork right to Exit 3
-    E3: [{ x: 490, y: 350 },{ x: 490, y: 410 },{ x: 490, y: 455 },{ x: 550, y: 470 },{ x: 610, y: 490 }],
-  },
-  reroutes: {
-    E1: { to: 'E2', path: [{ x: 410, y: 120 },{ x: 410, y: 210 },{ x: 420, y: 270 },{ x: 490, y: 295 },{ x: 490, y: 350 },{ x: 490, y: 410 },{ x: 490, y: 455 },{ x: 430, y: 470 },{ x: 370, y: 490 }] },
-    E2: { to: 'E3', path: [{ x: 430, y: 470 },{ x: 490, y: 455 },{ x: 550, y: 470 },{ x: 610, y: 490 }] },
-    E3: { to: 'E2', path: [{ x: 550, y: 470 },{ x: 490, y: 455 },{ x: 430, y: 470 },{ x: 370, y: 490 }] },
-  },
-  blockT: { E1: 0.50, E2: 0.50, E3: 0.55 },
-  obstacles: {
-    fire: [
-      { id: 'fire-north', x: 375, y: 40, w: 80, h: 70, type: 'fire', label: 'Fire', blocksExits: ['E1'] },
-      { id: 'smoke-corridor', x: 450, y: 300, w: 90, h: 45, type: 'smoke', label: 'Smoke', blocksExits: [] },
-    ],
-    earthquake: [
-      { id: 'debris-sw-exit', x: 340, y: 470, w: 80, h: 40, type: 'debris', label: 'Debris', blocksExits: ['E2'] },
-      { id: 'debris-corridor', x: 450, y: 280, w: 90, h: 30, type: 'debris', label: 'Structural Damage', blocksExits: [] },
-    ],
-  },
-  efficiency: { E1: 0.92, E2: 0.88, E3: 0.85 },
-  rooms: {
-    corridor: { label: 'Corridor',     x: 490, y: 350 },
-    r204:     { label: 'Room 204',     x: 220, y: 250, corridorEntryNode: 'Left Corridor' },
-    r203:     { label: 'Room 203',     x: 730, y: 330, corridorEntryNode: 'Near Toilet' },
-    r202:     { label: 'Room 202',     x: 730, y: 250, corridorEntryNode: 'Near Room 202' },
-    r201:     { label: 'Room 201',     x: 730, y: 400, corridorEntryNode: 'East Corridor' },
-  },
-  corridorNodes: [
-    { label: 'Left Corridor',    x: 364, y: 369, neighbors: ['Near Room 204'] },
-    { label: 'Near Room 204',    x: 364, y: 255, neighbors: ['Left Corridor', 'Upper Corridor'] },
-    { label: 'Upper Corridor',   x: 364, y: 173, neighbors: ['Near Room 204', 'Near Stairs'] },
-    { label: 'Near Stairs',      x: 485, y: 173, neighbors: ['Upper Corridor', 'Near Toilet'] },
-    { label: 'Near Toilet',      x: 613, y: 173, neighbors: ['Near Stairs', 'Near Room 202'] },
-    { label: 'Near Room 202',    x: 613, y: 220, neighbors: ['Near Toilet', 'Near Room 201'] },
-    { label: 'Near Room 201',    x: 613, y: 310, neighbors: ['Near Room 202', 'East Corridor'] },
-    { label: 'East Corridor',    x: 613, y: 412, neighbors: ['Near Room 201'] },
-  ],
-}
-
-const CSB_2F: FloorConfig = {
-  viewWidth: 1200, viewHeight: 675,
-  floorLabel: '2nd Floor',
-  exits: {
-    S1: { x: 490, y: 266.5, label: 'S1', desc: 'Center Stairs · Down' },
-    S2: { x: 360, y: 520, label: 'S2', desc: 'SW Stairs · Down' },
-    S3: { x: 613, y: 520, label: 'S3', desc: 'SE Stairs · Down' },
-  },
-  startPos: { x: 0, y: 0 },
-  primaryPaths: {
-    // Center stairwell: connect directly from Near Stairs to S1
-    S1: [{ x: 482, y: 173 },{ x: 490, y: 220 },{ x: 490, y: 266.5 }],
-    // Left corridor lane to SW stairs (S2)
-    S2: [{ x: 365, y: 360 },{ x: 365, y: 420 },{ x: 365, y: 490 },{ x: 365, y: 520 }],
-    // East corridor lane to SE stairs (S3)
-    S3: [{ x: 613, y: 420 },{ x: 613, y: 490 },{ x: 608, y: 520 }],
-  },
-  reroutes: {
-    S1: { to: 'S2', path: [{ x: 482, y: 220 },{ x: 482, y: 300 },{ x: 430, y: 360 },{ x: 365, y: 420 },{ x: 365, y: 490 },{ x: 365, y: 520 }] },
-    S2: { to: 'S3', path: [{ x: 365, y: 490 },{ x: 430, y: 490 },{ x: 490, y: 490 },{ x: 550, y: 490 },{ x: 608, y: 520 }] },
-    S3: { to: 'S2', path: [{ x: 608, y: 520 },{ x: 550, y: 490 },{ x: 490, y: 490 },{ x: 430, y: 490 },{ x: 365, y: 490 },{ x: 365, y: 520 }] },
-  },
-  blockT: { S1: 0.55, S2: 0.50, S3: 0.50 },
-  obstacles: {
-    fire: [
-      { id: 'fire-west-wing', x: 165, y: 235, w: 120, h: 95, type: 'fire', label: 'Electrical Fire', blocksExits: ['S2'] },
-      { id: 'smoke-corridor-east', x: 555, y: 280, w: 80, h: 50, type: 'smoke', label: 'Smoke', blocksExits: ['S3'] },
-      { id: 'smoke-spreading', x: 590, y: 165, w: 60, h: 50, type: 'smoke', label: 'Smoke', blocksExits: [] },
-    ],
-    earthquake: [
-      { id: 'debris-center-stair', x: 440, y: 215, w: 100, h: 45, type: 'debris', label: 'Stairwell Debris', blocksExits: ['S1'] },
-      { id: 'debris-corridor', x: 440, y: 330, w: 100, h: 35, type: 'debris', label: 'Debris', blocksExits: [] },
-      { id: 'debris-se-stair', x: 580, y: 470, w: 70, h: 40, type: 'debris', label: 'Debris', blocksExits: ['S3'] },
-    ],
-  },
-  efficiency: { S1: 0.92, S2: 0.85, S3: 0.85 },
-  rooms: {
-    corridor: { label: 'Corridor',     x: 490, y: 350 },
-    r204:     { label: 'Room 204',     x: 220, y: 360, corridorEntryNode: 'Left Corridor' },
-    r203:     { label: 'Room 203',     x: 730, y: 173, corridorEntryNode: 'Near Toilet' },
-    r202:     { label: 'Room 202',     x: 720, y: 310, corridorEntryNode: 'Near Room 201' },
-    r201:     { label: 'Room 201',     x: 730, y: 420, corridorEntryNode: 'East Corridor' },
-  },
-  corridorNodes: [
-    { label: 'Left Corridor',    x: 360, y: 360, neighbors: ['Near Room 204'] },
-    // Keep Near Room 204 isolated from Near Toilet; route must pass through Upper Corridor/Near Stairs.
-    { label: 'Near Room 204',    x: 360, y: 255, neighbors: ['Left Corridor', 'Upper Corridor'] },
-    { label: 'Upper Corridor',   x: 360, y: 173, neighbors: ['Near Room 204', 'Near Stairs'] },
-    { label: 'Near Stairs',      x: 490, y: 173, neighbors: ['Upper Corridor', 'Near Toilet', 'S1 Exit'] },
-    { label: 'S1 Exit',          x: 490, y: 266.5, neighbors: ['Near Stairs'] },
-    { label: 'Near Toilet',      x: 613, y: 173, neighbors: ['Near Stairs', 'Near Room 202'] },
-    { label: 'Near Room 202',    x: 613, y: 220, neighbors: ['Near Toilet', 'Near Room 201'] },
-    { label: 'Near Room 201',    x: 613, y: 310, neighbors: ['Near Room 202', 'East Corridor'] },
-    { label: 'East Corridor',    x: 613, y: 420, neighbors: ['Near Room 201'] },
-  ],
-}
-
-// ─── Placeholder floor config generator ─────────────────────────────────────
-// Uses CSB layout as a placeholder for buildings without custom floor plans
-function makePlaceholderFloor(floorIndex: number): FloorConfig {
-  const label = floorIndex === 0 ? '1st Floor' : floorIndex === 1 ? '2nd Floor' : floorIndex === 2 ? '3rd Floor' : `${floorIndex + 1}th Floor`
-  const isGround = floorIndex === 0
-  return {
-    viewWidth: 1200, viewHeight: 675,
-    floorLabel: label,
-    exits: isGround
-      ? {
-          E1: { x: 410, y: 52, label: 'E1' , desc: ''},
-          E2: { x: 365, y: 520, label: 'E2', desc: '' },
-          E3: { x: 605, y: 520, label: 'E3', desc: ''},
-        }
-      : {
-          S1: { x: 490, y: 230, label: 'S1', desc: 'Center Stairs · Down' },
-          S2: { x: 370, y: 490, label: 'S2', desc: 'SW Stairs · Down' },
-          S3: { x: 610, y: 490, label: 'S3', desc: 'SE Stairs · Down' },
-        },
-    startPos: { x: 490, y: 350 },
-    primaryPaths: isGround
-      ? {
-          E1: [{ x: 490, y: 350 },{ x: 490, y: 295 },{ x: 420, y: 270 },{ x: 410, y: 210 },{ x: 410, y: 120 },{ x: 410, y: 52 }],
-          E2: [{ x: 490, y: 350 },{ x: 490, y: 410 },{ x: 490, y: 455 },{ x: 430, y: 470 },{ x: 370, y: 490 }],
-          E3: [{ x: 490, y: 350 },{ x: 490, y: 410 },{ x: 490, y: 455 },{ x: 550, y: 470 },{ x: 610, y: 490 }],
-        }
-      : {
-          S1: [{ x: 490, y: 350 },{ x: 490, y: 295 },{ x: 420, y: 270 },{ x: 420, y: 240 },{ x: 490, y: 230 }],
-          S2: [{ x: 490, y: 350 },{ x: 490, y: 410 },{ x: 490, y: 455 },{ x: 430, y: 470 },{ x: 370, y: 490 }],
-          S3: [{ x: 490, y: 350 },{ x: 490, y: 410 },{ x: 490, y: 455 },{ x: 550, y: 470 },{ x: 610, y: 490 }],
-        },
-    reroutes: isGround
-      ? {
-          E1: { to: 'E2', path: [{ x: 410, y: 120 },{ x: 410, y: 210 },{ x: 420, y: 270 },{ x: 490, y: 295 },{ x: 490, y: 350 },{ x: 490, y: 410 },{ x: 490, y: 455 },{ x: 430, y: 470 },{ x: 370, y: 490 }] },
-          E2: { to: 'E3', path: [{ x: 430, y: 470 },{ x: 490, y: 455 },{ x: 550, y: 470 },{ x: 610, y: 490 }] },
-          E3: { to: 'E2', path: [{ x: 550, y: 470 },{ x: 490, y: 455 },{ x: 430, y: 470 },{ x: 370, y: 490 }] },
-        }
-      : {
-          S1: { to: 'S2', path: [{ x: 420, y: 240 },{ x: 420, y: 270 },{ x: 490, y: 295 },{ x: 490, y: 350 },{ x: 490, y: 410 },{ x: 490, y: 455 },{ x: 430, y: 470 },{ x: 370, y: 490 }] },
-          S2: { to: 'S3', path: [{ x: 430, y: 470 },{ x: 490, y: 455 },{ x: 550, y: 470 },{ x: 610, y: 490 }] },
-          S3: { to: 'S2', path: [{ x: 550, y: 470 },{ x: 490, y: 455 },{ x: 430, y: 470 },{ x: 370, y: 490 }] },
-        },
-    blockT: isGround
-      ? { E1: 0.50, E2: 0.50, E3: 0.55 }
-      : { S1: 0.55, S2: 0.50, S3: 0.50 },
-    obstacles: {
-      fire: isGround
-        ? [
-            { id: 'fire-north', x: 375, y: 40, w: 80, h: 70, type: 'fire', label: 'Fire', blocksExits: ['E1'] },
-            { id: 'smoke-corridor', x: 450, y: 300, w: 90, h: 45, type: 'smoke', label: 'Smoke', blocksExits: [] },
-          ]
-        : [
-            { id: 'fire-west-wing', x: 165, y: 235, w: 120, h: 95, type: 'fire', label: 'Electrical Fire', blocksExits: ['S2'] },
-            { id: 'smoke-corridor', x: 555, y: 280, w: 80, h: 50, type: 'smoke', label: 'Smoke', blocksExits: ['S3'] },
-          ],
-      earthquake: isGround
-        ? [
-            { id: 'debris-sw', x: 340, y: 470, w: 80, h: 40, type: 'debris', label: 'Debris', blocksExits: ['E2'] },
-            { id: 'debris-corridor', x: 450, y: 280, w: 90, h: 30, type: 'debris', label: 'Structural Damage', blocksExits: [] },
-          ]
-        : [
-            { id: 'debris-center', x: 440, y: 215, w: 100, h: 45, type: 'debris', label: 'Stairwell Debris', blocksExits: ['S1'] },
-            { id: 'debris-se', x: 580, y: 470, w: 70, h: 40, type: 'debris', label: 'Debris', blocksExits: ['S3'] },
-          ],
-    },
-    efficiency: isGround
-      ? { E1: 0.92, E2: 0.88, E3: 0.85 }
-      : { S1: 0.92, S2: 0.85, S3: 0.85 },
-    rooms: {
-      corridor: { label: 'Corridor',     x: 490, y: 350 },
-      r204:     { label: 'Room 204',     x: 220, y: 250 },
-      r203:     { label: 'Room 203',     x: 730, y: 300 },
-      r202:     { label: 'Room 202',     x: 720, y: 280 },
-      r201:     { label: 'Room 201',     x: 730, y: 400 },
-    },
-  }
-}
-
-/* Floor counts for buildings without custom configs */
-const BUILDING_FLOOR_COUNT: Record<string, number> = {
-  'as-west-wing': 2,
-  'as-east-wing': 2,
-  'som-admin': 2,
-  'som-building-1': 3,
-  'cultural-center': 1,
-  'social-sciences': 2,
-  'liadlaw-hall': 2,
-  'up-cebu-library': 2,
-  'up-high-school': 2,
-}
-
-// ─── Building → Floor Configs ────────────────────────────────────────────────
-const BUILDING_FLOORS: Record<string, FloorConfig[]> = {
-  'admin-building':   [ADMIN_1F, ADMIN_2F],
-  'science-building': [CSB_1F, CSB_2F],
-}
+// Building floor configurations are provided by per-building modules.
 
 function validateFloorConfig(config: FloorConfig, buildingId: string, floorIndex: number) {
   const issues: string[] = []
@@ -443,10 +148,26 @@ function validateFloorConfigs(buildingId: string, floors: FloorConfig[]): FloorC
   return floors
 }
 
-function getFloorConfigs(buildingId: string): FloorConfig[] {
-  if (BUILDING_FLOORS[buildingId]) return validateFloorConfigs(buildingId, BUILDING_FLOORS[buildingId])
-  const count = BUILDING_FLOOR_COUNT[buildingId]
-  if (count) return validateFloorConfigs(buildingId, Array.from({ length: count }, (_, i) => makePlaceholderFloor(i)))
+async function getFloorConfigs(buildingId: string): Promise<FloorConfig[]> {
+  const customFloors = await loadBuildingFloorConfigs(buildingId)
+  const declaredCount = BUILDING_FLOOR_COUNT[buildingId]
+
+  if (customFloors) {
+    const targetCount = Math.max(customFloors.length, declaredCount ?? customFloors.length)
+    if (targetCount === customFloors.length) {
+      return validateFloorConfigs(buildingId, customFloors)
+    }
+    const extendedFloors = [
+      ...customFloors,
+      ...Array.from({ length: targetCount - customFloors.length }, (_, i) => makePlaceholderFloor(customFloors.length + i)),
+    ]
+    return validateFloorConfigs(buildingId, extendedFloors)
+  }
+
+  if (declaredCount) {
+    return validateFloorConfigs(buildingId, Array.from({ length: declaredCount }, (_, i) => makePlaceholderFloor(i)))
+  }
+
   // Fallback: 2-floor placeholder
   return validateFloorConfigs(buildingId, [makePlaceholderFloor(0), makePlaceholderFloor(1)])
 }
@@ -1392,13 +1113,20 @@ function AdminFloorPlan(props: FloorPlanProps) {
 // Uses actual SVG floor plan as background image with simulation overlay on top
 function CSBFloorPlan(props: FloorPlanProps) {
   const { config } = props
+  const floorPlanSrcByLabel: Record<string, string> = {
+    '2nd Floor': '/floorplans/csb-2f.svg',
+    '3rd Floor': '/floorplans/CSB%203rd%20floor.svg',
+    '4th Floor': '/floorplans/CSB%204th%20floor.svg',
+  }
+  // Fallback keeps floor rendering visible until a dedicated 1st-floor SVG is added.
+  const floorPlanSrc = floorPlanSrcByLabel[config.floorLabel] ?? '/floorplans/csb-2f.svg'
 
   return (
     <div style={{ position: 'relative', width: '100%', height: '100%' }}>
       {/* Actual floor plan SVG — untouched */}
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
-        src="/floorplans/csb-2f.svg"
+        src={floorPlanSrc}
         alt="CSB Floor Plan"
         style={{ width: '100%', height: '100%', display: 'block', position: 'absolute', top: 0, left: 0, objectFit: 'contain', objectPosition: 'center' }}
       />
@@ -1436,13 +1164,30 @@ export default function SimulationRunPage() {
 
   const regionId = params.id as string
   const disaster = (search.get('disaster') || 'fire') as DisasterType
-  const initialFloor = parseInt(search.get('floor') || '0', 10)
+  const parsedFloor = Number.parseInt(search.get('floor') || '0', 10)
+  const initialFloor = Number.isFinite(parsedFloor) ? Math.max(0, parsedFloor) : 0
   const meta     = DISASTER_META[disaster] || DISASTER_META.fire
 
-  const floors    = useMemo(() => getFloorConfigs(regionId), [regionId])
+  const [floorConfigState, setFloorConfigState] = useState<{
+    regionId: string
+    floors: FloorConfig[]
+    error: string | null
+    status: 'loading' | 'loaded' | 'error'
+  }>({
+    regionId,
+    floors: [],
+    error: null,
+    status: 'loading',
+  })
+  const currentFloorState = floorConfigState.regionId === regionId
+    ? floorConfigState
+    : { regionId, floors: [], error: null, status: 'loading' as const }
+  const floors = currentFloorState.floors
+  const isFloorConfigLoading = currentFloorState.status === 'loading'
+  const floorConfigLoadError = currentFloorState.error
   const hasFloors = floors.length > 0
 
-  const [floorIdx,      setFloorIdx]      = useState(Math.min(initialFloor, Math.max(floors.length - 1, 0)))
+  const [floorIdx,      setFloorIdx]      = useState(0)
   const [phase,         setPhase]         = useState<SimPhase>('planning')
   const [selectedRoom,  setSelectedRoom]  = useState<string | null>(null)
   const [routeMode,     setRouteMode]     = useState<RouteMode>(null)
@@ -1474,7 +1219,40 @@ export default function SimulationRunPage() {
     runTokenRef.current += 1
   }, [])
 
-  const config = hasFloors ? floors[floorIdx] : null
+  const activeFloorIdx = hasFloors ? Math.min(Math.max(floorIdx, 0), floors.length - 1) : 0
+  const config = hasFloors ? floors[activeFloorIdx] : null
+
+  useEffect(() => {
+    let cancelled = false
+
+    getFloorConfigs(regionId)
+      .then((resolvedFloors) => {
+        if (cancelled) return
+        setFloorConfigState({
+          regionId,
+          floors: resolvedFloors,
+          error: null,
+          status: 'loaded',
+        })
+        const maxFloorIndex = Math.max(resolvedFloors.length - 1, 0)
+        setFloorIdx(Math.min(initialFloor, maxFloorIndex))
+      })
+      .catch((error) => {
+        if (cancelled) return
+        console.error('[sim-config-load]', regionId, error)
+        setFloorConfigState({
+          regionId,
+          floors: [],
+          error: 'Failed to load floor configuration for this building.',
+          status: 'error',
+        })
+        setFloorIdx(0)
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [regionId, initialFloor])
   const planningAgentPos = useMemo<Point>(() => {
     if (!config || !selectedRoom || !config.rooms[selectedRoom]) {
       // Do not default to corridor/startPos — require user to select a room.
@@ -1878,16 +1656,16 @@ export default function SimulationRunPage() {
   }
 
   const switchFloor = (idx: number) => {
-    if (idx === floorIdx) return
+    if (idx === activeFloorIdx) return
     reset()
     setSelectedRoom(null)
     setSelectedVias([])
     setFloorIdx(idx)
   }
 
-  if (isLoading) return (
+  if (isLoading || isFloorConfigLoading) return (
     <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg)' }}>
-      <div style={{ color: 'var(--text-secondary)', fontSize: '14px' }}>Loading...</div>
+      <div style={{ color: 'var(--text-secondary)', fontSize: '14px' }}>{isLoading ? 'Loading...' : 'Loading floor configuration...'}</div>
     </div>
   )
 
@@ -1902,7 +1680,7 @@ export default function SimulationRunPage() {
       </button>
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '400px', gap: '16px', background: '#f8fafc', borderRadius: '16px', border: '1px solid #c9dae6', padding: '18px', boxShadow: '0 1px 0 rgba(0,0,0,0.02), 0 6px 18px rgba(15,23,42,0.04)' }}>
         <div style={{ fontSize: '16px', fontWeight: 700, color: 'var(--text-primary)' }}>{displayName}</div>
-        <div style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>Floor plan for this building is coming soon.</div>
+        <div style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>{floorConfigLoadError || 'Floor plan for this building is coming soon.'}</div>
       </div>
     </div>
   )
@@ -1978,7 +1756,7 @@ export default function SimulationRunPage() {
             <label htmlFor="floor-select" style={{ fontSize: '10px', fontWeight: 700, color: meta.color, letterSpacing: '0.06em', textTransform: 'uppercase' }}>Floor</label>
             <select
               id="floor-select"
-              value={floorIdx}
+              value={activeFloorIdx}
               onChange={e => switchFloor(Number(e.target.value))}
               onFocus={e => {
                 e.currentTarget.style.borderColor = meta.color

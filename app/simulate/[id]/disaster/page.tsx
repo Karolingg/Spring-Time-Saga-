@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { useAuth } from '@/src/hooks/useAuth'
+import { BUILDING_FLOOR_COUNT } from '@/src/config/building-floor-counts'
 
 const DISASTERS = [
   {
@@ -37,21 +38,6 @@ const DISASTERS = [
     ),
   },
 ]
-
-/* Floor counts per building — used to generate floor picker options */
-const BUILDING_FLOOR_COUNT: Record<string, number> = {
-  'admin-building': 3,
-  'as-west-wing': 2,
-  'as-east-wing': 2,
-  'som-admin': 2,
-  'som-building-1': 3,
-  'cultural-center': 1,
-  'social-sciences': 2,
-  'science-building': 3,
-  'liadlaw-hall': 2,
-  'up-cebu-library': 2,
-  'up-high-school': 2,
-}
 
 function floorLabel(index: number): string {
   const n = index + 1

@@ -11,7 +11,7 @@ const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || ''
 const FALLBACK_CENTER: [number, number] = [10.3230, 123.8995] // lat, lng â€” UP Cebu campus center
 const DEFAULT_ZOOM = 18
 const DEFAULT_PITCH = 45
-const DEFAULT_BEARING = -15
+const DEFAULT_BEARING = 0
 const SELECTED_REGION_ZOOM = 18.2
 const SELECTED_REGION_PITCH = 58
 
@@ -97,6 +97,7 @@ export interface MapMarker {
   lat: number
   lng: number
   onClick?: () => void
+  compact?: boolean // small dot marker, no label
 }
 
 interface MapViewProps {
@@ -105,15 +106,17 @@ interface MapViewProps {
   onRegionClick?: (id: string) => void
   onBuildingClick?: (name: string, coords: [number, number]) => void
   focusCenter?: [number, number] | null
+  highlightAt?: [number, number] | null // [lat, lng] — after flying there, outline the Mapbox building at that point
   maxBounds?: [[number, number], [number, number]]
   minZoom?: number
+  maxZoom?: number
   lockedStyle?: string // force a single style and hide the switcher
   flat2d?: boolean // flat 2D view â€” no pitch, no extrusions, fill polygons only
   hoverOnly?: boolean // regions invisible by default, shown only on hover or selection
   uiOffsetRight?: number
 }
 
-export default function MapView({ regions, markers, onRegionClick, onBuildingClick, focusCenter, maxBounds, minZoom, lockedStyle, flat2d, hoverOnly, uiOffsetRight = 0 }: MapViewProps) {
+export default function MapView({ regions, markers, onRegionClick, onBuildingClick, focusCenter, highlightAt, maxBounds, minZoom, maxZoom, lockedStyle, flat2d, hoverOnly, uiOffsetRight = 0 }: MapViewProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const mapRef = useRef<MapRef>(null)
   const hadSelectedRegionRef = useRef(false)
@@ -265,17 +268,23 @@ export default function MapView({ regions, markers, onRegionClick, onBuildingCli
         const lat = parseFloat(result.lat)
         const lng = parseFloat(result.lon)
         setDefaultCenter([lng, lat])
-        mapRef.current?.flyTo({
-          center: [lng, lat],
-          zoom: DEFAULT_ZOOM,
-          pitch: flat2d ? 0 : DEFAULT_PITCH,
-          bearing: flat2d ? 0 : DEFAULT_BEARING,
-          duration: 1500,
-        })
+        // Only re-center if the caller didn't already supply a focus target.
+        if (!focusCenter) {
+          mapRef.current?.flyTo({
+            center: [lng, lat],
+            zoom: DEFAULT_ZOOM,
+            pitch: flat2d ? 0 : DEFAULT_PITCH,
+            bearing: flat2d ? 0 : DEFAULT_BEARING,
+            duration: 1500,
+          })
+        }
       })
       .catch(() => {
       })
-  }, [mapLoaded, lockedStyle, flat2d])
+  // Intentionally only re-run when the map mounts or lockedStyle changes — we don't want
+  // flat2d toggles (e.g. from selecting a building) to re-trigger a fly to the geocoded default.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mapLoaded, lockedStyle])
 
   useEffect(() => {
     if (!mapLoaded || !focusCenter) return
@@ -288,6 +297,95 @@ export default function MapView({ regions, markers, onRegionClick, onBuildingCli
       essential: true,
     })
   }, [mapLoaded, focusCenter, flat2d])
+
+  // Outline the Mapbox building at `highlightAt` immediately, then keep retrying as tiles/render update.
+  useEffect(() => {
+    if (!mapLoaded) return
+    const map = mapRef.current?.getMap()
+    if (!map) return
+    if (!highlightAt) {
+      setSelectedMapboxBuildingId(null)
+      setSelectedMapboxBuildingPropertyId(null)
+      return
+    }
+    const [lat, lng] = highlightAt
+    const trySelect = (): boolean => {
+      try {
+        const point = map.project([lng, lat])
+        const radius = 24 // widen the hit-test — a single pixel often misses roof geometry
+        const bbox: [[number, number], [number, number]] = [
+          [point.x - radius, point.y - radius],
+          [point.x + radius, point.y + radius],
+        ]
+        const queryLayers = ['mapbox-3d-buildings', 'building-fills'].filter((layerId) => Boolean(map.getLayer(layerId)))
+        let features = queryLayers.length
+          ? map.queryRenderedFeatures(bbox, { layers: queryLayers })
+          : map.queryRenderedFeatures(bbox)
+        if (!features.length && queryLayers.length) {
+          features = map.queryRenderedFeatures(bbox)
+        }
+        const building = features.find((f) => f.sourceLayer === 'building')
+        if (building) {
+          setSelectedMapboxBuildingId(building.id ?? null)
+          setSelectedMapboxBuildingPropertyId((building.properties?.id as string | number | undefined) ?? null)
+          return true
+        }
+      } catch {
+        // style/source not ready yet
+      }
+      return false
+    }
+
+    let rafId: number | null = null
+    let active = true
+    const startedAt = Date.now()
+    const maxRetryWindowMs = 1800
+
+    const stop = () => {
+      active = false
+      if (rafId !== null) {
+        cancelAnimationFrame(rafId)
+        rafId = null
+      }
+      map.off('moveend', onMoveEnd)
+      map.off('render', onRender)
+      map.off('idle', onIdle)
+    }
+
+    const loopSelect = () => {
+      if (!active) return
+      if (trySelect()) {
+        stop()
+        return
+      }
+      if (Date.now() - startedAt < maxRetryWindowMs) {
+        rafId = requestAnimationFrame(loopSelect)
+      }
+    }
+
+    const onRender = () => {
+      if (trySelect()) stop()
+    }
+
+    const onMoveEnd = () => {
+      if (trySelect()) stop()
+    }
+
+    const onIdle = () => {
+      if (trySelect()) stop()
+    }
+
+    // Try immediately for cases where the feature is already in view.
+    loopSelect()
+    map.on('render', onRender)
+    map.on('moveend', onMoveEnd)
+    map.on('idle', onIdle)
+
+    return () => {
+      stop()
+    }
+  }, [mapLoaded, highlightAt])
+
   // Smoothly zoom into selected regions and ease back to the default view on deselect.
   useEffect(() => {
     if (!mapLoaded || !regions?.length) return
@@ -517,25 +615,27 @@ export default function MapView({ regions, markers, onRegionClick, onBuildingCli
     },
   }
 
-  const hasSelectedRegion = useMemo(
-    () => regions?.some((r) => Boolean(r.selected)) ?? false,
-    [regions],
-  )
-
   const selectedMapboxBuildingFilter = useMemo(() => {
-    if (!hasSelectedRegion) return null
-    const extrudeFilter = ['==', ['get', 'extrude'], 'true'] as const
+    if (selectedMapboxBuildingId === null && selectedMapboxBuildingPropertyId === null) {
+      return null
+    }
+
     if (selectedMapboxBuildingId !== null && selectedMapboxBuildingPropertyId !== null) {
-      return ['all', extrudeFilter, ['any', ['==', ['id'], selectedMapboxBuildingId], ['==', ['get', 'id'], selectedMapboxBuildingPropertyId]]]
+      return ['any', ['==', ['id'], selectedMapboxBuildingId], ['==', ['get', 'id'], selectedMapboxBuildingPropertyId]]
     }
     if (selectedMapboxBuildingId !== null) {
-      return ['all', extrudeFilter, ['==', ['id'], selectedMapboxBuildingId]]
+      return ['==', ['id'], selectedMapboxBuildingId]
     }
     if (selectedMapboxBuildingPropertyId !== null) {
-      return ['all', extrudeFilter, ['==', ['get', 'id'], selectedMapboxBuildingPropertyId]]
+      return ['==', ['get', 'id'], selectedMapboxBuildingPropertyId]
     }
     return null
-  }, [hasSelectedRegion, selectedMapboxBuildingId, selectedMapboxBuildingPropertyId])
+  }, [selectedMapboxBuildingId, selectedMapboxBuildingPropertyId])
+
+  const selectedMapboxBuildingExtrudeFilter = useMemo(() => {
+    if (!selectedMapboxBuildingFilter) return null
+    return ['all', ['==', ['get', 'extrude'], 'true'], selectedMapboxBuildingFilter]
+  }, [selectedMapboxBuildingFilter])
 
   return (
     <div ref={containerRef} className="map-view-shell" style={{ position: 'relative', height: '100%', width: '100%', borderRadius: '12px', overflow: 'hidden' }}>
@@ -579,6 +679,7 @@ export default function MapView({ regions, markers, onRegionClick, onBuildingCli
           [maxBounds[1][1], maxBounds[1][0]],
         ] : undefined}
         minZoom={minZoom}
+        maxZoom={maxZoom}
         interactiveLayerIds={flat2d ? [] : ['building-fills', 'mapbox-3d-buildings']}
         onClick={handleClick}
         onMouseEnter={handleMouseEnter}
@@ -595,13 +696,13 @@ export default function MapView({ regions, markers, onRegionClick, onBuildingCli
         {/* Exact selected building footprint overlay (stays aligned in all map angles/styles). */}
         {mapLoaded && selectedMapboxBuildingFilter && (
           <>
-            {!flat2d && (
+            {!flat2d && selectedMapboxBuildingExtrudeFilter && (
               <Layer
                 id="selected-mapbox-building-fill"
                 type="fill-extrusion"
                 source="composite"
                 source-layer="building"
-                filter={selectedMapboxBuildingFilter as unknown as FillExtrusionLayerSpecification['filter']}
+                filter={selectedMapboxBuildingExtrudeFilter as unknown as FillExtrusionLayerSpecification['filter']}
                 paint={{
                   'fill-extrusion-color': activeStyle.glowColor,
                   'fill-extrusion-height': ['get', 'height'],
@@ -626,44 +727,51 @@ export default function MapView({ regions, markers, onRegionClick, onBuildingCli
         )}
 
         {/* Building markers */}
-        {canRenderMarkers && markers?.map((m) => (
-          <Marker
-            key={m.id}
-            longitude={m.lng}
-            latitude={m.lat}
-            anchor="bottom"
-            onClick={(e) => { e.originalEvent.stopPropagation(); m.onClick?.() }}
-          >
-            <div
-              title={m.label}
-              style={{
-                cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px',
-                transition: 'transform 0.15s', pointerEvents: 'auto',
-              }}
-              onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.15)'}
-              onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
+        {canRenderMarkers && markers?.map((m) => {
+          const isCompact = Boolean(m.compact)
+          const size = isCompact ? 20 : 32
+          const iconSize = isCompact ? 10 : 16
+          return (
+            <Marker
+              key={m.id}
+              longitude={m.lng}
+              latitude={m.lat}
+              anchor={isCompact ? 'center' : 'bottom'}
+              onClick={(e) => { e.originalEvent.stopPropagation(); m.onClick?.() }}
             >
-              <div style={{
-                width: '32px', height: '32px', borderRadius: '50%',
-                background: 'rgba(45,184,176,0.9)', border: '2px solid #fff',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                boxShadow: '0 2px 8px rgba(0,0,0,0.4), 0 0 12px rgba(45,184,176,0.4)',
-              }}>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                  <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/>
-                </svg>
+              <div
+                title={m.label}
+                style={{
+                  cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px',
+                  transition: 'transform 0.15s', pointerEvents: 'auto',
+                }}
+                onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.15)'}
+                onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
+              >
+                <div style={{
+                  width: `${size}px`, height: `${size}px`, borderRadius: '50%',
+                  background: 'rgba(45,184,176,0.9)', border: '2px solid #fff',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.4), 0 0 12px rgba(45,184,176,0.4)',
+                }}>
+                  <svg width={iconSize} height={iconSize} viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/>
+                  </svg>
+                </div>
+                {!isCompact && m.label && (
+                  <div style={{
+                    background: 'rgba(10,15,28,0.9)', color: '#f1f5f9',
+                    padding: '2px 8px', borderRadius: '6px', fontSize: '10px', fontWeight: '600',
+                    whiteSpace: 'nowrap', border: '1px solid rgba(255,255,255,0.1)',
+                    maxWidth: '120px', overflow: 'hidden', textOverflow: 'ellipsis',
+                  }}>
+                    {m.label}
+                  </div>
+                )}
               </div>
-              <div style={{
-                background: 'rgba(10,15,28,0.9)', color: '#f1f5f9',
-                padding: '2px 8px', borderRadius: '6px', fontSize: '10px', fontWeight: '600',
-                whiteSpace: 'nowrap', border: '1px solid rgba(255,255,255,0.1)',
-                maxWidth: '120px', overflow: 'hidden', textOverflow: 'ellipsis',
-              }}>
-                {m.label}
-              </div>
-            </div>
-          </Marker>
-        ))}
+            </Marker>
+          )
+        })}
 
         {regions && regions.length > 0 && (
           <Source id="campus-buildings" type="geojson" data={geojson}>

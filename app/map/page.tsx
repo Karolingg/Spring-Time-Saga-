@@ -3,18 +3,29 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/src/hooks/useAuth'
-import MapView, { type MapRegion } from '@/components/MapView'
+import MapView, { type MapMarker } from '@/components/MapView'
+
+/* UP Cebu campus center — used for the default top-down view */
+const CAMPUS_CENTER: [number, number] = [123.8988, 10.3228] // [lng, lat]
 
 /* ── Building data ── */
+interface BuildingBounds {
+  south: number
+  north: number
+  west: number
+  east: number
+}
+
 interface CampusBuilding {
   id: string
   name: string
   type: string
-  polygon: [number, number][]
+  bounds: BuildingBounds
+  center: [number, number] // [lat, lng] — accurate point on the actual building footprint
   capacity: number
   floors: number
   exits: number
-  riskLevel: 'LOW' | 'MEDIUM' | 'HIGH' | 'N/A' 
+  riskLevel: 'LOW' | 'MEDIUM' | 'HIGH' | 'N/A'
   lastDrillDate: string
   notes: string
 }
@@ -31,12 +42,8 @@ const CAMPUS_BUILDINGS: CampusBuilding[] = [
     id: 'social-sciences',
     name: 'Social Sciences Building',
     type: 'Academic',
-    polygon: [
-      [10.3259, 123.8965],
-      [10.3259, 123.8975],
-      [10.3253, 123.8975],
-      [10.3253, 123.8965],
-    ],
+    bounds: { south: 10.3221, north: 10.3255, west: 123.8971, east: 123.8987 },
+    center: [10.3256, 123.8975],
     capacity: 180,
     floors: 2,
     exits: 3,
@@ -45,32 +52,11 @@ const CAMPUS_BUILDINGS: CampusBuilding[] = [
     notes: 'Houses social science classrooms and faculty offices. Main exit leads to the campus quadrangle.',
   },
   {
-    id: 'arts-design',
-    name: 'Arts and Design Workshop',
-    type: 'Academic',
-    polygon: [
-      [10.3253, 123.8965],
-      [10.3253, 123.8975],
-      [10.3247, 123.8975],
-      [10.3247, 123.8965],
-    ],
-    capacity: 100,
-    floors: 2,
-    exits: 2,
-    riskLevel: 'LOW',
-    lastDrillDate: '2025-08-15',
-    notes: 'Art studios and workshops. Contains flammable materials in the painting studio area.',
-  },
-  {
     id: 'som-building-1',
     name: 'SOM Building 1',
     type: 'Academic',
-    polygon: [
-      [10.3249, 123.8972],
-      [10.3249, 123.8982],
-      [10.3243, 123.8982],
-      [10.3243, 123.8972],
-    ],
+    bounds: { south: 10.3218, north: 10.3241, west: 123.8969, east: 123.8987 },
+    center: [10.3247, 123.8975],
     capacity: 180,
     floors: 3,
     exits: 3,
@@ -82,12 +68,8 @@ const CAMPUS_BUILDINGS: CampusBuilding[] = [
     id: 'som-admin',
     name: 'SOM Administration',
     type: 'Administrative',
-    polygon: [
-      [10.3243, 123.8972],
-      [10.3243, 123.8982],
-      [10.3237, 123.8982],
-      [10.3237, 123.8972],
-    ],
+    bounds: { south: 10.3218, north: 10.3237, west: 123.8972, east: 123.8983 },
+    center: [10.3239, 123.8975],
     capacity: 120,
     floors: 2,
     exits: 2,
@@ -96,134 +78,24 @@ const CAMPUS_BUILDINGS: CampusBuilding[] = [
     notes: 'SOM administrative offices and faculty rooms. Connected to SOM Building 1 via covered walkway.',
   },
   {
-    id: 'som-building-2',
-    name: 'SOM Building 2',
-    type: 'Academic',
-    polygon: [
-      [10.3237, 123.8972],
-      [10.3237, 123.8982],
-      [10.3231, 123.8982],
-      [10.3231, 123.8972],
-    ],
-    capacity: 160,
-    floors: 2,
-    exits: 3,
-    riskLevel: 'LOW',
-    lastDrillDate: '2025-08-20',
-    notes: 'Connected to SOM Building 1 via covered walkway. Faculty offices on the second floor.',
-  },
-  {
-    id: 'volleyball-court',
-    name: 'UPC Volleyball Court',
-    type: 'Recreational',
-    polygon: [
-      [10.3251, 123.8982],
-      [10.3251, 123.8992],
-      [10.3243, 123.8992],
-      [10.3243, 123.8982],
-    ],
-    capacity: 200,
-    floors: 1,
-    exits: 4,
-    riskLevel: 'LOW',
-    lastDrillDate: '2025-06-05',
-    notes: 'Open-air volleyball court. Can serve as a secondary evacuation assembly point.',
-  },
-    {
-    id: 'as-east-wing',
-    name: 'AS East Wing',
-    type: 'Academic',
-    polygon: [
-      [10.3250, 123.9005],
-      [10.3250, 123.9018],
-      [10.3242, 123.9018],
-      [10.3242, 123.9005],
-    ],
-    capacity: 220,
-    floors: 3,
-    exits: 4,
-    riskLevel: 'MEDIUM',
-    lastDrillDate: '2025-10-05',
-    notes: 'Classrooms and research labs. Connected to West Wing via covered bridge on 2nd floor.',
-  },
-  {
-    id: 'as-west-wing',
-    name: 'AS West Wing',
-    type: 'Academic',
-    polygon: [
-      [10.3258, 123.8990],
-      [10.3258, 123.9000],
-      [10.3242, 123.9000],
-      [10.3242, 123.8990],
-    ],
-    capacity: 200,
-    floors: 3,
-    exits: 4,
-    riskLevel: 'MEDIUM',
-    lastDrillDate: '2025-10-05',
-    notes: 'Arts and Sciences wing with laboratories. Chemical storage on 2nd floor requires extra caution during evacuation.',
-  },
-  {
-    id: 'cultural-center',
-    name: 'Cebu Cultural Center',
-    type: 'Closed',
-    polygon: [
-      [10.3250, 123.8992],
-      [10.3250, 123.9005],
-      [10.3248, 123.9000],
-      [10.3248, 123.8980],
-    ],
+    id: 'admin-building',
+    name: 'Admin Building',
+    type: 'Administrative',
+    bounds: { south: 10.3212, north: 10.3234, west: 123.8977, east: 123.8988 },
+    center: [10.3226, 123.8980],
     capacity: 150,
     floors: 2,
     exits: 3,
-    riskLevel: 'LOW',
-    lastDrillDate: '2025-09-01',
-    notes: 'Student union offices and activity rooms. Central location provides quick access to multiple evacuation routes.',
-  },
-  {
-    id: 'soccer-field',
-    name: 'UPC Soccer Field',
-    type: 'Recreational',
-    polygon: [
-      [10.3244, 123.9018],
-      [10.3244, 123.9038],
-      [10.3232, 123.9038],
-      [10.3232, 123.9018],
-    ],
-    capacity: 500,
-    floors: 1,
-    exits: 4,
-    riskLevel: 'LOW',
-    lastDrillDate: '2025-06-10',
-    notes: 'Open field used as the primary evacuation assembly point for the upper campus. Wide clearance on all sides.',
-  },
-  {
-    id: 'admin-building-1',
-    name: 'Administration Building',
-    type: 'Administrative',
-    polygon: [
-      [10.3240, 123.8978],
-      [10.3240, 123.8992],
-      [10.3232, 123.8992],
-      [10.3232, 123.8978],
-    ],
-    capacity: 120,
-    floors: 2,
-    exits: 3,
-    riskLevel: 'LOW',
-    lastDrillDate: '2025-08-01',
-    notes: 'Central administrative offices. Houses the registrar, cashier, and chancellor\'s office. Main entrance faces the campus quadrangle.',
+    riskLevel: 'MEDIUM',
+    lastDrillDate: '2025-09-20',
+    notes: 'Central administrative offices. Houses the registrar, cashier, and chancellor\'s office.',
   },
   {
     id: 'science-building',
     name: 'Science Building',
     type: 'Academic',
-    polygon: [
-      [10.3232, 123.8978],
-      [10.3232, 123.8992],
-      [10.3224, 123.8992],
-      [10.3224, 123.8978],
-    ],
+    bounds: { south: 10.3211, north: 10.3234, west: 123.8971, east: 123.8988 },
+    center: [10.3226, 123.8961],
     capacity: 320,
     floors: 3,
     exits: 3,
@@ -232,157 +104,82 @@ const CAMPUS_BUILDINGS: CampusBuilding[] = [
     notes: 'Core facility for natural sciences instruction. Contains chemistry, biology, and physics laboratories with stricter evacuation constraints.',
   },
   {
-    id: 'admin-building',
-    name: 'Admin Building',
+    id: 'as-west-wing',
+    name: 'AS West Wing',
     type: 'Academic',
-    polygon: [
-      [10.3226, 123.8978],
-      [10.3226, 123.8992],
-      [10.3218, 123.8992],
-      [10.3218, 123.8978],
-    ],
+    bounds: { south: 10.3212, north: 10.3256, west: 123.8984, east: 123.9005 },
+    center: [10.3252, 123.9000],
+    capacity: 200,
+    floors: 3,
+    exits: 4,
+    riskLevel: 'MEDIUM',
+    lastDrillDate: '2025-10-05',
+    notes: 'Arts and Sciences wing with laboratories. Chemical storage on 2nd floor requires extra caution during evacuation.',
+  },
+  {
+    id: 'as-east-wing',
+    name: 'AS East Wing',
+    type: 'Academic',
+    bounds: { south: 10.3212, north: 10.3250, west: 123.8985, east: 123.9007 },
+    center: [10.3245, 123.9012],
+    capacity: 220,
+    floors: 3,
+    exits: 4,
+    riskLevel: 'MEDIUM',
+    lastDrillDate: '2025-10-05',
+    notes: 'Classrooms and research labs. Connected to West Wing via covered bridge on 2nd floor.',
+  },
+  {
+    id: 'cultural-center',
+    name: 'Cebu Cultural Center',
+    type: 'Closed',
+    bounds: { south: 10.3190, north: 10.3260, west: 123.8987, east: 123.8997 },
+    center: [10.3225, 123.9015],
     capacity: 150,
     floors: 2,
     exits: 3,
-    riskLevel: 'MEDIUM',
-    lastDrillDate: '2025-09-20',
-    notes: 'Multi-purpose academic hall. Limited stairwell access on the west side.',
-  },
-  {
-    id: 'balay-warangao',
-    name: 'Balay Warangao',
-    type: 'Administrative',
-    polygon: [
-      [10.3220, 123.8975],
-      [10.3220, 123.8988],
-      [10.3212, 123.8988],
-      [10.3212, 123.8975],
-    ],
-    capacity: 80,
-    floors: 2,
-    exits: 2,
     riskLevel: 'LOW',
-    lastDrillDate: '2025-07-15',
-    notes: 'Administrative cottage. Houses student affairs and guidance offices.',
-  },
-  {
-    id: 'tech-innovation',
-    name: 'Technology Innovation Center',
-    type: 'Research',
-    polygon: [
-      [10.3214, 123.8975],
-      [10.3214, 123.8988],
-      [10.3206, 123.8988],
-      [10.3206, 123.8975],
-    ],
-    capacity: 80,
-    floors: 2,
-    exits: 2,
-    riskLevel: 'LOW',
-    lastDrillDate: '2025-07-15',
-    notes: 'Houses computer labs and research facilities. Backup generators on site. Emergency power shutoff near the main entrance.',
-  },
-  {
-    id: 'malacanang-cottage',
-    name: 'Malacanang Cottage',
-    type: 'Administrative',
-    polygon: [
-      [10.3226, 123.8998],
-      [10.3226, 123.9012],
-      [10.3218, 123.9012],
-      [10.3218, 123.8998],
-    ],
-    capacity: 60,
-    floors: 1,
-    exits: 2,
-    riskLevel: 'LOW',
-    lastDrillDate: '2025-06-20',
-    notes: 'Heritage cottage used for administrative functions. Single-story structure with clear exit paths.',
-  },
-  {
-    id: 'computer-room',
-    name: 'Computer Room',
-    type: 'Academic',
-    polygon: [
-      [10.3220, 123.9012],
-      [10.3220, 123.9025],
-      [10.3212, 123.9025],
-      [10.3212, 123.9012],
-    ],
-    capacity: 80,
-    floors: 1,
-    exits: 2,
-    riskLevel: 'LOW',
-    lastDrillDate: '2025-08-10',
-    notes: 'Main computer laboratory. Contains sensitive equipment — orderly evacuation required.',
-  },
-  {
-    id: 'cdcp-center',
-    name: 'CDCP Center',
-    type: 'Academic',
-    polygon: [
-      [10.3214, 123.9025],
-      [10.3214, 123.9038],
-      [10.3206, 123.9038],
-      [10.3206, 123.9025],
-    ],
-    capacity: 100,
-    floors: 2,
-    exits: 2,
-    riskLevel: 'LOW',
-    lastDrillDate: '2025-08-10',
-    notes: 'Community development center. Ground floor exit leads directly to Gorordo Avenue.',
-  },
-  {
-    id: 'up-high-school',
-    name: 'UP High School – Cebu',
-    type: 'Academic',
-    polygon: [
-      [10.3224, 123.8900],
-      [10.3224, 123.9048],
-      [10.3213, 123.9048],
-      [10.3213, 123.8900],
-    ],
-    capacity: 350,
-    floors: 3,
-    exits: 5,
-    riskLevel: 'HIGH',
-    lastDrillDate: '2025-11-15',
-    notes: 'Largest building by occupancy. High student density during class hours. Multiple wing exits connect to the covered court and parking area.',
-  },
-  {
-    id: 'covered-court',
-    name: 'UP High Open Court',
-    type: 'Recreational',
-    polygon: [
-      [10.3216, 123.9038],
-      [10.3216, 123.9055],
-      [10.3206, 123.9055],
-      [10.3206, 123.9038],
-    ],
-    capacity: 500,
-    floors: 1,
-    exits: 4,
-    riskLevel: 'LOW',
-    lastDrillDate: '2025-06-10',
-    notes: 'Open court used as the primary evacuation assembly point for the lower campus. Wide clearance on all sides.',
+    lastDrillDate: '2025-09-01',
+    notes: 'Large cultural hall and performance venue on the eastern side of campus. Multiple exits open onto Gorordo Avenue.',
   },
   {
     id: 'up-cebu-library',
     name: 'UP Cebu Library',
     type: 'Academic',
-    polygon: [
-      [10.3212, 123.8960],
-      [10.3212, 123.8975],
-      [10.3202, 123.8975],
-      [10.3202, 123.8960],
-    ],
+    bounds: { south: 10.3204, north: 10.3224, west: 123.8962, east: 123.8997 },
+    center: [10.3212, 123.8975],
     capacity: 100,
     floors: 2,
     exits: 2,
     riskLevel: 'LOW',
     lastDrillDate: '2025-09-05',
     notes: 'University library housing academic resources. Quiet zone with limited occupancy per floor.',
+  },
+  {
+    id: 'liadlaw-hall',
+    name: 'Liadlaw Hall',
+    type: 'Academic',
+    bounds: { south: 10.3201, north: 10.3231, west: 123.8962, east: 123.8988 },
+    center: [10.3215, 123.8995],
+    capacity: 140,
+    floors: 2,
+    exits: 3,
+    riskLevel: 'LOW',
+    lastDrillDate: '2025-08-28',
+    notes: 'Multi-purpose academic hall used for lectures and public events. Wide central corridor aids evacuation.',
+  },
+  {
+    id: 'up-high-school',
+    name: 'UP High School – Cebu',
+    type: 'Academic',
+    bounds: { south: 10.3213, north: 10.3224, west: 123.8942, east: 123.9048 },
+    center: [10.3218, 123.9020],
+    capacity: 350,
+    floors: 3,
+    exits: 5,
+    riskLevel: 'HIGH',
+    lastDrillDate: '2025-11-15',
+    notes: 'Largest building by occupancy. High student density during class hours. Multiple wing exits connect to the covered court and parking area.',
   },
 ]
 
@@ -392,76 +189,26 @@ const RISK_COLORS: Record<string, string> = {
   HIGH: '#ef4444',
 }
 
-/* IDs of buildings that show detail panel on click */
-const CLICKABLE_IDS = [
-  'admin-building',
-  'as-west-wing',
-  'as-east-wing',
-  'som-admin',
-  'som-building-1',
-  'cultural-center',
-  'social-sciences',
-  'science-building',
-  'up-cebu-library',
-  'up-high-school',
-]
-
-function pointInPolygon(point: [number, number], polygon: [number, number][]): boolean {
-  const [lat, lng] = point
-  let inside = false
-
-  for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
-    const [latI, lngI] = polygon[i]
-    const [latJ, lngJ] = polygon[j]
-
-    const crosses =
-      ((lngI > lng) !== (lngJ > lng)) &&
-      (lat < (latJ - latI) * (lng - lngI) / ((lngJ - lngI) || Number.EPSILON) + latI)
-
-    if (crosses) inside = !inside
-  }
-
-  return inside
+function boundsArea(b: BuildingBounds): number {
+  return Math.abs((b.north - b.south) * (b.east - b.west))
 }
 
-function polygonArea(polygon: [number, number][]): number {
-  if (polygon.length < 3) return Number.POSITIVE_INFINITY
-  let area = 0
-  for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
-    const [latI, lngI] = polygon[i]
-    const [latJ, lngJ] = polygon[j]
-    area += lngJ * latI - lngI * latJ
-  }
-  return Math.abs(area) / 2
-}
-
-function centroidDistance(point: [number, number], polygon: [number, number][]): number {
-  if (polygon.length === 0) return Number.POSITIVE_INFINITY
-  let latSum = 0
-  let lngSum = 0
-  for (const [lat, lng] of polygon) {
-    latSum += lat
-    lngSum += lng
-  }
-  const cLat = latSum / polygon.length
-  const cLng = lngSum / polygon.length
-  return Math.hypot(point[0] - cLat, point[1] - cLng)
+function boundsCenter(b: BuildingBounds): [number, number] {
+  return [(b.west + b.east) / 2, (b.south + b.north) / 2] // [lng, lat]
 }
 
 function findBuildingByCoords(lat: number, lng: number): CampusBuilding | null {
-  const candidates = CAMPUS_BUILDINGS
-    .filter(b => CLICKABLE_IDS.includes(b.id))
-    .filter(b => pointInPolygon([lat, lng], b.polygon))
+  const pad = 0.0003
+  const matches = CAMPUS_BUILDINGS.filter(b => (
+    lat >= b.bounds.south - pad && lat <= b.bounds.north + pad &&
+    lng >= b.bounds.west - pad && lng <= b.bounds.east + pad
+  ))
 
-  if (candidates.length === 0) return null
-  if (candidates.length === 1) return candidates[0]
+  if (matches.length === 0) return null
+  if (matches.length === 1) return matches[0]
 
-  return [...candidates]
-    .sort((a, b) => {
-      const areaDelta = polygonArea(a.polygon) - polygonArea(b.polygon)
-      if (Math.abs(areaDelta) > Number.EPSILON) return areaDelta
-      return centroidDistance([lat, lng], a.polygon) - centroidDistance([lat, lng], b.polygon)
-    })[0]
+  // Overlapping bounds — pick the smallest (most specific) one.
+  return [...matches].sort((a, b) => boundsArea(a.bounds) - boundsArea(b.bounds))[0]
 }
 
 function getPlaceholderAnalytics(building: CampusBuilding): PlaceholderAnalytics {
@@ -481,7 +228,7 @@ export default function MapPage() {
   const { isAuthenticated, isLoading } = useAuth()
   const router = useRouter()
   const [selected, setSelected] = useState<string | null>(null)
-  const [userCenter, setUserCenter] = useState<[number, number] | null>(null)
+  const [forcedCenter, setForcedCenter] = useState<[number, number] | null>(null)
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) window.location.href = '/auth'
@@ -491,6 +238,7 @@ export default function MapPage() {
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
         setSelected(null)
+        setForcedCenter([CAMPUS_CENTER[0], CAMPUS_CENTER[1]])
       }
     }
 
@@ -498,18 +246,9 @@ export default function MapPage() {
     return () => window.removeEventListener('keydown', onKeyDown)
   }, [])
 
-  const handleCenterUser = () => {
-    if (!navigator.geolocation) {
-      return
-    }
-
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        setUserCenter([position.coords.longitude, position.coords.latitude])
-      },
-      () => {},
-      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 },
-    )
+  const handleRecenterDefault = () => {
+    setSelected(null)
+    setForcedCenter([CAMPUS_CENTER[0], CAMPUS_CENTER[1]])
   }
 
   const building = useMemo(
@@ -520,31 +259,53 @@ export default function MapPage() {
     () => (building ? getPlaceholderAnalytics(building) : null),
     [building],
   )
-  const regions: MapRegion[] = useMemo(
-    () =>
-      [...CAMPUS_BUILDINGS]
-        .sort((a, b) => polygonArea(b.polygon) - polygonArea(a.polygon))
-        .map((b) => ({
-        id: b.id,
-        polygon: b.polygon as [number, number][],
-        selected: b.id === selected,
-        floors: b.floors,
-      })),
-    [selected],
-  )
   const riskColor = building ? RISK_COLORS[building.riskLevel] : '#22c55e'
   const panelOffset = building ? 416 : 0
 
-  const handleRegionClick = useCallback((id: string) => {
-    if (!CLICKABLE_IDS.includes(id)) return
+  // When a building is selected, focus on its center so the map zooms/tilts to it.
+  // Otherwise, use a forced recenter target or the campus center for the top view.
+  const focusCenter: [number, number] | null = useMemo(() => {
+    if (building) {
+      return boundsCenter(building.bounds)
+    }
+    if (forcedCenter) return forcedCenter
+    return CAMPUS_CENTER
+  }, [building, forcedCenter])
+
+  const handleSelectBuilding = useCallback((id: string) => {
+    setForcedCenter(null)
     setSelected((current) => (current === id ? null : id))
   }, [])
+
+  // Compact, label-less button marker anchored on each building's actual footprint.
+  const markers: MapMarker[] = useMemo(
+    () =>
+      CAMPUS_BUILDINGS.map((b) => {
+        const [lng, lat] = boundsCenter(b.bounds)
+        return {
+          id: b.id,
+          label: b.name,
+          lat,
+          lng,
+          compact: true,
+          onClick: () => handleSelectBuilding(b.id),
+        }
+      }),
+    [handleSelectBuilding],
+  )
+
+  // When a building is selected, tell MapView where to outline the Mapbox building footprint.
+  const highlightAt: [number, number] | null = useMemo(() => {
+    if (!building) return null
+    const [lng, lat] = boundsCenter(building.bounds)
+    return [lat, lng]
+  }, [building])
 
   const handleBuildingClick = useCallback((_: string, [lat, lng]: [number, number]) => {
     const matchedBuilding = findBuildingByCoords(lat, lng)
     if (!matchedBuilding) return
-    setSelected((current) => (current === matchedBuilding.id ? null : matchedBuilding.id))
-  }, [])
+    handleSelectBuilding(matchedBuilding.id)
+  }, [handleSelectBuilding])
 
   if (isLoading) {
     return (
@@ -587,7 +348,7 @@ export default function MapPage() {
           overflow: 'hidden',
         }}>
           <button
-            onClick={handleCenterUser}
+            onClick={handleRecenterDefault}
             style={{
               position: 'absolute',
               right: '12px',
@@ -608,7 +369,7 @@ export default function MapPage() {
               transition: 'transform 320ms cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.15s ease',
               willChange: 'transform',
             }}
-            title="Center on my location"
+            title="Recenter to default view"
             onMouseEnter={e => {
               e.currentTarget.style.transform = `translateX(-${panelOffset}px) translateY(-1px)`
               e.currentTarget.style.boxShadow = '0 10px 24px rgba(15,23,42,0.24)'
@@ -631,11 +392,11 @@ export default function MapPage() {
             </svg>
           </button>
           <MapView
-            regions={regions}
-            hoverOnly
-            focusCenter={userCenter}
+            markers={markers}
+            flat2d={!selected}
+            focusCenter={focusCenter}
+            highlightAt={highlightAt}
             uiOffsetRight={panelOffset}
-            onRegionClick={handleRegionClick}
             onBuildingClick={handleBuildingClick}
           />
         </div>

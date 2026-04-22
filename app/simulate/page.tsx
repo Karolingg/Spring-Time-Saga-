@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/src/hooks/useAuth'
 import MapView, { type MapMarker } from '@/components/MapView'
@@ -9,6 +9,8 @@ import {
   saveSimulationResults,
 } from '@/src/services/simulation.service'
 import type { DisasterType, RiskLevel, SeverityLevel } from '@/src/schema/enums'
+
+const CAMPUS_CENTER: [number, number] = [123.8992, 10.3230] // [lng, lat]
 
 /* Campus buildings with bounding boxes for coordinate-based matching */
 const CAMPUS_BUILDINGS = [
@@ -215,6 +217,27 @@ function boundsArea(bounds: BuildingBounds): number {
   return Math.abs((b.north - b.south) * (b.east - b.west))
 }
 
+const CAMPUS_MAP_BOUNDS: [[number, number], [number, number]] = (() => {
+  let south = Number.POSITIVE_INFINITY
+  let north = Number.NEGATIVE_INFINITY
+  let west = Number.POSITIVE_INFINITY
+  let east = Number.NEGATIVE_INFINITY
+  const pad = 0.0006
+
+  for (const building of CAMPUS_BUILDINGS) {
+    const bounds = normalizeBounds(building.bounds)
+    south = Math.min(south, bounds.south)
+    north = Math.max(north, bounds.north)
+    west = Math.min(west, bounds.west)
+    east = Math.max(east, bounds.east)
+  }
+
+  return [
+    [south - pad, west - pad],
+    [north + pad, east + pad],
+  ]
+})()
+
 function findBuildingByCoords(lat: number, lng: number): string | null {
   // Expand bounds slightly to be more forgiving with click targets
   const pad = 0.0003
@@ -316,15 +339,20 @@ const TYPE_ICONS: Record<string, React.ReactElement> = {
 
 function BuildingPanel({
   detail,
+  selectedFloor,
+  onFloorChange,
   onClose,
   onSimulate,
 }: {
   detail: BuildingDetail
+  selectedFloor: number
+  onFloorChange: (floor: number) => void
   onClose: () => void
   onSimulate: () => void
 }) {
   const risk = RISK_COLORS[detail.riskLevel] ?? RISK_COLORS.Medium
   const typeIcon = TYPE_ICONS[detail.type] ?? TYPE_ICONS['Academic']
+  const floorOptions = Array.from({ length: Math.max(1, detail.floors) }, (_, index) => index + 1)
 
   return (
     <div
@@ -477,6 +505,38 @@ function BuildingPanel({
           </div>
         </div>
 
+        {/* Floor picker */}
+        <div>
+          <div style={{ fontSize: '11px', color: '#475569', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '10px' }}>
+            Floor Picker
+          </div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+            {floorOptions.map((floor) => {
+              const isActive = selectedFloor === floor
+              return (
+                <button
+                  key={floor}
+                  onClick={() => onFloorChange(floor)}
+                  style={{
+                    minWidth: '44px',
+                    padding: '7px 10px',
+                    borderRadius: '9px',
+                    border: isActive ? '1px solid rgba(45,184,176,0.55)' : '1px solid #1e293b',
+                    background: isActive ? 'rgba(45,184,176,0.16)' : 'rgba(255,255,255,0.04)',
+                    color: isActive ? '#2db8b0' : '#94a3b8',
+                    fontSize: '12px',
+                    fontWeight: isActive ? 700 : 600,
+                    cursor: 'pointer',
+                    transition: 'all 0.15s ease',
+                  }}
+                >
+                  {`F${floor}`}
+                </button>
+              )
+            })}
+          </div>
+        </div>
+
         {/* CTA */}
         <div style={{ marginTop: 'auto', paddingTop: '8px' }}>
           <button
@@ -513,9 +573,22 @@ export default function SimulatePage() {
   const { isAuthenticated, isLoading: isAuthLoading } = useAuth()
   const router = useRouter()
   const [selectedBuildingId, setSelectedBuildingId] = useState<string | null>(null)
+  const [selectedFloor, setSelectedFloor] = useState(1)
+  const [forcedCenter, setForcedCenter] = useState<[number, number] | null>(null)
   const openPanel = toPanelOpenHandler(setSelectedBuildingId)
 
   const selectedBuilding = selectedBuildingId ? BUILDING_DETAILS[selectedBuildingId] : null
+  const selectedBuildingCenter = useMemo<[number, number] | null>(() => {
+    if (!selectedBuildingId) return null
+    const building = CAMPUS_BUILDINGS.find((b) => b.id === selectedBuildingId)
+    if (!building) return null
+    const center = boundsCenter(building.bounds)
+    return [center.lng, center.lat]
+  }, [selectedBuildingId])
+  const highlightAt = useMemo<[number, number] | null>(() => {
+    if (!selectedBuildingCenter) return null
+    return [selectedBuildingCenter[1], selectedBuildingCenter[0]]
+  }, [selectedBuildingCenter])
   const markers: MapMarker[] = attachMarkerClicks(buildBoundsMarkers(), openPanel)
   // Sim parameters
   const [agents, setAgents] = useState(120)
@@ -539,6 +612,29 @@ export default function SimulatePage() {
       window.location.href = '/auth'
     }
   }, [isAuthLoading, isAuthenticated])
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return
+      setSelectedBuildingId(null)
+      setForcedCenter([CAMPUS_CENTER[0], CAMPUS_CENTER[1]])
+    }
+
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [])
+
+  useEffect(() => {
+    if (!selectedBuilding) {
+      setSelectedFloor(1)
+      return
+    }
+    setSelectedFloor((current) => {
+      if (current < 1) return 1
+      if (current > selectedBuilding.floors) return selectedBuilding.floors
+      return current
+    })
+  }, [selectedBuilding])
 
   if (isAuthLoading) {
     return (
@@ -585,6 +681,11 @@ export default function SimulatePage() {
         <MapView
           flat2d
           markers={markers}
+          focusCenter={selectedBuildingCenter ?? forcedCenter ?? CAMPUS_CENTER}
+          highlightAt={highlightAt}
+          maxBounds={CAMPUS_MAP_BOUNDS}
+          minZoom={15.7}
+          maxZoom={19.8}
           onBuildingClick={(_name, coords) => {
             handleBuildingClickFromMap(coords, openPanel)
           }}
@@ -628,7 +729,12 @@ export default function SimulatePage() {
         {selectedBuilding && selectedBuildingId && (
           <BuildingPanel
             detail={selectedBuilding}
-            onClose={() => setSelectedBuildingId(null)}
+            selectedFloor={selectedFloor}
+            onFloorChange={setSelectedFloor}
+            onClose={() => {
+              setSelectedBuildingId(null)
+              setSelectedFloor(1)
+            }}
             onSimulate={() => router.push(`/simulate/${encodeURIComponent(selectedBuildingId)}/disaster`)}
           />
         )}
