@@ -1,5 +1,4 @@
 import type { FloorConfig } from '../types'
-import { makePlaceholderFloor } from '../placeholder'
 
 const SCIENCE_1F: FloorConfig = {
   viewWidth: 1200,
@@ -106,9 +105,142 @@ const SCIENCE_2F: FloorConfig = {
   ],
 }
 
+const SCIENCE_3F: FloorConfig = {
+  viewWidth: 1200,
+  viewHeight: 675,
+  floorLabel: '3rd Floor',
+  exits: {
+    S1: { x: 480, y: 70, label: 'E1', desc: 'Test' },
+    S2: { x: 462, y: 540, label: 'E2', desc: '' },
+    S3: { x: 728, y: 540, label: 'E3', desc: '' },
+  },
+  startPos: { x: 0, y: 0 },
+  primaryPaths: {
+    S1: [{ x: 482, y: 173 }, { x: 490, y: 220 }, { x: 490, y: 266.5 }],
+    S2: [{ x: 365, y: 360 }, { x: 365, y: 420 }, { x: 365, y: 490 }, { x: 365, y: 520 }],
+    S3: [{ x: 613, y: 420 }, { x: 613, y: 490 }, { x: 608, y: 520 }],
+  },
+  reroutes: {
+    S1: { to: 'S2', path: [{ x: 482, y: 220 }, { x: 482, y: 300 }, { x: 430, y: 360 }, { x: 365, y: 420 }, { x: 365, y: 490 }, { x: 365, y: 520 }] },
+    S2: { to: 'S3', path: [{ x: 365, y: 490 }, { x: 430, y: 490 }, { x: 490, y: 490 }, { x: 550, y: 490 }, { x: 608, y: 520 }] },
+    S3: { to: 'S2', path: [{ x: 608, y: 520 }, { x: 550, y: 490 }, { x: 490, y: 490 }, { x: 430, y: 490 }, { x: 365, y: 490 }, { x: 365, y: 520 }] },
+  },
+  blockT: { S1: 0.55, S2: 0.5, S3: 0.5 },
+  obstacles: {
+    fire: [
+      { id: 'fire-west-wing', x: 165, y: 235, w: 120, h: 95, type: 'fire', label: 'Electrical Fire', blocksExits: ['S2'] },
+      { id: 'smoke-corridor-east', x: 555, y: 280, w: 80, h: 50, type: 'smoke', label: 'Smoke', blocksExits: ['S3'] },
+      { id: 'smoke-spreading', x: 590, y: 165, w: 60, h: 50, type: 'smoke', label: 'Smoke', blocksExits: [] },
+    ],
+    earthquake: [
+      { id: 'debris-center-stair', x: 440, y: 215, w: 100, h: 45, type: 'debris', label: 'Stairwell Debris', blocksExits: ['S1'] },
+      { id: 'debris-corridor', x: 440, y: 330, w: 100, h: 35, type: 'debris', label: 'Debris', blocksExits: [] },
+      { id: 'debris-se-stair', x: 580, y: 470, w: 70, h: 40, type: 'debris', label: 'Debris', blocksExits: ['S3'] },
+    ],
+  },
+  efficiency: { S1: 0.92, S2: 0.85, S3: 0.85 },
+  rooms: {
+    corridor: { label: 'Corridor', x: 490, y: 350 },
+    r301: { label: 'Room 301', x: 797, y: 500, corridorEntryNode: 'Corridor (301)' },
+    r302: { label: 'Room 302', x: 883, y: 500, corridorEntryNode: 'Corridor (302)' },
+    r303: { label: 'Room 303', x: 797, y: 410, corridorEntryNode: 'Corridor (301)' },
+    r304: { label: 'Room 304', x: 883, y: 410, corridorEntryNode: 'Corridor (302)' },
+    r305: { label: 'Room 305', x: 797, y: 235, corridorEntryNode: 'Corridor (305)' },
+    r306: { label: 'Room 306', x: 883, y: 235, corridorEntryNode: 'Corridor (306)' },
+    r307: { label: 'Room 307', x: 797, y: 140, corridorEntryNode: 'Corridor (305)' },
+    r308: { label: 'Room 308', x: 883, y: 140, corridorEntryNode: 'Corridor (306)' },
+    r309: { label: 'Room 309', x: 395, y: 480, corridorEntryNode: 'Corridor (301)' },
+    r310: { label: 'Room 310', x: 312, y: 480, corridorEntryNode: 'Corridor (302)' },
+    dcschair: { label: 'DCS Chair', x: 312, y: 340, corridorEntryNode: 'Corridor (302)' },
+    minilib: { label: 'Mini Library', x: 395, y: 340, corridorEntryNode: 'Corridor (302)' },
+    dcs: { label: 'DCS Faculty', x: 350, y: 215, corridorEntryNode: 'Out DCS' },
+
+  },
+  corridorNodes: [
+    { label: 'Near Exit 3', x: 730, y: 460, neighbors: ['Near Room 305'] },
+    { label: 'Corridor (302)', x: 883, y: 460, neighbors: ['Near Exit 3'] },
+    { label: 'Corridor (301)', x: 797, y: 460, neighbors: ['Near Room 204'] },
+    { label: 'Corridor (305)', x: 797, y: 190, neighbors: ['Near Toilet'] },
+    { label: 'Corridor (306)', x: 883, y: 190, neighbors: ['Corridor (305)'] },
+    { label: 'Near Room 305', x: 730, y: 322, neighbors: ['Near Toilet', 'Near Exit 3'] },
+    { label: 'Near Toilet', x: 730, y: 190, neighbors: ['Near Stairs', 'Near Room 305'] },
+    { label: 'DCS Corridor', x: 460, y: 190, neighbors: ['Near Room 204', 'Near Stairs'] },
+    { label: 'Near Room 309', x: 395, y: 425, neighbors: ['Left Corridor', 'Upper Corridor'] },
+    { label: 'Near Room 310', x: 312, y: 425, neighbors: ['Left Corridor', 'Upper Corridor'] },
+    { label: 'Near Exit 2', x: 460, y: 425, neighbors: ['Left Corridor', 'Upper Corridor'] },
+    { label: 'Out DCS Chair', x: 312, y: 305, neighbors: ['Left Corridor', 'Upper Corridor'] },
+    { label: 'Out Minilib', x: 395, y: 305, neighbors: ['Left Corridor', 'Upper Corridor'] },
+    { label: 'Minilib Corridor', x: 460, y: 305, neighbors: ['Near Room 202', 'East Corridor'] },
+    { label: 'Out DCS', x: 460, y: 215, neighbors: ['Near Room 202', 'East Corridor'] },
+    { label: 'Near Stairs', x: 590, y: 190, neighbors: ['Upper Corridor', 'Near Toilet', 'S1 Exit'] },
+    { label: 'Near Exit 1', x: 590, y: 70, neighbors: ['Near Stairs'] },
+  ],
+}
+
+export const SCIENCE_4F: FloorConfig = {
+    viewWidth: 1200,
+  viewHeight: 675,
+  floorLabel: '4th  Floor',
+  exits: {
+    S1: { x: 500, y: 266.5, label: 'S1', desc: 'Test' },
+    S2: { x: 380, y: 520, label: 'S2', desc: 'SW Stairs \u00B7 Down' },
+    S3: { x: 613, y: 520, label: 'S3', desc: 'SE Stairs \u00B7 Down' },
+  },
+  startPos: { x: 0, y: 0 },
+  primaryPaths: {
+    S1: [{ x: 482, y: 173 }, { x: 490, y: 220 }, { x: 490, y: 266.5 }],
+    S2: [{ x: 365, y: 360 }, { x: 365, y: 420 }, { x: 365, y: 490 }, { x: 365, y: 520 }],
+    S3: [{ x: 613, y: 420 }, { x: 613, y: 490 }, { x: 608, y: 520 }],
+  },
+  reroutes: {
+    S1: { to: 'S2', path: [{ x: 482, y: 220 }, { x: 482, y: 300 }, { x: 430, y: 360 }, { x: 365, y: 420 }, { x: 365, y: 490 }, { x: 365, y: 520 }] },
+    S2: { to: 'S3', path: [{ x: 365, y: 490 }, { x: 430, y: 490 }, { x: 490, y: 490 }, { x: 550, y: 490 }, { x: 608, y: 520 }] },
+    S3: { to: 'S2', path: [{ x: 608, y: 520 }, { x: 550, y: 490 }, { x: 490, y: 490 }, { x: 430, y: 490 }, { x: 365, y: 490 }, { x: 365, y: 520 }] },
+  },
+  blockT: { S1: 0.55, S2: 0.5, S3: 0.5 },
+  obstacles: {
+    fire: [
+      { id: 'fire-west-wing', x: 165, y: 235, w: 120, h: 95, type: 'fire', label: 'Electrical Fire', blocksExits: ['S2'] },
+      { id: 'smoke-corridor-east', x: 555, y: 280, w: 80, h: 50, type: 'smoke', label: 'Smoke', blocksExits: ['S3'] },
+      { id: 'smoke-spreading', x: 590, y: 165, w: 60, h: 50, type: 'smoke', label: 'Smoke', blocksExits: [] },
+    ],
+    earthquake: [
+      { id: 'debris-center-stair', x: 440, y: 215, w: 100, h: 45, type: 'debris', label: 'Stairwell Debris', blocksExits: ['S1'] },
+      { id: 'debris-corridor', x: 440, y: 330, w: 100, h: 35, type: 'debris', label: 'Debris', blocksExits: [] },
+      { id: 'debris-se-stair', x: 580, y: 470, w: 70, h: 40, type: 'debris', label: 'Debris', blocksExits: ['S3'] },
+    ],
+  },
+  efficiency: { S1: 0.92, S2: 0.85, S3: 0.85 },
+  rooms: {
+    corridor: { label: 'Corridor', x: 490, y: 350 },
+    r301: { label: 'Room 301', x: 220, y: 360, corridorEntryNode: 'Left Corridor' },
+    r302: { label: 'Room 302', x: 730, y: 173, corridorEntryNode: 'Near Toilet' },
+    r303: { label: 'Room 303', x: 720, y: 310, corridorEntryNode: 'Near Room 201' },
+    r304: { label: 'Room 304', x: 730, y: 420, corridorEntryNode: 'East Corridor' },
+    r305: { label: 'Room 305', x: 220, y: 170, corridorEntryNode: 'Upper Corridor' },
+    r306: { label: 'Room 306', x: 220, y: 170, corridorEntryNode: 'Upper Corridor' },
+    r307: { label: 'Room 307', x: 220, y: 170, corridorEntryNode: 'Upper Corridor' },
+    r308: { label: 'Room 308', x: 220, y: 170, corridorEntryNode: 'Upper Corridor' },
+    r309: { label: 'Room 309', x: 220, y: 170, corridorEntryNode: 'Upper Corridor' },
+    r310: { label: 'Room 310', x: 220, y: 170, corridorEntryNode: 'Upper Corridor' },
+
+  },
+  corridorNodes: [
+    { label: 'Left Corridor', x: 360, y: 360, neighbors: ['Near Room 204'] },
+    { label: 'Near Room 204', x: 360, y: 255, neighbors: ['Left Corridor', 'Upper Corridor'] },
+    { label: 'Upper Corridor', x: 360, y: 173, neighbors: ['Near Room 204', 'Near Stairs'] },
+    { label: 'Near Stairs', x: 490, y: 173, neighbors: ['Upper Corridor', 'Near Toilet', 'S1 Exit'] },
+    { label: 'S1 Exit', x: 490, y: 266.5, neighbors: ['Near Stairs'] },
+    { label: 'Near Toilet', x: 613, y: 173, neighbors: ['Near Stairs', 'Near Room 202'] },
+    { label: 'Near Room 202', x: 613, y: 220, neighbors: ['Near Toilet', 'Near Room 201'] },
+    { label: 'Near Room 201', x: 613, y: 310, neighbors: ['Near Room 202', 'East Corridor'] },
+    { label: 'East Corridor', x: 613, y: 420, neighbors: ['Near Room 201'] },
+  ],
+}
+
 export const SCIENCE_BUILDING_FLOORS: FloorConfig[] = [
   SCIENCE_1F,
   SCIENCE_2F,
-  
-  makePlaceholderFloor(2),
+  SCIENCE_3F,
+  SCIENCE_4F,
 ]

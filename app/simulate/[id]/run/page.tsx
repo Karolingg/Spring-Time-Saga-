@@ -5,7 +5,7 @@ import { useParams, useSearchParams, useRouter } from 'next/navigation'
 import { useAuth } from '@/src/hooks/useAuth'
 import { BUILDING_FLOOR_COUNT } from '@/src/config/building-floor-counts'
 import { makePlaceholderFloor } from '@/src/simulation/floor-config/placeholder'
-import { loadBuildingFloorConfigs } from '@/src/simulation/floor-config/buildings/loaders'
+import { BUILDING_FLOORS } from '@/src/simulation/floor-config/buildings'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type SimPhase = 'planning' | 'running' | 'rerouting' | 'completed'
@@ -148,20 +148,12 @@ function validateFloorConfigs(buildingId: string, floors: FloorConfig[]): FloorC
   return floors
 }
 
-async function getFloorConfigs(buildingId: string): Promise<FloorConfig[]> {
-  const customFloors = await loadBuildingFloorConfigs(buildingId)
+function getFloorConfigs(buildingId: string): FloorConfig[] {
+  const customFloors = BUILDING_FLOORS[buildingId]
   const declaredCount = BUILDING_FLOOR_COUNT[buildingId]
 
-  if (customFloors) {
-    const targetCount = Math.max(customFloors.length, declaredCount ?? customFloors.length)
-    if (targetCount === customFloors.length) {
-      return validateFloorConfigs(buildingId, customFloors)
-    }
-    const extendedFloors = [
-      ...customFloors,
-      ...Array.from({ length: targetCount - customFloors.length }, (_, i) => makePlaceholderFloor(customFloors.length + i)),
-    ]
-    return validateFloorConfigs(buildingId, extendedFloors)
+  if (customFloors?.length) {
+    return validateFloorConfigs(buildingId, customFloors)
   }
 
   if (declaredCount) {
@@ -1117,6 +1109,8 @@ function CSBFloorPlan(props: FloorPlanProps) {
     '2nd Floor': '/floorplans/csb-2f.svg',
     '3rd Floor': '/floorplans/CSB%203rd%20floor.svg',
     '4th Floor': '/floorplans/CSB%204th%20floor.svg',
+    '5th Floor': '/floorplans/CSB%205th%20floor.svg',
+    '6th Floor': '/floorplans/CSB%206th%20floor.svg',
   }
   // Fallback keeps floor rendering visible until a dedicated 1st-floor SVG is added.
   const floorPlanSrc = floorPlanSrcByLabel[config.floorLabel] ?? '/floorplans/csb-2f.svg'
@@ -1168,23 +1162,10 @@ export default function SimulationRunPage() {
   const initialFloor = Number.isFinite(parsedFloor) ? Math.max(0, parsedFloor) : 0
   const meta     = DISASTER_META[disaster] || DISASTER_META.fire
 
-  const [floorConfigState, setFloorConfigState] = useState<{
-    regionId: string
-    floors: FloorConfig[]
-    error: string | null
-    status: 'loading' | 'loaded' | 'error'
-  }>({
-    regionId,
-    floors: [],
-    error: null,
-    status: 'loading',
-  })
-  const currentFloorState = floorConfigState.regionId === regionId
-    ? floorConfigState
-    : { regionId, floors: [], error: null, status: 'loading' as const }
-  const floors = currentFloorState.floors
-  const isFloorConfigLoading = currentFloorState.status === 'loading'
-  const floorConfigLoadError = currentFloorState.error
+  const currentBuildingFloors = BUILDING_FLOORS[regionId]
+  const floors = useMemo(() => getFloorConfigs(regionId), [regionId, currentBuildingFloors])
+  const isFloorConfigLoading = false
+  const floorConfigLoadError: string | null = null
   const hasFloors = floors.length > 0
 
   const [floorIdx,      setFloorIdx]      = useState(0)
@@ -1221,38 +1202,31 @@ export default function SimulationRunPage() {
 
   const activeFloorIdx = hasFloors ? Math.min(Math.max(floorIdx, 0), floors.length - 1) : 0
   const config = hasFloors ? floors[activeFloorIdx] : null
+  const currentFloorRooms = useMemo(() => {
+    if (!config) return [] as Array<[string, RoomDef]>
+
+    return Object.entries(config.rooms)
+      .filter(([key]) => key !== 'corridor')
+      .sort(([, a], [, b]) => a.label.localeCompare(b.label, undefined, { numeric: true, sensitivity: 'base' }))
+  }, [config])
 
   useEffect(() => {
-    let cancelled = false
+    const maxFloorIndex = Math.max(floors.length - 1, 0)
+    setFloorIdx(Math.min(initialFloor, maxFloorIndex))
+  }, [regionId, initialFloor, floors.length])
 
-    getFloorConfigs(regionId)
-      .then((resolvedFloors) => {
-        if (cancelled) return
-        setFloorConfigState({
-          regionId,
-          floors: resolvedFloors,
-          error: null,
-          status: 'loaded',
-        })
-        const maxFloorIndex = Math.max(resolvedFloors.length - 1, 0)
-        setFloorIdx(Math.min(initialFloor, maxFloorIndex))
-      })
-      .catch((error) => {
-        if (cancelled) return
-        console.error('[sim-config-load]', regionId, error)
-        setFloorConfigState({
-          regionId,
-          floors: [],
-          error: 'Failed to load floor configuration for this building.',
-          status: 'error',
-        })
-        setFloorIdx(0)
-      })
+  useEffect(() => {
+    if (!selectedRoom) return
 
-    return () => {
-      cancelled = true
-    }
-  }, [regionId, initialFloor])
+    const hasSelectedRoomOnFloor = currentFloorRooms.some(([key]) => key === selectedRoom)
+    if (hasSelectedRoomOnFloor) return
+
+    setSelectedRoom(null)
+    setSelectedExit(null)
+    setRouteMode(null)
+    setSelectedVias([])
+  }, [selectedRoom, currentFloorRooms])
+
   const planningAgentPos = useMemo<Point>(() => {
     if (!config || !selectedRoom || !config.rooms[selectedRoom]) {
       // Do not default to corridor/startPos — require user to select a room.
@@ -1842,7 +1816,12 @@ export default function SimulationRunPage() {
                   <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)' }}>Where Are You?</div>
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px' }}>
-                  {Object.entries(config.rooms).filter(([key]) => key !== 'corridor').map(([key, room]) => (
+                  {currentFloorRooms.length === 0 && (
+                    <div style={{ gridColumn: '1 / -1', fontSize: '11px', color: '#64748b', padding: '8px 10px', background: '#f1f5f9', border: '1px dashed #c9dae6', borderRadius: '8px' }}>
+                      No room options are configured for this floor yet.
+                    </div>
+                  )}
+                  {currentFloorRooms.map(([key, room]) => (
                     <button key={key} onClick={() => selectRoom(key)}
                       style={{
                         padding: '8px 10px', borderRadius: '8px', fontSize: '11px', fontWeight: 600,
