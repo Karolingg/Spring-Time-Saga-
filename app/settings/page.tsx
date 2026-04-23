@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useAuth } from '@/src/hooks/useAuth'
 import { updateUserEmail, updateUserPassword, getUserProfile, updateUserProfile } from '@/src/services/user.service'
 
