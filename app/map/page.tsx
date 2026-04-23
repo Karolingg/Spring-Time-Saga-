@@ -197,20 +197,6 @@ function boundsCenter(b: BuildingBounds): [number, number] {
   return [(b.west + b.east) / 2, (b.south + b.north) / 2] // [lng, lat]
 }
 
-function findBuildingByCoords(lat: number, lng: number): CampusBuilding | null {
-  const pad = 0.0003
-  const matches = CAMPUS_BUILDINGS.filter(b => (
-    lat >= b.bounds.south - pad && lat <= b.bounds.north + pad &&
-    lng >= b.bounds.west - pad && lng <= b.bounds.east + pad
-  ))
-
-  if (matches.length === 0) return null
-  if (matches.length === 1) return matches[0]
-
-  // Overlapping bounds — pick the smallest (most specific) one.
-  return [...matches].sort((a, b) => boundsArea(a.bounds) - boundsArea(b.bounds))[0]
-}
-
 function getPlaceholderAnalytics(building: CampusBuilding): PlaceholderAnalytics {
   const occupancyRatio = building.riskLevel === 'HIGH' ? 0.86 : building.riskLevel === 'MEDIUM' ? 0.72 : 0.58
   const congestionStatus =
@@ -300,12 +286,6 @@ export default function MapPage() {
     const [lng, lat] = boundsCenter(building.bounds)
     return [lat, lng]
   }, [building])
-
-  const handleBuildingClick = useCallback((_: string, [lat, lng]: [number, number]) => {
-    const matchedBuilding = findBuildingByCoords(lat, lng)
-    if (!matchedBuilding) return
-    handleSelectBuilding(matchedBuilding.id)
-  }, [handleSelectBuilding])
 
   if (isLoading) {
     return (
@@ -397,7 +377,6 @@ export default function MapPage() {
             focusCenter={focusCenter}
             highlightAt={highlightAt}
             uiOffsetRight={panelOffset}
-            onBuildingClick={handleBuildingClick}
           />
         </div>
 
