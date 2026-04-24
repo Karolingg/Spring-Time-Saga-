@@ -22,6 +22,7 @@ import {
 import { createSimulation, evaluateSimulation, stepSimulation, type SimulationResults, type SimulationState } from '@/src/simulation/engine'
 import { edgeKey, getBuildingById, getNode, type FloorModel } from '@/src/simulation/building-model'
 import { createSimulationRun, saveSimulationResults } from '@/src/services/simulation.service'
+import { getHazardStorageKey, loadHazardPlan, placedHazardToZone, saveHazardPlan, type PlacedHazard } from '@/src/simulation/hazard-placement'
 
 type DisasterType = 'fire' | 'earthquake'
 
@@ -48,6 +49,46 @@ const DISASTER_META: Record<DisasterType, {
   },
 }
 
+function clamp(value: number, min: number, max: number) {
+  return Math.min(Math.max(value, min), max)
+}
+
+function hazardLabel(type: 'fire' | 'smoke' | 'debris', disaster: DisasterType): string {
+  if (type === 'smoke' && disaster === 'earthquake') return 'Dust'
+  if (type === 'fire') return 'Fire'
+  if (type === 'debris') return 'Debris'
+  return 'Smoke'
+}
+
+function createHazardDragImage(type: 'fire' | 'smoke' | 'debris'): HTMLElement {
+  const el = document.createElement('div')
+  el.style.width = '64px'
+  el.style.height = '64px'
+  el.style.borderRadius = '999px'
+  el.style.position = 'fixed'
+  el.style.top = '-9999px'
+  el.style.left = '-9999px'
+  el.style.pointerEvents = 'none'
+  el.style.display = 'flex'
+  el.style.alignItems = 'center'
+  el.style.justifyContent = 'center'
+
+  if (type === 'debris') {
+    el.style.borderRadius = '10px'
+    el.style.background = 'rgba(120, 53, 15, 0.55)'
+    el.style.border = '2px solid #92400e'
+  } else if (type === 'fire') {
+    el.style.background = 'rgba(239, 68, 68, 0.45)'
+    el.style.border = '2px solid #ef4444'
+  } else {
+    el.style.background = 'rgba(100, 116, 139, 0.45)'
+    el.style.border = '2px solid #64748b'
+  }
+
+  document.body.appendChild(el)
+  return el
+}
+
 const OCCUPANCY_PRESETS = [
   { label: 'Low', ratio: 0.35 },
   { label: 'Medium', ratio: 0.6 },
@@ -66,10 +107,6 @@ const PLAYBACK_OPTIONS = [
   { label: '1.5x', value: 1.5 },
   { label: '2x', value: 2 },
 ] as const
-
-function clamp(value: number, min: number, max: number) {
-  return Math.min(Math.max(value, min), max)
-}
 
 function formatSeconds(seconds: number) {
   return `${seconds.toFixed(1)}s`
@@ -156,6 +193,9 @@ export default function AutonomousScienceBuildingPage() {
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
   const [saveMessage, setSaveMessage] = useState('')
   const [savedRunId, setSavedRunId] = useState<string | null>(null)
+  const [placedHazards, setPlacedHazards] = useState<PlacedHazard[]>([])
+  const [selectedHazardId, setSelectedHazardId] = useState<string | null>(null)
+  const dropRef = useRef<HTMLDivElement | null>(null)
 
   const simStateRef = useRef<SimulationState | null>(null)
   const traceRef = useRef<AutonomousTrace | null>(null)
@@ -166,12 +206,72 @@ export default function AutonomousScienceBuildingPage() {
     ? clamp(agentCountOverride ?? defaultAgentCount, 1, maxAgents)
     : 1
   const activeTrace = trace ?? baseTrace
+  const hazardStorageKey = useMemo(() => getHazardStorageKey(regionId, floorIndex, disaster), [regionId, floorIndex, disaster])
+  const hazardZones = useMemo(() => placedHazards.map((hazard) => placedHazardToZone(hazard, `ui-${regionId}-${floorIndex}`)), [placedHazards, regionId, floorIndex])
+  const allowedHazardTypes = useMemo(() => {
+    return disaster === 'earthquake' ? ['debris', 'smoke'] as const : ['fire', 'smoke'] as const
+  }, [disaster])
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
       window.location.href = '/auth'
     }
   }, [isLoading, isAuthenticated])
+
+  useEffect(() => {
+    const plan = loadHazardPlan(hazardStorageKey)
+    setPlacedHazards(plan?.hazards ?? [])
+    setSelectedHazardId(null)
+  }, [hazardStorageKey])
+
+  useEffect(() => {
+    if (!hazardStorageKey) return
+    saveHazardPlan(hazardStorageKey, placedHazards)
+  }, [hazardStorageKey, placedHazards])
+
+  const handleDrop = useCallback((event: React.DragEvent<HTMLDivElement>) => {
+    event.preventDefault()
+    const type = event.dataTransfer.getData('application/x-hazard') as PlacedHazard['type']
+    if (!type || !dropRef.current) return
+    const rect = dropRef.current.getBoundingClientRect()
+    if (!rect.width || !rect.height) return
+    const px = ((event.clientX - rect.left) / rect.width) * 1200
+    const py = ((event.clientY - rect.top) / rect.height) * 675
+    const radius = type === 'fire' ? 38 : type === 'smoke' ? 46 : 34
+    const x = clamp(px, radius, 1200 - radius)
+    const y = clamp(py, radius, 675 - radius)
+
+    setPlacedHazards((prev) => [
+      ...prev,
+      {
+        id: `${type}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+        type,
+        x,
+        y,
+        radius,
+      },
+    ])
+  }, [])
+
+  const handleDragStart = (type: PlacedHazard['type']) => (event: React.DragEvent<HTMLButtonElement>) => {
+    event.dataTransfer.setData('application/x-hazard', type)
+    event.dataTransfer.effectAllowed = 'copy'
+    if (typeof document !== 'undefined') {
+      const dragImage = createHazardDragImage(type)
+      event.dataTransfer.setDragImage(dragImage, 32, 32)
+      window.setTimeout(() => dragImage.remove(), 0)
+    }
+  }
+
+  const removeHazard = useCallback((hazardId: string) => {
+    setPlacedHazards((prev) => prev.filter((hazard) => hazard.id !== hazardId))
+    if (selectedHazardId === hazardId) setSelectedHazardId(null)
+  }, [selectedHazardId])
+
+  const clearHazards = useCallback(() => {
+    setPlacedHazards([])
+    setSelectedHazardId(null)
+  }, [])
 
   useEffect(() => {
     simStateRef.current = simState
@@ -248,6 +348,7 @@ export default function AutonomousScienceBuildingPage() {
       const elapsedMs = Math.min(timestamp - lastFrameTimeRef.current, MAX_FRAME_DELTA_MS)
       lastFrameTimeRef.current = timestamp
       const dt = elapsedMs * SIMULATION_SECONDS_PER_MS * playbackMultiplier
+      currentState.hazardGrowthMultiplier = HAZARD_GROWTH_MULTIPLIER * playbackMultiplier
       const nextState = stepSimulation(currentState, floor, dt)
       const nextCongestion = computeAccurateCongestion(nextState)
       const nextTrace = updateAutonomousTrace(currentTrace, nextCongestion, dt)
@@ -316,6 +417,7 @@ export default function AutonomousScienceBuildingPage() {
       agentsPerRoom: roomAllocations,
       hazardGrowthMultiplier: HAZARD_GROWTH_MULTIPLIER,
       speedMultiplier: movementMultiplier,
+      hazardOverrides: hazardZones,
     })
 
     nextState.running = true
@@ -334,7 +436,7 @@ export default function AutonomousScienceBuildingPage() {
     setSaveStatus('idle')
     setSaveMessage('')
     setIsPlaying(true)
-  }, [disaster, floor, movementMultiplier, roomAllocations, totalAgents])
+  }, [disaster, floor, movementMultiplier, roomAllocations, totalAgents, hazardZones])
 
   const resetSimulation = useCallback(() => {
     setIsPlaying(false)
@@ -667,6 +769,83 @@ export default function AutonomousScienceBuildingPage() {
           </section>
 
           <section className="auto-panel-section">
+            <div style={{ fontSize: '11px', fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', color: meta.accent, marginBottom: '12px' }}>
+              Hazard placement
+            </div>
+            <div style={{ fontSize: '12px', color: '#64748b', marginBottom: '12px' }}>
+              Drag hazards onto the map. You can place multiple fire, smoke, or debris zones.
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '12px' }}>
+              {allowedHazardTypes.map((type) => (
+                <button
+                  key={type}
+                  draggable
+                  onDragStart={handleDragStart(type)}
+                  style={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px',
+                    padding: '10px 12px', borderRadius: '10px', border: '1px solid #e2e8f0',
+                    background: '#ffffff', color: '#0f172a', fontSize: '12px', fontWeight: 700, cursor: 'grab',
+                  }}
+                >
+                  {hazardLabel(type, disaster)}
+                  <span style={{ fontSize: '11px', color: '#64748b' }}>Drag to map</span>
+                </button>
+              ))}
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', marginBottom: '8px' }}>
+              <div style={{ fontSize: '12px', fontWeight: 700, color: '#0f172a' }}>Active hazards</div>
+              <button
+                onClick={clearHazards}
+                disabled={placedHazards.length === 0}
+                style={{
+                  padding: '6px 8px', borderRadius: '8px', border: '1px solid rgba(239,68,68,0.25)',
+                  background: placedHazards.length === 0 ? '#f8fafc' : '#fff1f2',
+                  color: placedHazards.length === 0 ? '#94a3b8' : '#b91c1c',
+                  fontSize: '11px', fontWeight: 700, cursor: placedHazards.length === 0 ? 'not-allowed' : 'pointer',
+                }}
+              >
+                Clear
+              </button>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '220px', overflowY: 'auto' }}>
+              {placedHazards.length === 0 && (
+                <div style={{ fontSize: '12px', color: '#94a3b8' }}>No hazards placed yet.</div>
+              )}
+              {placedHazards.map((hazard, index) => (
+                <div
+                  key={hazard.id}
+                  onClick={() => setSelectedHazardId(hazard.id)}
+                  style={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px',
+                    padding: '8px 10px', borderRadius: '10px',
+                    border: selectedHazardId === hazard.id ? `1px solid ${meta.accent}66` : '1px solid #e2e8f0',
+                    background: selectedHazardId === hazard.id ? `${meta.accent}12` : '#ffffff',
+                    cursor: 'pointer',
+                  }}
+                >
+                  <div>
+                    <div style={{ fontSize: '12px', fontWeight: 700, color: '#0f172a' }}>{index + 1}. {hazardLabel(hazard.type, disaster)}</div>
+                    <div style={{ fontSize: '11px', color: '#64748b' }}>x {Math.round(hazard.x)}, y {Math.round(hazard.y)}</div>
+                  </div>
+                  <button
+                    onClick={(event) => {
+                      event.stopPropagation()
+                      removeHazard(hazard.id)
+                    }}
+                    style={{
+                      padding: '4px 8px', borderRadius: '8px', border: '1px solid rgba(239,68,68,0.25)',
+                      background: '#fff1f2', color: '#b91c1c', fontSize: '11px', fontWeight: 700, cursor: 'pointer',
+                    }}
+                  >
+                    Remove
+                  </button>
+                </div>
+              ))}
+            </div>
+          </section>
+
+          <section className="auto-panel-section">
             <div style={{ fontSize: '13px', fontWeight: 700, color: '#0f172a', marginBottom: '12px' }}>Room spawn plan</div>
             <div className="auto-room-grid">
               {floor.nodes.filter((node) => node.type === 'room').map((roomNode) => (
@@ -721,7 +900,12 @@ export default function AutonomousScienceBuildingPage() {
             </div>
           </div>
 
-          <div className="auto-map-shell">
+          <div
+            className="auto-map-shell"
+            ref={dropRef}
+            onDrop={handleDrop}
+            onDragOver={(event) => event.preventDefault()}
+          >
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={floor.floorplanSrc} alt={`${building?.name ?? regionId} ${floor.label} floor plan`} />
             <svg viewBox="0 0 1200 675" preserveAspectRatio="xMidYMid meet" aria-hidden="true">
@@ -767,6 +951,35 @@ export default function AutonomousScienceBuildingPage() {
                   </g>
                 )
               })}
+
+              {!simState && placedHazards.map((hazard) => (
+                <g key={hazard.id} onClick={() => setSelectedHazardId(hazard.id)} style={{ cursor: 'pointer' }}>
+                  {hazard.type === 'debris' ? (
+                    <rect
+                      x={hazard.x - hazard.radius}
+                      y={hazard.y - hazard.radius}
+                      width={hazard.radius * 2}
+                      height={hazard.radius * 2}
+                      fill={selectedHazardId === hazard.id ? 'rgba(245, 158, 11, 0.35)' : 'rgba(120, 53, 15, 0.35)'}
+                      stroke={selectedHazardId === hazard.id ? '#f59e0b' : '#92400e'}
+                      strokeWidth="2"
+                      rx="4"
+                    />
+                  ) : (
+                    <circle
+                      cx={hazard.x}
+                      cy={hazard.y}
+                      r={hazard.radius}
+                      fill={hazard.type === 'fire' ? 'rgba(239, 68, 68, 0.28)' : 'rgba(100, 116, 139, 0.28)'}
+                      stroke={hazard.type === 'fire' ? '#ef4444' : '#64748b'}
+                      strokeWidth="2"
+                    />
+                  )}
+                  <text x={hazard.x} y={hazard.y + 4} textAnchor="middle" fontSize="10" fontWeight="700" fill="#0f172a">
+                    {hazardLabel(hazard.type, disaster)}
+                  </text>
+                </g>
+              ))}
 
               {simState?.hazards.filter((hazard) => hazard.active).map((hazard) => (
                 <g key={hazard.zone.id}>

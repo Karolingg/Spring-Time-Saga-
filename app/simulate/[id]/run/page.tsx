@@ -6,6 +6,7 @@ import { useAuth } from '@/src/hooks/useAuth'
 import { BUILDING_FLOOR_COUNT } from '@/src/config/building-floor-counts'
 import { makePlaceholderFloor } from '@/src/simulation/floor-config/placeholder'
 import { BUILDING_FLOORS } from '@/src/simulation/floor-config/buildings'
+import { getHazardStorageKey, loadHazardPlan, type PlacedHazard } from '@/src/simulation/hazard-placement'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type SimPhase = 'planning' | 'running' | 'rerouting' | 'completed'
@@ -26,6 +27,135 @@ interface ObstacleDef {
   type: 'fire' | 'smoke' | 'debris'
   label: string
   blocksExits: string[]
+}
+
+function buildObstaclesFromPlaced(placed: PlacedHazard[], disaster: DisasterType): ObstacleDef[] {
+  return placed.map((hazard) => {
+    const label = hazard.type === 'smoke'
+      ? (disaster === 'earthquake' ? 'Dust' : 'Smoke')
+      : hazard.type === 'debris' ? 'Debris' : 'Fire'
+    return {
+      id: hazard.id,
+      x: hazard.x - hazard.radius,
+      y: hazard.y - hazard.radius,
+      w: hazard.radius * 2,
+      h: hazard.radius * 2,
+      type: hazard.type,
+      label,
+      blocksExits: [],
+    }
+  })
+}
+
+function isHardHazard(hazard: ObstacleDef): boolean {
+  return hazard.type === 'fire' || hazard.type === 'debris'
+}
+
+function segmentCircleIntersectionT(a: Point, b: Point, center: Point, radius: number): number | null {
+  const dx = b.x - a.x
+  const dy = b.y - a.y
+  const fx = a.x - center.x
+  const fy = a.y - center.y
+
+  const aa = dx * dx + dy * dy
+  if (aa === 0) return null
+  const bb = 2 * (fx * dx + fy * dy)
+  const cc = fx * fx + fy * fy - radius * radius
+  const disc = bb * bb - 4 * aa * cc
+  if (disc < 0) return null
+  const sqrt = Math.sqrt(disc)
+  const t1 = (-bb - sqrt) / (2 * aa)
+  const t2 = (-bb + sqrt) / (2 * aa)
+  const candidates = [t1, t2].filter((t) => t >= 0 && t <= 1)
+  if (candidates.length === 0) return null
+  return Math.min(...candidates)
+}
+
+function pathIntersectsHazards(path: Point[], hazards: ObstacleDef[]): boolean {
+  if (!path || path.length < 2) return false
+  for (let i = 0; i < path.length - 1; i++) {
+    const a = path[i]
+    const b = path[i + 1]
+    for (const hazard of hazards) {
+      const center = { x: hazard.x + hazard.w / 2, y: hazard.y + hazard.h / 2 }
+      const radius = Math.max(hazard.w, hazard.h) / 2
+      if (segmentCircleIntersectionT(a, b, center, radius) !== null) return true
+    }
+  }
+  return false
+}
+
+function computePathBlockT(path: Point[], hardHazards: ObstacleDef[]): number | null {
+  if (!path || path.length < 2) return null
+  const total = pathLength(path)
+  if (total <= 0) return null
+  let best: number | null = null
+  let walked = 0
+  for (let i = 0; i < path.length - 1; i++) {
+    const a = path[i]
+    const b = path[i + 1]
+    const segLen = Math.hypot(b.x - a.x, b.y - a.y)
+    if (segLen <= 0) continue
+    for (const hazard of hardHazards) {
+      const center = { x: hazard.x + hazard.w / 2, y: hazard.y + hazard.h / 2 }
+      const radius = Math.max(hazard.w, hazard.h) / 2
+      const hitT = segmentCircleIntersectionT(a, b, center, radius)
+      if (hitT === null) continue
+      const lengthAtHit = walked + segLen * hitT
+      const t = lengthAtHit / total
+      if (best === null || t < best) best = t
+    }
+    walked += segLen
+  }
+  return best
+}
+
+function computeSmokeLength(path: Point[], smokeHazards: ObstacleDef[]): number {
+  if (!path || path.length < 2) return 0
+  let length = 0
+  for (let i = 0; i < path.length - 1; i++) {
+    const a = path[i]
+    const b = path[i + 1]
+    const segLen = Math.hypot(b.x - a.x, b.y - a.y)
+    if (segLen <= 0) continue
+    const mid = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 }
+    const inSmoke = smokeHazards.some((hazard) => {
+      const center = { x: hazard.x + hazard.w / 2, y: hazard.y + hazard.h / 2 }
+      const radius = Math.max(hazard.w, hazard.h) / 2
+      return Math.hypot(mid.x - center.x, mid.y - center.y) <= radius
+    })
+    if (inSmoke) length += segLen
+  }
+  return length
+}
+
+function computeTravelTimeMs(path: Point[], speed: number, smokeHazards: ObstacleDef[], maxProgress = 1): number {
+  if (!path || path.length < 2 || speed <= 0) return 0
+  const total = pathLength(path)
+  if (total <= 0) return 0
+  const target = total * Math.min(Math.max(maxProgress, 0), 1)
+  let remaining = target
+  let seconds = 0
+
+  for (let i = 0; i < path.length - 1; i++) {
+    if (remaining <= 0) break
+    const a = path[i]
+    const b = path[i + 1]
+    const segLen = Math.hypot(b.x - a.x, b.y - a.y)
+    if (segLen <= 0) continue
+    const len = Math.min(segLen, remaining)
+    const mid = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 }
+    const inSmoke = smokeHazards.some((hazard) => {
+      const center = { x: hazard.x + hazard.w / 2, y: hazard.y + hazard.h / 2 }
+      const radius = Math.max(hazard.w, hazard.h) / 2
+      return Math.hypot(mid.x - center.x, mid.y - center.y) <= radius
+    })
+    const effectiveSpeed = inSmoke ? speed * 0.5 : speed
+    seconds += len / effectiveSpeed
+    remaining -= len
+  }
+
+  return seconds * 1000
 }
 
 interface RoomDef {
@@ -218,9 +348,9 @@ interface RouteAnalysis {
 function analyzeRoutes(
   config: FloorConfig,
   selectedRoom: string | null,
-  disaster: DisasterType,
   potentialBlockedExits: Set<string>,
   blockedExits: Set<string>,
+  hazardExposureByExit: Map<string, boolean>,
 ): RouteAnalysis[] {
   const room = selectedRoom ? config.rooms[selectedRoom] : null
   const SPEED = 80
@@ -245,9 +375,7 @@ function analyzeRoutes(
     const mayBlock = potentialBlockedExits.has(key)
     const isBlocked = blockedExits.has(key)
     const efficiency = config.efficiency[key] || 0.5
-    const hazardExposure = config.obstacles[disaster].some(obs =>
-      obs.type !== 'debris' && obs.blocksExits.includes(key)
-    )
+    const hazardExposure = hazardExposureByExit.get(key) ?? false
     return {
       exitKey: key,
       totalLength: totalLen,
@@ -715,6 +843,7 @@ function avoidForbiddenZones(path: Point[], config: FloorConfig): Point[] {
 interface FloorPlanProps {
   config: FloorConfig
   disaster: DisasterType
+  obstacles: ObstacleDef[]
   selectedExit: string | null
   selectedRoom: string | null
   agentPos: Point
@@ -797,10 +926,9 @@ function ObstacleLayer({ obstacles }: { obstacles: ObstacleDef[] }) {
   )
 }
 
-function SimOverlay({ config, disaster, selectedExit, selectedRoom, agentPos, phase, blockedExits, onExitClick, selectedVias, onChooseNeighbor, selectableNodeLabels, entryNodeLabel, currentNodeLabel, backNodeLabel }: FloorPlanProps) {
-  const obstacles = config.obstacles[disaster]
+function SimOverlay({ config, obstacles, selectedExit, selectedRoom, agentPos, phase, blockedExits, onExitClick, selectedVias, onChooseNeighbor, selectableNodeLabels, entryNodeLabel, currentNodeLabel, backNodeLabel }: FloorPlanProps) {
   const isPlanning = phase === 'planning'
-  const showHazards = false
+  const showHazards = obstacles.length > 0
   const pathD = (points: Point[]) => points.map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x},${p.y}`).join(' ')
   const nodeProgressPath = isPlanning && !selectedExit
     ? buildNodeProgressPreviewPath(config, selectedRoom, selectedVias, entryNodeLabel)
@@ -1210,6 +1338,7 @@ export default function SimulationRunPage() {
   const [events,        setEvents]        = useState<SimEvent[]>([])
   const [elapsedSec,    setElapsedSec]    = useState(0)
   const [activeBlockedExits, setActiveBlockedExits] = useState<Set<string>>(new Set())
+  const [placedHazards, setPlacedHazards] = useState<PlacedHazard[]>([])
 
   const animRef   = useRef<ReturnType<typeof setInterval> | null>(null)
   const rerouteTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -1233,6 +1362,10 @@ export default function SimulationRunPage() {
 
   const activeFloorIdx = hasFloors ? Math.min(Math.max(floorIdx, 0), floors.length - 1) : 0
   const config = hasFloors ? floors[activeFloorIdx] : null
+  const hazardStorageKey = useMemo(() => getHazardStorageKey(regionId, activeFloorIdx, disaster), [regionId, activeFloorIdx, disaster])
+  const activeObstacles = useMemo(() => buildObstaclesFromPlaced(placedHazards, disaster), [placedHazards, disaster])
+  const hardHazards = useMemo(() => activeObstacles.filter(isHardHazard), [activeObstacles])
+  const smokeHazards = useMemo(() => activeObstacles.filter((hazard) => hazard.type === 'smoke'), [activeObstacles])
   const currentFloorRooms = useMemo(() => {
     if (!config) return [] as Array<[string, RoomDef]>
 
@@ -1245,6 +1378,11 @@ export default function SimulationRunPage() {
     const maxFloorIndex = Math.max(floors.length - 1, 0)
     setFloorIdx(Math.min(initialFloor, maxFloorIndex))
   }, [regionId, initialFloor, floors.length])
+
+  useEffect(() => {
+    const plan = loadHazardPlan(hazardStorageKey)
+    setPlacedHazards(plan?.hazards ?? [])
+  }, [hazardStorageKey])
 
   useEffect(() => {
     if (!selectedRoom) return
@@ -1274,12 +1412,6 @@ export default function SimulationRunPage() {
     clearSimulationTimers()
   }, [clearSimulationTimers, invalidateActiveRun])
 
-  const potentialBlockedExits = useMemo(() => {
-    return config
-      ? new Set(config.obstacles[disaster].flatMap(o => o.blocksExits))
-      : new Set<string>()
-  }, [config, disaster])
-
   const blockedExits = useMemo(() => {
     return phase === 'planning' ? new Set<string>() : activeBlockedExits
   }, [phase, activeBlockedExits])
@@ -1291,6 +1423,36 @@ export default function SimulationRunPage() {
   const corridorNodeByLabel = useMemo(() => {
     return new Map(corridorNodes.map(n => [n.label, n]))
   }, [corridorNodes])
+
+  const exitHazardStats = useMemo(() => {
+    const blockedExits = new Set<string>()
+    const exposureByExit = new Map<string, boolean>()
+    const smokeLengthByExit = new Map<string, number>()
+    const blockTByExit = new Map<string, number>()
+
+    if (!config) {
+      return { blockedExits, exposureByExit, smokeLengthByExit, blockTByExit }
+    }
+
+    const exposureHazards = activeObstacles.filter((hazard) => hazard.type !== 'debris')
+
+    for (const exitKey of Object.keys(config.exits)) {
+      const path = buildFullPath(config, selectedRoom, exitKey, selectedVias)
+      const blockT = computePathBlockT(path, hardHazards)
+      if (blockT !== null) {
+        blockedExits.add(exitKey)
+        blockTByExit.set(exitKey, blockT)
+      }
+      exposureByExit.set(exitKey, pathIntersectsHazards(path, exposureHazards))
+      smokeLengthByExit.set(exitKey, computeSmokeLength(path, smokeHazards))
+    }
+
+    return { blockedExits, exposureByExit, smokeLengthByExit, blockTByExit }
+  }, [config, selectedRoom, selectedVias, activeObstacles, hardHazards, smokeHazards])
+
+  const potentialBlockedExits = useMemo(() => {
+    return exitHazardStats.blockedExits
+  }, [exitHazardStats])
 
   const resolveEntryNodeForRoom = useCallback((roomKey: string): string | null => {
     if (!config || !config.rooms[roomKey] || corridorNodes.length === 0) return null
@@ -1419,7 +1581,9 @@ export default function SimulationRunPage() {
     return Array.from(labels)
   }, [currentNodeLabel, entryNodeLabel, backNodeLabel, getNeighborLabels])
 
-  const routes = config ? analyzeRoutes(config, selectedRoom, disaster, potentialBlockedExits, blockedExits) : []
+  const routes = config
+    ? analyzeRoutes(config, selectedRoom, potentialBlockedExits, blockedExits, exitHazardStats.exposureByExit)
+    : []
   const selectableRoutes = routes.filter(r => reachableExitKeys.has(r.exitKey))
   const enforceReachability = Boolean(selectedRoom && currentNodeLabel && corridorNodes.length > 0)
   const candidateRoutes = enforceReachability ? selectableRoutes : routes
@@ -1463,9 +1627,7 @@ export default function SimulationRunPage() {
     setPhase('completed')
     phase2Ref.current = 'completed'
 
-    const hazardExposure = config.obstacles[disaster].some(obs =>
-      obs.type !== 'debris' && obs.blocksExits.includes(chosen)
-    )
+    const hazardExposure = exitHazardStats.exposureByExit.get(chosen) ?? false
     const congestion: SimMetrics['congestionLevel'] = rerouted ? 'High' : 'Medium'
 
     setMetrics({
@@ -1486,7 +1648,7 @@ export default function SimulationRunPage() {
         : `Successfully evacuated via ${actual} in ${time.toFixed(1)}s`,
       'info'
     )
-  }, [config, disaster, pushEvent])
+  }, [config, disaster, pushEvent, exitHazardStats])
 
   const startSimulation = useCallback(() => {
     if (!selectedExit || !config) return
@@ -1501,21 +1663,10 @@ export default function SimulationRunPage() {
 
     const primaryPath     = buildFullPath(config, selectedRoom, selectedExit, selectedVias)
     const isBlocked       = potentialBlockedExits.has(selectedExit)
-    const totalPrimary    = pathLength(primaryPath)
     const SPEED           = 80
-
-    // Adjust blockT to account for room prefix — original blockT was calibrated
-    // for corridor-to-exit only, so we need to rescale for the full path
-    const exitPathLen     = pathLength(config.primaryPaths[selectedExit])
-    const roomPrefixLen   = totalPrimary - exitPathLen
-    const originalBlockT  = config.blockT[selectedExit] || 1
-    const blockT          = totalPrimary > 0
-      ? (roomPrefixLen + originalBlockT * exitPathLen) / totalPrimary
-      : originalBlockT
-
-    const primaryDuration = isBlocked
-      ? (totalPrimary * blockT / SPEED) * 1000
-      : (totalPrimary / SPEED) * 1000
+    const blockT          = exitHazardStats.blockTByExit.get(selectedExit)
+    const blockProgress   = isBlocked && blockT !== undefined ? blockT : 1
+    const primaryDuration = computeTravelTimeMs(primaryPath, SPEED, smokeHazards, blockProgress)
 
     let hasRerouted = false
     const TICK = 50
@@ -1524,8 +1675,9 @@ export default function SimulationRunPage() {
 
     pushEvent(`Evacuation started \u2014 heading to ${selectedExit}`, 'info')
     if (isBlocked) {
-      const obs = config.obstacles[disaster].find(o => o.blocksExits.includes(selectedExit))
-      pushEvent(`${obs?.type === 'fire' ? 'Fire/smoke' : 'Debris'} detected ahead`, 'warn')
+      const blockingHazard = hardHazards.find((hazard) => pathIntersectsHazards(primaryPath, [hazard]))
+      const label = blockingHazard?.type === 'debris' ? 'Debris' : 'Fire'
+      pushEvent(`${label} detected ahead`, 'warn')
     }
 
     animRef.current = setInterval(() => {
@@ -1536,10 +1688,11 @@ export default function SimulationRunPage() {
 
       if (phase2Ref.current !== 'running') return
 
-      const t = Math.min(elapsed / primaryDuration, isBlocked ? blockT : 1)
+      const progress = primaryDuration > 0 ? elapsed / primaryDuration : 1
+      const t = Math.min(progress, isBlocked ? blockProgress : 1)
       setAgentPos(interpolatePath(primaryPath, t))
 
-      if (isBlocked && t >= blockT && !hasRerouted) {
+      if (isBlocked && t >= blockProgress && !hasRerouted) {
         hasRerouted = true
         const rerouteStart = interpolatePath(primaryPath, t)
         setActiveBlockedExits(prev => {
@@ -1558,7 +1711,7 @@ export default function SimulationRunPage() {
           if (runTokenRef.current !== runToken) return
 
           const reroutePath = buildNodeOnlyReroutePath(config, rerouteStart, reroute.to)
-          const rerouteDur   = (pathLength(reroutePath) / SPEED) * 1000
+          const rerouteDur   = computeTravelTimeMs(reroutePath, SPEED, smokeHazards)
           let rerouteElapsed = 0
 
           pushEvent(`Now heading to ${reroute.to}`, 'info')
@@ -1592,7 +1745,7 @@ export default function SimulationRunPage() {
         finishSimulation(selectedExit, selectedExit, false, elapsed / 1000)
       }
     }, TICK)
-  }, [selectedExit, config, invalidateActiveRun, clearSimulationTimers, selectedRoom, selectedVias, potentialBlockedExits, pushEvent, disaster, finishSimulation])
+  }, [selectedExit, config, invalidateActiveRun, clearSimulationTimers, selectedRoom, selectedVias, potentialBlockedExits, pushEvent, finishSimulation, exitHazardStats, smokeHazards, hardHazards])
 
   const reset = () => {
     invalidateActiveRun()
@@ -1810,6 +1963,7 @@ export default function SimulationRunPage() {
         <div style={{ background: 'linear-gradient(180deg, #ffffff 0%, #f8fbfd 100%)', borderRadius: '14px', border: '1px solid #dbe7ee', overflow: 'hidden', aspectRatio: `${config!.viewWidth}/${config!.viewHeight}`, boxShadow: '0 14px 30px rgba(15,23,42,0.10)', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
           <FloorPlanView
             buildingId={regionId} config={config!} disaster={disaster}
+            obstacles={activeObstacles}
             selectedExit={selectedExit} selectedRoom={selectedRoom}
             selectedVias={selectedVias}
             agentPos={phase === 'planning' ? planningAgentPos : agentPos} phase={phase}

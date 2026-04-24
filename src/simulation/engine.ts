@@ -33,6 +33,10 @@ export interface Agent {
    *  differently for each agent. Keeps agents from all piling onto the same
    *  global-shortest route. Set once at spawn. */
   routingJitter: number
+  /** Time spent trying to reroute without a path */
+  rerouteStallTime: number
+  /** Temporary anchor so reroutes don't visually snap */
+  rerouteAnchor?: { x: number; y: number; nodeId: string; progress: number; distance: number }
 }
 
 /* ── Congestion tracker ── */
@@ -102,6 +106,8 @@ export interface SimConfig {
   hazardGrowthMultiplier?: number
   /** User-drawn path (list of node IDs from start room to exit) */
   userPath?: string[]
+  /** Override hazard zones for the selected disaster type */
+  hazardOverrides?: HazardZone[]
 }
 
 /* ── Create initial simulation state ── */
@@ -140,6 +146,8 @@ export function createSimulation(
         // Jitter range 0.85–1.15 — enough to swap ties between near-equal
         // routes without ever making a bad route look better than a good one.
         routingJitter: 0.85 + Math.random() * 0.30,
+        rerouteStallTime: 0,
+        rerouteAnchor: undefined,
       })
     }
   }
@@ -164,11 +172,13 @@ export function createSimulation(
       history: [{ nodeId: startRoomId, time: 0 }],
       isUserAgent: true,
       routingJitter: 1,
+      rerouteStallTime: 0,
+      rerouteAnchor: undefined,
     })
   }
 
   // Initialize hazards
-  const hazardDefs = floor.hazards[config.disasterType] || []
+  const hazardDefs = config.hazardOverrides ?? (floor.hazards[config.disasterType] || [])
   const hazards: ActiveHazard[] = hazardDefs.map(z => ({
     zone: z,
     currentRadius: 0,
@@ -339,6 +349,7 @@ function replanAgent(
   state: SimulationState,
   floor: FloorModel,
 ): boolean {
+  agent.progress = 0
   const result = findShortestPathToExitWeighted(
     floor,
     agent.currentNodeId,
@@ -368,6 +379,19 @@ function updateAgent(
 ) {
   if (agent.state === 'evacuated' || agent.state === 'trapped') return
 
+  if (agent.rerouteAnchor && agent.rerouteAnchor.progress < 1) {
+    const anchor = agent.rerouteAnchor
+    if (anchor.distance > 0) {
+      anchor.progress = Math.min(1, anchor.progress + (agent.speed * dt) / anchor.distance)
+    } else {
+      anchor.progress = 1
+    }
+    if (anchor.progress >= 1) {
+      agent.rerouteAnchor = undefined
+    }
+    return
+  }
+
   // Reaction delay → initial routing
   if (agent.state === 'waiting') {
     agent.elapsedWait += dt
@@ -386,6 +410,20 @@ function updateAgent(
       return
     }
     agent.state = 'moving'
+    return
+  }
+
+  // Agents stuck in rerouting keep searching until a path is found or they time out.
+  if (agent.state === 'rerouting') {
+    if (replanAgent(agent, state, floor)) {
+      agent.state = 'moving'
+      agent.rerouteStallTime = 0
+    } else {
+      agent.rerouteStallTime += dt
+      if (agent.rerouteStallTime >= 6) {
+        agent.state = 'trapped'
+      }
+    }
     return
   }
 
@@ -409,11 +447,34 @@ function updateAgent(
       } else {
         agent.state = 'rerouting'
         agent.reroutes++
-        if (!replanAgent(agent, state, floor)) {
-          agent.state = 'trapped'
-          return
+        agent.rerouteStallTime = 0
+        if (agent.progress > 0 && agent.pathIndex < agent.path.length - 1) {
+          const fromId = agent.path[agent.pathIndex]
+          const toId = agent.path[agent.pathIndex + 1]
+          const fromNode = getNode(floor, fromId)
+          const toNode = getNode(floor, toId)
+          if (fromNode && toNode) {
+            const anchorX = fromNode.x + (toNode.x - fromNode.x) * agent.progress
+            const anchorY = fromNode.y + (toNode.y - fromNode.y) * agent.progress
+            const anchorNodeId = agent.progress >= 0.5 ? toId : fromId
+            const anchorNode = agent.progress >= 0.5 ? toNode : fromNode
+            const anchorDistance = Math.hypot(anchorNode.x - anchorX, anchorNode.y - anchorY)
+            agent.rerouteAnchor = {
+              x: anchorX,
+              y: anchorY,
+              nodeId: anchorNodeId,
+              progress: 0,
+              distance: anchorDistance,
+            }
+            agent.currentNodeId = anchorNodeId
+            agent.pathIndex = 0
+            agent.progress = 0
+          }
         }
-        agent.state = 'moving'
+        if (replanAgent(agent, state, floor)) {
+          agent.state = 'moving'
+        }
+        return
       }
     }
   }
@@ -460,10 +521,10 @@ function updateAgent(
       }
     }
 
-    // Walking directly through smoke (a soft-blocked edge) — cap speed at 0.4x
+    // Walking directly through smoke (a soft-blocked edge) — cap speed at 0.5x
     // and double the exposure tick. The agent keeps moving; they're not stuck.
     if (state.softBlockedEdges.has(ek)) {
-      hazardFactor = Math.min(hazardFactor, 0.4)
+      hazardFactor = Math.min(hazardFactor, 0.5)
       agent.hazardExposure += dt
     }
 
