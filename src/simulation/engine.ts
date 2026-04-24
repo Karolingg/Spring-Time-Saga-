@@ -5,8 +5,8 @@
  * hazard progression, congestion modeling, and evaluation.
  */
 
-import type { FloorModel, NavNode, HazardZone } from './building-model'
-import { getNode, getNeighbors, findShortestPathToExit, edgeKey } from './building-model'
+import type { FloorModel, HazardZone } from './building-model'
+import { getNode, findShortestPathToExit, findShortestPathToExitWeighted, edgeKey } from './building-model'
 
 /* ── Agent model ── */
 export interface Agent {
@@ -29,6 +29,10 @@ export interface Agent {
   history: { nodeId: string; time: number }[]
   /** Whether this agent uses a fixed user-drawn path (no auto-reroute) */
   isUserAgent?: boolean
+  /** Per-agent multiplier (~0.85–1.15) fed into path search so ties resolve
+   *  differently for each agent. Keeps agents from all piling onto the same
+   *  global-shortest route. Set once at spawn. */
+  routingJitter: number
 }
 
 /* ── Congestion tracker ── */
@@ -52,13 +56,32 @@ export interface SimulationState {
   hazards: ActiveHazard[]
   congestion: CongestionState
   elapsedTime: number
-  /** Edges currently blocked */
+  /** Multiplies hazard radius growth for scenario tuning */
+  hazardGrowthMultiplier: number
+  /** Edges HARD-blocked by fire / debris / blocked zones — agents cannot traverse */
   blockedEdges: Set<string>
+  /** Edges SOFT-blocked by smoke — agents can still traverse but pay a heavy penalty
+   *  when routing and take extra slowdown + exposure while on them */
+  softBlockedEdges: Set<string>
   /** Is the simulation running */
   running: boolean
   /** Is the simulation finished */
   finished: boolean
 }
+
+/** Penalty multiplier applied to smoke-filled edges during path search.
+ *  A detour up to ~3.5x longer will be preferred over walking through smoke. */
+const SOFT_EDGE_COST_MULTIPLIER = 3.5
+
+/** How many meters of extra cost each person on an edge adds when
+ *  re-planning. Large enough to tip otherwise-equal routes, small enough
+ *  that agents still take a short congested path over a massive detour. */
+const CONGESTION_WEIGHT = 1.5
+
+/** How many meters of extra cost each agent already heading to an exit
+ *  adds when another agent is re-planning. Spreads the load across
+ *  multiple exits when one is getting piled on. */
+const EXIT_BIAS_PER_AGENT = 2.5
 
 /* ── Snapshot for replay ── */
 export interface SimSnapshot {
@@ -75,6 +98,8 @@ export interface SimConfig {
   agentsPerRoom: Record<string, number>
   /** Speed multiplier */
   speedMultiplier: number
+  /** Multiplies hazard radius growth */
+  hazardGrowthMultiplier?: number
   /** User-drawn path (list of node IDs from start room to exit) */
   userPath?: string[]
 }
@@ -112,6 +137,9 @@ export function createSimulation(
         hazardExposure: 0,
         reroutes: 0,
         history: [{ nodeId: roomId, time: 0 }],
+        // Jitter range 0.85–1.15 — enough to swap ties between near-equal
+        // routes without ever making a bad route look better than a good one.
+        routingJitter: 0.85 + Math.random() * 0.30,
       })
     }
   }
@@ -135,6 +163,7 @@ export function createSimulation(
       reroutes: 0,
       history: [{ nodeId: startRoomId, time: 0 }],
       isUserAgent: true,
+      routingJitter: 1,
     })
   }
 
@@ -151,7 +180,9 @@ export function createSimulation(
     hazards,
     congestion: { edgeCounts: {}, nodeCounts: {} },
     elapsedTime: 0,
+    hazardGrowthMultiplier: config.hazardGrowthMultiplier ?? 1,
     blockedEdges: new Set(),
+    softBlockedEdges: new Set(),
     running: false,
     finished: false,
   }
@@ -166,7 +197,7 @@ export function stepSimulation(
   const newState = { ...state, elapsedTime: state.elapsedTime + dt }
 
   // 1. Update hazards
-  updateHazards(newState, floor, dt)
+  updateHazards(newState)
 
   // 2. Update blocked edges based on hazards
   updateBlockedEdges(newState, floor)
@@ -189,27 +220,47 @@ export function stepSimulation(
   return newState
 }
 
-/* ── Hazard progression ── */
-function updateHazards(state: SimulationState, _floor: FloorModel, dt: number) {
+/* ── Hazard progression ──
+ * Growth is clamped to `maxRadius` so hazards stop ballooning once they've
+ * hit their dramatic size. Without this cap, long-running scenarios end up
+ * with fire/smoke circles that cover the entire floorplan, hiding agents
+ * and making the visualization unreadable. */
+function updateHazards(state: SimulationState) {
   for (const h of state.hazards) {
     if (state.elapsedTime >= h.zone.appearsAt) {
       h.active = true
+      let r: number
       if (h.zone.growthRate > 0) {
-        h.currentRadius = h.zone.radius + h.zone.growthRate * (state.elapsedTime - h.zone.appearsAt)
+        r = h.zone.radius + (h.zone.growthRate * state.hazardGrowthMultiplier) * (state.elapsedTime - h.zone.appearsAt)
       } else {
-        h.currentRadius = h.zone.radius
+        r = h.zone.radius
       }
+      if (h.zone.maxRadius !== undefined) {
+        r = Math.min(r, h.zone.maxRadius)
+      }
+      h.currentRadius = r
     }
   }
 }
 
-/* ── Block edges that pass through active hazard zones ── */
+/* ── Block edges that pass through active hazard zones ──
+ *
+ * Hazard semantics:
+ *   • fire / debris / blocked  → HARD block. Edge is removed from the nav graph
+ *     until the hazard recedes. Dijkstra will never plan through it.
+ *   • smoke                    → SOFT block. Edge stays traversable — agents
+ *     should be able to push through a smoky corridor if it's their only way
+ *     out — but it carries a heavy routing penalty so a clean detour is
+ *     preferred, and the agent accrues extra slowdown + exposure while on it.
+ */
 function updateBlockedEdges(state: SimulationState, floor: FloorModel) {
   state.blockedEdges.clear()
+  state.softBlockedEdges.clear()
 
   for (const h of state.hazards) {
     if (!h.active) continue
     const r = h.currentRadius
+    const isSoft = h.zone.type === 'smoke'
 
     for (const edge of floor.edges) {
       if (!edge.blockable) continue
@@ -217,13 +268,19 @@ function updateBlockedEdges(state: SimulationState, floor: FloorModel) {
       const toNode = getNode(floor, edge.to)
       if (!fromNode || !toNode) continue
 
-      // Check if the hazard zone intersects the edge midpoint
       const mx = (fromNode.x + toNode.x) / 2
       const my = (fromNode.y + toNode.y) / 2
       const dist = Math.hypot(mx - h.zone.x, my - h.zone.y)
+      if (dist >= r) continue
 
-      if (dist < r) {
-        state.blockedEdges.add(edgeKey(edge.from, edge.to))
+      const key = edgeKey(edge.from, edge.to)
+      if (isSoft) {
+        // Only downgrade to soft if no hard block already applies.
+        if (!state.blockedEdges.has(key)) state.softBlockedEdges.add(key)
+      } else {
+        state.blockedEdges.add(key)
+        // A hard block supersedes any earlier soft block.
+        state.softBlockedEdges.delete(key)
       }
     }
   }
@@ -247,6 +304,61 @@ function updateCongestion(state: SimulationState) {
   state.congestion = { nodeCounts, edgeCounts }
 }
 
+/** Does any edge on the remaining portion of `path` (from `pathIndex` onward)
+ *  have a HARD block? If so, the agent needs to reroute now instead of walking
+ *  into a dead end. Soft blocks (smoke) don't count — the agent stays committed. */
+function remainingPathHasHardBlock(path: string[], pathIndex: number, blockedEdges: Set<string>): boolean {
+  for (let i = pathIndex; i < path.length - 1; i++) {
+    if (blockedEdges.has(edgeKey(path[i], path[i + 1]))) return true
+  }
+  return false
+}
+
+/** Count how many still-active agents are currently aiming at each exit.
+ *  Used to bias new arrivals toward under-used exits. */
+function buildExitBias(state: SimulationState): Record<string, number> {
+  const counts: Record<string, number> = {}
+  for (const a of state.agents) {
+    if (a.state === 'evacuated' || a.state === 'trapped') continue
+    if (!a.targetExitId) continue
+    counts[a.targetExitId] = (counts[a.targetExitId] ?? 0) + 1
+  }
+  const bias: Record<string, number> = {}
+  for (const [exitId, n] of Object.entries(counts)) {
+    bias[exitId] = n * EXIT_BIAS_PER_AGENT
+  }
+  return bias
+}
+
+/** Replan for an auto agent using the weighted search so smoke is penalized
+ *  but not excluded. Also pushes the agent away from crowded edges and
+ *  already-popular exits, and applies the agent's personal jitter so ties
+ *  don't all resolve the same way. Returns true if a path was found. */
+function replanAgent(
+  agent: Agent,
+  state: SimulationState,
+  floor: FloorModel,
+): boolean {
+  const result = findShortestPathToExitWeighted(
+    floor,
+    agent.currentNodeId,
+    state.blockedEdges,
+    state.softBlockedEdges,
+    SOFT_EDGE_COST_MULTIPLIER,
+    {
+      edgeCounts: state.congestion.edgeCounts,
+      congestionWeight: CONGESTION_WEIGHT,
+      jitter: agent.routingJitter,
+      exitBias: buildExitBias(state),
+    },
+  )
+  if (!result) return false
+  agent.path = result.path
+  agent.pathIndex = 0
+  agent.targetExitId = result.exitId
+  return true
+}
+
 /* ── Agent update ── */
 function updateAgent(
   agent: Agent,
@@ -256,7 +368,7 @@ function updateAgent(
 ) {
   if (agent.state === 'evacuated' || agent.state === 'trapped') return
 
-  // Reaction delay
+  // Reaction delay → initial routing
   if (agent.state === 'waiting') {
     agent.elapsedWait += dt
     if (agent.elapsedWait < agent.reactionDelay) return
@@ -266,39 +378,43 @@ function updateAgent(
       return
     }
 
-    // Find initial route (auto agents)
-    const result = findShortestPathToExit(floor, agent.currentNodeId, state.blockedEdges)
-    if (!result) {
+    // Auto agents use weighted pathfinding so a smoke-filled corridor is
+    // preferred over being trapped, but avoided when a cleaner detour exists.
+    if (!replanAgent(agent, state, floor)) {
+      // No path even with smoke allowed → truly unreachable (hard blocks only).
       agent.state = 'trapped'
       return
     }
-    agent.path = result.path
-    agent.pathIndex = 0
-    agent.targetExitId = result.exitId
     agent.state = 'moving'
     return
   }
 
-  // Check if current path is still valid (edges not blocked)
+  // Revalidate path: look ahead at the *entire* remaining portion, not just the
+  // next edge. If a fire/debris block appeared anywhere further down the
+  // committed path, reroute now — otherwise the agent keeps walking straight
+  // into a dead end and only reacts at the last step.
   if (agent.state === 'moving' && agent.pathIndex < agent.path.length - 1) {
-    const nextEdge = edgeKey(agent.path[agent.pathIndex], agent.path[agent.pathIndex + 1])
-    if (state.blockedEdges.has(nextEdge)) {
+    const nextEdgeKey = edgeKey(agent.path[agent.pathIndex], agent.path[agent.pathIndex + 1])
+    const nextHardBlocked = state.blockedEdges.has(nextEdgeKey)
+    const aheadHardBlocked = !nextHardBlocked && remainingPathHasHardBlock(agent.path, agent.pathIndex, state.blockedEdges)
+
+    if (nextHardBlocked || aheadHardBlocked) {
       if (agent.isUserAgent) {
-        agent.state = 'trapped'
-        return
+        // User-drawn path is fixed — they get trapped at the blockage.
+        if (nextHardBlocked) {
+          agent.state = 'trapped'
+          return
+        }
+        // Otherwise let them keep walking until they hit it.
+      } else {
+        agent.state = 'rerouting'
+        agent.reroutes++
+        if (!replanAgent(agent, state, floor)) {
+          agent.state = 'trapped'
+          return
+        }
+        agent.state = 'moving'
       }
-      // Auto agents reroute
-      agent.state = 'rerouting'
-      agent.reroutes++
-      const result = findShortestPathToExit(floor, agent.currentNodeId, state.blockedEdges)
-      if (!result) {
-        agent.state = 'trapped'
-        return
-      }
-      agent.path = result.path
-      agent.pathIndex = 0
-      agent.targetExitId = result.exitId
-      agent.state = 'moving'
     }
   }
 
@@ -342,6 +458,13 @@ function updateAgent(
         hazardFactor = Math.min(hazardFactor, 0.5)
         agent.hazardExposure += dt
       }
+    }
+
+    // Walking directly through smoke (a soft-blocked edge) — cap speed at 0.4x
+    // and double the exposure tick. The agent keeps moving; they're not stuck.
+    if (state.softBlockedEdges.has(ek)) {
+      hazardFactor = Math.min(hazardFactor, 0.4)
+      agent.hazardExposure += dt
     }
 
     const effectiveSpeed = agent.speed * congestionFactor * hazardFactor
