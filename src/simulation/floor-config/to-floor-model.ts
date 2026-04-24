@@ -279,6 +279,9 @@ const FLOORPLAN_SRC_BY_BUILDING: Record<string, Record<string, string>> = {
     '5th Floor': '/floorplans/CSB%205th%20floor.svg',
     '6th Floor': '/floorplans/CSB%206th%20floor.svg',
   },
+  'up-cebu-library': {
+    '1st Floor': '/floorplans/Library%201st%20floor.svg',
+  },
 }
 
 function resolveFloorplanSrc(buildingId: string, floorLabel: string): string {

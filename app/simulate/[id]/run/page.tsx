@@ -1135,11 +1135,42 @@ function CSBFloorPlan(props: FloorPlanProps) {
   )
 }
 
+// ─── UP Cebu Library Floor Plan ──────────────────────────────────────────────
+// Mirrors CSBFloorPlan: renders the actual SVG floorplan as a background image,
+// then overlays the simulation elements via <SimOverlay />.
+function LibraryFloorPlan(props: FloorPlanProps) {
+  const { config } = props
+  const floorPlanSrcByLabel: Record<string, string> = {
+    '1st Floor': '/floorplans/Library%201st%20floor.svg',
+  }
+  const floorPlanSrc = floorPlanSrcByLabel[config.floorLabel] ?? ''
+
+  return (
+    <div style={{ position: 'relative', width: '100%', height: '100%' }}>
+      {floorPlanSrc && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={floorPlanSrc}
+          alt="UP Cebu Library Floor Plan"
+          style={{ width: '100%', height: '100%', display: 'block', position: 'absolute', top: 0, left: 0, objectFit: 'contain', objectPosition: 'center' }}
+        />
+      )}
+      <svg
+        viewBox={`0 0 ${config.viewWidth} ${config.viewHeight}`} preserveAspectRatio="xMidYMid meet"
+        style={{ width: '100%', height: '100%', display: 'block', position: 'absolute', top: 0, left: 0 }}
+      >
+        <SimOverlay {...props} />
+      </svg>
+    </div>
+  )
+}
+
 // ── Floor plan selector ──
 function FloorPlanView(props: FloorPlanProps & { buildingId: string }) {
   const { buildingId, ...rest } = props
   if (buildingId === 'admin-building') return <AdminFloorPlan {...rest} />
   if (buildingId === 'science-building') return <CSBFloorPlan {...rest} />
+  if (buildingId === 'up-cebu-library') return <LibraryFloorPlan {...rest} />
   // All other buildings use CSB floor plan as placeholder
   return <CSBFloorPlan {...rest} />
 }
