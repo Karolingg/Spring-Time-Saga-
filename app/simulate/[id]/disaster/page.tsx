@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { useAuth } from '@/src/hooks/useAuth'
 import { BUILDING_FLOOR_COUNT } from '@/src/config/building-floor-counts'
@@ -66,12 +66,20 @@ export default function DisasterPickerPage() {
   const [hoveredType, setHoveredType] = useState<string | null>(null)
   const [selectedDisaster, setSelectedDisaster] = useState<string | null>(null)
   const [hoveredFloor, setHoveredFloor] = useState<number | null>(null)
-
+  const [selectedFloor, setSelectedFloor] = useState<number | null>(null)
   const floorCount = BUILDING_FLOOR_COUNT[regionId] || 2
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) window.location.href = '/auth'
   }, [isLoading, isAuthenticated])
+
+  useEffect(() => {
+    setSelectedFloor(null)
+  }, [selectedDisaster])
+
+  const clearFloorSelection = useCallback(() => {
+    setSelectedFloor(null)
+  }, [])
 
   if (isLoading) {
     return (
@@ -225,20 +233,26 @@ export default function DisasterPickerPage() {
                 return (
                   <button
                     key={i}
-                    onClick={() => router.push(getSimulationRoute(regionId, selectedDisaster, i))}
+                    onClick={() => setSelectedFloor(i)}
                     onMouseEnter={() => setHoveredFloor(i)}
                     onMouseLeave={() => setHoveredFloor(null)}
                     style={{
                       display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px',
                       padding: '20px 16px',
-                      background: isFloorHovered ? 'rgba(45,184,176,0.10)' : 'rgba(45,184,176,0.04)',
-                      border: `1.5px solid ${isFloorHovered ? 'rgba(45,184,176,0.5)' : 'rgba(45,184,176,0.15)'}`,
+                      background: selectedFloor === i
+                        ? 'rgba(45,184,176,0.16)'
+                        : isFloorHovered ? 'rgba(45,184,176,0.10)' : 'rgba(45,184,176,0.04)',
+                      border: `1.5px solid ${selectedFloor === i
+                        ? 'rgba(45,184,176,0.7)'
+                        : isFloorHovered ? 'rgba(45,184,176,0.5)' : 'rgba(45,184,176,0.15)'}`,
                       borderRadius: '14px',
                       cursor: 'pointer',
                       textAlign: 'center',
                       transition: 'all 0.2s ease',
                       transform: isFloorHovered ? 'translateY(-2px)' : 'none',
-                      boxShadow: isFloorHovered ? '0 8px 24px rgba(45,184,176,0.15)' : 'none',
+                      boxShadow: selectedFloor === i
+                        ? '0 12px 26px rgba(45,184,176,0.18)'
+                        : isFloorHovered ? '0 8px 24px rgba(45,184,176,0.15)' : 'none',
                     }}
                   >
                     {/* Floor icon */}
@@ -277,6 +291,43 @@ export default function DisasterPickerPage() {
                 )
               })}
             </div>
+
+            {selectedFloor !== null && (
+              <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '16px' }}>
+                <button
+                  onClick={() => selectedDisaster && router.push(getSimulationRoute(regionId, selectedDisaster, selectedFloor))}
+                  style={{
+                    padding: '10px 16px', borderRadius: '10px', border: 'none', background: '#2db8b0',
+                    color: '#ffffff', fontSize: '12px', fontWeight: 800, cursor: 'pointer',
+                  }}
+                >
+                  Continue to simulation
+                </button>
+              </div>
+            )}
+
+            {selectedFloor !== null && (
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '16px', gap: '8px' }}>
+                <button
+                  onClick={clearFloorSelection}
+                  style={{
+                    padding: '10px 12px', borderRadius: '10px', border: '1px solid rgba(148,163,184,0.4)',
+                    background: '#ffffff', color: '#0f172a', fontSize: '12px', fontWeight: 700, cursor: 'pointer',
+                  }}
+                >
+                  Change floor
+                </button>
+                <button
+                  onClick={() => selectedDisaster && router.push(getSimulationRoute(regionId, selectedDisaster, selectedFloor))}
+                  style={{
+                    padding: '10px 16px', borderRadius: '10px', border: 'none', background: '#2db8b0',
+                    color: '#ffffff', fontSize: '12px', fontWeight: 800, cursor: 'pointer',
+                  }}
+                >
+                  Continue to simulation
+                </button>
+              </div>
+            )}
           </div>
         )}
       </div>
