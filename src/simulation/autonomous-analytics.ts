@@ -142,6 +142,14 @@ export function getAgentRenderPosition(agent: Agent, floor: FloorModel) {
     return { x: 0, y: 0 }
   }
 
+  if (agent.rerouteAnchor && agent.rerouteAnchor.progress < 1) {
+    const anchor = agent.rerouteAnchor
+    return {
+      x: anchor.x + (baseNode.x - anchor.x) * anchor.progress,
+      y: anchor.y + (baseNode.y - anchor.y) * anchor.progress,
+    }
+  }
+
   if (agent.progress > 0 && agent.pathIndex < agent.path.length - 1) {
     const nextNode = getNode(floor, agent.path[agent.pathIndex + 1])
     if (!nextNode) {
