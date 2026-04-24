@@ -47,6 +47,17 @@ function floorLabel(index: number): string {
   return `${n}th Floor`
 }
 
+function getSimulationRoute(regionId: string, disaster: string, floorIndex: number) {
+  const base = `/simulate/${encodeURIComponent(regionId)}`
+  const query = `?disaster=${encodeURIComponent(disaster)}&floor=${floorIndex}`
+
+  if (regionId === 'science-building') {
+    return `${base}/autonomous${query}`
+  }
+
+  return `${base}/run${query}`
+}
+
 export default function DisasterPickerPage() {
   const { isAuthenticated, isLoading } = useAuth()
   const router = useRouter()
@@ -214,7 +225,7 @@ export default function DisasterPickerPage() {
                 return (
                   <button
                     key={i}
-                    onClick={() => router.push(`/simulate/${encodeURIComponent(regionId)}/run?disaster=${selectedDisaster}&floor=${i}`)}
+                    onClick={() => router.push(getSimulationRoute(regionId, selectedDisaster, i))}
                     onMouseEnter={() => setHoveredFloor(i)}
                     onMouseLeave={() => setHoveredFloor(null)}
                     style={{

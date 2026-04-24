@@ -1106,14 +1106,14 @@ function AdminFloorPlan(props: FloorPlanProps) {
 function CSBFloorPlan(props: FloorPlanProps) {
   const { config } = props
   const floorPlanSrcByLabel: Record<string, string> = {
-    '2nd Floor': '/floorplans/csb-2f.svg',
+    '2nd Floor': '/floorplans/CSB%202nd%20floor.svg',
     '3rd Floor': '/floorplans/CSB%203rd%20floor.svg',
     '4th Floor': '/floorplans/CSB%204th%20floor.svg',
     '5th Floor': '/floorplans/CSB%205th%20floor.svg',
     '6th Floor': '/floorplans/CSB%206th%20floor.svg',
   }
   // Fallback keeps floor rendering visible until a dedicated 1st-floor SVG is added.
-  const floorPlanSrc = floorPlanSrcByLabel[config.floorLabel] ?? '/floorplans/csb-2f.svg'
+  const floorPlanSrc = floorPlanSrcByLabel[config.floorLabel] ?? '/floorplans/CSB%202nd%20floor.svg'
 
   return (
     <div style={{ position: 'relative', width: '100%', height: '100%' }}>
