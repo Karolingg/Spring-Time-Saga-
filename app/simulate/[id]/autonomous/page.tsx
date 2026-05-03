@@ -184,6 +184,10 @@ export default function AutonomousScienceBuildingPage() {
   const baseTrace = useMemo(() => (floor ? createAutonomousTrace(floor) : null), [floor])
 
   const [agentCountOverride, setAgentCountOverride] = useState<number | null>(null)
+  /** Per-room population overrides keyed by NavNode.id. Rooms in this map use
+   *  their fixed value; rooms NOT in this map share the remaining budget
+   *  (totalAgents − sum of overrides) proportionally to their capacity. */
+  const [roomOverrides, setRoomOverrides] = useState<Record<string, number>>({})
   const [movementMultiplier, setMovementMultiplier] = useState(1)
   const [playbackMultiplier, setPlaybackMultiplier] = useState(1)
   const [simState, setSimState] = useState<SimulationState | null>(null)
@@ -223,6 +227,12 @@ export default function AutonomousScienceBuildingPage() {
     setPlacedHazards(plan?.hazards ?? [])
     setSelectedHazardId(null)
   }, [hazardStorageKey])
+
+  // Per-room overrides become meaningless when the floor's room set changes
+  // (different building or different floor), so wipe them on floor switch.
+  useEffect(() => {
+    setRoomOverrides({})
+  }, [floor])
 
   useEffect(() => {
     if (!hazardStorageKey) return
@@ -387,9 +397,85 @@ export default function AutonomousScienceBuildingPage() {
     }
   }, [floor, isPlaying, persistCompletedRun, playbackMultiplier])
 
-  const roomAllocations = useMemo(() => (
-    floor ? distributeAgentsByCapacity(floor, totalAgents) : {}
-  ), [floor, totalAgents])
+  /**
+   * Final per-room agent counts. Rooms with explicit overrides use that exact
+   * number (clamped to capacity). Remaining rooms split the leftover budget
+   * (`totalAgents − sum of overrides`) proportionally to their capacity, using
+   * the same algorithm as `distributeAgentsByCapacity`.
+   */
+  const roomAllocations = useMemo<Record<string, number>>(() => {
+    if (!floor) return {}
+    const rooms = floor.nodes.filter((node) => node.type === 'room')
+
+    // Pin overrides first.
+    const result: Record<string, number> = {}
+    let overriddenSum = 0
+    for (const r of rooms) {
+      if (Object.prototype.hasOwnProperty.call(roomOverrides, r.id)) {
+        const v = clamp(Math.floor(roomOverrides[r.id]), 0, r.capacity)
+        result[r.id] = v
+        overriddenSum += v
+      }
+    }
+
+    // Distribute remaining budget proportionally across non-overridden rooms.
+    const remainingRooms = rooms.filter(
+      (r) => !Object.prototype.hasOwnProperty.call(roomOverrides, r.id),
+    )
+    const remainingCap = remainingRooms.reduce((sum, r) => sum + r.capacity, 0)
+    const remainingBudget = Math.max(0, totalAgents - overriddenSum)
+
+    if (remainingRooms.length > 0 && remainingCap > 0 && remainingBudget > 0) {
+      // Largest-remainder rounding so the per-room shares sum back to
+      // `remainingBudget` exactly (no off-by-one drift).
+      const exact = remainingRooms.map((r) => ({
+        id: r.id,
+        capacity: r.capacity,
+        share: (remainingBudget * r.capacity) / remainingCap,
+      }))
+      const floors = exact.map((e) => ({ ...e, floorVal: Math.floor(e.share), frac: e.share - Math.floor(e.share) }))
+      let assigned = floors.reduce((s, e) => s + e.floorVal, 0)
+      const sortedByFrac = [...floors].sort((a, b) => b.frac - a.frac)
+      let i = 0
+      while (assigned < remainingBudget && i < sortedByFrac.length) {
+        sortedByFrac[i].floorVal++
+        assigned++
+        i++
+      }
+      for (const e of floors) {
+        result[e.id] = clamp(e.floorVal, 0, e.capacity)
+      }
+    } else {
+      for (const r of remainingRooms) result[r.id] = 0
+    }
+
+    return result
+  }, [floor, totalAgents, roomOverrides])
+
+  /** Sum of room allocations actually being launched (may differ from
+   *  `totalAgents` when overrides exceed the budget — overrides win). */
+  const effectiveAgentCount = useMemo(
+    () => Object.values(roomAllocations).reduce((sum, n) => sum + n, 0),
+    [roomAllocations],
+  )
+
+  const setRoomOverride = useCallback((roomId: string, value: number, capacity: number) => {
+    const clamped = clamp(Math.floor(value), 0, capacity)
+    setRoomOverrides((prev) => ({ ...prev, [roomId]: clamped }))
+  }, [])
+
+  const clearRoomOverride = useCallback((roomId: string) => {
+    setRoomOverrides((prev) => {
+      if (!Object.prototype.hasOwnProperty.call(prev, roomId)) return prev
+      const next = { ...prev }
+      delete next[roomId]
+      return next
+    })
+  }, [])
+
+  const clearAllRoomOverrides = useCallback(() => {
+    setRoomOverrides({})
+  }, [])
 
   const liveCongestion = useMemo(() => getCounts(simState, floor), [simState, floor])
   const topHotspots = useMemo(() => (
@@ -421,7 +507,7 @@ export default function AutonomousScienceBuildingPage() {
     })
 
     nextState.running = true
-    launchedAgentCountRef.current = totalAgents
+    launchedAgentCountRef.current = effectiveAgentCount
 
     const nextTrace = createAutonomousTrace(floor)
     const initialCongestion = computeAccurateCongestion(nextState)
@@ -436,7 +522,7 @@ export default function AutonomousScienceBuildingPage() {
     setSaveStatus('idle')
     setSaveMessage('')
     setIsPlaying(true)
-  }, [disaster, floor, movementMultiplier, roomAllocations, totalAgents, hazardZones])
+  }, [disaster, floor, movementMultiplier, roomAllocations, effectiveAgentCount, hazardZones])
 
   const resetSimulation = useCallback(() => {
     setIsPlaying(false)
@@ -723,7 +809,14 @@ export default function AutonomousScienceBuildingPage() {
             <div style={{ marginBottom: '16px' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', marginBottom: '8px' }}>
                 <div style={{ fontSize: '13px', fontWeight: 700, color: '#0f172a' }}>Total agents</div>
-                <div style={{ fontSize: '12px', fontWeight: 700, color: meta.accent }}>{totalAgents} / {maxAgents}</div>
+                <div style={{ fontSize: '12px', fontWeight: 700, color: meta.accent }}>
+                  {effectiveAgentCount} / {maxAgents}
+                  {effectiveAgentCount !== totalAgents && (
+                    <span style={{ marginLeft: '6px', color: '#64748b', fontWeight: 600 }}>
+                      (target {totalAgents})
+                    </span>
+                  )}
+                </div>
               </div>
               <input
                 type="range"
@@ -733,6 +826,11 @@ export default function AutonomousScienceBuildingPage() {
                 onChange={(event) => setAgentCountOverride(clamp(Number.parseInt(event.target.value || '1', 10), 1, Math.max(1, maxAgents)))}
                 style={{ width: '100%' }}
               />
+              {Object.keys(roomOverrides).length > 0 && (
+                <div style={{ fontSize: '11px', color: '#64748b', marginTop: '6px', lineHeight: 1.5 }}>
+                  {Object.keys(roomOverrides).length} room{Object.keys(roomOverrides).length === 1 ? ' is' : 's are'} pinned. Slider only redistributes the rest.
+                </div>
+              )}
             </div>
 
             <div style={{ marginBottom: '16px' }}>
@@ -846,15 +944,106 @@ export default function AutonomousScienceBuildingPage() {
           </section>
 
           <section className="auto-panel-section">
-            <div style={{ fontSize: '13px', fontWeight: 700, color: '#0f172a', marginBottom: '12px' }}>Room spawn plan</div>
+            <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: '10px', marginBottom: '4px' }}>
+              <div style={{ fontSize: '13px', fontWeight: 700, color: '#0f172a' }}>Room population</div>
+              <div style={{ fontSize: '11px', fontWeight: 700, color: meta.accent }}>
+                {effectiveAgentCount} / {maxAgents}
+              </div>
+            </div>
+            <div style={{ fontSize: '11px', color: '#64748b', marginBottom: '12px', lineHeight: 1.5 }}>
+              Type a number to lock a room. Untouched rooms split the remaining budget by capacity.
+              {Object.keys(roomOverrides).length > 0 && (
+                <>
+                  {' '}
+                  <button
+                    type="button"
+                    onClick={clearAllRoomOverrides}
+                    style={{ background: 'none', border: 'none', padding: 0, color: meta.accent, fontSize: '11px', fontWeight: 700, cursor: 'pointer', textDecoration: 'underline' }}
+                  >
+                    Reset all
+                  </button>
+                </>
+              )}
+            </div>
             <div className="auto-room-grid">
-              {floor.nodes.filter((node) => node.type === 'room').map((roomNode) => (
-                <div key={roomNode.id} className="auto-room-card">
-                  <div style={{ fontSize: '12px', fontWeight: 700, color: '#0f172a', marginBottom: '4px' }}>{roomNode.label}</div>
-                  <div style={{ fontSize: '18px', fontWeight: 800, color: meta.accent }}>{roomAllocations[roomNode.id] || 0}</div>
-                  <div style={{ fontSize: '11px', color: '#64748b' }}>capacity {roomNode.capacity}</div>
-                </div>
-              ))}
+              {floor.nodes.filter((node) => node.type === 'room').map((roomNode) => {
+                const allocated = roomAllocations[roomNode.id] ?? 0
+                const isOverridden = Object.prototype.hasOwnProperty.call(roomOverrides, roomNode.id)
+                const utilization = roomNode.capacity > 0 ? allocated / roomNode.capacity : 0
+                const utilColor = utilization >= 0.9 ? '#ef4444' : utilization >= 0.6 ? '#f59e0b' : '#22c55e'
+                return (
+                  <div
+                    key={roomNode.id}
+                    className="auto-room-card"
+                    style={{
+                      borderColor: isOverridden ? meta.accent : '#e2e8f0',
+                      boxShadow: isOverridden ? `0 0 0 1px ${meta.accent}` : 'none',
+                      transition: 'box-shadow 120ms, border-color 120ms',
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '6px', marginBottom: '6px' }}>
+                      <div style={{ fontSize: '12px', fontWeight: 700, color: '#0f172a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {roomNode.label}
+                      </div>
+                      {isOverridden && (
+                        <button
+                          type="button"
+                          onClick={() => clearRoomOverride(roomNode.id)}
+                          aria-label={`Reset ${roomNode.label} to auto`}
+                          title="Reset to auto"
+                          style={{ background: 'none', border: 'none', padding: 0, color: '#64748b', fontSize: '10px', fontWeight: 700, cursor: 'pointer', textTransform: 'uppercase', letterSpacing: '0.04em' }}
+                        >
+                          Auto
+                        </button>
+                      )}
+                    </div>
+                    <input
+                      type="number"
+                      min={0}
+                      max={roomNode.capacity}
+                      step={1}
+                      value={allocated}
+                      onChange={(event) => {
+                        const raw = event.target.value
+                        if (raw === '') {
+                          clearRoomOverride(roomNode.id)
+                          return
+                        }
+                        const parsed = Number.parseInt(raw, 10)
+                        if (!Number.isFinite(parsed)) return
+                        setRoomOverride(roomNode.id, parsed, roomNode.capacity)
+                      }}
+                      onFocus={(event) => event.currentTarget.select()}
+                      style={{
+                        width: '100%',
+                        padding: '6px 8px',
+                        borderRadius: '8px',
+                        border: `1px solid ${isOverridden ? meta.accent : '#cbd5e1'}`,
+                        background: '#ffffff',
+                        color: meta.accent,
+                        fontSize: '18px',
+                        fontWeight: 800,
+                        textAlign: 'center',
+                        outline: 'none',
+                      }}
+                    />
+                    <div style={{ marginTop: '6px', height: '4px', borderRadius: '2px', background: '#e2e8f0', overflow: 'hidden' }}>
+                      <div
+                        style={{
+                          width: `${Math.min(100, utilization * 100)}%`,
+                          height: '100%',
+                          background: utilColor,
+                          transition: 'width 200ms, background 200ms',
+                        }}
+                      />
+                    </div>
+                    <div style={{ fontSize: '10px', color: '#64748b', marginTop: '4px', display: 'flex', justifyContent: 'space-between' }}>
+                      <span>capacity {roomNode.capacity}</span>
+                      <span style={{ color: utilColor, fontWeight: 700 }}>{Math.round(utilization * 100)}%</span>
+                    </div>
+                  </div>
+                )
+              })}
             </div>
           </section>
 
