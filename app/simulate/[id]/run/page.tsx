@@ -1143,116 +1143,22 @@ function StairwellSymbol({ x, y, w, h }: { x: number; y: number; w: number; h: n
 
 // ─── Admin Building Floor Plan ───────────────────────────────────────────────
 function AdminFloorPlan(props: FloorPlanProps) {
-  const { config } = props
-  const is2F = config.floorLabel === '2nd Floor'
-
-  return (
-    <svg viewBox={`0 0 ${config.viewWidth} ${config.viewHeight}`} preserveAspectRatio="xMidYMid meet"
-      style={{ width: '100%', height: '100%', display: 'block' }}>
-
-      <rect x="20" y="20" width="740" height="460" rx="6" fill="#131c2e" stroke="#2d3f5a" strokeWidth="2.5" />
-
-      {/* Top rooms */}
-      <rect x="20" y="20" width="228" height="210" fill="#18253a" stroke="#2d3f5a" strokeWidth="1.5" />
-      <text x="134" y="118" textAnchor="middle" fill="#4a6080" fontSize="11" fontFamily="system-ui, sans-serif">
-        {is2F ? 'Conference Room' : "Chancellor's"}
-      </text>
-      <text x="134" y="132" textAnchor="middle" fill="#4a6080" fontSize="11" fontFamily="system-ui, sans-serif">
-        {is2F ? '' : 'Office'}
-      </text>
-
-      <rect x="248" y="20" width="284" height="210" fill="#1a2b42" stroke="#2d3f5a" strokeWidth="1.5" />
-      <text x="390" y="122" textAnchor="middle" fill="#4a6080" fontSize="11" fontFamily="system-ui, sans-serif">
-        {is2F ? 'Open Office' : 'Main Lobby'}
-      </text>
-      {!is2F && <text x="390" y="136" textAnchor="middle" fill="#3a5070" fontSize="9" fontFamily="system-ui, sans-serif">/ Reception</text>}
-
-      <rect x="532" y="20" width="228" height="210" fill="#18253a" stroke="#2d3f5a" strokeWidth="1.5" />
-      <text x="646" y="122" textAnchor="middle" fill="#4a6080" fontSize="11" fontFamily="system-ui, sans-serif">
-        {is2F ? 'IT Office' : 'Registrar'}
-      </text>
-
-      {/* Main corridor */}
-      <rect x="20" y="230" width="740" height="55" fill="#0f1824" stroke="#2d3f5a" strokeWidth="1.5" />
-      <text x="390" y="261" textAnchor="middle" fill="#334e6a" fontSize="9.5"
-        fontFamily="system-ui, sans-serif" letterSpacing="2">MAIN CORRIDOR</text>
-
-      {/* Doorways */}
-      <rect x="100" y="229" width="58" height="57" fill="#0f1824" />
-      <rect x="310" y="229" width="160" height="57" fill="#0f1824" />
-      <rect x="590" y="229" width="58" height="57" fill="#0f1824" />
-      <rect x="100" y="228" width="58" height="4" fill="#2d3f5a" />
-      <rect x="310" y="228" width="160" height="4" fill="#2d3f5a" />
-      <rect x="590" y="228" width="58" height="4" fill="#2d3f5a" />
-
-      {/* Bottom rooms */}
-      <rect x="20" y="285" width="228" height="195" fill="#18253a" stroke="#2d3f5a" strokeWidth="1.5" />
-      <text x="134" y="385" textAnchor="middle" fill="#4a6080" fontSize="11" fontFamily="system-ui, sans-serif">
-        {is2F ? 'Storage' : 'Accounting'}
-      </text>
-
-      <rect x="248" y="285" width="284" height="195" fill="#1a2b42" stroke="#2d3f5a" strokeWidth="1.5" />
-      <text x="390" y="385" textAnchor="middle" fill="#4a6080" fontSize="11" fontFamily="system-ui, sans-serif">
-        {is2F ? 'Meeting Room' : 'Records Room'}
-      </text>
-
-      <rect x="532" y="285" width="228" height="195" fill="#18253a" stroke="#2d3f5a" strokeWidth="1.5" />
-      <text x="646" y="385" textAnchor="middle" fill="#4a6080" fontSize="11" fontFamily="system-ui, sans-serif">
-        {is2F ? 'Supply Room' : 'HR Dept'}
-      </text>
-
-      <rect x="100" y="283" width="58" height="4" fill="#2d3f5a" />
-      <rect x="310" y="283" width="160" height="4" fill="#2d3f5a" />
-      <rect x="590" y="283" width="58" height="4" fill="#2d3f5a" />
-
-      {/* Exit wall gaps */}
-      {!is2F && <rect x="350" y="478" width="80" height="4" fill="#131c2e" />}
-      {!is2F && <rect x="18" y="232" width="4" height="51" fill="#131c2e" />}
-      <rect x="758" y="92" width="4" height="42" fill="#131c2e" />
-
-      {/* Stairwells for 2F */}
-      {is2F && (
-        <>
-          <StairwellSymbol x={60} y={240} w={55} h={35} />
-          <StairwellSymbol x={665} y={240} w={55} h={35} />
-        </>
-      )}
-
-      {/* Floor label */}
-      <text x="740" y="470" textAnchor="end" fill="#1e2f46" fontSize="11"
-        fontFamily="system-ui, sans-serif" fontWeight="700" letterSpacing="0.05em">
-        {config.floorLabel.toUpperCase()}
-      </text>
-
-      <SimOverlay {...props} />
-    </svg>
-  )
-}
-
-// ─── Science Building (CSB) Floor Plan ───────────────────────────────────────
-// Uses actual SVG floor plan as background image with simulation overlay on top
-function CSBFloorPlan(props: FloorPlanProps) {
-  const { config } = props
+const { config } = props
   const floorPlanSrcByLabel: Record<string, string> = {
-    '2nd Floor': '/floorplans/CSB%202nd%20floor.svg',
-    '3rd Floor': '/floorplans/CSB%203rd%20floor.svg',
-    '4th Floor': '/floorplans/CSB%204th%20floor.svg',
-    '5th Floor': '/floorplans/CSB%205th%20floor.svg',
-    '6th Floor': '/floorplans/CSB%206th%20floor.svg',
+    '1st Floor': '/floorplans/Library%201st%20floor.svg',
   }
-  // Fallback keeps floor rendering visible until a dedicated 1st-floor SVG is added.
-  const floorPlanSrc = floorPlanSrcByLabel[config.floorLabel] ?? '/floorplans/CSB%202nd%20floor.svg'
+  const floorPlanSrc = floorPlanSrcByLabel[config.floorLabel] ?? ''
 
   return (
     <div style={{ position: 'relative', width: '100%', height: '100%' }}>
-      {/* Actual floor plan SVG — untouched */}
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
-        src={floorPlanSrc}
-        alt="CSB Floor Plan"
-        style={{ width: '100%', height: '100%', display: 'block', position: 'absolute', top: 0, left: 0, objectFit: 'contain', objectPosition: 'center' }}
-      />
-      {/* Simulation overlay — exits, agent, routes, obstacles */}
+      {floorPlanSrc && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={floorPlanSrc}
+          alt="UP Cebu Library Floor Plan"
+          style={{ width: '100%', height: '100%', display: 'block', position: 'absolute', top: 0, left: 0, objectFit: 'contain', objectPosition: 'center' }}
+        />
+      )}
       <svg
         viewBox={`0 0 ${config.viewWidth} ${config.viewHeight}`} preserveAspectRatio="xMidYMid meet"
         style={{ width: '100%', height: '100%', display: 'block', position: 'absolute', top: 0, left: 0 }}
@@ -1297,10 +1203,10 @@ function LibraryFloorPlan(props: FloorPlanProps) {
 function FloorPlanView(props: FloorPlanProps & { buildingId: string }) {
   const { buildingId, ...rest } = props
   if (buildingId === 'admin-building') return <AdminFloorPlan {...rest} />
-  if (buildingId === 'science-building') return <CSBFloorPlan {...rest} />
+  // if (buildingId === 'science-building') return <CSBFloorPlan {...rest} />
   if (buildingId === 'up-cebu-library') return <LibraryFloorPlan {...rest} />
   // All other buildings use CSB floor plan as placeholder
-  return <CSBFloorPlan {...rest} />
+  //return <CSBFloorPlan {...rest} />
 }
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
