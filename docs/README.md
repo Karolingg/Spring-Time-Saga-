@@ -86,6 +86,19 @@ This folder contains all project documentation and guides for developers.
 
 ---
 
+### 6. **[Add Building Floors](./adding-building-floors.md)**
+   **Purpose:** Step-by-step guide to add floors to existing buildings or register a new building
+
+   **Covers:**
+   - FloorConfig fields to update
+   - Which files to edit for new floors
+   - Floorplan asset mapping
+   - Building registration and loader updates
+
+   **When to Read:** When adding or expanding building floor data
+
+---
+
 ## 🚀 Quick Start for New Developers
 
 1. **First, read:** [Cleanup Summary](./CLEANUP.md) (3 min)
@@ -114,6 +127,7 @@ docs/
 ├── refactoring.md              ← What changed and why
 ├── coding-practices.md          ← Best practices & patterns
 ├── clean-code-guidelines.md     ← Naming & organization rules
+├── adding-building-floors.md    ← Add floors to a building
 └── supabase-setup-guide.md      ← Environment & auth setup
 ```
 
