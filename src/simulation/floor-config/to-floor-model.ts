@@ -281,6 +281,7 @@ const FLOORPLAN_SRC_BY_BUILDING: Record<string, Record<string, string>> = {
   },
   'up-cebu-library': {
     '1st Floor': '/floorplans/Library%201st%20floor.svg',
+    '2nd Floor': '/floorplans/Library%202nd%20floor.svg',
   },
 }
 
