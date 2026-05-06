@@ -96,16 +96,11 @@ const OCCUPANCY_PRESETS = [
   { label: 'Full', ratio: 1 },
 ] as const
 
-const MOVEMENT_OPTIONS = [
-  { label: '0.85x', value: 0.85 },
-  { label: '1.00x', value: 1.0 },
-  { label: '1.20x', value: 1.2 },
-] as const
-
-const PLAYBACK_OPTIONS = [
+const SIMULATION_SPEED_OPTIONS = [
+  { label: '0.5x', value: 0.5 },
   { label: '1x', value: 1 },
-  { label: '1.5x', value: 1.5 },
   { label: '2x', value: 2 },
+  { label: '3x', value: 3 },
 ] as const
 
 function formatSeconds(seconds: number) {
@@ -188,8 +183,7 @@ export default function AutonomousScienceBuildingPage() {
    *  their fixed value; rooms NOT in this map share the remaining budget
    *  (totalAgents − sum of overrides) proportionally to their capacity. */
   const [roomOverrides, setRoomOverrides] = useState<Record<string, number>>({})
-  const [movementMultiplier, setMovementMultiplier] = useState(1)
-  const [playbackMultiplier, setPlaybackMultiplier] = useState(1)
+  const [simulationSpeed, setSimulationSpeed] = useState(1)
   const [simState, setSimState] = useState<SimulationState | null>(null)
   const [trace, setTrace] = useState<AutonomousTrace | null>(null)
   const [results, setResults] = useState<SimulationResults | null>(null)
@@ -309,7 +303,7 @@ export default function AutonomousScienceBuildingPage() {
         gridHeight: 675,
         exitCount: floorModel.nodes.filter((node) => node.type === 'exit').length,
         wallDensity: 0,
-        speedMs: Math.round(140 * movementMultiplier),
+        speedMs: Math.round(140 / simulationSpeed),
       }, regionId)
 
       await saveSimulationResults(
@@ -335,7 +329,7 @@ export default function AutonomousScienceBuildingPage() {
       setSaveStatus('error')
       setSaveMessage('Simulation completed, but saving to analysis failed.')
     }
-  }, [disaster, movementMultiplier, regionId])
+  }, [disaster, regionId, simulationSpeed])
 
   useEffect(() => {
     if (!floor || !isPlaying) return
@@ -357,8 +351,8 @@ export default function AutonomousScienceBuildingPage() {
 
       const elapsedMs = Math.min(timestamp - lastFrameTimeRef.current, MAX_FRAME_DELTA_MS)
       lastFrameTimeRef.current = timestamp
-      const dt = elapsedMs * SIMULATION_SECONDS_PER_MS * playbackMultiplier
-      currentState.hazardGrowthMultiplier = HAZARD_GROWTH_MULTIPLIER * playbackMultiplier
+      const dt = elapsedMs * SIMULATION_SECONDS_PER_MS * simulationSpeed
+      currentState.hazardGrowthMultiplier = HAZARD_GROWTH_MULTIPLIER
       const nextState = stepSimulation(currentState, floor, dt)
       const nextCongestion = computeAccurateCongestion(nextState)
       const nextTrace = updateAutonomousTrace(currentTrace, nextCongestion, dt)
@@ -395,7 +389,7 @@ export default function AutonomousScienceBuildingPage() {
       }
       lastFrameTimeRef.current = null
     }
-  }, [floor, isPlaying, persistCompletedRun, playbackMultiplier])
+  }, [floor, isPlaying, persistCompletedRun, simulationSpeed])
 
   /**
    * Final per-room agent counts. Rooms with explicit overrides use that exact
@@ -502,7 +496,6 @@ export default function AutonomousScienceBuildingPage() {
       disasterType: disaster,
       agentsPerRoom: roomAllocations,
       hazardGrowthMultiplier: HAZARD_GROWTH_MULTIPLIER,
-      speedMultiplier: movementMultiplier,
       hazardOverrides: hazardZones,
     })
 
@@ -522,7 +515,7 @@ export default function AutonomousScienceBuildingPage() {
     setSaveStatus('idle')
     setSaveMessage('')
     setIsPlaying(true)
-  }, [disaster, floor, movementMultiplier, roomAllocations, effectiveAgentCount, hazardZones])
+  }, [disaster, floor, roomAllocations, effectiveAgentCount, hazardZones])
 
   const resetSimulation = useCallback(() => {
     clearHazards()
@@ -867,35 +860,22 @@ export default function AutonomousScienceBuildingPage() {
               )}
             </div>
 
-            <div style={{ marginBottom: '16px' }}>
-              <div style={{ fontSize: '13px', fontWeight: 700, color: '#0f172a', marginBottom: '8px' }}>Movement speed</div>
+            <div>
+              <div style={{ fontSize: '13px', fontWeight: 700, color: '#0f172a', marginBottom: '8px' }}>Simulation speed</div>
               <div className="auto-chip-row">
-                {MOVEMENT_OPTIONS.map((option) => (
+                {SIMULATION_SPEED_OPTIONS.map((option) => (
                   <button
                     key={option.label}
-                    onClick={() => setMovementMultiplier(option.value)}
-                    className={`auto-choice ${movementMultiplier === option.value ? 'auto-choice--active' : ''}`}
-                    style={{ background: movementMultiplier === option.value ? meta.accent : '#ffffff' }}
+                    onClick={() => setSimulationSpeed(option.value)}
+                    className={`auto-choice ${simulationSpeed === option.value ? 'auto-choice--active' : ''}`}
+                    style={{ background: simulationSpeed === option.value ? meta.accent : '#ffffff' }}
                   >
                     {option.label}
                   </button>
                 ))}
               </div>
-            </div>
-
-            <div>
-              <div style={{ fontSize: '13px', fontWeight: 700, color: '#0f172a', marginBottom: '8px' }}>Playback speed</div>
-              <div className="auto-chip-row">
-                {PLAYBACK_OPTIONS.map((option) => (
-                  <button
-                    key={option.label}
-                    onClick={() => setPlaybackMultiplier(option.value)}
-                    className={`auto-choice ${playbackMultiplier === option.value ? 'auto-choice--active' : ''}`}
-                    style={{ background: playbackMultiplier === option.value ? meta.accent : '#ffffff' }}
-                  >
-                    {option.label}
-                  </button>
-                ))}
+              <div style={{ fontSize: '11px', color: '#64748b', marginTop: '6px' }}>
+                Scales timers, hazard spread, and agent movement together.
               </div>
             </div>
           </section>

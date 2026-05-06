@@ -178,15 +178,22 @@ export function getTopNodeHotspots(floor: FloorModel, trace: AutonomousTrace, li
       peak: trace.nodePeakCounts[node.id] || 0,
       average: (trace.nodeCumulativeCounts[node.id] || 0) / totalSeconds,
     }))
+    .filter((entry) => entry.peak > 0 || entry.average > 0)
     .sort((left, right) => (right.peak * 2 + right.average) - (left.peak * 2 + left.average))
     .slice(0, limit)
 }
 
 export function buildZoneSummaries(floor: FloorModel, trace: AutonomousTrace) {
+  const activeNodes = floor.nodes.filter((node) => (
+    node.type !== 'room' && (trace.nodePeakCounts[node.id] || 0) > 0
+  ))
+
+  if (activeNodes.length === 0) {
+    return []
+  }
+
   const maxNodePeak = Math.max(
-    ...floor.nodes
-      .filter((node) => node.type !== 'room')
-      .map((node) => trace.nodePeakCounts[node.id] || 0),
+    ...activeNodes.map((node) => trace.nodePeakCounts[node.id] || 0),
     0,
   )
 
@@ -196,14 +203,13 @@ export function buildZoneSummaries(floor: FloorModel, trace: AutonomousTrace) {
         edge,
         peak: trace.edgePeakCounts[edgeKey(edge.from, edge.to)] || 0,
       }))
+      .filter((entry) => entry.peak > 0)
       .sort((left, right) => right.peak - left.peak)
       .slice(0, 6)
       .map(({ edge }) => edgeKey(edge.from, edge.to)),
   )
 
-  return floor.nodes
-    .filter((node) => node.type !== 'room')
-    .map((node) => {
+  return activeNodes.map((node) => {
       const peakLoad = trace.nodePeakCounts[node.id] || 0
       const intensity = maxNodePeak > 0 ? Math.round((peakLoad / maxNodePeak) * 100) : 0
       const incidentBottlenecks = floor.edges.filter((edge) => (
@@ -232,9 +238,12 @@ export function buildBottleneckSummaries(floor: FloorModel, trace: AutonomousTra
     peak: trace.edgePeakCounts[edgeKey(edge.from, edge.to)] || 0,
     average: (trace.edgeCumulativeCounts[edgeKey(edge.from, edge.to)] || 0) / totalSeconds,
   }))
-  const maxPeak = Math.max(...edgePeaks.map((entry) => entry.peak), 0)
+  const usedEdges = edgePeaks.filter((entry) => entry.peak > 0 || entry.average > 0)
+  if (usedEdges.length === 0) return []
 
-  return edgePeaks
+  const maxPeak = Math.max(...usedEdges.map((entry) => entry.peak), 0)
+
+  return usedEdges
     .sort((left, right) => (right.peak * 2 + right.average) - (left.peak * 2 + left.average))
     .slice(0, 6)
     .map(({ edge, peak, average }) => ({

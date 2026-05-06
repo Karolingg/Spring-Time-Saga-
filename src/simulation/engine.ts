@@ -100,8 +100,6 @@ export interface SimConfig {
   disasterType: 'fire' | 'earthquake'
   /** How many agents to spawn per room */
   agentsPerRoom: Record<string, number>
-  /** Speed multiplier */
-  speedMultiplier: number
   /** Multiplies hazard radius growth */
   hazardGrowthMultiplier?: number
   /** User-drawn path (list of node IDs from start room to exit) */
@@ -109,6 +107,10 @@ export interface SimConfig {
   /** Override hazard zones for the selected disaster type */
   hazardOverrides?: HazardZone[]
 }
+
+const MIN_AGENT_SPEED = 1.0
+const MAX_AGENT_SPEED = 2.0
+const randomAgentSpeed = () => MIN_AGENT_SPEED + Math.random() * (MAX_AGENT_SPEED - MIN_AGENT_SPEED)
 
 /* ── Create initial simulation state ── */
 export function createSimulation(
@@ -127,7 +129,7 @@ export function createSimulation(
       // Stagger reaction delays: 0.5–4 seconds
       const reactionDelay = 0.5 + Math.random() * 3.5
       // Vary speeds: 1.0–2.0 m/s
-      const speed = (1.0 + Math.random() * 1.0) * config.speedMultiplier
+      const speed = randomAgentSpeed()
 
       agents.push({
         id: `agent-${agentIdx++}`,
@@ -163,7 +165,7 @@ export function createSimulation(
       path: config.userPath,
       pathIndex: 0,
       progress: 0,
-      speed: 1.4 * config.speedMultiplier,
+      speed: randomAgentSpeed(),
       state: 'waiting',
       reactionDelay: 0.5,
       elapsedWait: 0,
