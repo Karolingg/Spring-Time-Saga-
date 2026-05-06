@@ -525,6 +525,7 @@ export default function AutonomousScienceBuildingPage() {
   }, [disaster, floor, movementMultiplier, roomAllocations, effectiveAgentCount, hazardZones])
 
   const resetSimulation = useCallback(() => {
+    clearHazards()
     setIsPlaying(false)
     setSimState(null)
     setTrace(null)
@@ -535,7 +536,7 @@ export default function AutonomousScienceBuildingPage() {
     setSavedRunId(null)
     setSaveStatus('idle')
     setSaveMessage('')
-  }, [baseTrace])
+  }, [baseTrace, clearHazards])
 
   if (isLoading) {
     return (
@@ -602,6 +603,11 @@ export default function AutonomousScienceBuildingPage() {
           border: 1px solid #e2e8f0;
           border-radius: 16px;
           box-shadow: 0 10px 30px rgba(15, 23, 42, 0.06);
+        }
+
+        .auto-panel--sticky {
+          position: sticky;
+          top: 96px;
         }
 
         .auto-panel-section {
@@ -684,6 +690,26 @@ export default function AutonomousScienceBuildingPage() {
           padding: 10px 12px;
         }
 
+        .auto-map-insights {
+          margin-top: 14px;
+          display: grid;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 12px;
+        }
+
+        .auto-map-insight {
+          border-radius: 12px;
+          border: 1px solid #e2e8f0;
+          background: #ffffff;
+          padding: 12px 14px;
+        }
+
+        .auto-map-insight-list {
+          display: flex;
+          flex-direction: column;
+          gap: 8px;
+        }
+
         @media (max-width: 1320px) {
           .auto-layout {
             grid-template-columns: minmax(280px, 320px) minmax(0, 1fr);
@@ -693,6 +719,14 @@ export default function AutonomousScienceBuildingPage() {
         @media (max-width: 980px) {
           .auto-layout {
             grid-template-columns: 1fr;
+          }
+
+          .auto-map-insights {
+            grid-template-columns: 1fr;
+          }
+
+          .auto-panel--sticky {
+            position: static;
           }
         }
       `}</style>
@@ -784,7 +818,7 @@ export default function AutonomousScienceBuildingPage() {
       </div>
 
       <div className="auto-layout">
-        <aside className="auto-panel">
+        <aside className="auto-panel auto-panel--sticky">
           <section className="auto-panel-section">
             <div style={{ fontSize: '11px', fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', color: meta.accent, marginBottom: '12px' }}>
               Setup
@@ -890,57 +924,7 @@ export default function AutonomousScienceBuildingPage() {
                 </button>
               ))}
             </div>
-
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', marginBottom: '8px' }}>
-              <div style={{ fontSize: '12px', fontWeight: 700, color: '#0f172a' }}>Active hazards</div>
-              <button
-                onClick={clearHazards}
-                disabled={placedHazards.length === 0}
-                style={{
-                  padding: '6px 8px', borderRadius: '8px', border: '1px solid rgba(239,68,68,0.25)',
-                  background: placedHazards.length === 0 ? '#f8fafc' : '#fff1f2',
-                  color: placedHazards.length === 0 ? '#94a3b8' : '#b91c1c',
-                  fontSize: '11px', fontWeight: 700, cursor: placedHazards.length === 0 ? 'not-allowed' : 'pointer',
-                }}
-              >
-                Clear
-              </button>
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '220px', overflowY: 'auto' }}>
-              {placedHazards.length === 0 && (
-                <div style={{ fontSize: '12px', color: '#94a3b8' }}>No hazards placed yet.</div>
-              )}
-              {placedHazards.map((hazard, index) => (
-                <div
-                  key={hazard.id}
-                  onClick={() => setSelectedHazardId(hazard.id)}
-                  style={{
-                    display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px',
-                    padding: '8px 10px', borderRadius: '10px',
-                    border: selectedHazardId === hazard.id ? `1px solid ${meta.accent}66` : '1px solid #e2e8f0',
-                    background: selectedHazardId === hazard.id ? `${meta.accent}12` : '#ffffff',
-                    cursor: 'pointer',
-                  }}
-                >
-                  <div>
-                    <div style={{ fontSize: '12px', fontWeight: 700, color: '#0f172a' }}>{index + 1}. {hazardLabel(hazard.type, disaster)}</div>
-                    <div style={{ fontSize: '11px', color: '#64748b' }}>x {Math.round(hazard.x)}, y {Math.round(hazard.y)}</div>
-                  </div>
-                  <button
-                    onClick={(event) => {
-                      event.stopPropagation()
-                      removeHazard(hazard.id)
-                    }}
-                    style={{
-                      padding: '4px 8px', borderRadius: '8px', border: '1px solid rgba(239,68,68,0.25)',
-                      background: '#fff1f2', color: '#b91c1c', fontSize: '11px', fontWeight: 700, cursor: 'pointer',
-                    }}
-                  >
-                    Remove
-                  </button>
-                </div>
-              ))}
-            </div>
+            <div style={{ fontSize: '11px', color: '#94a3b8' }}>Active hazards are listed on the right panel.</div>
           </section>
 
           <section className="auto-panel-section">
@@ -1047,27 +1031,6 @@ export default function AutonomousScienceBuildingPage() {
             </div>
           </section>
 
-          <section className="auto-panel-section">
-            <div style={{ fontSize: '13px', fontWeight: 700, color: '#0f172a', marginBottom: '12px' }}>Run state</div>
-            <div className="auto-stat-grid">
-              <div className="auto-stat">
-                <div style={{ fontSize: '10px', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '4px' }}>Elapsed</div>
-                <div style={{ fontSize: '20px', fontWeight: 800, color: '#0f172a' }}>{formatSeconds(simState?.elapsedTime || 0)}</div>
-              </div>
-              <div className="auto-stat">
-                <div style={{ fontSize: '10px', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '4px' }}>Status</div>
-                <div style={{ fontSize: '20px', fontWeight: 800, color: isPlaying ? meta.accent : simState?.finished ? '#22c55e' : '#0f172a' }}>
-                  {simState?.finished ? 'Done' : isPlaying ? 'Running' : simState ? 'Paused' : 'Ready'}
-                </div>
-              </div>
-            </div>
-            {saveStatus !== 'idle' && (
-              <div style={{ marginTop: '12px', padding: '10px 12px', borderRadius: '10px', background: saveStatus === 'error' ? '#fef2f2' : '#f0fdf4', border: `1px solid ${saveStatus === 'error' ? '#fecaca' : '#bbf7d0'}`, fontSize: '12px', color: saveStatus === 'error' ? '#b91c1c' : '#166534' }}>
-                {saveMessage}
-                {savedRunId ? ` (run ${savedRunId.slice(0, 8)})` : ''}
-              </div>
-            )}
-          </section>
         </aside>
 
         <main className="auto-panel auto-map-card">
@@ -1230,6 +1193,43 @@ export default function AutonomousScienceBuildingPage() {
               Exits
             </div>
           </div>
+
+          <div className="auto-map-insights">
+            <div className="auto-map-insight">
+              <div style={{ fontSize: '13px', fontWeight: 700, color: '#0f172a', marginBottom: '12px' }}>Top hotspots</div>
+              <div className="auto-map-insight-list">
+                {topHotspots.map(({ node, peak, average }) => (
+                  <div key={node.id} style={{ borderRadius: '10px', border: '1px solid #e2e8f0', background: '#f8fafc', padding: '10px 12px' }}>
+                    <div style={{ fontSize: '12px', fontWeight: 700, color: '#0f172a', marginBottom: '4px' }}>{node.label}</div>
+                    <div style={{ fontSize: '11px', color: '#475569' }}>Peak load {peak}, average load {average.toFixed(1)}</div>
+                  </div>
+                ))}
+                {topHotspots.length === 0 && (
+                  <div style={{ fontSize: '12px', color: '#64748b' }}>Start a run to reveal crowd hotspots.</div>
+                )}
+              </div>
+            </div>
+
+            <div className="auto-map-insight">
+              <div style={{ fontSize: '13px', fontWeight: 700, color: '#0f172a', marginBottom: '12px' }}>Edge bottlenecks</div>
+              <div className="auto-map-insight-list">
+                {topBottlenecks.slice(0, 4).map((bottleneck) => (
+                  <div key={bottleneck.zoneName} style={{ borderRadius: '10px', border: '1px solid #e2e8f0', background: '#ffffff', padding: '10px 12px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', marginBottom: '4px' }}>
+                      <div style={{ fontSize: '12px', fontWeight: 700, color: '#0f172a' }}>{bottleneck.zoneName}</div>
+                      <div style={{ fontSize: '10px', fontWeight: 800, color: bottleneck.severity === 'HIGH' ? '#ef4444' : bottleneck.severity === 'MEDIUM' ? '#f97316' : '#22c55e' }}>
+                        {bottleneck.severity}
+                      </div>
+                    </div>
+                    <div style={{ fontSize: '11px', color: '#475569' }}>{bottleneck.description}</div>
+                  </div>
+                ))}
+                {topBottlenecks.length === 0 && (
+                  <div style={{ fontSize: '12px', color: '#64748b' }}>Bottleneck ranking will populate during the simulation.</div>
+                )}
+              </div>
+            </div>
+          </div>
         </main>
 
         <aside className="auto-panel">
@@ -1258,37 +1258,77 @@ export default function AutonomousScienceBuildingPage() {
           </section>
 
           <section className="auto-panel-section">
-            <div style={{ fontSize: '13px', fontWeight: 700, color: '#0f172a', marginBottom: '12px' }}>Top hotspots</div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              {topHotspots.map(({ node, peak, average }) => (
-                <div key={node.id} style={{ borderRadius: '12px', border: '1px solid #e2e8f0', background: '#f8fafc', padding: '10px 12px' }}>
-                  <div style={{ fontSize: '12px', fontWeight: 700, color: '#0f172a', marginBottom: '4px' }}>{node.label}</div>
-                  <div style={{ fontSize: '11px', color: '#475569' }}>Peak load {peak}, average load {average.toFixed(1)}</div>
+            <div style={{ fontSize: '13px', fontWeight: 700, color: '#0f172a', marginBottom: '12px' }}>Run state</div>
+            <div className="auto-stat-grid">
+              <div className="auto-stat">
+                <div style={{ fontSize: '10px', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '4px' }}>Elapsed</div>
+                <div style={{ fontSize: '20px', fontWeight: 800, color: '#0f172a' }}>{formatSeconds(simState?.elapsedTime || 0)}</div>
+              </div>
+              <div className="auto-stat">
+                <div style={{ fontSize: '10px', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '4px' }}>Status</div>
+                <div style={{ fontSize: '20px', fontWeight: 800, color: isPlaying ? meta.accent : simState?.finished ? '#22c55e' : '#0f172a' }}>
+                  {simState?.finished ? 'Done' : isPlaying ? 'Running' : simState ? 'Paused' : 'Ready'}
                 </div>
-              ))}
-              {topHotspots.length === 0 && (
-                <div style={{ fontSize: '12px', color: '#64748b' }}>Start a run to reveal crowd hotspots.</div>
-              )}
+              </div>
             </div>
+            {saveStatus !== 'idle' && (
+              <div style={{ marginTop: '12px', padding: '10px 12px', borderRadius: '10px', background: saveStatus === 'error' ? '#fef2f2' : '#f0fdf4', border: `1px solid ${saveStatus === 'error' ? '#fecaca' : '#bbf7d0'}`, fontSize: '12px', color: saveStatus === 'error' ? '#b91c1c' : '#166534' }}>
+                {saveMessage}
+                {savedRunId ? ` (run ${savedRunId.slice(0, 8)})` : ''}
+              </div>
+            )}
           </section>
 
           <section className="auto-panel-section">
-            <div style={{ fontSize: '13px', fontWeight: 700, color: '#0f172a', marginBottom: '12px' }}>Edge bottlenecks</div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              {topBottlenecks.slice(0, 4).map((bottleneck) => (
-                <div key={bottleneck.zoneName} style={{ borderRadius: '12px', border: '1px solid #e2e8f0', background: '#ffffff', padding: '10px 12px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', marginBottom: '4px' }}>
-                    <div style={{ fontSize: '12px', fontWeight: 700, color: '#0f172a' }}>{bottleneck.zoneName}</div>
-                    <div style={{ fontSize: '10px', fontWeight: 800, color: bottleneck.severity === 'HIGH' ? '#ef4444' : bottleneck.severity === 'MEDIUM' ? '#f97316' : '#22c55e' }}>
-                      {bottleneck.severity}
-                    </div>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', marginBottom: '8px' }}>
+              <div style={{ fontSize: '13px', fontWeight: 700, color: '#0f172a' }}>Active hazards</div>
+              <button
+                onClick={clearHazards}
+                disabled={placedHazards.length === 0}
+                style={{
+                  padding: '6px 8px', borderRadius: '8px', border: '1px solid rgba(239,68,68,0.25)',
+                  background: placedHazards.length === 0 ? '#f8fafc' : '#fff1f2',
+                  color: placedHazards.length === 0 ? '#94a3b8' : '#b91c1c',
+                  fontSize: '11px', fontWeight: 700, cursor: placedHazards.length === 0 ? 'not-allowed' : 'pointer',
+                }}
+              >
+                Clear
+              </button>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '220px', overflowY: 'auto' }}>
+              {placedHazards.length === 0 && (
+                <div style={{ fontSize: '12px', color: '#94a3b8' }}>No hazards placed yet.</div>
+              )}
+              {placedHazards.map((hazard, index) => (
+                <div
+                  key={hazard.id}
+                  onClick={() => setSelectedHazardId(hazard.id)}
+                  style={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px',
+                    padding: '8px 10px', borderRadius: '10px',
+                    border: selectedHazardId === hazard.id ? `1px solid ${meta.accent}66` : '1px solid #e2e8f0',
+                    background: selectedHazardId === hazard.id ? `${meta.accent}12` : '#ffffff',
+                    cursor: 'pointer',
+                  }}
+                >
+                  <div>
+                    <div style={{ fontSize: '12px', fontWeight: 700, color: '#0f172a' }}>{index + 1}. {hazardLabel(hazard.type, disaster)}</div>
+                    <div style={{ fontSize: '11px', color: '#64748b' }}>x {Math.round(hazard.x)}, y {Math.round(hazard.y)}</div>
                   </div>
-                  <div style={{ fontSize: '11px', color: '#475569' }}>{bottleneck.description}</div>
+                  <button
+                    onClick={(event) => {
+                      event.stopPropagation()
+                      removeHazard(hazard.id)
+                    }}
+                    style={{
+                      padding: '4px 8px', borderRadius: '8px', border: '1px solid rgba(239,68,68,0.25)',
+                      background: '#fff1f2', color: '#b91c1c', fontSize: '11px', fontWeight: 700, cursor: 'pointer',
+                    }}
+                  >
+                    Remove
+                  </button>
                 </div>
               ))}
-              {topBottlenecks.length === 0 && (
-                <div style={{ fontSize: '12px', color: '#64748b' }}>Bottleneck ranking will populate during the simulation.</div>
-              )}
             </div>
           </section>
 

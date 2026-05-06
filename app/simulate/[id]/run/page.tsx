@@ -1176,6 +1176,7 @@ function LibraryFloorPlan(props: FloorPlanProps) {
   const { config } = props
   const floorPlanSrcByLabel: Record<string, string> = {
     '1st Floor': '/floorplans/Library%201st%20floor.svg',
+    '2nd Floor': '/floorplans/Library%202nd%20floor.svg',
   }
   const floorPlanSrc = floorPlanSrcByLabel[config.floorLabel] ?? ''
 
