@@ -39,6 +39,11 @@ const DISASTERS = [
   },
 ]
 
+const AUTONOMOUS_BUILDING_IDS = new Set([
+  'science-building',
+  'up-cebu-library',
+])
+
 function floorLabel(index: number): string {
   const n = index + 1
   if (n === 1) return '1st Floor'
@@ -51,7 +56,7 @@ function getSimulationRoute(regionId: string, disaster: string, floorIndex: numb
   const base = `/simulate/${encodeURIComponent(regionId)}`
   const query = `?disaster=${encodeURIComponent(disaster)}&floor=${floorIndex}`
 
-  if (regionId === 'science-building') {
+  if (AUTONOMOUS_BUILDING_IDS.has(regionId)) {
     return `${base}/autonomous${query}`
   }
 
