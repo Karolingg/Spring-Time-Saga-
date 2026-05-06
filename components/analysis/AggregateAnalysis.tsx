@@ -61,7 +61,11 @@ export function AggregateAnalysis() {
     )
   }
 
-  if (zones.length === 0) {
+  const visibleZones = zones.filter((zone) => (
+    zone.avgIntensity > 0 || zone.avgAgentCount > 0 || zone.totalBottlenecks > 0
+  ))
+
+  if (visibleZones.length === 0) {
     return (
       <div style={{ ...SECTION_CARD, textAlign: 'center', padding: '40px' }}>
         <div style={{ fontSize: '32px', marginBottom: '12px' }}>📈</div>
@@ -88,7 +92,7 @@ export function AggregateAnalysis() {
           Average congestion intensity per zone across all completed simulations
         </p>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-          {zones.map((zone, i) => {
+          {visibleZones.map((zone, i) => {
             const color = getIntensityColor(zone.avgIntensity)
             return (
               <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
@@ -133,7 +137,7 @@ export function AggregateAnalysis() {
             </tr>
           </thead>
           <tbody>
-            {zones.map((zone, i) => {
+            {visibleZones.map((zone, i) => {
               const riskColor = RISK_COLORS[zone.dominantRiskLevel] ?? '#22c55e'
               return (
                 <tr key={i} style={{ borderBottom: '1px solid var(--border)' }}>
