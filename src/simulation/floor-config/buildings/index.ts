@@ -1,5 +1,6 @@
 import type { FloorConfig } from '../types'
 import { ADMIN_BUILDING_FLOORS } from './admin-building'
+import { ASX_FLOORS } from './asx'
 import { AS_EAST_WING_FLOORS } from './as-east-wing'
 import { AS_WEST_WING_FLOORS } from './as-west-wing'
 import { CULTURAL_CENTER_FLOORS } from './cultural-center'
@@ -13,6 +14,7 @@ import { UP_HIGH_SCHOOL_FLOORS } from './up-high-school'
 
 export const BUILDING_FLOORS: Record<string, FloorConfig[]> = {
   'admin-building': ADMIN_BUILDING_FLOORS,
+  'asx': ASX_FLOORS,
   'as-west-wing': AS_WEST_WING_FLOORS,
   'as-east-wing': AS_EAST_WING_FLOORS,
   'som-admin': SOM_ADMIN_FLOORS,

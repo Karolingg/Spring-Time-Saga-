@@ -1,5 +1,6 @@
 export const BUILDING_FLOOR_COUNT: Record<string, number> = {
   'admin-building': 2,
+  'asx': 2,
   'as-west-wing': 3,
   'as-east-wing': 3,
   'som-admin': 2,
