@@ -15,7 +15,7 @@ interface Disaster {
   colorDark: string
   bgGradient: string
   selectedGradient: string
-  iconPath: React.ReactNode
+  icon: React.ReactNode
 }
 
 const DISASTERS: Disaster[] = [
@@ -28,11 +28,11 @@ const DISASTERS: Disaster[] = [
     colorDark: '#c2410c',
     bgGradient: 'linear-gradient(135deg, rgba(255,107,53,0.05) 0%, rgba(255,107,53,0.02) 100%)',
     selectedGradient: 'linear-gradient(135deg, rgba(255,107,53,0.14) 0%, rgba(255,107,53,0.06) 100%)',
-    iconPath: (
-      <>
-        <path d="M8.5 14.5c0-2 1-3.5 1.5-4.5C11 12 13 11 13 9c0-1.5-1-2.5-1.5-3.5 1.5.5 4 2 4.5 5C16.5 14 14 16 12 16c-2 0-3.5-1-3.5-1.5z" />
-        <path d="M11 16c.5.5 1 1 1 1.5 0 1-.5 1.5-1 1.5s-1-.5-1-1.5c0-.5.5-1 1-1.5z" />
-      </>
+    icon: (
+      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#ff6b35" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M12 21c-4.4 0-8-3.3-8-7.5 0-2.4 1.2-4.5 2.8-6.2C8.3 5.7 9.4 4 10 2c1.4.9 2.8 2.5 3.6 4.2.7-1 1.1-2 1.3-3.2 2.9 2.3 5.1 6 5.1 10.2 0 4.4-3.6 7.8-8 7.8z" />
+        <path d="M12 18.2c-1.9 0-3.5-1.4-3.5-3.2 0-1.1.5-2 1.3-2.8.7-.6 1.2-1.3 1.5-2.2 1.6 1.1 2.9 2.9 2.9 5 0 1.8-1 3.2-2.2 3.2z" />
+      </svg>
     ),
   },
   {
@@ -44,12 +44,13 @@ const DISASTERS: Disaster[] = [
     colorDark: '#b45309',
     bgGradient: 'linear-gradient(135deg, rgba(245,158,11,0.05) 0%, rgba(245,158,11,0.02) 100%)',
     selectedGradient: 'linear-gradient(135deg, rgba(245,158,11,0.14) 0%, rgba(245,158,11,0.06) 100%)',
-    iconPath: (
-      <>
-        <path d="M3 14h2.5l1.5-3 2 6 2-9 2 6 1.5-3 1.5 3H21" />
-        <circle cx="6" cy="18" r="0.5" fill="currentColor" stroke="none" />
-        <circle cx="18" cy="18" r="0.5" fill="currentColor" stroke="none" />
-      </>
+    icon: (
+      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M3 8h18" />
+        <path d="M3 16h18" />
+        <path d="M9 5l-2 6 4 2-2 6" />
+        <path d="M15 5l-2 6 4 2-2 6" />
+      </svg>
     ),
   },
 ]
@@ -116,47 +117,49 @@ export default function DisasterPickerPage() {
         'radial-gradient(circle at 0% 100%, rgba(245,158,11,0.04) 0%, transparent 35%),' +
         'linear-gradient(180deg, #f8fafc 0%, #eef2f7 100%)',
     }}>
-      <div style={{ maxWidth: '720px', margin: '0 auto' }}>
+      <div style={{ maxWidth: '780px', margin: '0 auto' }}>
 
-        {/* Back button */}
-        <button
-          onClick={() => router.push('/map')}
-          style={{
-            display: 'inline-flex', alignItems: 'center', gap: '6px',
-            background: 'none', border: 'none', color: 'var(--text-secondary)',
-            fontSize: '13px', cursor: 'pointer', padding: '0', marginBottom: '24px',
-            transition: 'color 0.15s',
-          }}
-          onMouseEnter={e => e.currentTarget.style.color = 'var(--text-primary)'}
-          onMouseLeave={e => e.currentTarget.style.color = 'var(--text-secondary)'}
-        >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <polyline points="15 18 9 12 15 6" />
-          </svg>
-          Back to buildings
-        </button>
+        {/* Top row: back action + building/step badge */}
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '16px', marginBottom: '18px' }}>
+          <button
+            onClick={() => router.push('/map')}
+            style={{
+              display: 'inline-flex', alignItems: 'center', gap: '6px',
+              background: 'none', border: 'none', color: 'var(--text-secondary)',
+              fontSize: '13px', cursor: 'pointer', padding: '0', marginTop: '6px',
+              transition: 'color 0.15s',
+            }}
+            onMouseEnter={e => e.currentTarget.style.color = 'var(--text-primary)'}
+            onMouseLeave={e => e.currentTarget.style.color = 'var(--text-secondary)'}
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="15 18 9 12 15 6" />
+            </svg>
+            Back to buildings
+          </button>
 
-        {/* Step indicator */}
-        <div style={{
-          display: 'inline-flex',
-          alignItems: 'center',
-          gap: '10px',
-          padding: '6px 12px',
-          borderRadius: '999px',
-          background: 'rgba(255,255,255,0.85)',
-          border: '1px solid var(--border)',
-          backdropFilter: 'blur(6px)',
-          fontSize: '11px',
-          fontWeight: 600,
-          color: 'var(--text-muted)',
-          letterSpacing: '0.08em',
-          textTransform: 'uppercase',
-          marginBottom: '18px',
-        }}>
-          <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#2db8b0' }} />
-          {displayName}
-          <span style={{ width: '4px', height: '4px', borderRadius: '50%', background: '#cbd5e1' }} />
-          Step {step} of 2
+          <div style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '10px',
+            padding: '6px 12px',
+            borderRadius: '999px',
+            background: 'rgba(255,255,255,0.85)',
+            border: '1px solid var(--border)',
+            backdropFilter: 'blur(6px)',
+            fontSize: '11px',
+            fontWeight: 600,
+            color: 'var(--text-muted)',
+            letterSpacing: '0.08em',
+            textTransform: 'uppercase',
+            marginRight: '8px',
+            flexShrink: 0,
+          }}>
+            <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#2db8b0' }} />
+            {displayName}
+            <span style={{ width: '4px', height: '4px', borderRadius: '50%', background: '#cbd5e1' }} />
+            Step {step} of 2
+          </div>
         </div>
 
         {/* Page header */}
@@ -251,9 +254,7 @@ export default function DisasterPickerPage() {
                   transform: isHovered ? 'scale(1.05)' : 'scale(1)',
                   boxShadow: isHovered ? `0 6px 18px -6px ${d.color}50` : 'none',
                 }}>
-                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={d.color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    {d.iconPath}
-                  </svg>
+                  {d.icon}
                 </div>
 
                 {/* Text */}
