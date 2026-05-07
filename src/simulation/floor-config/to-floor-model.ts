@@ -15,6 +15,7 @@
 
 import type { FloorModel, HazardZone, NavEdge, NavNode } from '../building-model'
 import type { BuildingModel } from '../building-model'
+import { hazardGrowthRate, hazardMaxRadius } from '../hazard-physics'
 import { BUILDING_FLOORS } from './buildings'
 import type { CorridorNode, FloorConfig, Point } from './types'
 
@@ -46,27 +47,6 @@ function pxDistance(a: Point, b: Point): number {
 
 function samePoint(a: Point, b: Point): boolean {
   return Math.abs(a.x - b.x) <= POSITION_TOLERANCE && Math.abs(a.y - b.y) <= POSITION_TOLERANCE
-}
-
-function hazardGrowth(type: 'fire' | 'smoke' | 'debris'): number {
-  switch (type) {
-    case 'fire':
-      return 5
-    case 'smoke':
-      return 8
-    case 'debris':
-      return 2
-  }
-}
-
-/** Per-hazard-type growth cap expressed as a multiple of the authored
- *  initial radius. Smoke is allowed to billow further than fire so the
- *  look-and-feel matches real life, but nothing is allowed to consume the
- *  floorplan. The absolute floor of 80px prevents tiny authored hazards
- *  from being clamped below their own starting radius. */
-function hazardMaxRadius(type: 'fire' | 'smoke' | 'debris', initial: number): number {
-  const multiplier = type === 'smoke' ? 3 : type === 'fire' ? 2.5 : 2
-  return Math.max(80, initial * multiplier)
 }
 
 export function floorConfigToFloorModel(
@@ -249,8 +229,8 @@ export function floorConfigToFloorModel(
         x: cx,
         y: cy,
         radius,
-        growthRate: hazardGrowth(obs.type),
-        appearsAt: 0,
+        growthRate: hazardGrowthRate(obs.type),
+        appearsAt: obs.appearsAt ?? 0,
         maxRadius: hazardMaxRadius(obs.type, radius),
       })
     }
@@ -269,10 +249,11 @@ export function floorConfigToFloorModel(
 /** Floorplan resolution per building — maps floor labels to served SVG assets. */
 const FLOORPLAN_SRC_BY_BUILDING: Record<string, Record<string, string>> = {
   'admin-building': {
-    '1st Floor': '/floorplans/admin-building-f1.svg',
+    '1st Floor': '/floorplans/Admin%201st%20floor.svg',
+    '2nd Floor': '/floorplans/Admin%202nd%20floor.svg',
   },
   'science-building': {
-    '1st Floor': '/floorplans/CSB 1st floor.svg',
+    '1st Floor': '/floorplans/CSB%201st%20floor.svg',
     '2nd Floor': '/floorplans/CSB%202nd%20floor.svg',
     '3rd Floor': '/floorplans/CSB%203rd%20floor.svg',
     '4th Floor': '/floorplans/CSB%204th%20floor.svg',
