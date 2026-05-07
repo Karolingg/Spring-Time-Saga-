@@ -173,7 +173,12 @@ export default function AnalysisRunsPage() {
 
       {!isLoadingData && run && !hasUsedZones && (
         <div style={{ ...SECTION_CARD, textAlign: 'center', padding: '48px 32px' }}>
-          <div style={{ fontSize: '34px', marginBottom: '12px' }}>🧭</div>
+          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '12px' }}>
+            <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#2db8b0" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="9" />
+              <path d="M9 15l1.8-4.8L15 9l-1.8 4.8L9 15z" />
+            </svg>
+          </div>
           <h2 style={{ margin: '0 0 8px', fontSize: '18px', fontWeight: '600', color: 'var(--text-primary)' }}>
             No movement recorded
           </h2>
@@ -224,7 +229,7 @@ function PageHeader({ runHistory, currentRunId, onRunChange, onRequestDelete, on
         background: 'rgba(45,184,176,0.1)',
         display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
       }}>
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#2db8b0" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#2db8b0" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
           <path d="M3 3v18h18"/><path d="M18.7 8l-5.1 5.2-2.8-2.7L7 14.3"/>
         </svg>
       </div>
@@ -328,7 +333,13 @@ function RunControls({ runHistory, currentRunId, onRunChange, onRequestDelete }:
 function EmptyState() {
   return (
     <div style={{ ...SECTION_CARD, textAlign: 'center', padding: '60px 32px' }}>
-      <div style={{ fontSize: '48px', marginBottom: '16px' }}>📊</div>
+      <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '16px' }}>
+        <svg width="42" height="42" viewBox="0 0 24 24" fill="none" stroke="#2db8b0" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+          <rect x="3" y="3" width="18" height="18" rx="2" />
+          <path d="M9 3v18M15 3v18M3 9h18M3 15h18" />
+          <circle cx="15" cy="9" r="2.2" />
+        </svg>
+      </div>
       <h2 style={{ margin: '0 0 8px', fontSize: '18px', fontWeight: '600', color: 'var(--text-primary)' }}>
         No Completed Simulations Yet
       </h2>
@@ -354,9 +365,38 @@ interface SummaryStatsProps {
 
 function SummaryStats({ zoneCount, bottleneckCount, avgEvacTime }: SummaryStatsProps) {
   const stats = [
-    { label: 'Total Zones Analyzed', value: String(zoneCount), icon: '🗺' },
-    { label: 'Critical Bottlenecks', value: String(bottleneckCount), icon: '⚠️' },
-    { label: 'Avg Evacuation Time', value: avgEvacTime, icon: '⏱' },
+    {
+      label: 'Total Zones Analyzed',
+      value: String(zoneCount),
+      icon: (
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#2db8b0" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M3 6l6-2 6 2 6-2v14l-6 2-6-2-6 2V6z" />
+          <path d="M9 4v14M15 6v14" />
+        </svg>
+      ),
+    },
+    {
+      label: 'Critical Bottlenecks',
+      value: String(bottleneckCount),
+      icon: (
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M12 3l9 16H3L12 3z" />
+          <path d="M12 9v4" />
+          <circle cx="12" cy="16.5" r="0.7" fill="#f59e0b" />
+        </svg>
+      ),
+    },
+    {
+      label: 'Avg Evacuation Time',
+      value: avgEvacTime,
+      icon: (
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#2db8b0" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+          <circle cx="12" cy="13" r="8" />
+          <path d="M12 13l3-2" />
+          <path d="M12 5V3" />
+        </svg>
+      ),
+    },
   ]
 
   return (
@@ -367,7 +407,7 @@ function SummaryStats({ zoneCount, bottleneckCount, avgEvacTime }: SummaryStatsP
           borderRadius: '14px', padding: '28px 24px',
           boxShadow: '0 1px 3px rgba(0,0,0,0.05)', textAlign: 'center',
         }}>
-          <div style={{ fontSize: '28px', marginBottom: '8px' }}>{stat.icon}</div>
+          <div style={{ marginBottom: '8px', display: 'flex', justifyContent: 'center' }}>{stat.icon}</div>
           <div style={{ fontSize: '28px', fontWeight: '700', color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>{stat.value}</div>
           <div style={{ fontSize: '13px', color: 'var(--text-secondary)', marginTop: '4px' }}>{stat.label}</div>
         </div>

@@ -651,10 +651,10 @@ export default function SimulatePage() {
       <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '20px' }}>
         <div style={{
           width: '44px', height: '44px', borderRadius: '12px',
-          background: 'rgba(45,184,176,0.1)',
+          background: 'rgba(45,184,176,0.18)',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
         }}>
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#2db8b0" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#2db8b0" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.8 }}>
             <polygon points="5 3 19 12 5 21 5 3"/>
           </svg>
         </div>
