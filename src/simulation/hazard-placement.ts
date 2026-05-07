@@ -1,7 +1,8 @@
 import type { HazardZone } from './building-model'
+import { hazardGrowthRate, hazardMaxRadius, type HazardType } from './hazard-physics'
 
 export type HazardDisaster = 'fire' | 'earthquake'
-export type HazardType = 'fire' | 'smoke' | 'debris'
+export type { HazardType }
 
 export interface PlacedHazard {
   id: string
@@ -54,21 +55,9 @@ export function saveHazardPlan(storageKey: string, hazards: PlacedHazard[]): voi
   window.localStorage.setItem(storageKey, JSON.stringify(payload))
 }
 
-export function hazardGrowthRate(type: HazardType): number {
-  switch (type) {
-    case 'fire':
-      return 5
-    case 'smoke':
-      return 8
-    case 'debris':
-      return 2
-  }
-}
-
-export function hazardMaxRadius(type: HazardType, initial: number): number {
-  const multiplier = type === 'smoke' ? 3 : type === 'fire' ? 2.5 : 2
-  return Math.max(80, initial * multiplier)
-}
+// Hazard physics live in `./hazard-physics`. Re-exported here so any
+// historical caller that still imports from this module keeps working.
+export { hazardGrowthRate, hazardMaxRadius }
 
 export function placedHazardToZone(placed: PlacedHazard, prefix = 'hz'): HazardZone {
   return {

@@ -29,6 +29,13 @@ type DisasterType = 'fire' | 'earthquake'
 const SIMULATION_SECONDS_PER_MS = 0.35 / 120
 const MAX_FRAME_DELTA_MS = 48
 const HAZARD_GROWTH_MULTIPLIER = 0.45
+
+/** Brand teal — used for all UI chrome (buttons, sliders, section labels,
+ *  highlights, links). Disaster-specific colors (`meta.accent`) are reserved
+ *  for the visualization layer (exit markers contrasting against the hazard
+ *  rendering on the floorplan). */
+const APP_ACCENT = '#2db8b0'
+const APP_ACCENT_DARK = '#1f9189'
 // Flip to true to reveal the underlying navigation graph (edges + corridor nodes) for debugging.
 const SHOW_DEBUG_GRAPH = false
 
@@ -547,15 +554,15 @@ export default function AutonomousScienceBuildingPage() {
 
   if (unsupportedRoute) {
     return (
-      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '88px 24px 56px', background: '#f8fafc' }}>
-        <div style={{ width: '100%', maxWidth: '620px', background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '16px', padding: '28px 30px', boxShadow: '0 10px 35px rgba(15, 23, 42, 0.08)' }}>
-          <div style={{ fontSize: '12px', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#2db8b0', marginBottom: '12px' }}>
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '88px 24px 56px', background: 'linear-gradient(180deg, #eaeff5 0%, #e4e9f1 100%)' }}>
+        <div style={{ width: '100%', maxWidth: '620px', background: '#ffffff', border: '1px solid var(--border)', borderRadius: '16px', padding: '28px 30px', boxShadow: '0 10px 35px rgba(15, 23, 42, 0.08)' }}>
+          <div style={{ fontSize: '11px', fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#2db8b0', marginBottom: '12px' }}>
             Autonomous Simulation
           </div>
-          <h1 style={{ margin: '0 0 10px', fontSize: '26px', fontWeight: 800, color: '#0f172a' }}>
+          <h1 style={{ margin: '0 0 10px', fontSize: '26px', fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>
             Floor data not available
           </h1>
-          <p style={{ margin: '0 0 20px', fontSize: '14px', color: '#475569', lineHeight: 1.7 }}>
+          <p style={{ margin: '0 0 20px', fontSize: '14px', color: 'var(--text-secondary)', lineHeight: 1.7 }}>
             {!building
               ? `No simulation data is registered for building "${regionId}".`
               : `Floor ${floorIndex + 1} is not available for this building yet.`}
@@ -563,13 +570,13 @@ export default function AutonomousScienceBuildingPage() {
           <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
             <button
               onClick={() => router.push(`/simulate/${encodeURIComponent(regionId)}/disaster`)}
-              style={{ padding: '11px 16px', borderRadius: '10px', border: 'none', background: '#2db8b0', color: '#ffffff', fontSize: '13px', fontWeight: 700, cursor: 'pointer' }}
+              style={{ padding: '10px 18px', borderRadius: '8px', border: 'none', background: '#2db8b0', color: '#ffffff', fontSize: '13px', fontWeight: 600, cursor: 'pointer' }}
             >
               Back to Disaster Setup
             </button>
             <button
               onClick={() => router.push(`/simulate/${encodeURIComponent(regionId)}/run?disaster=${disaster}&floor=${floorIndex}`)}
-              style={{ padding: '11px 16px', borderRadius: '10px', border: '1px solid #cbd5e1', background: '#ffffff', color: '#0f172a', fontSize: '13px', fontWeight: 700, cursor: 'pointer' }}
+              style={{ padding: '10px 18px', borderRadius: '8px', border: '1px solid var(--border)', background: '#ffffff', color: 'var(--text-primary)', fontSize: '13px', fontWeight: 600, cursor: 'pointer' }}
             >
               Open Manual Run
             </button>
@@ -580,7 +587,15 @@ export default function AutonomousScienceBuildingPage() {
   }
 
   return (
-    <div style={{ minHeight: '100vh', padding: '88px 24px 56px', background: '#f8fafc' }}>
+    <div style={{
+      minHeight: '100vh',
+      padding: '88px 24px 56px',
+      // Layered darker-white background — slightly cooler than pure off-white
+      // to give white panels and cards visible separation from the page.
+      background:
+        'radial-gradient(circle at 100% 0%, rgba(45, 184, 176, 0.05) 0%, transparent 35%),' +
+        'linear-gradient(180deg, #eaeff5 0%, #e4e9f1 100%)',
+    }}>
       <style>{`
         .auto-layout {
           display: grid;
@@ -592,10 +607,10 @@ export default function AutonomousScienceBuildingPage() {
         }
 
         .auto-panel {
-          background: #ffffff;
-          border: 1px solid #e2e8f0;
+          background: #fcfdfe;
+          border: 1px solid #d8dfe8;
           border-radius: 16px;
-          box-shadow: 0 10px 30px rgba(15, 23, 42, 0.06);
+          box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 8px 24px -10px rgba(15, 23, 42, 0.08);
         }
 
         .auto-panel--sticky {
@@ -605,7 +620,7 @@ export default function AutonomousScienceBuildingPage() {
 
         .auto-panel-section {
           padding: 18px 20px;
-          border-bottom: 1px solid #eef2f7;
+          border-bottom: 1px solid #e4e9ef;
         }
 
         .auto-panel-section:last-child {
@@ -619,19 +634,66 @@ export default function AutonomousScienceBuildingPage() {
         }
 
         .auto-choice {
-          padding: 8px 12px;
-          border-radius: 10px;
-          border: 1px solid #cbd5e1;
+          padding: 7px 12px;
+          border-radius: 8px;
+          border: 1px solid var(--border);
           background: #ffffff;
-          color: #0f172a;
+          color: var(--text-primary);
           font-size: 12px;
-          font-weight: 700;
+          font-weight: 600;
           cursor: pointer;
+          transition: all 0.15s;
+        }
+
+        .auto-choice:hover {
+          border-color: var(--text-muted);
         }
 
         .auto-choice--active {
           color: #ffffff;
           border-color: transparent;
+        }
+
+        /* Brand-teal slider — replaces the OS default accent so the slider
+           matches the rest of the EVACSIM chrome regardless of disaster. */
+        .auto-range {
+          appearance: none;
+          -webkit-appearance: none;
+          height: 6px;
+          border-radius: 3px;
+          background: var(--border);
+          outline: none;
+          cursor: pointer;
+        }
+        .auto-range::-webkit-slider-thumb {
+          appearance: none;
+          -webkit-appearance: none;
+          width: 16px;
+          height: 16px;
+          border-radius: 50%;
+          background: ${APP_ACCENT};
+          border: 2px solid #ffffff;
+          box-shadow: 0 2px 6px -2px rgba(45, 184, 176, 0.5);
+          cursor: pointer;
+          transition: transform 0.15s, box-shadow 0.15s;
+        }
+        .auto-range::-webkit-slider-thumb:hover {
+          transform: scale(1.1);
+          box-shadow: 0 3px 10px -2px rgba(45, 184, 176, 0.7);
+        }
+        .auto-range::-moz-range-thumb {
+          width: 16px;
+          height: 16px;
+          border-radius: 50%;
+          background: ${APP_ACCENT};
+          border: 2px solid #ffffff;
+          box-shadow: 0 2px 6px -2px rgba(45, 184, 176, 0.5);
+          cursor: pointer;
+        }
+        .auto-range::-moz-range-track {
+          height: 6px;
+          border-radius: 3px;
+          background: var(--border);
         }
 
         .auto-stat-grid {
@@ -642,8 +704,8 @@ export default function AutonomousScienceBuildingPage() {
 
         .auto-stat {
           border-radius: 12px;
-          border: 1px solid #e2e8f0;
-          background: #f8fafc;
+          border: 1px solid #dee5ee;
+          background: #f4f7fb;
           padding: 12px 14px;
         }
 
@@ -678,8 +740,8 @@ export default function AutonomousScienceBuildingPage() {
 
         .auto-room-card {
           border-radius: 12px;
-          border: 1px solid #e2e8f0;
-          background: #f8fafc;
+          border: 1px solid #dee5ee;
+          background: #f4f7fb;
           padding: 10px 12px;
         }
 
@@ -733,7 +795,7 @@ export default function AutonomousScienceBuildingPage() {
             gap: '6px',
             background: 'none',
             border: 'none',
-            color: '#64748b',
+            color: 'var(--text-secondary)',
             fontSize: '13px',
             cursor: 'pointer',
             padding: 0,
@@ -748,28 +810,30 @@ export default function AutonomousScienceBuildingPage() {
 
         <div style={{ display: 'flex', alignItems: 'flex-end', gap: '16px', justifyContent: 'space-between', flexWrap: 'wrap' }}>
           <div>
-            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '6px 12px', borderRadius: '999px', background: `${meta.accent}12`, border: `1px solid ${meta.accent}30`, marginBottom: '12px' }}>
-              <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: meta.accent }} />
-              <span style={{ fontSize: '12px', fontWeight: 700, color: meta.accent }}>{building?.name ?? regionId} / {floor.label} / Autonomous</span>
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '6px 12px', borderRadius: '999px', background: `${APP_ACCENT}14`, border: `1px solid ${APP_ACCENT}33`, marginBottom: '12px' }}>
+              <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: APP_ACCENT }} />
+              <span style={{ fontSize: '12px', fontWeight: 600, color: APP_ACCENT_DARK, letterSpacing: '0.04em', textTransform: 'uppercase' }}>{building?.name ?? regionId} / {floor.label} / Autonomous</span>
             </div>
-            <h1 style={{ margin: '0 0 8px', fontSize: '30px', fontWeight: 800, color: '#0f172a', letterSpacing: '-0.02em' }}>{meta.label}</h1>
-            <p style={{ margin: 0, fontSize: '14px', color: '#475569', lineHeight: 1.7, maxWidth: '840px' }}>
+            <h1 style={{ margin: '0 0 4px', fontSize: '26px', fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>{meta.label}</h1>
+            <p style={{ margin: 0, fontSize: '14px', color: 'var(--text-secondary)', lineHeight: 1.6, maxWidth: '840px' }}>
               {meta.subtitle} Agents stay on the navigation graph only. They spawn from room nodes, move along legal corridor edges, and never cut through walls.
             </p>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
             <button
               onClick={launchSimulation}
               disabled={isPlaying}
               style={{
-                padding: '12px 18px',
-                borderRadius: '12px',
+                padding: '10px 18px',
+                borderRadius: '8px',
                 border: 'none',
-                background: isPlaying ? '#cbd5e1' : meta.accent,
-                color: '#ffffff',
+                background: isPlaying ? 'var(--bg-subtle, #f1f5f9)' : APP_ACCENT_DARK,
+                color: isPlaying ? 'var(--text-muted)' : '#ffffff',
                 fontSize: '13px',
-                fontWeight: 800,
+                fontWeight: 600,
                 cursor: isPlaying ? 'not-allowed' : 'pointer',
+                boxShadow: isPlaying ? 'none' : '0 1px 2px rgba(31, 145, 137, 0.15), 0 4px 12px -4px rgba(31, 145, 137, 0.4)',
+                transition: 'all 0.15s',
               }}
             >
               {simState ? 'Restart Autonomous Run' : 'Start Autonomous Run'}
@@ -778,15 +842,16 @@ export default function AutonomousScienceBuildingPage() {
               onClick={() => setIsPlaying((current) => !current)}
               disabled={!simState || simState.finished}
               style={{
-                padding: '12px 18px',
-                borderRadius: '12px',
-                border: '1px solid #cbd5e1',
+                padding: '10px 18px',
+                borderRadius: '8px',
+                border: '1px solid var(--border)',
                 background: '#ffffff',
-                color: '#0f172a',
+                color: 'var(--text-primary)',
                 fontSize: '13px',
-                fontWeight: 800,
+                fontWeight: 600,
                 cursor: !simState || simState.finished ? 'not-allowed' : 'pointer',
                 opacity: !simState || simState.finished ? 0.5 : 1,
+                transition: 'all 0.15s',
               }}
             >
               {isPlaying ? 'Pause' : 'Resume'}
@@ -794,14 +859,15 @@ export default function AutonomousScienceBuildingPage() {
             <button
               onClick={resetSimulation}
               style={{
-                padding: '12px 18px',
-                borderRadius: '12px',
-                border: '1px solid #cbd5e1',
+                padding: '10px 18px',
+                borderRadius: '8px',
+                border: '1px solid var(--border)',
                 background: '#ffffff',
-                color: '#0f172a',
+                color: 'var(--text-primary)',
                 fontSize: '13px',
-                fontWeight: 800,
+                fontWeight: 600,
                 cursor: 'pointer',
+                transition: 'all 0.15s',
               }}
             >
               Reset
@@ -813,19 +879,19 @@ export default function AutonomousScienceBuildingPage() {
       <div className="auto-layout">
         <aside className="auto-panel auto-panel--sticky">
           <section className="auto-panel-section">
-            <div style={{ fontSize: '11px', fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', color: meta.accent, marginBottom: '12px' }}>
+            <div style={{ fontSize: '11px', fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', color: APP_ACCENT_DARK, marginBottom: '12px' }}>
               Setup
             </div>
 
             <div style={{ marginBottom: '16px' }}>
-              <div style={{ fontSize: '13px', fontWeight: 700, color: '#0f172a', marginBottom: '8px' }}>Occupancy preset</div>
+              <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '8px' }}>Occupancy preset</div>
               <div className="auto-chip-row">
                 {OCCUPANCY_PRESETS.map((preset) => (
                   <button
                     key={preset.label}
                     onClick={() => setPreset(preset.ratio)}
                     className={`auto-choice ${totalAgents === Math.max(1, Math.round(maxAgents * preset.ratio)) ? 'auto-choice--active' : ''}`}
-                    style={{ background: totalAgents === Math.max(1, Math.round(maxAgents * preset.ratio)) ? meta.accent : '#ffffff' }}
+                    style={{ background: totalAgents === Math.max(1, Math.round(maxAgents * preset.ratio)) ? APP_ACCENT_DARK : '#ffffff' }}
                   >
                     {preset.label}
                   </button>
@@ -835,11 +901,11 @@ export default function AutonomousScienceBuildingPage() {
 
             <div style={{ marginBottom: '16px' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', marginBottom: '8px' }}>
-                <div style={{ fontSize: '13px', fontWeight: 700, color: '#0f172a' }}>Total agents</div>
-                <div style={{ fontSize: '12px', fontWeight: 700, color: meta.accent }}>
+                <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)' }}>Total agents</div>
+                <div style={{ fontSize: '12px', fontWeight: 600, color: APP_ACCENT_DARK }}>
                   {effectiveAgentCount} / {maxAgents}
                   {effectiveAgentCount !== totalAgents && (
-                    <span style={{ marginLeft: '6px', color: '#64748b', fontWeight: 600 }}>
+                    <span style={{ marginLeft: '6px', color: 'var(--text-secondary)', fontWeight: 600 }}>
                       (target {totalAgents})
                     </span>
                   )}
@@ -847,6 +913,7 @@ export default function AutonomousScienceBuildingPage() {
               </div>
               <input
                 type="range"
+                className="auto-range"
                 min={1}
                 max={Math.max(1, maxAgents)}
                 value={totalAgents}
@@ -854,37 +921,37 @@ export default function AutonomousScienceBuildingPage() {
                 style={{ width: '100%' }}
               />
               {Object.keys(roomOverrides).length > 0 && (
-                <div style={{ fontSize: '11px', color: '#64748b', marginTop: '6px', lineHeight: 1.5 }}>
+                <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '6px', lineHeight: 1.5 }}>
                   {Object.keys(roomOverrides).length} room{Object.keys(roomOverrides).length === 1 ? ' is' : 's are'} pinned. Slider only redistributes the rest.
                 </div>
               )}
             </div>
 
             <div>
-              <div style={{ fontSize: '13px', fontWeight: 700, color: '#0f172a', marginBottom: '8px' }}>Simulation speed</div>
+              <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '8px' }}>Simulation speed</div>
               <div className="auto-chip-row">
                 {SIMULATION_SPEED_OPTIONS.map((option) => (
                   <button
                     key={option.label}
                     onClick={() => setSimulationSpeed(option.value)}
                     className={`auto-choice ${simulationSpeed === option.value ? 'auto-choice--active' : ''}`}
-                    style={{ background: simulationSpeed === option.value ? meta.accent : '#ffffff' }}
+                    style={{ background: simulationSpeed === option.value ? APP_ACCENT_DARK : '#ffffff' }}
                   >
                     {option.label}
                   </button>
                 ))}
               </div>
-              <div style={{ fontSize: '11px', color: '#64748b', marginTop: '6px' }}>
+              <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '6px' }}>
                 Scales timers, hazard spread, and agent movement together.
               </div>
             </div>
           </section>
 
           <section className="auto-panel-section">
-            <div style={{ fontSize: '11px', fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', color: meta.accent, marginBottom: '12px' }}>
+            <div style={{ fontSize: '11px', fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', color: APP_ACCENT_DARK, marginBottom: '12px' }}>
               Hazard placement
             </div>
-            <div style={{ fontSize: '12px', color: '#64748b', marginBottom: '12px' }}>
+            <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '12px' }}>
               Drag hazards onto the map. You can place multiple fire, smoke, or debris zones.
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '12px' }}>
@@ -895,26 +962,27 @@ export default function AutonomousScienceBuildingPage() {
                   onDragStart={handleDragStart(type)}
                   style={{
                     display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px',
-                    padding: '10px 12px', borderRadius: '10px', border: '1px solid #e2e8f0',
-                    background: '#ffffff', color: '#0f172a', fontSize: '12px', fontWeight: 700, cursor: 'grab',
+                    padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--border)',
+                    background: '#ffffff', color: 'var(--text-primary)', fontSize: '12px', fontWeight: 600, cursor: 'grab',
+                    transition: 'all 0.15s',
                   }}
                 >
                   {hazardLabel(type, disaster)}
-                  <span style={{ fontSize: '11px', color: '#64748b' }}>Drag to map</span>
+                  <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>Drag to map</span>
                 </button>
               ))}
             </div>
-            <div style={{ fontSize: '11px', color: '#94a3b8' }}>Active hazards are listed on the right panel.</div>
+            <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Active hazards are listed on the right panel.</div>
           </section>
 
           <section className="auto-panel-section">
             <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: '10px', marginBottom: '4px' }}>
-              <div style={{ fontSize: '13px', fontWeight: 700, color: '#0f172a' }}>Room population</div>
-              <div style={{ fontSize: '11px', fontWeight: 700, color: meta.accent }}>
+              <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)' }}>Room population</div>
+              <div style={{ fontSize: '11px', fontWeight: 600, color: APP_ACCENT_DARK }}>
                 {effectiveAgentCount} / {maxAgents}
               </div>
             </div>
-            <div style={{ fontSize: '11px', color: '#64748b', marginBottom: '12px', lineHeight: 1.5 }}>
+            <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginBottom: '12px', lineHeight: 1.5 }}>
               Type a number to lock a room. Untouched rooms split the remaining budget by capacity.
               {Object.keys(roomOverrides).length > 0 && (
                 <>
@@ -922,7 +990,7 @@ export default function AutonomousScienceBuildingPage() {
                   <button
                     type="button"
                     onClick={clearAllRoomOverrides}
-                    style={{ background: 'none', border: 'none', padding: 0, color: meta.accent, fontSize: '11px', fontWeight: 700, cursor: 'pointer', textDecoration: 'underline' }}
+                    style={{ background: 'none', border: 'none', padding: 0, color: APP_ACCENT_DARK, fontSize: '11px', fontWeight: 600, cursor: 'pointer', textDecoration: 'underline' }}
                   >
                     Reset all
                   </button>
@@ -940,13 +1008,13 @@ export default function AutonomousScienceBuildingPage() {
                     key={roomNode.id}
                     className="auto-room-card"
                     style={{
-                      borderColor: isOverridden ? meta.accent : '#e2e8f0',
-                      boxShadow: isOverridden ? `0 0 0 1px ${meta.accent}` : 'none',
+                      borderColor: isOverridden ? APP_ACCENT : 'var(--border)',
+                      boxShadow: isOverridden ? `0 0 0 1px ${APP_ACCENT}` : 'none',
                       transition: 'box-shadow 120ms, border-color 120ms',
                     }}
                   >
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '6px', marginBottom: '6px' }}>
-                      <div style={{ fontSize: '12px', fontWeight: 700, color: '#0f172a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                         {roomNode.label}
                       </div>
                       {isOverridden && (
@@ -955,7 +1023,7 @@ export default function AutonomousScienceBuildingPage() {
                           onClick={() => clearRoomOverride(roomNode.id)}
                           aria-label={`Reset ${roomNode.label} to auto`}
                           title="Reset to auto"
-                          style={{ background: 'none', border: 'none', padding: 0, color: '#64748b', fontSize: '10px', fontWeight: 700, cursor: 'pointer', textTransform: 'uppercase', letterSpacing: '0.04em' }}
+                          style={{ background: 'none', border: 'none', padding: 0, color: 'var(--text-muted)', fontSize: '10px', fontWeight: 600, cursor: 'pointer', textTransform: 'uppercase', letterSpacing: '0.08em' }}
                         >
                           Auto
                         </button>
@@ -982,11 +1050,12 @@ export default function AutonomousScienceBuildingPage() {
                         width: '100%',
                         padding: '6px 8px',
                         borderRadius: '8px',
-                        border: `1px solid ${isOverridden ? meta.accent : '#cbd5e1'}`,
+                        border: `1px solid ${isOverridden ? APP_ACCENT : 'var(--border)'}`,
                         background: '#ffffff',
-                        color: meta.accent,
+                        color: APP_ACCENT_DARK,
                         fontSize: '18px',
-                        fontWeight: 800,
+                        fontWeight: 700,
+                        letterSpacing: '-0.02em',
                         textAlign: 'center',
                         outline: 'none',
                       }}
@@ -1001,7 +1070,7 @@ export default function AutonomousScienceBuildingPage() {
                         }}
                       />
                     </div>
-                    <div style={{ fontSize: '10px', color: '#64748b', marginTop: '4px', display: 'flex', justifyContent: 'space-between' }}>
+                    <div style={{ fontSize: '10px', color: 'var(--text-secondary)', marginTop: '4px', display: 'flex', justifyContent: 'space-between' }}>
                       <span>capacity {roomNode.capacity}</span>
                       <span style={{ color: utilColor, fontWeight: 700 }}>{Math.round(utilization * 100)}%</span>
                     </div>
@@ -1016,17 +1085,17 @@ export default function AutonomousScienceBuildingPage() {
         <main className="auto-panel auto-map-card">
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', marginBottom: '12px', flexWrap: 'wrap' }}>
             <div>
-              <div style={{ fontSize: '14px', fontWeight: 800, color: '#0f172a' }}>{building?.name ?? regionId} {floor.label}</div>
-              <div style={{ fontSize: '12px', color: '#64748b' }}>Autonomous crowd overlay on the real floorplan</div>
+              <div style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-primary)' }}>{building?.name ?? regionId} {floor.label}</div>
+              <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>Autonomous crowd overlay on the real floorplan</div>
             </div>
             <div className="auto-chip-row">
-              <div style={{ padding: '8px 10px', borderRadius: '10px', background: '#eff6ff', border: '1px solid #bfdbfe', fontSize: '12px', fontWeight: 700, color: '#1d4ed8' }}>
+              <div style={{ padding: '6px 10px', borderRadius: '8px', background: '#e8f0fb', border: '1px solid #c8d8ec', fontSize: '12px', fontWeight: 600, color: '#1e40af' }}>
                 Active {getActiveAgentCount(simState)}
               </div>
-              <div style={{ padding: '8px 10px', borderRadius: '10px', background: '#f0fdf4', border: '1px solid #bbf7d0', fontSize: '12px', fontWeight: 700, color: '#15803d' }}>
+              <div style={{ padding: '6px 10px', borderRadius: '8px', background: '#e8f5ec', border: '1px solid #c5dfce', fontSize: '12px', fontWeight: 600, color: '#166534' }}>
                 Evacuated {getEvacuatedAgentCount(simState)}
               </div>
-              <div style={{ padding: '8px 10px', borderRadius: '10px', background: '#fff7ed', border: '1px solid #fed7aa', fontSize: '12px', fontWeight: 700, color: '#c2410c' }}>
+              <div style={{ padding: '6px 10px', borderRadius: '8px', background: '#fbf0e6', border: '1px solid #f0d4b3', fontSize: '12px', fontWeight: 600, color: '#9a3412' }}>
                 Blocked edges {getBlockedEdgeCount(simState)}
               </div>
             </div>
@@ -1159,7 +1228,7 @@ export default function AutonomousScienceBuildingPage() {
             </svg>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap', marginTop: '12px', fontSize: '12px', color: '#64748b' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap', marginTop: '12px', fontSize: '12px', color: 'var(--text-secondary)' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
               <span style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#2db8b0', display: 'inline-block' }} />
               Active agents
@@ -1176,36 +1245,36 @@ export default function AutonomousScienceBuildingPage() {
 
           <div className="auto-map-insights">
             <div className="auto-map-insight">
-              <div style={{ fontSize: '13px', fontWeight: 700, color: '#0f172a', marginBottom: '12px' }}>Top hotspots</div>
+              <div style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '12px' }}>Top hotspots</div>
               <div className="auto-map-insight-list">
                 {topHotspots.map(({ node, peak, average }) => (
-                  <div key={node.id} style={{ borderRadius: '10px', border: '1px solid #e2e8f0', background: '#f8fafc', padding: '10px 12px' }}>
-                    <div style={{ fontSize: '12px', fontWeight: 700, color: '#0f172a', marginBottom: '4px' }}>{node.label}</div>
-                    <div style={{ fontSize: '11px', color: '#475569' }}>Peak load {peak}, average load {average.toFixed(1)}</div>
+                  <div key={node.id} style={{ borderRadius: '10px', border: '1px solid var(--border)', background: '#f4f7fb', padding: '10px 12px' }}>
+                    <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '4px' }}>{node.label}</div>
+                    <div style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>Peak load {peak}, average load {average.toFixed(1)}</div>
                   </div>
                 ))}
                 {topHotspots.length === 0 && (
-                  <div style={{ fontSize: '12px', color: '#64748b' }}>Start a run to reveal crowd hotspots.</div>
+                  <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>Start a run to reveal crowd hotspots.</div>
                 )}
               </div>
             </div>
 
             <div className="auto-map-insight">
-              <div style={{ fontSize: '13px', fontWeight: 700, color: '#0f172a', marginBottom: '12px' }}>Edge bottlenecks</div>
+              <div style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '12px' }}>Edge bottlenecks</div>
               <div className="auto-map-insight-list">
                 {topBottlenecks.slice(0, 4).map((bottleneck) => (
-                  <div key={bottleneck.zoneName} style={{ borderRadius: '10px', border: '1px solid #e2e8f0', background: '#ffffff', padding: '10px 12px' }}>
+                  <div key={bottleneck.zoneName} style={{ borderRadius: '10px', border: '1px solid var(--border)', background: '#ffffff', padding: '10px 12px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', marginBottom: '4px' }}>
-                      <div style={{ fontSize: '12px', fontWeight: 700, color: '#0f172a' }}>{bottleneck.zoneName}</div>
-                      <div style={{ fontSize: '10px', fontWeight: 800, color: bottleneck.severity === 'HIGH' ? '#ef4444' : bottleneck.severity === 'MEDIUM' ? '#f97316' : '#22c55e' }}>
+                      <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-primary)' }}>{bottleneck.zoneName}</div>
+                      <div style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '0.06em', color: bottleneck.severity === 'HIGH' ? '#ef4444' : bottleneck.severity === 'MEDIUM' ? '#f97316' : '#22c55e' }}>
                         {bottleneck.severity}
                       </div>
                     </div>
-                    <div style={{ fontSize: '11px', color: '#475569' }}>{bottleneck.description}</div>
+                    <div style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>{bottleneck.description}</div>
                   </div>
                 ))}
                 {topBottlenecks.length === 0 && (
-                  <div style={{ fontSize: '12px', color: '#64748b' }}>Bottleneck ranking will populate during the simulation.</div>
+                  <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>Bottleneck ranking will populate during the simulation.</div>
                 )}
               </div>
             </div>
@@ -1214,45 +1283,45 @@ export default function AutonomousScienceBuildingPage() {
 
         <aside className="auto-panel">
           <section className="auto-panel-section">
-            <div style={{ fontSize: '11px', fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', color: meta.accent, marginBottom: '12px' }}>
+            <div style={{ fontSize: '11px', fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', color: APP_ACCENT_DARK, marginBottom: '12px' }}>
               Live Metrics
             </div>
             <div className="auto-stat-grid">
               <div className="auto-stat">
-                <div style={{ fontSize: '10px', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '4px' }}>Peak congestion</div>
-                <div style={{ fontSize: '22px', fontWeight: 800, color: '#0f172a' }}>{peakCongestion}</div>
+                <div style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '4px' }}>Peak congestion</div>
+                <div style={{ fontSize: '22px', fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>{peakCongestion}</div>
               </div>
               <div className="auto-stat">
-                <div style={{ fontSize: '10px', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '4px' }}>Peak density</div>
-                <div style={{ fontSize: '22px', fontWeight: 800, color: peakDensity > 70 ? '#ef4444' : peakDensity > 45 ? '#f97316' : '#22c55e' }}>{peakDensity}%</div>
+                <div style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '4px' }}>Peak density</div>
+                <div style={{ fontSize: '22px', fontWeight: 700, color: peakDensity > 70 ? '#ef4444' : peakDensity > 45 ? '#f97316' : '#22c55e', letterSpacing: '-0.02em' }}>{peakDensity}%</div>
               </div>
               <div className="auto-stat">
-                <div style={{ fontSize: '10px', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '4px' }}>Evacuated</div>
-                <div style={{ fontSize: '22px', fontWeight: 800, color: '#15803d' }}>{getEvacuatedAgentCount(simState)}</div>
+                <div style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '4px' }}>Evacuated</div>
+                <div style={{ fontSize: '22px', fontWeight: 700, color: '#15803d', letterSpacing: '-0.02em' }}>{getEvacuatedAgentCount(simState)}</div>
               </div>
               <div className="auto-stat">
-                <div style={{ fontSize: '10px', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '4px' }}>Trapped</div>
-                <div style={{ fontSize: '22px', fontWeight: 800, color: getTrappedAgentCount(simState) > 0 ? '#ef4444' : '#0f172a' }}>{getTrappedAgentCount(simState)}</div>
+                <div style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '4px' }}>Trapped</div>
+                <div style={{ fontSize: '22px', fontWeight: 700, color: getTrappedAgentCount(simState) > 0 ? '#ef4444' : 'var(--text-primary)', letterSpacing: '-0.02em' }}>{getTrappedAgentCount(simState)}</div>
               </div>
             </div>
           </section>
 
           <section className="auto-panel-section">
-            <div style={{ fontSize: '13px', fontWeight: 700, color: '#0f172a', marginBottom: '12px' }}>Run state</div>
+            <div style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '12px' }}>Run state</div>
             <div className="auto-stat-grid">
               <div className="auto-stat">
-                <div style={{ fontSize: '10px', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '4px' }}>Elapsed</div>
-                <div style={{ fontSize: '20px', fontWeight: 800, color: '#0f172a' }}>{formatSeconds(simState?.elapsedTime || 0)}</div>
+                <div style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '4px' }}>Elapsed</div>
+                <div style={{ fontSize: '20px', fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>{formatSeconds(simState?.elapsedTime || 0)}</div>
               </div>
               <div className="auto-stat">
-                <div style={{ fontSize: '10px', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '4px' }}>Status</div>
-                <div style={{ fontSize: '20px', fontWeight: 800, color: isPlaying ? meta.accent : simState?.finished ? '#22c55e' : '#0f172a' }}>
+                <div style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '4px' }}>Status</div>
+                <div style={{ fontSize: '20px', fontWeight: 700, color: isPlaying ? APP_ACCENT_DARK : simState?.finished ? '#22c55e' : 'var(--text-primary)', letterSpacing: '-0.02em' }}>
                   {simState?.finished ? 'Done' : isPlaying ? 'Running' : simState ? 'Paused' : 'Ready'}
                 </div>
               </div>
             </div>
             {saveStatus !== 'idle' && (
-              <div style={{ marginTop: '12px', padding: '10px 12px', borderRadius: '10px', background: saveStatus === 'error' ? '#fef2f2' : '#f0fdf4', border: `1px solid ${saveStatus === 'error' ? '#fecaca' : '#bbf7d0'}`, fontSize: '12px', color: saveStatus === 'error' ? '#b91c1c' : '#166534' }}>
+              <div style={{ marginTop: '12px', padding: '10px 12px', borderRadius: '10px', background: saveStatus === 'error' ? '#fbeeee' : '#ecf4ee', border: `1px solid ${saveStatus === 'error' ? '#f0c8c8' : '#c5dfce'}`, fontSize: '12px', color: saveStatus === 'error' ? '#991b1b' : '#166534' }}>
                 {saveMessage}
                 {savedRunId ? ` (run ${savedRunId.slice(0, 8)})` : ''}
               </div>
@@ -1261,15 +1330,15 @@ export default function AutonomousScienceBuildingPage() {
 
           <section className="auto-panel-section">
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', marginBottom: '8px' }}>
-              <div style={{ fontSize: '13px', fontWeight: 700, color: '#0f172a' }}>Active hazards</div>
+              <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)' }}>Active hazards</div>
               <button
                 onClick={clearHazards}
                 disabled={placedHazards.length === 0}
                 style={{
-                  padding: '6px 8px', borderRadius: '8px', border: '1px solid rgba(239,68,68,0.25)',
-                  background: placedHazards.length === 0 ? '#f8fafc' : '#fff1f2',
-                  color: placedHazards.length === 0 ? '#94a3b8' : '#b91c1c',
-                  fontSize: '11px', fontWeight: 700, cursor: placedHazards.length === 0 ? 'not-allowed' : 'pointer',
+                  padding: '5px 10px', borderRadius: '6px', border: `1px solid ${placedHazards.length === 0 ? 'var(--border)' : 'rgba(239,68,68,0.2)'}`,
+                  background: placedHazards.length === 0 ? '#f8fafc' : '#fef2f2',
+                  color: placedHazards.length === 0 ? 'var(--text-muted)' : '#b91c1c',
+                  fontSize: '11px', fontWeight: 600, cursor: placedHazards.length === 0 ? 'not-allowed' : 'pointer',
                 }}
               >
                 Clear
@@ -1277,7 +1346,7 @@ export default function AutonomousScienceBuildingPage() {
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '220px', overflowY: 'auto' }}>
               {placedHazards.length === 0 && (
-                <div style={{ fontSize: '12px', color: '#94a3b8' }}>No hazards placed yet.</div>
+                <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>No hazards placed yet.</div>
               )}
               {placedHazards.map((hazard, index) => (
                 <div
@@ -1286,14 +1355,14 @@ export default function AutonomousScienceBuildingPage() {
                   style={{
                     display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px',
                     padding: '8px 10px', borderRadius: '10px',
-                    border: selectedHazardId === hazard.id ? `1px solid ${meta.accent}66` : '1px solid #e2e8f0',
-                    background: selectedHazardId === hazard.id ? `${meta.accent}12` : '#ffffff',
+                    border: selectedHazardId === hazard.id ? `1px solid ${APP_ACCENT}66` : '1px solid var(--border)',
+                    background: selectedHazardId === hazard.id ? `${APP_ACCENT}14` : '#ffffff',
                     cursor: 'pointer',
                   }}
                 >
                   <div>
-                    <div style={{ fontSize: '12px', fontWeight: 700, color: '#0f172a' }}>{index + 1}. {hazardLabel(hazard.type, disaster)}</div>
-                    <div style={{ fontSize: '11px', color: '#64748b' }}>x {Math.round(hazard.x)}, y {Math.round(hazard.y)}</div>
+                    <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-primary)' }}>{index + 1}. {hazardLabel(hazard.type, disaster)}</div>
+                    <div style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>x {Math.round(hazard.x)}, y {Math.round(hazard.y)}</div>
                   </div>
                   <button
                     onClick={(event) => {
@@ -1301,8 +1370,8 @@ export default function AutonomousScienceBuildingPage() {
                       removeHazard(hazard.id)
                     }}
                     style={{
-                      padding: '4px 8px', borderRadius: '8px', border: '1px solid rgba(239,68,68,0.25)',
-                      background: '#fff1f2', color: '#b91c1c', fontSize: '11px', fontWeight: 700, cursor: 'pointer',
+                      padding: '4px 10px', borderRadius: '6px', border: '1px solid rgba(239,68,68,0.2)',
+                      background: '#fef2f2', color: '#b91c1c', fontSize: '11px', fontWeight: 600, cursor: 'pointer',
                     }}
                   >
                     Remove
@@ -1313,30 +1382,30 @@ export default function AutonomousScienceBuildingPage() {
           </section>
 
           <section className="auto-panel-section">
-            <div style={{ fontSize: '13px', fontWeight: 700, color: '#0f172a', marginBottom: '12px' }}>Completion summary</div>
+            <div style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '12px' }}>Completion summary</div>
             {results ? (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                <div style={{ borderRadius: '12px', border: '1px solid #e2e8f0', background: '#f8fafc', padding: '12px 14px' }}>
-                  <div style={{ fontSize: '32px', fontWeight: 800, color: results.trappedCount > 0 ? '#f97316' : '#22c55e', lineHeight: 1 }}>{formatSeconds(results.totalTime)}</div>
-                  <div style={{ fontSize: '11px', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.06em', marginTop: '4px' }}>Evacuation time</div>
+                <div style={{ borderRadius: '12px', border: '1px solid var(--border)', background: '#f4f7fb', padding: '12px 14px' }}>
+                  <div style={{ fontSize: '32px', fontWeight: 700, color: results.trappedCount > 0 ? '#f97316' : '#22c55e', lineHeight: 1, letterSpacing: '-0.02em' }}>{formatSeconds(results.totalTime)}</div>
+                  <div style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginTop: '4px' }}>Evacuation time</div>
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
                   <div className="auto-stat">
-                    <div style={{ fontSize: '10px', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '4px' }}>Reroutes</div>
-                    <div style={{ fontSize: '20px', fontWeight: 800, color: '#0f172a' }}>{results.totalReroutes}</div>
+                    <div style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '4px' }}>Reroutes</div>
+                    <div style={{ fontSize: '20px', fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>{results.totalReroutes}</div>
                   </div>
                   <div className="auto-stat">
-                    <div style={{ fontSize: '10px', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '4px' }}>Avg exposure</div>
-                    <div style={{ fontSize: '20px', fontWeight: 800, color: '#0f172a' }}>{results.avgHazardExposure.toFixed(1)}s</div>
+                    <div style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '4px' }}>Avg exposure</div>
+                    <div style={{ fontSize: '20px', fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>{results.avgHazardExposure.toFixed(1)}s</div>
                   </div>
                 </div>
                 {exitUsage.length > 0 && (
-                  <div style={{ borderRadius: '12px', border: '1px solid #e2e8f0', background: '#ffffff', padding: '12px 14px' }}>
-                    <div style={{ fontSize: '11px', fontWeight: 800, letterSpacing: '0.06em', textTransform: 'uppercase', color: '#64748b', marginBottom: '8px' }}>
+                  <div style={{ borderRadius: '12px', border: '1px solid var(--border)', background: '#ffffff', padding: '12px 14px' }}>
+                    <div style={{ fontSize: '11px', fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '8px' }}>
                       Exit usage
                     </div>
                     {exitUsage.map(([exitId, count]) => (
-                      <div key={exitId} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', fontSize: '12px', color: '#0f172a', marginBottom: '4px' }}>
+                      <div key={exitId} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', fontSize: '12px', color: 'var(--text-primary)', marginBottom: '4px' }}>
                         <span>{exitId}</span>
                         <strong>{count}</strong>
                       </div>
@@ -1344,15 +1413,15 @@ export default function AutonomousScienceBuildingPage() {
                   </div>
                 )}
                 {results.feedback.length > 0 && (
-                  <div style={{ borderRadius: '12px', border: '1px solid #e2e8f0', background: '#ffffff', padding: '12px 14px' }}>
-                    <div style={{ fontSize: '11px', fontWeight: 800, letterSpacing: '0.06em', textTransform: 'uppercase', color: '#64748b', marginBottom: '8px' }}>
+                  <div style={{ borderRadius: '12px', border: '1px solid var(--border)', background: '#ffffff', padding: '12px 14px' }}>
+                    <div style={{ fontSize: '11px', fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '8px' }}>
                       Evaluator
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '7px' }}>
                       {results.feedback.map((line) => (
                         <div key={line} style={{ display: 'flex', gap: '8px', alignItems: 'flex-start' }}>
-                          <span style={{ width: '6px', height: '6px', marginTop: '6px', borderRadius: '50%', background: meta.accent, flexShrink: 0 }} />
-                          <span style={{ fontSize: '12px', color: '#475569', lineHeight: 1.5 }}>{line}</span>
+                          <span style={{ width: '6px', height: '6px', marginTop: '6px', borderRadius: '50%', background: APP_ACCENT, flexShrink: 0 }} />
+                          <span style={{ fontSize: '12px', color: 'var(--text-secondary)', lineHeight: 1.5 }}>{line}</span>
                         </div>
                       ))}
                     </div>
@@ -1361,20 +1430,20 @@ export default function AutonomousScienceBuildingPage() {
                 <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                   <button
                     onClick={() => router.push('/analysis')}
-                    style={{ padding: '11px 14px', borderRadius: '10px', border: 'none', background: '#2db8b0', color: '#ffffff', fontSize: '12px', fontWeight: 800, cursor: 'pointer' }}
+                    style={{ padding: '10px 16px', borderRadius: '8px', border: 'none', background: '#2db8b0', color: '#ffffff', fontSize: '13px', fontWeight: 600, cursor: 'pointer' }}
                   >
                     Open Analysis
                   </button>
                   <button
                     onClick={() => router.push(`/simulate/${encodeURIComponent(regionId)}/run?disaster=${disaster}&floor=${floorIndex}`)}
-                    style={{ padding: '11px 14px', borderRadius: '10px', border: '1px solid #cbd5e1', background: '#ffffff', color: '#0f172a', fontSize: '12px', fontWeight: 800, cursor: 'pointer' }}
+                    style={{ padding: '10px 16px', borderRadius: '8px', border: '1px solid var(--border)', background: '#ffffff', color: 'var(--text-primary)', fontSize: '13px', fontWeight: 600, cursor: 'pointer' }}
                   >
                     Open Manual Drill
                   </button>
                 </div>
               </div>
             ) : (
-              <div style={{ fontSize: '12px', color: '#64748b', lineHeight: 1.7 }}>
+              <div style={{ fontSize: '12px', color: 'var(--text-secondary)', lineHeight: 1.7 }}>
                 Run the autonomous simulation to generate evacuation time, reroutes, congestion peaks, and saved heatmap analysis data.
               </div>
             )}

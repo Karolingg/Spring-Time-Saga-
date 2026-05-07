@@ -120,14 +120,22 @@ export function createSimulation(
   const agents: Agent[] = []
   let agentIdx = 0
 
+  // Reaction delay range depends on the disaster:
+  //  - Fire:        0.5–4s   — occupants smell smoke / hear alarm and move quickly.
+  //  - Earthquake:  6–18s    — Drop-Cover-Hold protocol. Real evacuation studies
+  //                            show occupants stay in place during the tremor
+  //                            and only start moving once shaking subsides.
+  const isQuake = config.disasterType === 'earthquake'
+  const reactionMin = isQuake ? 6 : 0.5
+  const reactionRange = isQuake ? 12 : 3.5
+
   // Spawn agents in rooms
   for (const [roomId, count] of Object.entries(config.agentsPerRoom)) {
     const room = getNode(floor, roomId)
     if (!room) continue
 
     for (let i = 0; i < count; i++) {
-      // Stagger reaction delays: 0.5–4 seconds
-      const reactionDelay = 0.5 + Math.random() * 3.5
+      const reactionDelay = reactionMin + Math.random() * reactionRange
       // Vary speeds: 1.0–2.0 m/s
       const speed = randomAgentSpeed()
 

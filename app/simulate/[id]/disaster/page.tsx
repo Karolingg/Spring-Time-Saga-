@@ -5,35 +5,50 @@ import { useParams, useRouter } from 'next/navigation'
 import { useAuth } from '@/src/hooks/useAuth'
 import { BUILDING_FLOOR_COUNT } from '@/src/config/building-floor-counts'
 
-const DISASTERS = [
+interface Disaster {
+  type: 'fire' | 'earthquake'
+  label: string
+  description: string
+  /** Plain-language scenario tag shown beneath the title */
+  tag: string
+  color: string
+  colorDark: string
+  bgGradient: string
+  selectedGradient: string
+  iconPath: React.ReactNode
+}
+
+const DISASTERS: Disaster[] = [
   {
     type: 'fire',
     label: 'Fire Simulation',
-    description: 'Simulate fire outbreak and building evacuation procedures',
+    description: 'Model fire outbreak with progressive smoke spread and blocked exits.',
+    tag: 'High urgency · Smoke + flame',
     color: '#ff6b35',
-    bg: 'rgba(255,107,53,0.06)',
-    border: 'rgba(255,107,53,0.18)',
-    hoverBg: 'rgba(255,107,53,0.12)',
-    hoverBorder: 'rgba(255,107,53,0.5)',
+    colorDark: '#c2410c',
+    bgGradient: 'linear-gradient(135deg, rgba(255,107,53,0.05) 0%, rgba(255,107,53,0.02) 100%)',
+    selectedGradient: 'linear-gradient(135deg, rgba(255,107,53,0.14) 0%, rgba(255,107,53,0.06) 100%)',
     iconPath: (
       <>
-        <path d="M12 2c.5 2.5 2 4.5 2 7a4 4 0 1 1-8 0c0-2.5 2-4.5 2-7 1.5 1.5 2.5 3 4 0z" />
-        <path d="M12 12c.5 1 1 2 1 3a2 2 0 1 1-4 0c0-1 .5-2 1-3 .5.5 1 1 2 0z" />
+        <path d="M8.5 14.5c0-2 1-3.5 1.5-4.5C11 12 13 11 13 9c0-1.5-1-2.5-1.5-3.5 1.5.5 4 2 4.5 5C16.5 14 14 16 12 16c-2 0-3.5-1-3.5-1.5z" />
+        <path d="M11 16c.5.5 1 1 1 1.5 0 1-.5 1.5-1 1.5s-1-.5-1-1.5c0-.5.5-1 1-1.5z" />
       </>
     ),
   },
   {
     type: 'earthquake',
     label: 'Earthquake Simulation',
-    description: 'Simulate seismic activity, structural response, and evacuation',
+    description: 'Model seismic shock with debris zones, blocked stairwells, and structural risk.',
+    tag: 'Sustained tremor · Debris zones',
     color: '#f59e0b',
-    bg: 'rgba(245,158,11,0.06)',
-    border: 'rgba(245,158,11,0.18)',
-    hoverBg: 'rgba(245,158,11,0.12)',
-    hoverBorder: 'rgba(245,158,11,0.5)',
+    colorDark: '#b45309',
+    bgGradient: 'linear-gradient(135deg, rgba(245,158,11,0.05) 0%, rgba(245,158,11,0.02) 100%)',
+    selectedGradient: 'linear-gradient(135deg, rgba(245,158,11,0.14) 0%, rgba(245,158,11,0.06) 100%)',
     iconPath: (
       <>
-        <path d="M2 12h4l2-5 3 10 3-10 2 5h4" />
+        <path d="M3 14h2.5l1.5-3 2 6 2-9 2 6 1.5-3 1.5 3H21" />
+        <circle cx="6" cy="18" r="0.5" fill="currentColor" stroke="none" />
+        <circle cx="18" cy="18" r="0.5" fill="currentColor" stroke="none" />
       </>
     ),
   },
@@ -42,6 +57,7 @@ const DISASTERS = [
 const AUTONOMOUS_BUILDING_IDS = new Set([
   'science-building',
   'up-cebu-library',
+  'admin-building',
 ])
 
 function floorLabel(index: number): string {
@@ -68,8 +84,8 @@ export default function DisasterPickerPage() {
   const router = useRouter()
   const params = useParams()
   const regionId = params.id as string
-  const [hoveredType, setHoveredType] = useState<string | null>(null)
-  const [selectedDisaster, setSelectedDisaster] = useState<string | null>(null)
+  const [hoveredType, setHoveredType] = useState<Disaster['type'] | null>(null)
+  const [selectedDisaster, setSelectedDisaster] = useState<Disaster['type'] | null>(null)
   const [hoveredFloor, setHoveredFloor] = useState<number | null>(null)
   const floorCount = BUILDING_FLOOR_COUNT[regionId] || 2
 
@@ -89,17 +105,26 @@ export default function DisasterPickerPage() {
     .replace(/-/g, ' ')
     .replace(/\b\w/g, (c) => c.toUpperCase())
 
+  const step = selectedDisaster ? 2 : 1
+
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '88px 24px 56px' }}>
-      <div style={{ width: '100%', maxWidth: '520px' }}>
+    <div style={{
+      minHeight: '100vh',
+      padding: '64px 24px 56px',
+      background:
+        'radial-gradient(circle at 80% 0%, rgba(45,184,176,0.06) 0%, transparent 35%),' +
+        'radial-gradient(circle at 0% 100%, rgba(245,158,11,0.04) 0%, transparent 35%),' +
+        'linear-gradient(180deg, #f8fafc 0%, #eef2f7 100%)',
+    }}>
+      <div style={{ maxWidth: '720px', margin: '0 auto' }}>
 
         {/* Back button */}
         <button
-          onClick={() => router.push('/simulate')}
+          onClick={() => router.push('/map')}
           style={{
             display: 'inline-flex', alignItems: 'center', gap: '6px',
             background: 'none', border: 'none', color: 'var(--text-secondary)',
-            fontSize: '13px', cursor: 'pointer', padding: '0', marginBottom: '32px',
+            fontSize: '13px', cursor: 'pointer', padding: '0', marginBottom: '24px',
             transition: 'color 0.15s',
           }}
           onMouseEnter={e => e.currentTarget.style.color = 'var(--text-primary)'}
@@ -108,35 +133,63 @@ export default function DisasterPickerPage() {
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <polyline points="15 18 9 12 15 6" />
           </svg>
-          Back to map
+          Back to buildings
         </button>
 
-        {/* Header */}
-        <div style={{ marginBottom: '36px' }}>
-          <div style={{
-            display: 'inline-flex', alignItems: 'center', gap: '8px',
-            padding: '6px 12px', borderRadius: '8px',
-            background: 'rgba(45,184,176,0.08)', border: '1px solid rgba(45,184,176,0.15)',
-            marginBottom: '16px',
+        {/* Step indicator */}
+        <div style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: '10px',
+          padding: '6px 12px',
+          borderRadius: '999px',
+          background: 'rgba(255,255,255,0.85)',
+          border: '1px solid var(--border)',
+          backdropFilter: 'blur(6px)',
+          fontSize: '11px',
+          fontWeight: 600,
+          color: 'var(--text-muted)',
+          letterSpacing: '0.08em',
+          textTransform: 'uppercase',
+          marginBottom: '18px',
+        }}>
+          <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#2db8b0' }} />
+          {displayName}
+          <span style={{ width: '4px', height: '4px', borderRadius: '50%', background: '#cbd5e1' }} />
+          Step {step} of 2
+        </div>
+
+        {/* Page header */}
+        <div style={{ marginBottom: '32px' }}>
+          <h1 style={{
+            margin: '0 0 4px',
+            fontSize: '26px',
+            fontWeight: 700,
+            color: 'var(--text-primary)',
+            letterSpacing: '-0.02em',
+            lineHeight: 1.2,
           }}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#2db8b0" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <rect x="3" y="3" width="18" height="18" rx="2" ry="2" /><line x1="3" y1="9" x2="21" y2="9" /><line x1="9" y1="21" x2="9" y2="9" />
-            </svg>
-            <span style={{ fontSize: '12px', fontWeight: 600, color: '#2db8b0' }}>{displayName}</span>
-          </div>
-          <h1 style={{ margin: '0 0 8px', fontSize: '26px', fontWeight: '700', color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>
-            Select Disaster Type
+            {selectedDisaster ? 'Pick a floor to simulate' : 'Choose a disaster scenario'}
           </h1>
-          <p style={{ margin: 0, fontSize: '14px', color: 'var(--text-secondary)', lineHeight: 1.6 }}>
-            Choose which scenario to simulate for this building
+          <p style={{
+            margin: 0,
+            fontSize: '14px',
+            color: 'var(--text-secondary)',
+            lineHeight: 1.6,
+            maxWidth: '540px',
+          }}>
+            {selectedDisaster
+              ? 'Each floor has its own evacuation plan. Pick the one to model.'
+              : 'EVACSIM models how occupants of this building would evacuate under each scenario, with realistic hazard spread and crowd behavior.'}
           </p>
         </div>
 
         {/* Disaster cards */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', marginBottom: '8px' }}>
           {DISASTERS.map((d) => {
             const isHovered = hoveredType === d.type
             const isSelected = selectedDisaster === d.type
+            const isInactive = selectedDisaster !== null && !isSelected
             return (
               <button
                 key={d.type}
@@ -144,62 +197,122 @@ export default function DisasterPickerPage() {
                 onMouseEnter={() => setHoveredType(d.type)}
                 onMouseLeave={() => setHoveredType(null)}
                 style={{
-                  display: 'flex', alignItems: 'center', gap: '18px',
+                  position: 'relative',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '20px',
                   padding: '22px 24px',
-                  background: isSelected ? d.hoverBg : isHovered ? d.hoverBg : d.bg,
-                  border: `1.5px solid ${isSelected ? d.color : isHovered ? d.hoverBorder : d.border}`,
-                  borderRadius: '14px',
+                  background: isSelected
+                    ? `${d.selectedGradient}, #ffffff`
+                    : `${d.bgGradient}, #ffffff`,
+                  border: `1.5px solid ${
+                    isSelected ? d.color
+                    : isHovered ? `${d.color}80`
+                    : 'rgba(15,23,42,0.08)'
+                  }`,
+                  borderRadius: '16px',
                   cursor: 'pointer',
                   textAlign: 'left',
                   transition: 'all 0.2s ease',
-                  transform: isHovered ? 'translateY(-1px)' : 'none',
-                  boxShadow: isSelected ? `0 4px 16px ${d.color}20` : isHovered ? `0 8px 24px ${d.color}15` : 'none',
+                  transform: isHovered && !isSelected ? 'translateY(-2px)' : 'none',
+                  boxShadow: isSelected
+                    ? `0 10px 30px -10px ${d.color}60, 0 0 0 1px ${d.color}30 inset`
+                    : isHovered
+                      ? `0 12px 28px -10px ${d.color}40`
+                      : '0 1px 2px rgba(15,23,42,0.04)',
+                  opacity: isInactive ? 0.55 : 1,
+                  overflow: 'hidden',
                 }}
               >
+                {/* Decorative accent stripe on the left when selected */}
+                {isSelected && (
+                  <span style={{
+                    position: 'absolute',
+                    left: 0,
+                    top: 0,
+                    bottom: 0,
+                    width: '4px',
+                    background: `linear-gradient(180deg, ${d.color} 0%, ${d.colorDark} 100%)`,
+                  }} />
+                )}
+
                 {/* Icon */}
                 <div style={{
-                  width: '48px', height: '48px', borderRadius: '14px',
-                  background: `${d.color}12`,
-                  border: `1px solid ${d.color}20`,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  width: '56px',
+                  height: '56px',
+                  borderRadius: '16px',
+                  background: `linear-gradient(135deg, ${d.color}18 0%, ${d.color}08 100%)`,
+                  border: `1px solid ${d.color}30`,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
                   flexShrink: 0,
-                  transition: 'all 0.2s',
+                  transition: 'transform 0.2s',
+                  transform: isHovered ? 'scale(1.05)' : 'scale(1)',
+                  boxShadow: isHovered ? `0 6px 18px -6px ${d.color}50` : 'none',
                 }}>
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={d.color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={d.color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     {d.iconPath}
                   </svg>
                 </div>
 
                 {/* Text */}
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: '16px', fontWeight: '700', color: 'var(--text-primary)', marginBottom: '4px' }}>
+                  <div style={{
+                    fontSize: '16px',
+                    fontWeight: 700,
+                    color: 'var(--text-primary)',
+                    marginBottom: '4px',
+                    letterSpacing: '-0.02em',
+                  }}>
                     {d.label}
                   </div>
-                  <div style={{ fontSize: '13px', color: 'var(--text-secondary, #94a3b8)', lineHeight: 1.5 }}>
+                  <div style={{
+                    fontSize: '13px',
+                    color: 'var(--text-secondary)',
+                    lineHeight: 1.5,
+                    marginBottom: '8px',
+                  }}>
                     {d.description}
+                  </div>
+                  <div style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    fontSize: '11px',
+                    fontWeight: 600,
+                    color: d.colorDark,
+                    letterSpacing: '0.08em',
+                    textTransform: 'uppercase',
+                  }}>
+                    <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: d.color }} />
+                    {d.tag}
                   </div>
                 </div>
 
-                {/* Arrow / Check */}
-                {isSelected ? (
-                  <svg
-                    width="18" height="18" viewBox="0 0 24 24" fill="none"
-                    stroke={d.color}
-                    strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
-                    style={{ flexShrink: 0 }}
-                  >
-                    <polyline points="20 6 9 17 4 12" />
-                  </svg>
-                ) : (
-                  <svg
-                    width="18" height="18" viewBox="0 0 24 24" fill="none"
-                    stroke={isHovered ? d.color : 'var(--text-muted, #475569)'}
-                    strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
-                    style={{ flexShrink: 0, transition: 'all 0.2s', transform: isHovered ? 'translateX(2px)' : 'none' }}
-                  >
-                    <polyline points="9 18 15 12 9 6" />
-                  </svg>
-                )}
+                {/* Indicator */}
+                <div style={{
+                  flexShrink: 0,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  width: '36px',
+                  height: '36px',
+                  borderRadius: '12px',
+                  background: isSelected ? d.color : isHovered ? `${d.color}15` : 'transparent',
+                  color: isSelected ? '#ffffff' : isHovered ? d.color : '#cbd5e1',
+                  transition: 'all 0.2s',
+                }}>
+                  {isSelected ? (
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                      <polyline points="20 6 9 17 4 12" />
+                    </svg>
+                  ) : (
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ transform: isHovered ? 'translateX(2px)' : 'none', transition: 'transform 0.2s' }}>
+                      <polyline points="9 18 15 12 9 6" />
+                    </svg>
+                  )}
+                </div>
               </button>
             )
           })}
@@ -207,76 +320,166 @@ export default function DisasterPickerPage() {
 
         {/* Floor picker — shown after disaster type is selected */}
         {selectedDisaster && (
-          <div style={{ marginTop: '32px', animation: 'fadeInFloors 0.3s ease' }}>
+          <div style={{ marginTop: '36px', animation: 'fadeInFloors 0.35s ease' }}>
             <style>{`
               @keyframes fadeInFloors {
-                from { opacity: 0; transform: translateY(12px); }
+                from { opacity: 0; transform: translateY(16px); }
                 to   { opacity: 1; transform: translateY(0); }
               }
             `}</style>
 
-            <h2 style={{ margin: '0 0 8px', fontSize: '20px', fontWeight: '700', color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>
-              Select Floor
-            </h2>
-            <p style={{ margin: '0 0 16px', fontSize: '13px', color: 'var(--text-secondary)', lineHeight: 1.6 }}>
-              Choose which floor to run the evacuation simulation on
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '10px',
+              marginBottom: '4px',
+            }}>
+              <span style={{
+                width: '22px',
+                height: '22px',
+                borderRadius: '7px',
+                background: 'rgba(45,184,176,0.12)',
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: '#1f9189',
+                fontSize: '11px',
+                fontWeight: 700,
+              }}>
+                2
+              </span>
+              <h2 style={{ margin: 0, fontSize: '14px', fontWeight: 600, color: 'var(--text-primary)' }}>
+                Available floors
+              </h2>
+              <span style={{
+                marginLeft: 'auto',
+                fontSize: '11px',
+                fontWeight: 600,
+                color: 'var(--text-muted)',
+                letterSpacing: '0.08em',
+                textTransform: 'uppercase',
+              }}>
+                {floorCount} floor{floorCount === 1 ? '' : 's'}
+              </span>
+            </div>
+            <p style={{ margin: '0 0 16px', fontSize: '12px', color: 'var(--text-secondary)', lineHeight: 1.6 }}>
+              Floors with authored navigation graphs run on the autonomous engine; others use the manual route.
             </p>
 
-            <div style={{ display: 'grid', gridTemplateColumns: floorCount >= 3 ? '1fr 1fr 1fr' : floorCount === 2 ? '1fr 1fr' : '1fr', gap: '10px' }}>
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: floorCount >= 3 ? 'repeat(3, 1fr)' : floorCount === 2 ? '1fr 1fr' : '1fr',
+              gap: '12px',
+            }}>
               {Array.from({ length: floorCount }, (_, i) => {
                 const isFloorHovered = hoveredFloor === i
                 const disasterMeta = DISASTERS.find(d => d.type === selectedDisaster)!
                 return (
                   <button
                     key={i}
-                    onClick={() => selectedDisaster && router.push(getSimulationRoute(regionId, selectedDisaster, i))}
+                    onClick={() => {
+                      if (!selectedDisaster) return
+                      router.push(getSimulationRoute(regionId, selectedDisaster, i))
+                    }}
                     onMouseEnter={() => setHoveredFloor(i)}
                     onMouseLeave={() => setHoveredFloor(null)}
                     style={{
-                      display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px',
-                      padding: '20px 16px',
-                      background: isFloorHovered ? 'rgba(45,184,176,0.10)' : 'rgba(45,184,176,0.04)',
-                      border: `1.5px solid ${isFloorHovered ? 'rgba(45,184,176,0.5)' : 'rgba(45,184,176,0.15)'}`,
+                      position: 'relative',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'flex-start',
+                      gap: '14px',
+                      padding: '18px 18px 16px',
+                      background: '#ffffff',
+                      border: `1.5px solid ${isFloorHovered ? 'rgba(45,184,176,0.5)' : 'rgba(15,23,42,0.08)'}`,
                       borderRadius: '14px',
                       cursor: 'pointer',
-                      textAlign: 'center',
+                      textAlign: 'left',
                       transition: 'all 0.2s ease',
-                      transform: isFloorHovered ? 'translateY(-2px)' : 'none',
-                      boxShadow: isFloorHovered ? '0 8px 24px rgba(45,184,176,0.15)' : 'none',
+                      transform: isFloorHovered ? 'translateY(-3px)' : 'none',
+                      boxShadow: isFloorHovered
+                        ? '0 14px 32px -12px rgba(45,184,176,0.4)'
+                        : '0 1px 2px rgba(15,23,42,0.04)',
+                      overflow: 'hidden',
                     }}
                   >
-                    {/* Floor icon */}
+                    {/* Top accent stripe */}
+                    <span style={{
+                      position: 'absolute',
+                      top: 0,
+                      left: 0,
+                      right: 0,
+                      height: '3px',
+                      background: isFloorHovered
+                        ? `linear-gradient(90deg, #2db8b0 0%, ${disasterMeta.color} 100%)`
+                        : 'transparent',
+                      transition: 'background 0.2s',
+                    }} />
+
+                    {/* Floor visual + number */}
                     <div style={{
-                      width: '44px', height: '44px', borderRadius: '12px',
-                      background: isFloorHovered ? 'rgba(45,184,176,0.15)' : 'rgba(45,184,176,0.08)',
-                      border: '1px solid rgba(45,184,176,0.2)',
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      transition: 'all 0.2s',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      width: '100%',
                     }}>
-                      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#2db8b0" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
-                        <line x1="3" y1="9" x2="21" y2="9" />
-                        <line x1="9" y1="21" x2="9" y2="9" />
-                      </svg>
+                      <FloorStackIcon
+                        floorIndex={i}
+                        totalFloors={floorCount}
+                        active={isFloorHovered}
+                      />
+                      <div style={{
+                        fontSize: '32px',
+                        fontWeight: 700,
+                        lineHeight: 1,
+                        color: isFloorHovered ? '#1f9189' : '#cbd5e1',
+                        fontFeatureSettings: '"tnum"',
+                        letterSpacing: '-0.02em',
+                        transition: 'color 0.2s',
+                      }}>
+                        {i + 1}
+                      </div>
                     </div>
 
-                    <div>
-                      <div style={{ fontSize: '15px', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '2px' }}>
+                    {/* Label */}
+                    <div style={{ width: '100%' }}>
+                      <div style={{
+                        fontSize: '13px',
+                        fontWeight: 600,
+                        color: 'var(--text-primary)',
+                        marginBottom: '2px',
+                      }}>
                         {floorLabel(i)}
                       </div>
-                      <div style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
-                        {disasterMeta.label}
+                      <div style={{
+                        fontSize: '12px',
+                        color: 'var(--text-secondary)',
+                      }}>
+                        Run {disasterMeta.label.toLowerCase()}
                       </div>
                     </div>
 
-                    <svg
-                      width="16" height="16" viewBox="0 0 24 24" fill="none"
-                      stroke={isFloorHovered ? '#2db8b0' : 'var(--text-muted, #475569)'}
-                      strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
-                      style={{ transition: 'all 0.2s' }}
-                    >
-                      <polyline points="9 18 15 12 9 6" />
-                    </svg>
+                    {/* Bottom action */}
+                    <div style={{
+                      width: '100%',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      gap: '8px',
+                      paddingTop: '12px',
+                      borderTop: '1px dashed var(--border)',
+                      fontSize: '11px',
+                      fontWeight: 600,
+                      color: isFloorHovered ? '#1f9189' : 'var(--text-muted)',
+                      letterSpacing: '0.08em',
+                      textTransform: 'uppercase',
+                      transition: 'color 0.2s',
+                    }}>
+                      <span>Open simulation</span>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" style={{ transform: isFloorHovered ? 'translateX(3px)' : 'none', transition: 'transform 0.2s' }}>
+                        <polyline points="9 18 15 12 9 6" />
+                      </svg>
+                    </div>
                   </button>
                 )
               })}
@@ -284,6 +487,43 @@ export default function DisasterPickerPage() {
           </div>
         )}
       </div>
+    </div>
+  )
+}
+
+/**
+ * Mini stack-of-floors icon. The active floor (the one this button represents)
+ * is highlighted in the brand color; surrounding floors are rendered in muted
+ * grey so the user can see where in the building they're picking.
+ */
+function FloorStackIcon({ floorIndex, totalFloors, active }: { floorIndex: number; totalFloors: number; active: boolean }) {
+  // Render top-down (highest floor at top of stack visually)
+  const floors = Array.from({ length: totalFloors }, (_, i) => totalFloors - 1 - i)
+  return (
+    <div style={{
+      display: 'flex',
+      flexDirection: 'column',
+      gap: '2px',
+      width: '34px',
+    }}>
+      {floors.map((f) => {
+        const isActiveFloor = f === floorIndex
+        return (
+          <div
+            key={f}
+            style={{
+              height: '6px',
+              borderRadius: '2px',
+              background: isActiveFloor
+                ? (active ? '#2db8b0' : '#1f9189')
+                : 'rgba(15,23,42,0.06)',
+              transform: isActiveFloor && active ? 'scaleX(1.05)' : 'scaleX(1)',
+              transformOrigin: 'left center',
+              transition: 'background 0.2s, transform 0.2s',
+            }}
+          />
+        )
+      })}
     </div>
   )
 }

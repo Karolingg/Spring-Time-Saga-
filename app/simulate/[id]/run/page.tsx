@@ -1145,7 +1145,8 @@ function StairwellSymbol({ x, y, w, h }: { x: number; y: number; w: number; h: n
 function AdminFloorPlan(props: FloorPlanProps) {
 const { config } = props
   const floorPlanSrcByLabel: Record<string, string> = {
-    '1st Floor': '/floorplans/Library%201st%20floor.svg',
+    '1st Floor': '/floorplans/Admin%201st%20floor.svg',
+    '2nd Floor': '/floorplans/Admin%202nd%20floor.svg',
   }
   const floorPlanSrc = floorPlanSrcByLabel[config.floorLabel] ?? ''
 
@@ -1155,7 +1156,7 @@ const { config } = props
         // eslint-disable-next-line @next/next/no-img-element
         <img
           src={floorPlanSrc}
-          alt="UP Cebu Library Floor Plan"
+          alt="UP Cebu Admin Building Floor Plan"
           style={{ width: '100%', height: '100%', display: 'block', position: 'absolute', top: 0, left: 0, objectFit: 'contain', objectPosition: 'center' }}
         />
       )}
@@ -1200,11 +1201,43 @@ function LibraryFloorPlan(props: FloorPlanProps) {
   )
 }
 
+function CSBFloorPlan(props: FloorPlanProps) {
+  const { config } = props
+  const floorPlanSrcByLabel: Record<string, string> = {
+    '1st Floor': '/floorplans/CSB%201st%20floor.svg',
+    '2nd Floor': '/floorplans/CSB%202nd%20floor.svg',
+    '3rd Floor': '/floorplans/CSB%203rd%20floor.svg',
+    '4th Floor': '/floorplans/CSB%204th%20floor.svg',
+    '5th Floor': '/floorplans/CSB%205th%20floor.svg',
+    '6th Floor': '/floorplans/CSB%206th%20floor.svg',
+  }
+  const floorPlanSrc = floorPlanSrcByLabel[config.floorLabel] ?? ''
+
+  return (
+    <div style={{ position: 'relative', width: '100%', height: '100%' }}>
+      {floorPlanSrc && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={floorPlanSrc}
+          alt="UP Cebu Science Building Floor Plan"
+          style={{ width: '100%', height: '100%', display: 'block', position: 'absolute', top: 0, left: 0, objectFit: 'contain', objectPosition: 'center' }}
+        />
+      )}
+      <svg
+        viewBox={`0 0 ${config.viewWidth} ${config.viewHeight}`} preserveAspectRatio="xMidYMid meet"
+        style={{ width: '100%', height: '100%', display: 'block', position: 'absolute', top: 0, left: 0 }}
+      >
+        <SimOverlay {...props} />
+      </svg>
+    </div>
+  )
+}
+
 // ── Floor plan selector ──
 function FloorPlanView(props: FloorPlanProps & { buildingId: string }) {
   const { buildingId, ...rest } = props
   if (buildingId === 'admin-building') return <AdminFloorPlan {...rest} />
-  // if (buildingId === 'science-building') return <CSBFloorPlan {...rest} />
+  if (buildingId === 'science-building') return <CSBFloorPlan {...rest} />
   if (buildingId === 'up-cebu-library') return <LibraryFloorPlan {...rest} />
   // All other buildings use CSB floor plan as placeholder
   //return <CSBFloorPlan {...rest} />
@@ -2181,7 +2214,7 @@ export default function SimulationRunPage() {
                   style={{ padding: '11px', borderRadius: '10px', fontSize: '12px', fontWeight: 600, background: '#f8fafc', border: '1px solid #e6edf2', color: 'var(--text-primary)', cursor: 'pointer', transition: 'all 0.15s' }}>
                   Run Again
                 </button>
-                <button onClick={() => router.push('/simulate')}
+                <button onClick={() => router.push('/map')}
                   style={{ padding: '11px', borderRadius: '10px', fontSize: '12px', fontWeight: 600, background: '#2db8b0', border: 'none', color: '#fff', cursor: 'pointer', transition: 'all 0.15s', boxShadow: '0 2px 12px rgba(45,184,176,0.3)' }}>
                   Back to Map
                 </button>
