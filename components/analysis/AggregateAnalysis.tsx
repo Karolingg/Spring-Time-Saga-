@@ -68,7 +68,16 @@ export function AggregateAnalysis() {
   if (visibleZones.length === 0) {
     return (
       <div style={{ ...SECTION_CARD, textAlign: 'center', padding: '40px' }}>
-        <div style={{ fontSize: '32px', marginBottom: '12px' }}>📈</div>
+        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '12px' }}>
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#2db8b0" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M3 3v18h18" />
+            <path d="M7 15l3-3 3 2 4-6" />
+            <circle cx="7" cy="15" r="1" fill="#2db8b0" />
+            <circle cx="10" cy="12" r="1" fill="#2db8b0" />
+            <circle cx="13" cy="14" r="1" fill="#2db8b0" />
+            <circle cx="17" cy="8" r="1" fill="#2db8b0" />
+          </svg>
+        </div>
         <p style={{ margin: 0, fontSize: '14px', color: 'var(--text-secondary)' }}>
           No completed simulations yet — run some simulations to see aggregate statistics.
         </p>
@@ -81,7 +90,7 @@ export function AggregateAnalysis() {
       {/* Aggregate Congestion Heatmap */}
       <div style={SECTION_CARD}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#2db8b0" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#2db8b0" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
             <path d="M3 3v18h18"/><path d="M18.7 8l-5.1 5.2-2.8-2.7L7 14.3"/>
           </svg>
           <span style={{ fontSize: '11px', fontWeight: '700', letterSpacing: '0.1em', color: 'var(--text-muted)', textTransform: 'uppercase' }}>
@@ -115,7 +124,7 @@ export function AggregateAnalysis() {
       {/* Aggregate Risk Table */}
       <div style={SECTION_CARD}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#2db8b0" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#2db8b0" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
             <rect x="2" y="7" width="20" height="14" rx="2" ry="2"/>
             <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/>
           </svg>

@@ -126,7 +126,8 @@ export default function DashboardPage() {
           padding: '10px 20px', background: '#2db8b0', color: '#fff',
           borderRadius: '8px', textDecoration: 'none', fontSize: '14px', fontWeight: '600', flexShrink: 0,
         }}>
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="#ffffff" stroke="none">
+            <polygon points="8 5 19 12 8 19 8 5" />
           </svg>
           Run Simulation
         </a>
@@ -362,9 +363,11 @@ function DrillTimeline({ runs }: { runs: SimulationRun[] }) {
           padding: '32px 16px', textAlign: 'center',
           background: '#f8fafc', borderRadius: '10px',
         }}>
-          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginBottom: '8px' }}>
-            <circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" />
-          </svg>
+          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '8px' }}>
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" />
+            </svg>
+          </div>
           <div style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>No drill activity yet</div>
           <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '4px' }}>Run your first simulation to see results here</div>
         </div>
@@ -457,9 +460,45 @@ function MetricChip({ label, value }: { label: string; value: string }) {
 
 // ─── Quick Actions ────────────────────────────────────────────────────────────
 const QUICK_ACTIONS = [
-  { href: '/simulate', label: 'Fire Simulation', sub: 'High urgency scenario', color: '#ff6b35', icon: '🔥' },
-  { href: '/simulate', label: 'Earthquake Drill', sub: 'Dynamic obstacles scenario', color: '#f59e0b', icon: '🌎' },
-  { href: '/analysis', label: 'Heatmap Analysis', sub: 'View density & bottlenecks', color: '#2db8b0', icon: '📊' },
+  {
+    href: '/simulate',
+    label: 'Fire Simulation',
+    sub: 'High urgency scenario',
+    color: '#ff6b35',
+    icon: (
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#ff6b35" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M12 21c-4.4 0-8-3.3-8-7.5 0-2.4 1.2-4.5 2.8-6.2C8.3 5.7 9.4 4 10 2c1.4.9 2.8 2.5 3.6 4.2.7-1 1.1-2 1.3-3.2 2.9 2.3 5.1 6 5.1 10.2 0 4.4-3.6 7.8-8 7.8z" />
+        <path d="M12 18.2c-1.9 0-3.5-1.4-3.5-3.2 0-1.1.5-2 1.3-2.8.7-.6 1.2-1.3 1.5-2.2 1.6 1.1 2.9 2.9 2.9 5 0 1.8-1 3.2-2.2 3.2z" />
+      </svg>
+    ),
+  },
+  {
+    href: '/simulate',
+    label: 'Earthquake Drill',
+    sub: 'Dynamic obstacles scenario',
+    color: '#f59e0b',
+    icon: (
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M3 8h18" />
+        <path d="M3 16h18" />
+        <path d="M9 5l-2 6 4 2-2 6" />
+        <path d="M15 5l-2 6 4 2-2 6" />
+      </svg>
+    ),
+  },
+  {
+    href: '/analysis',
+    label: 'Heatmap Analysis',
+    sub: 'View density & bottlenecks',
+    color: '#2db8b0',
+    icon: (
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2db8b0" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="3" y="3" width="18" height="18" rx="2" />
+        <path d="M9 3v18M15 3v18M3 9h18M3 15h18" />
+        <circle cx="15" cy="9" r="2.2" />
+      </svg>
+    ),
+  },
 ]
 
 function QuickActions() {
