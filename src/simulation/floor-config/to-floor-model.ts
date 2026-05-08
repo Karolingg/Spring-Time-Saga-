@@ -9,7 +9,7 @@
  *  1. Use explicit `corridorNodes` + `neighbors` when the floor provides them.
  *  2. Otherwise synthesize corridor nodes from consecutive `primaryPaths` /
  *     `reroutes` waypoints — those polylines already trace the legal paths.
- *  3. Rooms attach to their declared `corridorEntryNode` when present; if not,
+ *  3. Rooms attach to their declared `corridorEntryNode(s)` when present; if not,
  *     they fall back to the nearest corridor/junction node.
  */
 
@@ -189,14 +189,21 @@ export function floorConfigToFloorModel(
       capacity: ROOM_CAPACITY_DEFAULT,
     })
 
-    // Prefer explicit corridorEntryNode (by label).
-    let entryId: string | undefined
-    if (room.corridorEntryNode) {
-      entryId =
-        corridorIdByLabel.get(room.corridorEntryNode) ??
-        nodes.find(n => n.label === room.corridorEntryNode)?.id
-    }
-    if (!entryId) {
+    // Prefer explicit corridor entry node(s) (by label).
+    const entryLabels = room.corridorEntryNodes?.length
+      ? room.corridorEntryNodes
+      : room.corridorEntryNode
+        ? [room.corridorEntryNode]
+        : []
+    const entryIds = entryLabels
+      .map((label) => corridorIdByLabel.get(label) ?? nodes.find(n => n.label === label)?.id)
+      .filter((value): value is string => Boolean(value))
+
+    if (entryIds.length > 0) {
+      for (const entryId of new Set(entryIds)) {
+        addEdge(id, entryId, 1.5, true)
+      }
+    } else {
       // Fallback: nearest corridor/junction/exit node.
       const candidates = nodes.filter(
         n => n.id !== id && (n.type === 'corridor' || n.type === 'junction' || n.type === 'exit'),
@@ -208,10 +215,9 @@ export function floorConfigToFloorModel(
         const d = dx * dx + dy * dy
         if (!best || d < best.d) best = { id: c.id, d }
       }
-      entryId = best?.id
-    }
-    if (entryId) {
-      addEdge(id, entryId, 1.5, true)
+      if (best?.id) {
+        addEdge(id, best.id, 1.5, true)
+      }
     }
   }
 
@@ -252,6 +258,9 @@ const FLOORPLAN_SRC_BY_BUILDING: Record<string, Record<string, string>> = {
     '1st Floor': '/floorplans/Admin%201st%20floor.svg',
     '2nd Floor': '/floorplans/Admin%202nd%20floor.svg',
   },
+  'asx': {
+    '1st Floor': '/floorplans/ASX%201st%20floor.svg',
+  },
   'science-building': {
     '1st Floor': '/floorplans/CSB%201st%20floor.svg',
     '2nd Floor': '/floorplans/CSB%202nd%20floor.svg',
@@ -272,6 +281,7 @@ function resolveFloorplanSrc(buildingId: string, floorLabel: string): string {
 
 const BUILDING_NAMES: Record<string, string> = {
   'admin-building': 'Administration Building',
+  'asx': 'ASX',
   'as-west-wing': 'Arts & Sciences West Wing',
   'as-east-wing': 'Arts & Sciences East Wing',
   'som-admin': 'School of Management Admin',

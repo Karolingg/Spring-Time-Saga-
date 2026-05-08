@@ -15,6 +15,7 @@ const CAMPUS_CENTER: [number, number] = [123.8992, 10.3230] // [lng, lat]
 /* Campus buildings with bounding boxes for coordinate-based matching */
 const CAMPUS_BUILDINGS = [
   { id: 'social-sciences', name: '', bounds: { south: 10.3255, north: 10.3221, west: 123.8971, east: 123.8987 } },
+  { id: 'asx', name: 'ASX', bounds: { south: 10.3241, north: 10.3237, west: 123.8977, east: 123.8981 } },
   { id: 'arts-design', name: 'Arts and Design Workshop', bounds: { south: 10.3247, north: 10.3253, west: 123.8965, east: 123.8975 } },
   { id: 'som-building-1', name: '', bounds: { south: 10.3241, north: 10.3218, west: 123.8969, east: 123.8987 } },
   { id: 'som-admin', bounds: { south: 10.3237, north: 10.3218, west: 123.8972, east: 123.8983 } },
@@ -97,6 +98,17 @@ const BUILDING_DETAILS: Record<string, BuildingDetail> = {
     yearBuilt: '1993',
     riskLevel: 'Medium',
     facilities: ['Science Labs', 'Lecture Rooms', 'Faculty Offices', 'Courtyard Access'],
+  },
+  'asx': {
+    name: 'ASX',
+    type: 'Academic',
+    description:
+      'Annex learning space supporting Arts & Sciences classes and overflow seminars, positioned alongside the Social Sciences hub.',
+    capacity: 120,
+    floors: 2,
+    yearBuilt: '2004',
+    riskLevel: 'Low',
+    facilities: ['Seminar Rooms', 'Faculty Workspaces', 'Breakout Areas'],
   },
   'som-admin': {
     name: 'SOM Administration',
@@ -212,6 +224,10 @@ function boundsCenter(bounds: BuildingBounds): { lat: number; lng: number } {
   }
 }
 
+function markerAnchorPosition(buildingId: string, bounds: BuildingBounds): { lat: number; lng: number } {
+  return boundsCenter(bounds)
+}
+
 function boundsArea(bounds: BuildingBounds): number {
   const b = normalizeBounds(bounds)
   return Math.abs((b.north - b.south) * (b.east - b.west))
@@ -269,7 +285,7 @@ function buildBoundsMarkers(): MapMarker[] {
   return CAMPUS_BUILDINGS
     .filter(b => hasMarker(b.id))
     .map((b) => {
-      const c = boundsCenter(b.bounds)
+      const c = markerAnchorPosition(b.id, b.bounds)
       return {
         id: b.id,
         label: b.name as string,
@@ -589,7 +605,22 @@ export default function SimulatePage() {
     if (!selectedBuildingCenter) return null
     return [selectedBuildingCenter[1], selectedBuildingCenter[0]]
   }, [selectedBuildingCenter])
-  const markers: MapMarker[] = attachMarkerClicks(buildBoundsMarkers(), openPanel)
+  const markers: MapMarker[] = useMemo(() => {
+    const baseMarkers = attachMarkerClicks(buildBoundsMarkers(), openPanel)
+    const asxBounds = CAMPUS_BUILDINGS.find((b) => b.id === 'asx')?.bounds
+    if (!asxBounds) return baseMarkers
+    const anchor = markerAnchorPosition('asx', asxBounds)
+    return [
+      ...baseMarkers,
+      {
+        id: 'asx-marker',
+        label: 'ASX',
+        lat: anchor.lat,
+        lng: anchor.lng,
+        onClick: () => openPanel('asx'),
+      },
+    ]
+  }, [openPanel])
   // Sim parameters
   const [agents, setAgents] = useState(120)
   const [gridWidth, setGridWidth] = useState(60)

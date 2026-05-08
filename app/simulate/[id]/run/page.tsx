@@ -162,8 +162,9 @@ interface RoomDef {
   label: string
   x: number
   y: number
-  // Optional explicit room->corridor entry node to avoid invalid shortcuts.
+  // Optional explicit room->corridor entry node(s) to avoid invalid shortcuts.
   corridorEntryNode?: string
+  corridorEntryNodes?: string[]
 }
 
 interface CorridorNode {
@@ -186,6 +187,46 @@ interface FloorConfig {
   floorLabel: string
   rooms: Record<string, RoomDef>
   corridorNodes?: CorridorNode[]
+}
+
+function getRoomEntryLabels(room?: RoomDef | null): string[] {
+  if (!room) return []
+  if (room.corridorEntryNodes && room.corridorEntryNodes.length > 0) {
+    return room.corridorEntryNodes
+  }
+  return room.corridorEntryNode ? [room.corridorEntryNode] : []
+}
+
+function resolveRoomEntryNode(room: RoomDef | null | undefined, nodes: CorridorNode[]): CorridorNode | null {
+  if (!room || nodes.length === 0) return null
+
+  const nodeByLabel = new Map(nodes.map((node) => [node.label, node]))
+  const entryLabels = getRoomEntryLabels(room)
+
+  if (entryLabels.length > 0) {
+    let best: { node: CorridorNode; dist: number } | null = null
+    for (const label of entryLabels) {
+      const node = nodeByLabel.get(label)
+      if (!node) continue
+      const dist = Math.hypot(node.x - room.x, node.y - room.y)
+      if (!best || dist < best.dist) {
+        best = { node, dist }
+      }
+    }
+    if (best) return best.node
+  }
+
+  // Fallback: nearest corridor node.
+  let nearest = nodes[0]
+  let bestDist = Infinity
+  for (const node of nodes) {
+    const dist = Math.hypot(node.x - room.x, node.y - room.y)
+    if (dist < bestDist) {
+      bestDist = dist
+      nearest = node
+    }
+  }
+  return nearest ?? null
 }
 
 type RouteMode = 'fastest' | 'safest' | null
@@ -261,8 +302,12 @@ function validateFloorConfig(config: FloorConfig, buildingId: string, floorIndex
     }
 
     for (const [roomKey, room] of Object.entries(config.rooms)) {
-      if (room.corridorEntryNode && !labelSet.has(room.corridorEntryNode)) {
-        issues.push(`rooms.${roomKey}.corridorEntryNode references missing node "${room.corridorEntryNode}"`)
+      const entryLabels = getRoomEntryLabels(room)
+      const entryField = room.corridorEntryNodes?.length ? 'corridorEntryNodes' : 'corridorEntryNode'
+      for (const entryLabel of entryLabels) {
+        if (!labelSet.has(entryLabel)) {
+          issues.push(`rooms.${roomKey}.${entryField} references missing node "${entryLabel}"`)
+        }
       }
     }
   }
@@ -360,13 +405,9 @@ function analyzeRoutes(
     const start = exitPath?.[0]
     let roomPrefixLen = 0
     if (room && start) {
-      if (room.corridorEntryNode && config.corridorNodes) {
-        const entry = config.corridorNodes.find(n => n.label === room.corridorEntryNode)
-        if (entry) {
-          roomPrefixLen = Math.hypot(room.x - entry.x, room.y - entry.y) + Math.hypot(entry.x - start.x, entry.y - start.y)
-        } else {
-          roomPrefixLen = Math.hypot(room.x - start.x, room.y - start.y)
-        }
+      const entry = resolveRoomEntryNode(room, config.corridorNodes ?? [])
+      if (entry) {
+        roomPrefixLen = Math.hypot(room.x - entry.x, room.y - entry.y) + Math.hypot(entry.x - start.x, entry.y - start.y)
       } else {
         roomPrefixLen = Math.hypot(room.x - start.x, room.y - start.y)
       }
@@ -433,9 +474,7 @@ function buildFullPath(
 ): Point[] {
   const room = selectedRoom ? config.rooms[selectedRoom] : undefined
   const nodes = config.corridorNodes?.filter(n => !isForbiddenAnchor(n)) ?? []
-  const entryNode = room?.corridorEntryNode
-    ? nodes.find(n => n.label === room.corridorEntryNode)
-    : undefined
+  const entryNode = resolveRoomEntryNode(room ?? null, nodes)
   const roomOrigin = room ? { x: room.x, y: room.y } : null
   const entryPoint = entryNode ? { x: entryNode.x, y: entryNode.y } : null
   const includeEntryConnector = options?.previewFromCorridorEntry && entryPoint
@@ -470,8 +509,7 @@ function buildFullPath(
 
   const getRoomStartIndex = () => {
     if (!selectedRoom) return roomPoint ? findNearestIndex(roomPoint) : -1
-    const room = config.rooms[selectedRoom]
-    const preferredLabel = room?.corridorEntryNode
+    const preferredLabel = entryNode?.label
     if (preferredLabel) {
       const preferredIdx = nodeIndex.get(preferredLabel)
       if (preferredIdx !== undefined) return preferredIdx
@@ -1125,22 +1163,6 @@ function SimOverlay({ config, obstacles, selectedExit, selectedRoom, agentPos, p
   )
 }
 
-// Stairwell visual helper
-function StairwellSymbol({ x, y, w, h }: { x: number; y: number; w: number; h: number }) {
-  const steps = Math.floor(w / 11)
-  return (
-    <g>
-      <rect x={x} y={y} width={w} height={h} fill="#0a1020" stroke="#2d3f5a" strokeWidth="1.2" rx="3" />
-      {Array.from({ length: steps }, (_, i) => (
-        <line key={i} x1={x + 5 + i * 11} y1={y + 4} x2={x + 5 + i * 11} y2={y + h - 4}
-          stroke="#2d3f5a" strokeWidth="0.8" />
-      ))}
-      <text x={x + w / 2} y={y + h / 2 + 3} textAnchor="middle" fill="#4a6080" fontSize="7"
-        fontFamily="system-ui, sans-serif">STAIRS</text>
-    </g>
-  )
-}
-
 // ─── Admin Building Floor Plan ───────────────────────────────────────────────
 function AdminFloorPlan(props: FloorPlanProps) {
 const { config } = props
@@ -1201,6 +1223,33 @@ function LibraryFloorPlan(props: FloorPlanProps) {
   )
 }
 
+function ASXFloorPlan(props: FloorPlanProps) {
+  const { config } = props
+  const floorPlanSrcByLabel: Record<string, string> = {
+    '1st Floor': '/floorplans/ASX%201st%20floor.svg',
+  }
+  const floorPlanSrc = floorPlanSrcByLabel[config.floorLabel] ?? ''
+
+  return (
+    <div style={{ position: 'relative', width: '100%', height: '100%' }}>
+      {floorPlanSrc && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={floorPlanSrc}
+          alt="UP Cebu ASX Floor Plan"
+          style={{ width: '100%', height: '100%', display: 'block', position: 'absolute', top: 0, left: 0, objectFit: 'contain', objectPosition: 'center' }}
+        />
+      )}
+      <svg
+        viewBox={`0 0 ${config.viewWidth} ${config.viewHeight}`} preserveAspectRatio="xMidYMid meet"
+        style={{ width: '100%', height: '100%', display: 'block', position: 'absolute', top: 0, left: 0 }}
+      >
+        <SimOverlay {...props} />
+      </svg>
+    </div>
+  )
+}
+
 function CSBFloorPlan(props: FloorPlanProps) {
   const { config } = props
   const floorPlanSrcByLabel: Record<string, string> = {
@@ -1233,14 +1282,30 @@ function CSBFloorPlan(props: FloorPlanProps) {
   )
 }
 
+// Generic fallback floor plan for buildings without a custom layout — overlays
+// the simulation on a blank canvas so the page still renders.
+function GenericFloorPlan(props: FloorPlanProps) {
+  const { config } = props
+  return (
+    <div style={{ position: 'relative', width: '100%', height: '100%', background: '#f8fafc' }}>
+      <svg
+        viewBox={`0 0 ${config.viewWidth} ${config.viewHeight}`} preserveAspectRatio="xMidYMid meet"
+        style={{ width: '100%', height: '100%', display: 'block', position: 'absolute', top: 0, left: 0 }}
+      >
+        <SimOverlay {...props} />
+      </svg>
+    </div>
+  )
+}
+
 // ── Floor plan selector ──
 function FloorPlanView(props: FloorPlanProps & { buildingId: string }) {
   const { buildingId, ...rest } = props
   if (buildingId === 'admin-building') return <AdminFloorPlan {...rest} />
   if (buildingId === 'science-building') return <CSBFloorPlan {...rest} />
   if (buildingId === 'up-cebu-library') return <LibraryFloorPlan {...rest} />
-  // All other buildings use CSB floor plan as placeholder
-  //return <CSBFloorPlan {...rest} />
+  if (buildingId === 'asx') return <ASXFloorPlan {...rest} />
+  return <GenericFloorPlan {...rest} />
 }
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
@@ -1261,13 +1326,13 @@ export default function SimulationRunPage() {
   const initialFloor = Number.isFinite(parsedFloor) ? Math.max(0, parsedFloor) : 0
   const meta     = DISASTER_META[disaster] || DISASTER_META.fire
 
-  const currentBuildingFloors = BUILDING_FLOORS[regionId]
-  const floors = useMemo(() => getFloorConfigs(regionId), [regionId, currentBuildingFloors])
+  const floors = useMemo(() => getFloorConfigs(regionId), [regionId])
   const isFloorConfigLoading = false
   const floorConfigLoadError: string | null = null
   const hasFloors = floors.length > 0
 
-  const [floorIdx,      setFloorIdx]      = useState(0)
+  const clampFloorIdx = (idx: number) => Math.min(Math.max(idx, 0), Math.max(floors.length - 1, 0))
+  const [floorIdx,      setFloorIdx]      = useState(() => clampFloorIdx(initialFloor))
   const [phase,         setPhase]         = useState<SimPhase>('planning')
   const [selectedRoom,  setSelectedRoom]  = useState<string | null>(null)
   const [routeMode,     setRouteMode]     = useState<RouteMode>(null)
@@ -1278,7 +1343,17 @@ export default function SimulationRunPage() {
   const [events,        setEvents]        = useState<SimEvent[]>([])
   const [elapsedSec,    setElapsedSec]    = useState(0)
   const [activeBlockedExits, setActiveBlockedExits] = useState<Set<string>>(new Set())
-  const [placedHazards, setPlacedHazards] = useState<PlacedHazard[]>([])
+  const [placedHazards, setPlacedHazards] = useState<PlacedHazard[]>(
+    () => loadHazardPlan(getHazardStorageKey(regionId, clampFloorIdx(initialFloor), disaster))?.hazards ?? [],
+  )
+
+  // Sync floorIdx + placedHazards to URL/region/floor changes via render-time
+  // state correction (avoids the react-hooks/set-state-in-effect lint error).
+  const [floorSync, setFloorSync] = useState({ regionId, initialFloor, floorsLen: floors.length })
+  if (floorSync.regionId !== regionId || floorSync.initialFloor !== initialFloor || floorSync.floorsLen !== floors.length) {
+    setFloorSync({ regionId, initialFloor, floorsLen: floors.length })
+    setFloorIdx(clampFloorIdx(initialFloor))
+  }
 
   const animRef   = useRef<ReturnType<typeof setInterval> | null>(null)
   const rerouteTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -1314,27 +1389,20 @@ export default function SimulationRunPage() {
       .sort(([, a], [, b]) => a.label.localeCompare(b.label, undefined, { numeric: true, sensitivity: 'base' }))
   }, [config])
 
-  useEffect(() => {
-    const maxFloorIndex = Math.max(floors.length - 1, 0)
-    setFloorIdx(Math.min(initialFloor, maxFloorIndex))
-  }, [regionId, initialFloor, floors.length])
+  // Reload hazards from storage when the active key changes (render-time pattern).
+  const [hazardKeySync, setHazardKeySync] = useState(hazardStorageKey)
+  if (hazardKeySync !== hazardStorageKey) {
+    setHazardKeySync(hazardStorageKey)
+    setPlacedHazards(loadHazardPlan(hazardStorageKey)?.hazards ?? [])
+  }
 
-  useEffect(() => {
-    const plan = loadHazardPlan(hazardStorageKey)
-    setPlacedHazards(plan?.hazards ?? [])
-  }, [hazardStorageKey])
-
-  useEffect(() => {
-    if (!selectedRoom) return
-
-    const hasSelectedRoomOnFloor = currentFloorRooms.some(([key]) => key === selectedRoom)
-    if (hasSelectedRoomOnFloor) return
-
+  // Drop the room selection if it no longer belongs to the current floor.
+  if (selectedRoom && !currentFloorRooms.some(([key]) => key === selectedRoom)) {
     setSelectedRoom(null)
     setSelectedExit(null)
     setRouteMode(null)
     setSelectedVias([])
-  }, [selectedRoom, currentFloorRooms])
+  }
 
   const planningAgentPos = useMemo<Point>(() => {
     if (!config || !selectedRoom || !config.rooms[selectedRoom]) {
@@ -1397,22 +1465,9 @@ export default function SimulationRunPage() {
   const resolveEntryNodeForRoom = useCallback((roomKey: string): string | null => {
     if (!config || !config.rooms[roomKey] || corridorNodes.length === 0) return null
     const room = config.rooms[roomKey]
-    if (room.corridorEntryNode && corridorNodeByLabel.has(room.corridorEntryNode)) {
-      return room.corridorEntryNode
-    }
-
-    // Fallback to nearest corridor node for rooms without explicit corridor entry metadata.
-    let nearest = corridorNodes[0]
-    let bestDist = Infinity
-    for (const node of corridorNodes) {
-      const d = Math.hypot(node.x - room.x, node.y - room.y)
-      if (d < bestDist) {
-        bestDist = d
-        nearest = node
-      }
-    }
-    return nearest?.label || null
-  }, [config, corridorNodes, corridorNodeByLabel])
+    const entry = resolveRoomEntryNode(room, corridorNodes)
+    return entry?.label ?? null
+  }, [config, corridorNodes])
 
   const entryNodeLabel = useMemo(() => {
     if (!selectedRoom) return null
@@ -1588,7 +1643,7 @@ export default function SimulationRunPage() {
         : `Successfully evacuated via ${actual} in ${time.toFixed(1)}s`,
       'info'
     )
-  }, [config, disaster, pushEvent, exitHazardStats])
+  }, [config, pushEvent, exitHazardStats])
 
   const startSimulation = useCallback(() => {
     if (!selectedExit || !config) return

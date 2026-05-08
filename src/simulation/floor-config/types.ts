@@ -32,8 +32,9 @@ export interface RoomDef {
   label: string
   x: number
   y: number
-  // Optional explicit room->corridor entry node to avoid invalid shortcuts.
+  // Optional explicit room->corridor entry node(s) to avoid invalid shortcuts.
   corridorEntryNode?: string
+  corridorEntryNodes?: string[]
 }
 
 export interface CorridorNode {
