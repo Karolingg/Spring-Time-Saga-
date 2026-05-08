@@ -1445,11 +1445,8 @@ export default function AutonomousScienceBuildingPage() {
                 )}
                 <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                   <button
-                    onClick={() => {
-                      const destination = savedRunId ? `/analysis/runs?runId=${savedRunId}` : '/analysis/runs'
-                      router.push(destination)
-                    }}
-                    style={{ padding: '11px 14px', borderRadius: '10px', border: 'none', background: '#2db8b0', color: '#ffffff', fontSize: '12px', fontWeight: 800, cursor: 'pointer' }}
+                    onClick={() => router.push('/analysis')}
+                    style={{ padding: '10px 16px', borderRadius: '8px', border: 'none', background: '#2db8b0', color: '#ffffff', fontSize: '13px', fontWeight: 600, cursor: 'pointer' }}
                   >
                     Open Analysis
                   </button>
