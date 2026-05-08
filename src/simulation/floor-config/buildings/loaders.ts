@@ -4,6 +4,7 @@ type FloorConfigLoader = () => Promise<FloorConfig[]>
 
 const BUILDING_FLOOR_LOADERS: Record<string, FloorConfigLoader> = {
   'admin-building': () => import('./admin-building').then((m) => m.ADMIN_BUILDING_FLOORS),
+  'asx': () => import('./asx').then((m) => m.ASX_FLOORS),
   'as-west-wing': () => import('./as-west-wing').then((m) => m.AS_WEST_WING_FLOORS),
   'as-east-wing': () => import('./as-east-wing').then((m) => m.AS_EAST_WING_FLOORS),
   'som-admin': () => import('./som-admin').then((m) => m.SOM_ADMIN_FLOORS),

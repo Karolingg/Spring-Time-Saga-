@@ -42,6 +42,8 @@ const DISASTERS = [
 const AUTONOMOUS_BUILDING_IDS = new Set([
   'science-building',
   'up-cebu-library',
+  'admin-building',
+  'asx',
 ])
 
 function floorLabel(index: number): string {

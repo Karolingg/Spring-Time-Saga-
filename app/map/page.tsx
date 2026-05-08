@@ -52,6 +52,19 @@ const CAMPUS_BUILDINGS: CampusBuilding[] = [
     notes: 'Houses social science classrooms and faculty offices. Main exit leads to the campus quadrangle.',
   },
   {
+    id: 'asx',
+    name: 'ASX Building',
+    type: 'Academic',
+    bounds: { south: 10.3237, north: 10.3241, west: 123.8977, east: 123.8981 },
+    center: [10.3239, 123.8979],
+    capacity: 120,
+    floors: 2,
+    exits: 2,
+    riskLevel: 'LOW',
+    lastDrillDate: '2025-08-30',
+    notes: 'Annex learning space supporting Arts & Sciences classes and overflow seminars.',
+  },
+  {
     id: 'som-building-1',
     name: 'SOM Building 1',
     type: 'Academic',
@@ -187,10 +200,6 @@ const RISK_COLORS: Record<string, string> = {
   LOW: '#22c55e',
   MEDIUM: '#f59e0b',
   HIGH: '#ef4444',
-}
-
-function boundsArea(b: BuildingBounds): number {
-  return Math.abs((b.north - b.south) * (b.east - b.west))
 }
 
 function boundsCenter(b: BuildingBounds): [number, number] {
