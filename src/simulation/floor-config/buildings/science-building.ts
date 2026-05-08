@@ -80,9 +80,11 @@ const SCIENCE_2F: FloorConfig = {
       { id: 'smoke-spreading', x: 590, y: 165, w: 60, h: 50, type: 'smoke', label: 'Smoke', blocksExits: [] },
     ],
     earthquake: [
+      // Main shock (t=0) — debris falls instantly during the tremor.
       { id: 'debris-center-stair', x: 440, y: 215, w: 100, h: 45, type: 'debris', label: 'Stairwell Debris', blocksExits: ['S1'] },
       { id: 'debris-corridor', x: 440, y: 330, w: 100, h: 35, type: 'debris', label: 'Debris', blocksExits: [] },
-      { id: 'debris-se-stair', x: 580, y: 470, w: 70, h: 40, type: 'debris', label: 'Debris', blocksExits: ['S3'] },
+      // Aftershock (~t=25s) — secondary stairwell collapse during evacuation.
+      { id: 'debris-se-stair', x: 580, y: 470, w: 70, h: 40, type: 'debris', label: 'Aftershock Debris', blocksExits: ['S3'], appearsAt: 25 },
     ],
   },
   efficiency: { S1: 0.92, S2: 0.85, S3: 0.85 },
@@ -136,9 +138,11 @@ const SCIENCE_3F: FloorConfig = {
       { id: 'smoke-spreading', x: 590, y: 165, w: 60, h: 50, type: 'smoke', label: 'Smoke', blocksExits: [] },
     ],
     earthquake: [
+      // Main shock (t=0) — debris falls instantly during the tremor.
       { id: 'debris-center-stair', x: 440, y: 215, w: 100, h: 45, type: 'debris', label: 'Stairwell Debris', blocksExits: ['S1'] },
       { id: 'debris-corridor', x: 440, y: 330, w: 100, h: 35, type: 'debris', label: 'Debris', blocksExits: [] },
-      { id: 'debris-se-stair', x: 580, y: 470, w: 70, h: 40, type: 'debris', label: 'Debris', blocksExits: ['S3'] },
+      // Aftershock (~t=25s) — secondary stairwell collapse during evacuation.
+      { id: 'debris-se-stair', x: 580, y: 470, w: 70, h: 40, type: 'debris', label: 'Aftershock Debris', blocksExits: ['S3'], appearsAt: 25 },
     ],
   },
   efficiency: { S1: 0.92, S2: 0.85, S3: 0.85 },
@@ -211,9 +215,11 @@ export const SCIENCE_4F: FloorConfig = {
       { id: 'smoke-spreading', x: 590, y: 165, w: 60, h: 50, type: 'smoke', label: 'Smoke', blocksExits: [] },
     ],
     earthquake: [
+      // Main shock (t=0) — debris falls instantly during the tremor.
       { id: 'debris-center-stair', x: 440, y: 215, w: 100, h: 45, type: 'debris', label: 'Stairwell Debris', blocksExits: ['S1'] },
       { id: 'debris-corridor', x: 440, y: 330, w: 100, h: 35, type: 'debris', label: 'Debris', blocksExits: [] },
-      { id: 'debris-se-stair', x: 580, y: 470, w: 70, h: 40, type: 'debris', label: 'Debris', blocksExits: ['S3'] },
+      // Aftershock (~t=25s) — secondary stairwell collapse during evacuation.
+      { id: 'debris-se-stair', x: 580, y: 470, w: 70, h: 40, type: 'debris', label: 'Aftershock Debris', blocksExits: ['S3'], appearsAt: 25 },
     ],
   },
   efficiency: { S1: 0.92, S2: 0.85, S3: 0.85 },
@@ -272,9 +278,11 @@ export const SCIENCE_5F: FloorConfig = {
       { id: 'smoke-spreading', x: 590, y: 165, w: 60, h: 50, type: 'smoke', label: 'Smoke', blocksExits: [] },
     ],
     earthquake: [
+      // Main shock (t=0) — debris falls instantly during the tremor.
       { id: 'debris-center-stair', x: 440, y: 215, w: 100, h: 45, type: 'debris', label: 'Stairwell Debris', blocksExits: ['S1'] },
       { id: 'debris-corridor', x: 440, y: 330, w: 100, h: 35, type: 'debris', label: 'Debris', blocksExits: [] },
-      { id: 'debris-se-stair', x: 580, y: 470, w: 70, h: 40, type: 'debris', label: 'Debris', blocksExits: ['S3'] },
+      // Aftershock (~t=25s) — secondary stairwell collapse during evacuation.
+      { id: 'debris-se-stair', x: 580, y: 470, w: 70, h: 40, type: 'debris', label: 'Aftershock Debris', blocksExits: ['S3'], appearsAt: 25 },
     ],
   },
   efficiency: { S1: 0.92, S2: 0.85, S3: 0.85 },
@@ -330,9 +338,11 @@ export const SCIENCE_6F: FloorConfig = {
       { id: 'smoke-spreading', x: 590, y: 165, w: 60, h: 50, type: 'smoke', label: 'Smoke', blocksExits: [] },
     ],
     earthquake: [
+      // Main shock (t=0) — debris falls instantly during the tremor.
       { id: 'debris-center-stair', x: 440, y: 215, w: 100, h: 45, type: 'debris', label: 'Stairwell Debris', blocksExits: ['S1'] },
       { id: 'debris-corridor', x: 440, y: 330, w: 100, h: 35, type: 'debris', label: 'Debris', blocksExits: [] },
-      { id: 'debris-se-stair', x: 580, y: 470, w: 70, h: 40, type: 'debris', label: 'Debris', blocksExits: ['S3'] },
+      // Aftershock (~t=25s) — secondary stairwell collapse during evacuation.
+      { id: 'debris-se-stair', x: 580, y: 470, w: 70, h: 40, type: 'debris', label: 'Aftershock Debris', blocksExits: ['S3'], appearsAt: 25 },
     ],
   },
   efficiency: { S1: 0.92, S2: 0.85, S3: 0.85 },

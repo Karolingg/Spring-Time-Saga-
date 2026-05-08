@@ -21,6 +21,11 @@ export interface ObstacleDef {
   type: 'fire' | 'smoke' | 'debris'
   label: string
   blocksExits: string[]
+  /** Seconds (simulated) before this obstacle becomes active. Defaults to 0
+   *  (appears immediately). Use a non-zero value to author **aftershocks** in
+   *  earthquake scenarios — e.g. set the main shock at 0 and a follow-up
+   *  debris fall at 20s to model a realistic aftershock pattern. */
+  appearsAt?: number
 }
 
 export interface RoomDef {
