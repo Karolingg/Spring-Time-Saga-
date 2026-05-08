@@ -255,6 +255,27 @@ function updateHazards(state: SimulationState) {
   }
 }
 
+// Distance from a point to a line segment, used for hazard-edge intersection.
+function distancePointToSegment(
+  px: number,
+  py: number,
+  ax: number,
+  ay: number,
+  bx: number,
+  by: number,
+): number {
+  const abx = bx - ax
+  const aby = by - ay
+  const apx = px - ax
+  const apy = py - ay
+  const abLenSq = abx * abx + aby * aby
+  if (abLenSq === 0) return Math.hypot(apx, apy)
+  const t = Math.max(0, Math.min(1, (apx * abx + apy * aby) / abLenSq))
+  const cx = ax + t * abx
+  const cy = ay + t * aby
+  return Math.hypot(px - cx, py - cy)
+}
+
 /* ── Block edges that pass through active hazard zones ──
  *
  * Hazard semantics:
@@ -280,10 +301,15 @@ function updateBlockedEdges(state: SimulationState, floor: FloorModel) {
       const toNode = getNode(floor, edge.to)
       if (!fromNode || !toNode) continue
 
-      const mx = (fromNode.x + toNode.x) / 2
-      const my = (fromNode.y + toNode.y) / 2
-      const dist = Math.hypot(mx - h.zone.x, my - h.zone.y)
-      if (dist >= r) continue
+      const dist = distancePointToSegment(
+        h.zone.x,
+        h.zone.y,
+        fromNode.x,
+        fromNode.y,
+        toNode.x,
+        toNode.y,
+      )
+      if (dist > r) continue
 
       const key = edgeKey(edge.from, edge.to)
       if (isSoft) {
