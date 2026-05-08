@@ -509,7 +509,6 @@ function buildFullPath(
 
   const getRoomStartIndex = () => {
     if (!selectedRoom) return roomPoint ? findNearestIndex(roomPoint) : -1
-    const room = config.rooms[selectedRoom]
     const preferredLabel = entryNode?.label
     if (preferredLabel) {
       const preferredIdx = nodeIndex.get(preferredLabel)
@@ -1164,22 +1163,6 @@ function SimOverlay({ config, obstacles, selectedExit, selectedRoom, agentPos, p
   )
 }
 
-// Stairwell visual helper
-function StairwellSymbol({ x, y, w, h }: { x: number; y: number; w: number; h: number }) {
-  const steps = Math.floor(w / 11)
-  return (
-    <g>
-      <rect x={x} y={y} width={w} height={h} fill="#0a1020" stroke="#2d3f5a" strokeWidth="1.2" rx="3" />
-      {Array.from({ length: steps }, (_, i) => (
-        <line key={i} x1={x + 5 + i * 11} y1={y + 4} x2={x + 5 + i * 11} y2={y + h - 4}
-          stroke="#2d3f5a" strokeWidth="0.8" />
-      ))}
-      <text x={x + w / 2} y={y + h / 2 + 3} textAnchor="middle" fill="#4a6080" fontSize="7"
-        fontFamily="system-ui, sans-serif">STAIRS</text>
-    </g>
-  )
-}
-
 // ─── Admin Building Floor Plan ───────────────────────────────────────────────
 function AdminFloorPlan(props: FloorPlanProps) {
 const { config } = props
@@ -1299,6 +1282,22 @@ function CSBFloorPlan(props: FloorPlanProps) {
   )
 }
 
+// Generic fallback floor plan for buildings without a custom layout — overlays
+// the simulation on a blank canvas so the page still renders.
+function GenericFloorPlan(props: FloorPlanProps) {
+  const { config } = props
+  return (
+    <div style={{ position: 'relative', width: '100%', height: '100%', background: '#f8fafc' }}>
+      <svg
+        viewBox={`0 0 ${config.viewWidth} ${config.viewHeight}`} preserveAspectRatio="xMidYMid meet"
+        style={{ width: '100%', height: '100%', display: 'block', position: 'absolute', top: 0, left: 0 }}
+      >
+        <SimOverlay {...props} />
+      </svg>
+    </div>
+  )
+}
+
 // ── Floor plan selector ──
 function FloorPlanView(props: FloorPlanProps & { buildingId: string }) {
   const { buildingId, ...rest } = props
@@ -1306,8 +1305,7 @@ function FloorPlanView(props: FloorPlanProps & { buildingId: string }) {
   if (buildingId === 'science-building') return <CSBFloorPlan {...rest} />
   if (buildingId === 'up-cebu-library') return <LibraryFloorPlan {...rest} />
   if (buildingId === 'asx') return <ASXFloorPlan {...rest} />
-  // All other buildings use CSB floor plan as placeholder
-  //return <CSBFloorPlan {...rest} />
+  return <GenericFloorPlan {...rest} />
 }
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
@@ -1328,13 +1326,13 @@ export default function SimulationRunPage() {
   const initialFloor = Number.isFinite(parsedFloor) ? Math.max(0, parsedFloor) : 0
   const meta     = DISASTER_META[disaster] || DISASTER_META.fire
 
-  const currentBuildingFloors = BUILDING_FLOORS[regionId]
-  const floors = useMemo(() => getFloorConfigs(regionId), [regionId, currentBuildingFloors])
+  const floors = useMemo(() => getFloorConfigs(regionId), [regionId])
   const isFloorConfigLoading = false
   const floorConfigLoadError: string | null = null
   const hasFloors = floors.length > 0
 
-  const [floorIdx,      setFloorIdx]      = useState(0)
+  const clampFloorIdx = (idx: number) => Math.min(Math.max(idx, 0), Math.max(floors.length - 1, 0))
+  const [floorIdx,      setFloorIdx]      = useState(() => clampFloorIdx(initialFloor))
   const [phase,         setPhase]         = useState<SimPhase>('planning')
   const [selectedRoom,  setSelectedRoom]  = useState<string | null>(null)
   const [routeMode,     setRouteMode]     = useState<RouteMode>(null)
@@ -1345,7 +1343,17 @@ export default function SimulationRunPage() {
   const [events,        setEvents]        = useState<SimEvent[]>([])
   const [elapsedSec,    setElapsedSec]    = useState(0)
   const [activeBlockedExits, setActiveBlockedExits] = useState<Set<string>>(new Set())
-  const [placedHazards, setPlacedHazards] = useState<PlacedHazard[]>([])
+  const [placedHazards, setPlacedHazards] = useState<PlacedHazard[]>(
+    () => loadHazardPlan(getHazardStorageKey(regionId, clampFloorIdx(initialFloor), disaster))?.hazards ?? [],
+  )
+
+  // Sync floorIdx + placedHazards to URL/region/floor changes via render-time
+  // state correction (avoids the react-hooks/set-state-in-effect lint error).
+  const [floorSync, setFloorSync] = useState({ regionId, initialFloor, floorsLen: floors.length })
+  if (floorSync.regionId !== regionId || floorSync.initialFloor !== initialFloor || floorSync.floorsLen !== floors.length) {
+    setFloorSync({ regionId, initialFloor, floorsLen: floors.length })
+    setFloorIdx(clampFloorIdx(initialFloor))
+  }
 
   const animRef   = useRef<ReturnType<typeof setInterval> | null>(null)
   const rerouteTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -1381,27 +1389,20 @@ export default function SimulationRunPage() {
       .sort(([, a], [, b]) => a.label.localeCompare(b.label, undefined, { numeric: true, sensitivity: 'base' }))
   }, [config])
 
-  useEffect(() => {
-    const maxFloorIndex = Math.max(floors.length - 1, 0)
-    setFloorIdx(Math.min(initialFloor, maxFloorIndex))
-  }, [regionId, initialFloor, floors.length])
+  // Reload hazards from storage when the active key changes (render-time pattern).
+  const [hazardKeySync, setHazardKeySync] = useState(hazardStorageKey)
+  if (hazardKeySync !== hazardStorageKey) {
+    setHazardKeySync(hazardStorageKey)
+    setPlacedHazards(loadHazardPlan(hazardStorageKey)?.hazards ?? [])
+  }
 
-  useEffect(() => {
-    const plan = loadHazardPlan(hazardStorageKey)
-    setPlacedHazards(plan?.hazards ?? [])
-  }, [hazardStorageKey])
-
-  useEffect(() => {
-    if (!selectedRoom) return
-
-    const hasSelectedRoomOnFloor = currentFloorRooms.some(([key]) => key === selectedRoom)
-    if (hasSelectedRoomOnFloor) return
-
+  // Drop the room selection if it no longer belongs to the current floor.
+  if (selectedRoom && !currentFloorRooms.some(([key]) => key === selectedRoom)) {
     setSelectedRoom(null)
     setSelectedExit(null)
     setRouteMode(null)
     setSelectedVias([])
-  }, [selectedRoom, currentFloorRooms])
+  }
 
   const planningAgentPos = useMemo<Point>(() => {
     if (!config || !selectedRoom || !config.rooms[selectedRoom]) {
@@ -1642,7 +1643,7 @@ export default function SimulationRunPage() {
         : `Successfully evacuated via ${actual} in ${time.toFixed(1)}s`,
       'info'
     )
-  }, [config, disaster, pushEvent, exitHazardStats])
+  }, [config, pushEvent, exitHazardStats])
 
   const startSimulation = useCallback(() => {
     if (!selectedExit || !config) return

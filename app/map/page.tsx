@@ -53,7 +53,7 @@ const CAMPUS_BUILDINGS: CampusBuilding[] = [
   },
   {
     id: 'asx',
-    name: 'ASX',
+    name: 'ASX Building',
     type: 'Academic',
     bounds: { south: 10.3237, north: 10.3241, west: 123.8977, east: 123.8981 },
     center: [10.3239, 123.8979],
@@ -200,10 +200,6 @@ const RISK_COLORS: Record<string, string> = {
   LOW: '#22c55e',
   MEDIUM: '#f59e0b',
   HIGH: '#ef4444',
-}
-
-function boundsArea(b: BuildingBounds): number {
-  return Math.abs((b.north - b.south) * (b.east - b.west))
 }
 
 function boundsCenter(b: BuildingBounds): [number, number] {

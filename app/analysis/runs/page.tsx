@@ -10,6 +10,7 @@ import {
   resetAllSimulationData,
 } from '@/src/services/simulation.service'
 import { CongestionHeatmap } from '@/components/analysis/CongestionHeatmap'
+import { SpatialBottleneckHeatmap } from '@/components/analysis/SpatialBottleneckHeatmap'
 import { BuildingRiskTable } from '@/components/analysis/BuildingRiskTable'
 import { ConfirmModal } from '@/components/ConfirmModal'
 import type { SimulationRun, SimulationZone } from '@/src/schema/simulation.types'
@@ -154,6 +155,15 @@ export default function AnalysisRunsPage() {
 
       {!isLoadingData && run && hasUsedZones && (
         <>
+          {run.buildingId && (
+            <div style={SECTION_CARD}>
+              <SpatialBottleneckHeatmap
+                buildingId={run.buildingId}
+                zones={usedZones}
+              />
+            </div>
+          )}
+
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '20px' }}>
             <div style={{ ...SECTION_CARD, marginBottom: 0 }}>
               <CongestionHeatmap zones={usedZones} />
