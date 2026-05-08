@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { useAuth } from '@/src/hooks/useAuth'
 import {
   getLatestSimulationRun,
@@ -30,6 +31,8 @@ interface RunHistoryItem {
 
 export default function AnalysisRunsPage() {
   const { isAuthenticated, isLoading: isAuthLoading } = useAuth()
+  const searchParams = useSearchParams()
+  const requestedRunId = searchParams.get('runId') || searchParams.get('run')
 
   const [run, setRun] = useState<SimulationRun | null>(null)
   const [runHistory, setRunHistory] = useState<RunHistoryItem[]>([])
@@ -45,19 +48,34 @@ export default function AnalysisRunsPage() {
 
   useEffect(() => {
     if (!isAuthenticated) return
-    loadInitialData()
+    loadInitialData(requestedRunId)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isAuthenticated])
+  }, [isAuthenticated, requestedRunId])
 
-  async function loadInitialData() {
+  async function loadInitialData(targetRunId?: string | null) {
     setIsLoadingData(true)
     try {
       const [latest, history] = await Promise.all([
         getLatestSimulationRun(),
         getSimulationHistory(20),
       ])
-      setRun(latest)
-      setRunHistory(buildRunHistory(history))
+
+      let selectedRun = latest
+      if (targetRunId) {
+        try {
+          selectedRun = await getSimulationRun(targetRunId)
+        } catch (err) {
+          console.error('Failed to load requested simulation run:', err)
+        }
+      }
+
+      const historyItems = buildRunHistory(history)
+      if (selectedRun && !historyItems.some(item => item.id === selectedRun.id)) {
+        historyItems.unshift({ id: selectedRun.id, label: buildRunLabel(selectedRun) })
+      }
+
+      setRun(selectedRun)
+      setRunHistory(historyItems)
     } catch (err) {
       console.error('Failed to load simulation data:', err)
     } finally {
@@ -65,10 +83,14 @@ export default function AnalysisRunsPage() {
     }
   }
 
+  function buildRunLabel(run: SimulationRun): string {
+    return `${run.disasterType} — ${run.config?.agentCount ?? 0} agents (${new Date(run.createdAt).toLocaleString()})`
+  }
+
   function buildRunHistory(runs: SimulationRun[]): RunHistoryItem[] {
     return runs.map(r => ({
       id: r.id,
-      label: `${r.disasterType} — ${r.config?.agentCount ?? 0} agents (${new Date(r.createdAt).toLocaleString()})`,
+      label: buildRunLabel(r),
     }))
   }
 

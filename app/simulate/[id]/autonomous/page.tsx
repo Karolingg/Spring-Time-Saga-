@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import { useAuth } from '@/src/hooks/useAuth'
+import { isSupabaseConfigured } from '@/src/config/supabase'
 import {
   buildBottleneckSummaries,
   buildZoneSummaries,
@@ -194,6 +195,7 @@ export default function AutonomousScienceBuildingPage() {
   const [placedHazards, setPlacedHazards] = useState<PlacedHazard[]>([])
   const [selectedHazardId, setSelectedHazardId] = useState<string | null>(null)
   const dropRef = useRef<HTMLDivElement | null>(null)
+  const hazardDragRef = useRef<{ id: string; offsetX: number; offsetY: number; radius: number } | null>(null)
 
   const simStateRef = useRef<SimulationState | null>(null)
   const traceRef = useRef<AutonomousTrace | null>(null)
@@ -233,17 +235,24 @@ export default function AutonomousScienceBuildingPage() {
     saveHazardPlan(hazardStorageKey, placedHazards)
   }, [hazardStorageKey, placedHazards])
 
+  const getMapPoint = useCallback((clientX: number, clientY: number) => {
+    if (!dropRef.current) return null
+    const rect = dropRef.current.getBoundingClientRect()
+    if (!rect.width || !rect.height) return null
+    const px = ((clientX - rect.left) / rect.width) * 1200
+    const py = ((clientY - rect.top) / rect.height) * 675
+    return { x: px, y: py }
+  }, [])
+
   const handleDrop = useCallback((event: React.DragEvent<HTMLDivElement>) => {
     event.preventDefault()
     const type = event.dataTransfer.getData('application/x-hazard') as PlacedHazard['type']
-    if (!type || !dropRef.current) return
-    const rect = dropRef.current.getBoundingClientRect()
-    if (!rect.width || !rect.height) return
-    const px = ((event.clientX - rect.left) / rect.width) * 1200
-    const py = ((event.clientY - rect.top) / rect.height) * 675
+    if (!type) return
+    const point = getMapPoint(event.clientX, event.clientY)
+    if (!point) return
     const radius = type === 'fire' ? 38 : type === 'smoke' ? 46 : 34
-    const x = clamp(px, radius, 1200 - radius)
-    const y = clamp(py, radius, 675 - radius)
+    const x = clamp(point.x, radius, 1200 - radius)
+    const y = clamp(point.y, radius, 675 - radius)
 
     setPlacedHazards((prev) => [
       ...prev,
@@ -255,6 +264,46 @@ export default function AutonomousScienceBuildingPage() {
         radius,
       },
     ])
+  }, [getMapPoint])
+
+  const moveHazardTo = useCallback((clientX: number, clientY: number) => {
+    const dragState = hazardDragRef.current
+    if (!dragState) return
+    const point = getMapPoint(clientX, clientY)
+    if (!point) return
+
+    const nextX = clamp(point.x + dragState.offsetX, dragState.radius, 1200 - dragState.radius)
+    const nextY = clamp(point.y + dragState.offsetY, dragState.radius, 675 - dragState.radius)
+
+    setPlacedHazards((prev) => prev.map((hazard) => (
+      hazard.id === dragState.id ? { ...hazard, x: nextX, y: nextY } : hazard
+    )))
+  }, [getMapPoint])
+
+  const handleHazardPointerDown = useCallback((hazard: PlacedHazard) => (event: React.PointerEvent<SVGGElement>) => {
+    if (simState) return
+    const point = getMapPoint(event.clientX, event.clientY)
+    if (!point) return
+    event.preventDefault()
+    event.stopPropagation()
+    setSelectedHazardId(hazard.id)
+    hazardDragRef.current = {
+      id: hazard.id,
+      offsetX: hazard.x - point.x,
+      offsetY: hazard.y - point.y,
+      radius: hazard.radius,
+    }
+    event.currentTarget.setPointerCapture?.(event.pointerId)
+  }, [getMapPoint, simState])
+
+  const handleHazardPointerMove = useCallback((event: React.PointerEvent<SVGElement>) => {
+    if (!hazardDragRef.current) return
+    event.preventDefault()
+    moveHazardTo(event.clientX, event.clientY)
+  }, [moveHazardTo])
+
+  const stopHazardDrag = useCallback(() => {
+    hazardDragRef.current = null
   }, [])
 
   const handleDragStart = (type: PlacedHazard['type']) => (event: React.DragEvent<HTMLButtonElement>) => {
@@ -293,6 +342,16 @@ export default function AutonomousScienceBuildingPage() {
     floorModel: FloorModel,
   ) => {
     try {
+      if (!isSupabaseConfigured) {
+        setSaveStatus('error')
+        setSaveMessage('Supabase is not configured. Add NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY to .env.local.')
+        return
+      }
+      if (!isAuthenticated) {
+        setSaveStatus('error')
+        setSaveMessage('Sign in to save simulation results.')
+        return
+      }
       setSaveStatus('saving')
       setSaveMessage('Saving autonomous run to analysis history...')
 
@@ -323,13 +382,24 @@ export default function AutonomousScienceBuildingPage() {
 
       setSavedRunId(runId)
       setSaveStatus('saved')
-      setSaveMessage('Run saved. You can open the analysis page to inspect congestion zones.')
+      setSaveMessage('Run saved. Open run analysis to inspect congestion zones.')
     } catch (error) {
+      const message = error instanceof Error ? error.message : String(error)
+      if (message.includes('Not authenticated')) {
+        setSaveStatus('error')
+        setSaveMessage('Sign in to save simulation results.')
+        return
+      }
+      if (message.includes('Failed to fetch')) {
+        setSaveStatus('error')
+        setSaveMessage('Could not reach the database. Check your Supabase connection and try again.')
+        return
+      }
       console.error('Failed to save autonomous run:', error)
       setSaveStatus('error')
       setSaveMessage('Simulation completed, but saving to analysis failed.')
     }
-  }, [disaster, regionId, simulationSpeed])
+  }, [disaster, regionId, simulationSpeed, isAuthenticated])
 
   useEffect(() => {
     if (!floor || !isPlaying) return
@@ -1040,7 +1110,14 @@ export default function AutonomousScienceBuildingPage() {
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={floor.floorplanSrc} alt={`${building?.name ?? regionId} ${floor.label} floor plan`} />
-            <svg viewBox="0 0 1200 675" preserveAspectRatio="xMidYMid meet" aria-hidden="true">
+            <svg
+              viewBox="0 0 1200 675"
+              preserveAspectRatio="xMidYMid meet"
+              aria-hidden="true"
+              onPointerMove={handleHazardPointerMove}
+              onPointerUp={stopHazardDrag}
+              onPointerLeave={stopHazardDrag}
+            >
               {SHOW_DEBUG_GRAPH && floor.edges.map((edge) => {
                 const fromNode = getNode(floor, edge.from)
                 const toNode = getNode(floor, edge.to)
@@ -1085,7 +1162,15 @@ export default function AutonomousScienceBuildingPage() {
               })}
 
               {!simState && placedHazards.map((hazard) => (
-                <g key={hazard.id} onClick={() => setSelectedHazardId(hazard.id)} style={{ cursor: 'pointer' }}>
+                <g
+                  key={hazard.id}
+                  onClick={() => setSelectedHazardId(hazard.id)}
+                  onPointerDown={handleHazardPointerDown(hazard)}
+                  onPointerMove={handleHazardPointerMove}
+                  onPointerUp={stopHazardDrag}
+                  onPointerCancel={stopHazardDrag}
+                  style={{ cursor: 'grab' }}
+                >
                   {hazard.type === 'debris' ? (
                     <rect
                       x={hazard.x - hazard.radius}
@@ -1360,7 +1445,10 @@ export default function AutonomousScienceBuildingPage() {
                 )}
                 <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                   <button
-                    onClick={() => router.push('/analysis')}
+                    onClick={() => {
+                      const destination = savedRunId ? `/analysis/runs?runId=${savedRunId}` : '/analysis/runs'
+                      router.push(destination)
+                    }}
                     style={{ padding: '11px 14px', borderRadius: '10px', border: 'none', background: '#2db8b0', color: '#ffffff', fontSize: '12px', fontWeight: 800, cursor: 'pointer' }}
                   >
                     Open Analysis
