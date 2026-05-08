@@ -248,7 +248,7 @@ function PageHeader({ runHistory, currentRunId, onRunChange, onRequestDelete, on
           Run Analysis
         </h1>
         <p style={{ margin: 0, fontSize: '14px', color: 'var(--text-secondary)' }}>
-          Congestion density and bottleneck identification
+          Crowd heatmap and bottleneck identification
         </p>
       </div>
 

@@ -13,11 +13,13 @@ interface IntensityBand {
   label: string
 }
 
+// Muted-warm palette — one notch deeper than pastel for readability,
+// but still well short of the harsh full-strength alert colors.
 const INTENSITY_BANDS: IntensityBand[] = [
-  { threshold: 75, color: '#ef4444', label: 'Critical' },
-  { threshold: 55, color: '#f97316', label: 'High'     },
-  { threshold: 35, color: '#f59e0b', label: 'Medium'   },
-  { threshold: 0,  color: '#22c55e', label: 'Low'      },
+  { threshold: 75, color: '#f43f5e', label: 'Critical' },   // rose-500
+  { threshold: 55, color: '#f97316', label: 'High'     },   // orange-500
+  { threshold: 35, color: '#f59e0b', label: 'Medium'   },   // amber-500
+  { threshold: 0,  color: '#4ade80', label: 'Low'      },   // green-400
 ]
 
 const SCALE_TICKS = [
@@ -140,7 +142,7 @@ export function SpatialBottleneckHeatmap({ buildingId, zones }: SpatialBottlenec
           </div>
           <div>
             <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.01em' }}>
-              Congestion Density Heatmap
+              Crowd Heatmap
             </h3>
             <p style={{ margin: '2px 0 0', fontSize: '12px', color: 'var(--text-secondary)' }}>
               {building.name} · {activeFloor.label}
@@ -180,7 +182,7 @@ export function SpatialBottleneckHeatmap({ buildingId, zones }: SpatialBottlenec
       {/* ── Stats strip ──────────────────────────────────────────────── */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '8px', marginBottom: '16px' }}>
         <StatPill label="Hotspots" value={heatNodes.length} accent="#2db8b0" />
-        <StatPill label="Critical" value={criticalCount} accent="#ef4444" emphasized={criticalCount > 0} />
+        <StatPill label="Critical" value={criticalCount} accent="#f43f5e" emphasized={criticalCount > 0} />
         <StatPill label="High Risk" value={highCount} accent="#f97316" />
         <StatPill label="Peak Agents" value={peakAgents} accent="#3b82f6" suffix={peakAgents > 0 ? ' max' : ''} />
       </div>
@@ -227,21 +229,23 @@ export function SpatialBottleneckHeatmap({ buildingId, zones }: SpatialBottlenec
               style={{ width: '100%', height: '100%', mixBlendMode: 'multiply' }}
             >
               <defs>
-                {/* Outer halo: very wide, soft tint */}
+                {/* Outer halo — muted-warm tint, slightly deeper than pure
+                   pastel for readability. Fades cleanly to nothing. */}
                 <radialGradient id="halo-blob" cx="50%" cy="50%">
-                  <stop offset="0%"   stopColor="rgba(239,68,68,0.55)" />
-                  <stop offset="40%"  stopColor="rgba(249,115,22,0.40)" />
-                  <stop offset="70%"  stopColor="rgba(250,204,21,0.25)" />
-                  <stop offset="100%" stopColor="rgba(34,197,94,0)" />
+                  <stop offset="0%"   stopColor="rgba(244,63,94,0.50)"  />
+                  <stop offset="35%"  stopColor="rgba(249,115,22,0.40)" />
+                  <stop offset="65%"  stopColor="rgba(245,158,11,0.28)" />
+                  <stop offset="100%" stopColor="rgba(74,222,128,0)"    />
                 </radialGradient>
 
-                {/* Inner core: vivid concentrated heat */}
+                {/* Inner core — warm rose peak. Deep enough to read as a
+                   real hotspot, but not crimson or alarming. */}
                 <radialGradient id="core-blob" cx="50%" cy="50%">
-                  <stop offset="0%"   stopColor="rgba(127,29,29,0.95)" />
-                  <stop offset="20%"  stopColor="rgba(220,38,38,0.92)" />
-                  <stop offset="45%"  stopColor="rgba(249,115,22,0.78)" />
-                  <stop offset="70%"  stopColor="rgba(250,204,21,0.5)" />
-                  <stop offset="100%" stopColor="rgba(34,197,94,0)" />
+                  <stop offset="0%"   stopColor="rgba(244,63,94,0.78)"  />
+                  <stop offset="30%"  stopColor="rgba(249,115,22,0.65)" />
+                  <stop offset="55%"  stopColor="rgba(245,158,11,0.45)" />
+                  <stop offset="80%"  stopColor="rgba(74,222,128,0.22)" />
+                  <stop offset="100%" stopColor="rgba(74,222,128,0)"    />
                 </radialGradient>
 
                 {/* Heavy blur for the outer halo — fuses neighbouring blobs */}
@@ -249,9 +253,10 @@ export function SpatialBottleneckHeatmap({ buildingId, zones }: SpatialBottlenec
                   <feGaussianBlur stdDeviation="22" />
                 </filter>
 
-                {/* Lighter blur for the inner core — keeps the hot center crisp */}
+                {/* Lighter blur for the inner core — keeps the warm center
+                   readable but still soft */}
                 <filter id="core-blur" x="-20%" y="-20%" width="140%" height="140%">
-                  <feGaussianBlur stdDeviation="9" />
+                  <feGaussianBlur stdDeviation="11" />
                 </filter>
               </defs>
 
@@ -318,13 +323,13 @@ export function SpatialBottleneckHeatmap({ buildingId, zones }: SpatialBottlenec
             letterSpacing: '0.08em', textTransform: 'uppercase',
             textAlign: 'center', marginBottom: '10px', lineHeight: 1.3,
           }}>
-            Congestion<br/>density
+            Crowd<br/>intensity
           </div>
           <div style={{ display: 'flex', flex: 1, gap: '8px' }}>
             <div style={{
               width: '16px',
               borderRadius: '6px',
-              background: 'linear-gradient(180deg, #7f1d1d 0%, #dc2626 18%, #ef4444 36%, #f97316 54%, #facc15 72%, #22c55e 92%, #d1fae5 100%)',
+              background: 'linear-gradient(180deg, #f43f5e 0%, #f97316 35%, #f59e0b 60%, #4ade80 88%, #86efac 100%)',
               boxShadow: 'inset 0 0 0 1px rgba(15,23,42,0.10)',
             }} />
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-between', padding: '2px 0' }}>

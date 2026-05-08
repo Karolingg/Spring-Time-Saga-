@@ -149,6 +149,20 @@ function getHeatColor(intensity: number) {
   return '#22c55e'
 }
 
+/**
+ * Softer pastel palette for the heatmap overlay. Distinct from `getHeatColor`
+ * (which is used for alert-style severity badges) — these tones are
+ * deliberately light so they layer over the floorplan without overwhelming
+ * the underlying detail or competing with the agent dots.
+ */
+function getHeatmapColor(intensity: number) {
+  if (intensity >= 0.78) return '#fb7185'   // soft coral
+  if (intensity >= 0.55) return '#fb923c'   // soft orange
+  if (intensity >= 0.32) return '#fcd34d'   // soft amber
+  if (intensity >= 0.12) return '#86efac'   // soft mint
+  return '#a7f3d0'                           // very pale mint
+}
+
 function describeExitUsage(results: SimulationResults | null) {
   if (!results) return []
   return Object.entries(results.exitUsage).sort((left, right) => right[1] - left[1])
@@ -190,6 +204,8 @@ export default function AutonomousScienceBuildingPage() {
    *  their fixed value; rooms NOT in this map share the remaining budget
    *  (totalAgents − sum of overrides) proportionally to their capacity. */
   const [roomOverrides, setRoomOverrides] = useState<Record<string, number>>({})
+  /** Toggle for the soft pastel congestion heatmap overlay on the floorplan. */
+  const [showHeatmap, setShowHeatmap] = useState(true)
   const [simulationSpeed, setSimulationSpeed] = useState(1)
   const [simState, setSimState] = useState<SimulationState | null>(null)
   const [trace, setTrace] = useState<AutonomousTrace | null>(null)
@@ -487,9 +503,6 @@ export default function AutonomousScienceBuildingPage() {
   ), [activeTrace, floor])
   const exitUsage = useMemo(() => describeExitUsage(results), [results])
   const peakCongestion = useMemo(() => (activeTrace ? getPeakCongestion(activeTrace) : 0), [activeTrace])
-  const peakDensity = useMemo(() => (
-    floor && activeTrace ? getGlobalPeakDensityPercent(floor, activeTrace) : 0
-  ), [activeTrace, floor])
 
   const setPreset = useCallback((ratio: number) => {
     if (!maxAgents) return
@@ -702,11 +715,26 @@ export default function AutonomousScienceBuildingPage() {
           gap: 10px;
         }
 
+        .auto-stat-grid--three {
+          grid-template-columns: 1fr 1fr 1fr;
+        }
+
         .auto-stat {
           border-radius: 12px;
           border: 1px solid #dee5ee;
           background: #f4f7fb;
           padding: 12px 14px;
+        }
+
+        /* Gentle breathing pulse on heatmap blobs — adds life without
+           being distracting. */
+        @keyframes heatmap-pulse {
+          0%, 100% { opacity: 0.55; }
+          50%      { opacity: 0.75; }
+        }
+        .auto-heatmap-layer circle,
+        .auto-heatmap-layer line {
+          animation: heatmap-pulse 4s ease-in-out infinite;
         }
 
         .auto-map-card {
@@ -1089,6 +1117,36 @@ export default function AutonomousScienceBuildingPage() {
               <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>Autonomous crowd overlay on the real floorplan</div>
             </div>
             <div className="auto-chip-row">
+              <button
+                type="button"
+                onClick={() => setShowHeatmap((v) => !v)}
+                title="Toggle congestion heatmap overlay"
+                style={{
+                  padding: '6px 10px',
+                  borderRadius: '8px',
+                  background: showHeatmap ? `${APP_ACCENT}14` : '#ffffff',
+                  border: `1px solid ${showHeatmap ? `${APP_ACCENT}44` : 'var(--border)'}`,
+                  fontSize: '12px',
+                  fontWeight: 600,
+                  color: showHeatmap ? APP_ACCENT_DARK : 'var(--text-muted)',
+                  cursor: 'pointer',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  transition: 'all 0.15s',
+                }}
+              >
+                <span style={{
+                  width: '24px',
+                  height: '6px',
+                  borderRadius: '3px',
+                  background: showHeatmap
+                    ? 'linear-gradient(90deg, #a7f3d0 0%, #fcd34d 50%, #fb923c 80%, #fb7185 100%)'
+                    : '#e2e8f0',
+                  transition: 'background 0.15s',
+                }} />
+                Heatmap {showHeatmap ? 'on' : 'off'}
+              </button>
               <div style={{ padding: '6px 10px', borderRadius: '8px', background: '#e8f0fb', border: '1px solid #c8d8ec', fontSize: '12px', fontWeight: 600, color: '#1e40af' }}>
                 Active {getActiveAgentCount(simState)}
               </div>
@@ -1110,6 +1168,60 @@ export default function AutonomousScienceBuildingPage() {
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={floor.floorplanSrc} alt={`${building?.name ?? regionId} ${floor.label} floor plan`} />
             <svg viewBox="0 0 1200 675" preserveAspectRatio="xMidYMid meet" aria-hidden="true">
+              {/* Defs: Gaussian blur filter for the heatmap blobs. */}
+              <defs>
+                <filter id="heatmap-soft-blur" x="-50%" y="-50%" width="200%" height="200%">
+                  <feGaussianBlur stdDeviation="16" />
+                </filter>
+              </defs>
+
+              {/* ── Heatmap layer (drawn FIRST so agents and exits sit on top) ──
+                   Pastel colors layered behind a Gaussian blur produce smooth
+                   atmospheric blobs at congested nodes — readable at a glance,
+                   never harsh, never competing with agent dots. */}
+              {showHeatmap && activeTrace && (
+                <g
+                  className="auto-heatmap-layer"
+                  style={{ filter: 'url(#heatmap-soft-blur)' }}
+                  pointerEvents="none"
+                >
+                  {floor.edges.map((edge) => {
+                    const fromNode = getNode(floor, edge.from)
+                    const toNode = getNode(floor, edge.to)
+                    if (!fromNode || !toNode) return null
+                    const intensity = getEdgeIntensity(edge, activeTrace)
+                    if (intensity < 0.10) return null
+                    return (
+                      <line
+                        key={`heat-edge-${edge.from}-${edge.to}`}
+                        x1={fromNode.x}
+                        y1={fromNode.y}
+                        x2={toNode.x}
+                        y2={toNode.y}
+                        stroke={getHeatmapColor(intensity)}
+                        strokeWidth={8 + intensity * 16}
+                        strokeLinecap="round"
+                        opacity={0.45 + intensity * 0.30}
+                      />
+                    )
+                  })}
+                  {floor.nodes.filter((node) => node.type !== 'room').map((node) => {
+                    const intensity = getNodeIntensity(node, activeTrace)
+                    if (intensity < 0.10) return null
+                    return (
+                      <circle
+                        key={`heat-node-${node.id}`}
+                        cx={node.x}
+                        cy={node.y}
+                        r={22 + intensity * 28}
+                        fill={getHeatmapColor(intensity)}
+                        opacity={0.40 + intensity * 0.25}
+                      />
+                    )
+                  })}
+                </g>
+              )}
+
               {SHOW_DEBUG_GRAPH && floor.edges.map((edge) => {
                 const fromNode = getNode(floor, edge.from)
                 const toNode = getNode(floor, edge.to)
@@ -1228,19 +1340,35 @@ export default function AutonomousScienceBuildingPage() {
             </svg>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap', marginTop: '12px', fontSize: '12px', color: 'var(--text-secondary)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap', marginTop: '14px', fontSize: '12px', color: 'var(--text-secondary)' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
               <span style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#2db8b0', display: 'inline-block' }} />
               Active agents
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
               <span style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#ef4444', display: 'inline-block' }} />
-              Trapped agents / blocked hazards
+              Trapped / blocked
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
               <span style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#ffffff', border: '2px solid #ff6b35', display: 'inline-block' }} />
               Exits
             </div>
+            {showHeatmap && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', paddingLeft: '12px', borderLeft: '1px solid var(--border)' }}>
+                <span style={{ fontSize: '10px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+                  Congestion
+                </span>
+                <span style={{
+                  display: 'inline-block',
+                  width: '120px',
+                  height: '8px',
+                  borderRadius: '4px',
+                  background: 'linear-gradient(90deg, #a7f3d0 0%, #fcd34d 50%, #fb923c 80%, #fb7185 100%)',
+                  boxShadow: '0 1px 2px rgba(15,23,42,0.05)',
+                }} />
+                <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Low → High</span>
+              </div>
+            )}
           </div>
 
           <div className="auto-map-insights">
@@ -1286,14 +1414,10 @@ export default function AutonomousScienceBuildingPage() {
             <div style={{ fontSize: '11px', fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', color: APP_ACCENT_DARK, marginBottom: '12px' }}>
               Live Metrics
             </div>
-            <div className="auto-stat-grid">
+            <div className="auto-stat-grid auto-stat-grid--three">
               <div className="auto-stat">
                 <div style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '4px' }}>Peak congestion</div>
                 <div style={{ fontSize: '22px', fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>{peakCongestion}</div>
-              </div>
-              <div className="auto-stat">
-                <div style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '4px' }}>Peak density</div>
-                <div style={{ fontSize: '22px', fontWeight: 700, color: peakDensity > 70 ? '#ef4444' : peakDensity > 45 ? '#f97316' : '#22c55e', letterSpacing: '-0.02em' }}>{peakDensity}%</div>
               </div>
               <div className="auto-stat">
                 <div style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '4px' }}>Evacuated</div>
