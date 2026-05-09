@@ -1,4 +1,5 @@
 import type { FloorConfig } from '../types'
+import { withDenseGraph } from '../dense-graph'
 
 const SCIENCE_1F: FloorConfig = {
   viewWidth: 1200,
@@ -171,7 +172,7 @@ const SCIENCE_3F: FloorConfig = {
     { label: 'Corridor (306)', x: 883, y: 190, neighbors: ['Corridor (305)'] },
     { label: 'Near Room 305', x: 730, y: 322, neighbors: ['Near Toilet', 'Near Exit 3'] },
     { label: 'Near Toilet', x: 730, y: 190, neighbors: ['Near Stairs', 'Near Room 305'] },
-    { label: 'DCS Corridor', x: 460, y: 190, neighbors: ['Near Room 204', 'Near Stairs'] },
+    { label: 'DCS Corridor', x: 460, y: 190, neighbors: ['Out DCS', 'Near Stairs'] },
     { label: 'Near Room 309', x: 395, y: 425, neighbors: ['Near Exit 2', 'Near Room 310'] },
     { label: 'Near Room 310', x: 312, y: 425, neighbors: ['Near Room 309'] },
     { label: 'Near Exit 2', x: 460, y: 425, neighbors: ['S2', 'Minilib Corridor', 'Near Room 309'] },
@@ -377,5 +378,5 @@ export const SCIENCE_BUILDING_FLOORS: FloorConfig[] = [
   SCIENCE_3F,
   SCIENCE_4F,
   SCIENCE_5F,
-  SCIENCE_6F, 
-]
+  SCIENCE_6F,
+].map(withDenseGraph)

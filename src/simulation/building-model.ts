@@ -16,6 +16,8 @@ export interface NavNode {
   x: number
   y: number
   type: 'room' | 'corridor' | 'exit' | 'stairs' | 'junction'
+  /** More specific authored waypoint role, when available. */
+  kind?: 'room' | 'corridor' | 'junction' | 'door' | 'corner' | 'stairs' | 'exit'
   /** Capacity in number of people */
   capacity: number
   /** Room bounding box for rendering overlays (optional) */

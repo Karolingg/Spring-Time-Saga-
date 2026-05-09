@@ -167,11 +167,20 @@ interface RoomDef {
   corridorEntryNodes?: string[]
 }
 
+/** A neighbor reference can be a bare label or an enriched object with edge
+ *  metadata. Manual drill only needs the label, so `neighborLabel()` below
+ *  normalizes both forms. */
+type CorridorNeighbor = string | { label: string; width?: number; blockable?: boolean }
+
 interface CorridorNode {
   label: string
   x: number
   y: number
-  neighbors?: string[]
+  neighbors?: CorridorNeighbor[]
+}
+
+function neighborLabel(neighbor: CorridorNeighbor): string {
+  return typeof neighbor === 'string' ? neighbor : neighbor.label
 }
 
 interface FloorConfig {
@@ -295,8 +304,9 @@ function validateFloorConfig(config: FloorConfig, buildingId: string, floorIndex
 
     for (const node of config.corridorNodes) {
       for (const neighbor of node.neighbors || []) {
-        if (!labelSet.has(neighbor)) {
-          issues.push(`corridorNodes.${node.label} references missing neighbor "${neighbor}"`)
+        const label = neighborLabel(neighbor)
+        if (!labelSet.has(label)) {
+          issues.push(`corridorNodes.${node.label} references missing neighbor "${label}"`)
         }
       }
     }
@@ -522,13 +532,13 @@ function buildFullPath(
     if (!currentNode) return []
 
     const direct = (currentNode.neighbors || [])
-      .map(lbl => nodeIndex.get(lbl))
+      .map(n => nodeIndex.get(neighborLabel(n)))
       .filter((idx): idx is number => idx !== undefined)
 
     const reverse = nodes
       .map((n, i) => ({ n, i }))
       .filter(({ i }) => i !== u)
-      .filter(({ n }) => (n.neighbors || []).includes(currentNode.label))
+      .filter(({ n }) => (n.neighbors || []).some(nb => neighborLabel(nb) === currentNode.label))
       .map(({ i }) => i)
 
     const explicit = Array.from(new Set([...direct, ...reverse]))
@@ -705,13 +715,13 @@ function buildNodeOnlyReroutePath(
     if (!currentNode) return []
 
     const direct = (currentNode.neighbors || [])
-      .map(lbl => nodeIndex.get(lbl))
+      .map(n => nodeIndex.get(neighborLabel(n)))
       .filter((idx): idx is number => idx !== undefined)
 
     const reverse = nodes
       .map((n, i) => ({ n, i }))
       .filter(({ i }) => i !== u)
-      .filter(({ n }) => (n.neighbors || []).includes(currentNode.label))
+      .filter(({ n }) => (n.neighbors || []).some(nb => neighborLabel(nb) === currentNode.label))
       .map(({ i }) => i)
 
     const explicit = Array.from(new Set([...direct, ...reverse]))
@@ -1489,14 +1499,16 @@ export default function SimulationRunPage() {
     const node = corridorNodeByLabel.get(label)
     if (!node) return []
 
-    const direct = (node.neighbors || []).filter(lbl => {
-      const neighbor = corridorNodeByLabel.get(lbl)
-      return !!neighbor && !isForbiddenAnchor(neighbor)
-    })
+    const direct = (node.neighbors || [])
+      .map(neighborLabel)
+      .filter(lbl => {
+        const neighbor = corridorNodeByLabel.get(lbl)
+        return !!neighbor && !isForbiddenAnchor(neighbor)
+      })
 
     const reverse = corridorNodes
       .filter(n => n.label !== label)
-      .filter(n => (n.neighbors || []).includes(label))
+      .filter(n => (n.neighbors || []).some(nb => neighborLabel(nb) === label))
       .map(n => n.label)
 
     let options = Array.from(new Set([...direct, ...reverse]))

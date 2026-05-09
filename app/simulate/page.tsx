@@ -656,14 +656,16 @@ export default function SimulatePage() {
   }, [])
 
   useEffect(() => {
-    if (!selectedBuilding) {
-      setSelectedFloor(1)
-      return
-    }
-    setSelectedFloor((current) => {
-      if (current < 1) return 1
-      if (current > selectedBuilding.floors) return selectedBuilding.floors
-      return current
+    queueMicrotask(() => {
+      if (!selectedBuilding) {
+        setSelectedFloor(1)
+        return
+      }
+      setSelectedFloor((current) => {
+        if (current < 1) return 1
+        if (current > selectedBuilding.floors) return selectedBuilding.floors
+        return current
+      })
     })
   }, [selectedBuilding])
 

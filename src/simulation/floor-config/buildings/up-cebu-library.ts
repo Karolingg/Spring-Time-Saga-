@@ -1,4 +1,5 @@
 import type { FloorConfig } from '../types'
+import { withDenseGraph } from '../dense-graph'
 
 const UP_CEBU_LIBRARY_1F: FloorConfig = {
   viewWidth: 1200,
@@ -86,4 +87,4 @@ const UP_CEBU_LIBRARY_2F: FloorConfig = {
 export const UP_CEBU_LIBRARY_FLOORS: FloorConfig[] = [
   UP_CEBU_LIBRARY_1F,
   UP_CEBU_LIBRARY_2F,
-]
+].map(withDenseGraph)

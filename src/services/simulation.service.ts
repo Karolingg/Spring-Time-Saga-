@@ -526,9 +526,13 @@ export async function updateRunNotes(runId: string, notes: string): Promise<void
 // ---------------------------------------------------------------------------
 
 export async function saveDensityCells(runId: string, cells: Omit<DensityCell, 'id' | 'runId'>[]): Promise<void> {
-  if (cells.length === 0) return
-
   try {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error: deleteError } = await (supabase as any).from('density_cells').delete().eq('run_id', runId)
+    if (deleteError) throw new Error(`Failed to clear density cells: ${deleteError.message}`)
+
+    if (cells.length === 0) return
+
     const cellRows = cells.map(c => ({
       run_id: runId,
       cell_x: c.cellX,

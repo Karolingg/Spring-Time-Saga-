@@ -17,7 +17,7 @@ import type { FloorModel, HazardZone, NavEdge, NavNode } from '../building-model
 import type { BuildingModel } from '../building-model'
 import { hazardGrowthRate, hazardMaxRadius } from '../hazard-physics'
 import { BUILDING_FLOORS } from './buildings'
-import type { CorridorNode, FloorConfig, Point } from './types'
+import type { CorridorNeighborDef, CorridorNode, CorridorNodeKind, FloorConfig, Point } from './types'
 
 interface AdapterOptions {
   buildingId: string
@@ -31,6 +31,8 @@ const ROOM_CAPACITY_DEFAULT = 40
 const CORRIDOR_CAPACITY = 15
 const EXIT_CAPACITY = 8
 const JUNCTION_CAPACITY = 18
+const DOOR_CAPACITY = 8
+const STAIRS_CAPACITY = 10
 
 function slugify(label: string): string {
   return label
@@ -47,6 +49,24 @@ function pxDistance(a: Point, b: Point): number {
 
 function samePoint(a: Point, b: Point): boolean {
   return Math.abs(a.x - b.x) <= POSITION_TOLERANCE && Math.abs(a.y - b.y) <= POSITION_TOLERANCE
+}
+
+function nodeTypeFromKind(kind?: CorridorNodeKind): NavNode['type'] {
+  if (kind === 'stairs') return 'stairs'
+  if (kind === 'door' || kind === 'corner' || kind === 'junction') return 'junction'
+  return 'corridor'
+}
+
+function capacityFromKind(kind?: CorridorNodeKind, capacity?: number): number {
+  if (capacity !== undefined) return capacity
+  if (kind === 'door') return DOOR_CAPACITY
+  if (kind === 'stairs') return STAIRS_CAPACITY
+  if (kind === 'corner' || kind === 'junction') return JUNCTION_CAPACITY
+  return CORRIDOR_CAPACITY
+}
+
+function normalizeNeighbor(neighbor: string | CorridorNeighborDef): CorridorNeighborDef {
+  return typeof neighbor === 'string' ? { label: neighbor } : neighbor
 }
 
 export function floorConfigToFloorModel(
@@ -85,6 +105,7 @@ export function floorConfigToFloorModel(
       x: exit.x,
       y: exit.y,
       type: 'exit',
+      kind: 'exit',
       capacity: EXIT_CAPACITY,
     })
     exitIdByKey.set(key, id)
@@ -106,8 +127,9 @@ export function floorConfigToFloorModel(
       label: cn.label,
       x: cn.x,
       y: cn.y,
-      type: 'corridor',
-      capacity: CORRIDOR_CAPACITY,
+      type: nodeTypeFromKind(cn.kind),
+      kind: cn.kind ?? 'corridor',
+      capacity: capacityFromKind(cn.kind, cn.capacity),
     })
     corridorIdByLabel.set(cn.label, id)
   }
@@ -115,12 +137,14 @@ export function floorConfigToFloorModel(
   for (const cn of corridorNodes) {
     const fromId = corridorIdByLabel.get(cn.label)
     if (!fromId) continue
-    for (const neighborLabel of cn.neighbors ?? []) {
+    for (const rawNeighbor of cn.neighbors ?? []) {
+      const neighbor = normalizeNeighbor(rawNeighbor)
       const toId =
-        corridorIdByLabel.get(neighborLabel) ??
-        nodes.find(n => n.label === neighborLabel)?.id
+        corridorIdByLabel.get(neighbor.label) ??
+        exitIdByKey.get(neighbor.label) ??
+        nodes.find(n => n.label === neighbor.label)?.id
       if (!toId) continue
-      addEdge(fromId, toId)
+      addEdge(fromId, toId, neighbor.width ?? 2.0, neighbor.blockable ?? true)
     }
   }
 
@@ -144,6 +168,7 @@ export function floorConfigToFloorModel(
       x: p.x,
       y: p.y,
       type: 'corridor',
+      kind: 'corridor',
       capacity: CORRIDOR_CAPACITY,
     })
     waypointIdByPos.set(posKey(p), id)
@@ -186,6 +211,7 @@ export function floorConfigToFloorModel(
       x: room.x,
       y: room.y,
       type: 'room',
+      kind: 'room',
       capacity: ROOM_CAPACITY_DEFAULT,
     })
 
