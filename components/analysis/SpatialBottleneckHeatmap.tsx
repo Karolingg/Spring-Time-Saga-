@@ -2,10 +2,16 @@
 
 import { useMemo, useState } from 'react'
 import { getBuildingById, type FloorModel, type NavNode } from '@/src/simulation/building-model'
-import type { SimulationZone } from '@/src/schema/simulation.types'
+import type { DensityCell, SimulationZone } from '@/src/schema/simulation.types'
+import {
+  GRID_VIEW_HEIGHT,
+  GRID_VIEW_WIDTH,
+  gridCellRect,
+  renderableCellsFromDensityCells,
+} from '@/src/simulation/spatial-grid'
 
-const VIEW_WIDTH = 1200
-const VIEW_HEIGHT = 675
+const VIEW_WIDTH = GRID_VIEW_WIDTH
+const VIEW_HEIGHT = GRID_VIEW_HEIGHT
 
 interface IntensityBand {
   threshold: number
@@ -59,9 +65,10 @@ interface HotNode {
 interface SpatialBottleneckHeatmapProps {
   buildingId: string | null
   zones: SimulationZone[]
+  densityCells?: DensityCell[]
 }
 
-export function SpatialBottleneckHeatmap({ buildingId, zones }: SpatialBottleneckHeatmapProps) {
+export function SpatialBottleneckHeatmap({ buildingId, zones, densityCells = [] }: SpatialBottleneckHeatmapProps) {
   const building = useMemo(
     () => (buildingId ? getBuildingById(buildingId) ?? null : null),
     [buildingId],
@@ -72,6 +79,10 @@ export function SpatialBottleneckHeatmap({ buildingId, zones }: SpatialBottlenec
     [building, zones],
   )
   const [activeFloorId, setActiveFloorId] = useState<string | null>(initialFloor?.id ?? null)
+  const densityHeatCells = useMemo(
+    () => renderableCellsFromDensityCells(densityCells),
+    [densityCells],
+  )
 
   if (!building || !initialFloor) {
     return (
@@ -89,6 +100,7 @@ export function SpatialBottleneckHeatmap({ buildingId, zones }: SpatialBottlenec
   }
 
   const activeFloor = building.floors.find((f) => f.id === activeFloorId) ?? initialFloor
+  const hasDensityData = densityHeatCells.length > 0
   const intensityByLabel = new Map(zones.map((z) => [z.zoneName, z.intensity]))
   const peakAgentsByLabel = new Map(zones.map((z) => [z.zoneName, z.agentCount]))
 
@@ -101,10 +113,16 @@ export function SpatialBottleneckHeatmap({ buildingId, zones }: SpatialBottlenec
     .filter((entry) => entry.intensity > 0 || entry.peak > 0)
     .sort((a, b) => b.intensity - a.intensity)
 
-  const hasData = heatNodes.length > 0
-  const criticalCount = heatNodes.filter((h) => h.intensity >= 75).length
-  const highCount = heatNodes.filter((h) => h.intensity >= 55 && h.intensity < 75).length
-  const peakAgents = heatNodes.reduce((max, h) => Math.max(max, h.peak), 0)
+  const hasData = hasDensityData || heatNodes.length > 0
+  const criticalCount = hasDensityData
+    ? densityHeatCells.filter((cell) => cell.intensity >= 0.75).length
+    : heatNodes.filter((h) => h.intensity >= 75).length
+  const highCount = hasDensityData
+    ? densityHeatCells.filter((cell) => cell.intensity >= 0.55 && cell.intensity < 0.75).length
+    : heatNodes.filter((h) => h.intensity >= 55 && h.intensity < 75).length
+  const peakAgents = hasDensityData
+    ? densityHeatCells.reduce((max, cell) => Math.max(max, cell.peakDensity), 0)
+    : heatNodes.reduce((max, h) => Math.max(max, h.peak), 0)
 
   // Use the floor plan SVG as a CSS mask so heat is clipped to the building
   // footprint. Wherever the SVG draws content (rooms/walls/labels), heat is
@@ -181,7 +199,7 @@ export function SpatialBottleneckHeatmap({ buildingId, zones }: SpatialBottlenec
 
       {/* ── Stats strip ──────────────────────────────────────────────── */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '8px', marginBottom: '16px' }}>
-        <StatPill label="Hotspots" value={heatNodes.length} accent="#2db8b0" />
+        <StatPill label={hasDensityData ? 'Active Cells' : 'Hotspots'} value={hasDensityData ? densityHeatCells.length : heatNodes.length} accent="#2db8b0" />
         <StatPill label="Critical" value={criticalCount} accent="#f43f5e" emphasized={criticalCount > 0} />
         <StatPill label="High Risk" value={highCount} accent="#f97316" />
         <StatPill label="Peak Agents" value={peakAgents} accent="#3b82f6" suffix={peakAgents > 0 ? ' max' : ''} />
@@ -260,9 +278,30 @@ export function SpatialBottleneckHeatmap({ buildingId, zones }: SpatialBottlenec
                 </filter>
               </defs>
 
-              {/* Outer halo layer */}
-              <g filter="url(#halo-blur)">
-                {heatNodes.map(({ node, intensity }) => {
+              {hasDensityData ? (
+                <g filter="url(#core-blur)">
+                  {densityHeatCells.map((cell) => {
+                    const rect = gridCellRect(cell)
+                    const opacity = 0.30 + cell.intensity * 0.50
+                    return (
+                      <rect
+                        key={`density-cell-${cell.cellX}-${cell.cellY}`}
+                        x={rect.x}
+                        y={rect.y}
+                        width={rect.width}
+                        height={rect.height}
+                        rx="4"
+                        fill={bandFor(cell.intensity * 100).color}
+                        opacity={opacity}
+                      />
+                    )
+                  })}
+                </g>
+              ) : (
+                <>
+                  {/* Outer halo layer */}
+                  <g filter="url(#halo-blur)">
+                    {heatNodes.map(({ node, intensity }) => {
                   const radius = 90 + (intensity / 100) * 170
                   return (
                     <circle
@@ -274,12 +313,12 @@ export function SpatialBottleneckHeatmap({ buildingId, zones }: SpatialBottlenec
                       opacity={0.45 + (intensity / 100) * 0.5}
                     />
                   )
-                })}
-              </g>
+                    })}
+                  </g>
 
-              {/* Inner core layer */}
-              <g filter="url(#core-blur)">
-                {heatNodes.map(({ node, intensity }) => {
+                  {/* Inner core layer */}
+                  <g filter="url(#core-blur)">
+                    {heatNodes.map(({ node, intensity }) => {
                   const radius = 40 + (intensity / 100) * 90
                   return (
                     <circle
@@ -291,8 +330,10 @@ export function SpatialBottleneckHeatmap({ buildingId, zones }: SpatialBottlenec
                       opacity={0.6 + (intensity / 100) * 0.4}
                     />
                   )
-                })}
-              </g>
+                    })}
+                  </g>
+                </>
+              )}
             </svg>
           </div>
 

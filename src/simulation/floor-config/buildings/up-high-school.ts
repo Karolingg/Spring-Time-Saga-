@@ -1,4 +1,5 @@
 import type { FloorConfig } from '../types'
+import { withDenseGraph } from '../dense-graph'
 
 function createGroundFloorConfig(floorLabel: string): FloorConfig {
   return {
@@ -92,4 +93,4 @@ const UP_HIGH_SCHOOL_2F: FloorConfig = createUpperFloorConfig('2nd Floor')
 export const UP_HIGH_SCHOOL_FLOORS: FloorConfig[] = [
   UP_HIGH_SCHOOL_1F,
   UP_HIGH_SCHOOL_2F,
-]
+].map(withDenseGraph)

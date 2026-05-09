@@ -1,4 +1,5 @@
 import type { FloorConfig } from '../types'
+import { withDenseGraph } from '../dense-graph'
 
 const ADMIN_1F: FloorConfig = {
   viewWidth: 1200,
@@ -99,4 +100,4 @@ const ADMIN_2F: FloorConfig = {
 export const ADMIN_BUILDING_FLOORS: FloorConfig[] = [
   ADMIN_1F,
   ADMIN_2F,
-]
+].map(withDenseGraph)

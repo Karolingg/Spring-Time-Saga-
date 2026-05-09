@@ -37,11 +37,21 @@ export interface RoomDef {
   corridorEntryNodes?: string[]
 }
 
+export type CorridorNodeKind = 'corridor' | 'junction' | 'door' | 'corner' | 'stairs'
+
+export interface CorridorNeighborDef {
+  label: string
+  width?: number
+  blockable?: boolean
+}
+
 export interface CorridorNode {
   label: string
   x: number
   y: number
-  neighbors?: string[]
+  kind?: CorridorNodeKind
+  capacity?: number
+  neighbors?: Array<string | CorridorNeighborDef>
 }
 
 export interface FloorConfig {

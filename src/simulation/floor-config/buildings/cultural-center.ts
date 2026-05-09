@@ -1,4 +1,5 @@
 import type { FloorConfig } from '../types'
+import { withDenseGraph } from '../dense-graph'
 
 const CULTURAL_CENTER_1F: FloorConfig = {
   viewWidth: 1200,
@@ -43,4 +44,4 @@ const CULTURAL_CENTER_1F: FloorConfig = {
 
 export const CULTURAL_CENTER_FLOORS: FloorConfig[] = [
   CULTURAL_CENTER_1F,
-]
+].map(withDenseGraph)

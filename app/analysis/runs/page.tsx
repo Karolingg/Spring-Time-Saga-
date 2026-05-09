@@ -8,12 +8,13 @@ import {
   getSimulationRun,
   deleteSimulationRun,
   resetAllSimulationData,
+  getDensityCells,
 } from '@/src/services/simulation.service'
 import { CongestionHeatmap } from '@/components/analysis/CongestionHeatmap'
 import { SpatialBottleneckHeatmap } from '@/components/analysis/SpatialBottleneckHeatmap'
 import { BuildingRiskTable } from '@/components/analysis/BuildingRiskTable'
 import { ConfirmModal } from '@/components/ConfirmModal'
-import type { SimulationRun, SimulationZone } from '@/src/schema/simulation.types'
+import type { DensityCell, SimulationRun, SimulationZone } from '@/src/schema/simulation.types'
 
 const SECTION_CARD: React.CSSProperties = {
   background: '#ffffff',
@@ -33,6 +34,7 @@ export default function AnalysisRunsPage() {
   const { isAuthenticated, isLoading: isAuthLoading } = useAuth()
 
   const [run, setRun] = useState<SimulationRun | null>(null)
+  const [densityCells, setDensityCells] = useState<DensityCell[]>([])
   const [runHistory, setRunHistory] = useState<RunHistoryItem[]>([])
   const [isLoadingData, setIsLoadingData] = useState(true)
   const [isConfirmResetOpen, setIsConfirmResetOpen] = useState(false)
@@ -58,6 +60,7 @@ export default function AnalysisRunsPage() {
         getSimulationHistory(20),
       ])
       setRun(latest)
+      setDensityCells(latest ? await getDensityCells(latest.id) : [])
       setRunHistory(buildRunHistory(history))
     } catch (err) {
       console.error('Failed to load simulation data:', err)
@@ -78,6 +81,7 @@ export default function AnalysisRunsPage() {
     try {
       const selected = await getSimulationRun(selectedRunId)
       setRun(selected)
+      setDensityCells(await getDensityCells(selectedRunId))
     } catch (err) {
       console.error('Failed to load simulation run:', err)
     } finally {
@@ -97,6 +101,7 @@ export default function AnalysisRunsPage() {
           await handleRunChange(updatedHistory[0].id)
         } else {
           setRun(null)
+          setDensityCells([])
         }
       }
     } catch (err) {
@@ -110,6 +115,7 @@ export default function AnalysisRunsPage() {
     try {
       await resetAllSimulationData()
       setRun(null)
+      setDensityCells([])
       setRunHistory([])
     } catch (err) {
       console.error('Failed to reset simulation data:', err)
@@ -133,6 +139,8 @@ export default function AnalysisRunsPage() {
   const bottleneckCount = usedZones.reduce((sum, z) => sum + z.bottleneckCount, 0)
   const avgEvacTime = run?.results?.evacuationTime != null ? `${run.results.evacuationTime.toFixed(1)}s` : '—'
   const hasUsedZones = usedZones.length > 0
+  const hasDensityCells = densityCells.length > 0
+  const hasAnalysisData = hasUsedZones || hasDensityCells
 
   return (
     <div style={{ minHeight: '100vh', padding: '88px 40px 56px', maxWidth: '1280px', margin: '0 auto' }}>
@@ -153,25 +161,28 @@ export default function AnalysisRunsPage() {
 
       {!isLoadingData && !run && <EmptyState />}
 
-      {!isLoadingData && run && hasUsedZones && (
+      {!isLoadingData && run && hasAnalysisData && (
         <>
           {run.buildingId && (
             <div style={SECTION_CARD}>
               <SpatialBottleneckHeatmap
                 buildingId={run.buildingId}
                 zones={usedZones}
+                densityCells={densityCells}
               />
             </div>
           )}
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '20px' }}>
-            <div style={{ ...SECTION_CARD, marginBottom: 0 }}>
-              <CongestionHeatmap zones={usedZones} />
+          {hasUsedZones && (
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '20px' }}>
+              <div style={{ ...SECTION_CARD, marginBottom: 0 }}>
+                <CongestionHeatmap zones={usedZones} />
+              </div>
+              <div style={{ ...SECTION_CARD, marginBottom: 0 }}>
+                <BuildingRiskTable zones={usedZones} />
+              </div>
             </div>
-            <div style={{ ...SECTION_CARD, marginBottom: 0 }}>
-              <BuildingRiskTable zones={usedZones} />
-            </div>
-          </div>
+          )}
 
           <SummaryStats
             zoneCount={usedZones.length}
@@ -181,7 +192,7 @@ export default function AnalysisRunsPage() {
         </>
       )}
 
-      {!isLoadingData && run && !hasUsedZones && (
+      {!isLoadingData && run && !hasAnalysisData && (
         <div style={{ ...SECTION_CARD, textAlign: 'center', padding: '48px 32px' }}>
           <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '12px' }}>
             <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#2db8b0" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">

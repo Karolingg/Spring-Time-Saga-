@@ -8,7 +8,6 @@ import {
   buildZoneSummaries,
   computeAccurateCongestion,
   createAutonomousTrace,
-  distributeAgentsByCapacity,
   getAgentRenderPosition,
   getEdgeIntensity,
   getGlobalPeakDensityPercent,
@@ -21,8 +20,16 @@ import {
 } from '@/src/simulation/autonomous-analytics'
 import { createSimulation, evaluateSimulation, stepSimulation, type SimulationResults, type SimulationState } from '@/src/simulation/engine'
 import { edgeKey, getBuildingById, getNode, type FloorModel } from '@/src/simulation/building-model'
-import { createSimulationRun, saveSimulationResults } from '@/src/services/simulation.service'
+import { createSimulationRun, saveDensityCells, saveSimulationResults } from '@/src/services/simulation.service'
 import { getHazardStorageKey, loadHazardPlan, placedHazardToZone, saveHazardPlan, type PlacedHazard } from '@/src/simulation/hazard-placement'
+import {
+  createSpatialGridTrace,
+  densityCellsFromTrace,
+  getRenderableGridCells,
+  gridCellRect,
+  updateSpatialGridTrace,
+  type SpatialGridTrace,
+} from '@/src/simulation/spatial-grid'
 
 type DisasterType = 'fire' | 'earthquake'
 
@@ -209,6 +216,7 @@ export default function AutonomousScienceBuildingPage() {
   const [simulationSpeed, setSimulationSpeed] = useState(1)
   const [simState, setSimState] = useState<SimulationState | null>(null)
   const [trace, setTrace] = useState<AutonomousTrace | null>(null)
+  const [gridTrace, setGridTrace] = useState<SpatialGridTrace | null>(null)
   const [results, setResults] = useState<SimulationResults | null>(null)
   const [isPlaying, setIsPlaying] = useState(false)
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
@@ -220,6 +228,7 @@ export default function AutonomousScienceBuildingPage() {
 
   const simStateRef = useRef<SimulationState | null>(null)
   const traceRef = useRef<AutonomousTrace | null>(null)
+  const gridTraceRef = useRef<SpatialGridTrace | null>(null)
   const launchedAgentCountRef = useRef(0)
   const animationFrameRef = useRef<number | null>(null)
   const lastFrameTimeRef = useRef<number | null>(null)
@@ -241,14 +250,16 @@ export default function AutonomousScienceBuildingPage() {
 
   useEffect(() => {
     const plan = loadHazardPlan(hazardStorageKey)
-    setPlacedHazards(plan?.hazards ?? [])
-    setSelectedHazardId(null)
+    queueMicrotask(() => {
+      setPlacedHazards(plan?.hazards ?? [])
+      setSelectedHazardId(null)
+    })
   }, [hazardStorageKey])
 
   // Per-room overrides become meaningless when the floor's room set changes
   // (different building or different floor), so wipe them on floor switch.
   useEffect(() => {
-    setRoomOverrides({})
+    queueMicrotask(() => setRoomOverrides({}))
   }, [floor])
 
   useEffect(() => {
@@ -308,9 +319,13 @@ export default function AutonomousScienceBuildingPage() {
     traceRef.current = activeTrace
   }, [activeTrace])
 
+  useEffect(() => {
+    gridTraceRef.current = gridTrace
+  }, [gridTrace])
+
   const persistCompletedRun = useCallback(async (
-    completedState: SimulationState,
     completedTrace: AutonomousTrace,
+    completedGridTrace: SpatialGridTrace,
     completedResults: SimulationResults,
     agentCount: number,
     floorModel: FloorModel,
@@ -344,9 +359,11 @@ export default function AutonomousScienceBuildingPage() {
         buildBottleneckSummaries(floorModel, completedTrace),
       )
 
+      await saveDensityCells(runId, densityCellsFromTrace(completedGridTrace))
+
       setSavedRunId(runId)
       setSaveStatus('saved')
-      setSaveMessage('Run saved. You can open the analysis page to inspect congestion zones.')
+      setSaveMessage('Run saved. You can open the analysis page to inspect congestion zones and grid density.')
     } catch (error) {
       console.error('Failed to save autonomous run:', error)
       setSaveStatus('error')
@@ -360,8 +377,9 @@ export default function AutonomousScienceBuildingPage() {
     const stepFrame = (timestamp: number) => {
       const currentState = simStateRef.current
       const currentTrace = traceRef.current
+      const currentGridTrace = gridTraceRef.current
 
-      if (!currentState || !currentTrace) {
+      if (!currentState || !currentTrace || !currentGridTrace) {
         animationFrameRef.current = window.requestAnimationFrame(stepFrame)
         return
       }
@@ -379,19 +397,35 @@ export default function AutonomousScienceBuildingPage() {
       const nextState = stepSimulation(currentState, floor, dt)
       const nextCongestion = computeAccurateCongestion(nextState)
       const nextTrace = updateAutonomousTrace(currentTrace, nextCongestion, dt)
+      const agentPositions = nextState.agents
+        .filter((agent) => agent.state !== 'evacuated' && agent.state !== 'trapped')
+        .map((agent) => getAgentRenderPosition(agent, floor))
+      const nextGridTrace = updateSpatialGridTrace(
+        currentGridTrace,
+        agentPositions,
+        nextState.hazards.map((hazard) => ({
+          x: hazard.zone.x,
+          y: hazard.zone.y,
+          currentRadius: hazard.currentRadius,
+          active: hazard.active,
+        })),
+        dt,
+      )
 
       simStateRef.current = nextState
       traceRef.current = nextTrace
+      gridTraceRef.current = nextGridTrace
       setSimState(nextState)
       setTrace(nextTrace)
+      setGridTrace(nextGridTrace)
 
       if (nextState.finished) {
         setIsPlaying(false)
         const completedResults = evaluateSimulation(nextState, floor)
         setResults(completedResults)
         void persistCompletedRun(
-          nextState,
           nextTrace,
+          nextGridTrace,
           completedResults,
           launchedAgentCountRef.current,
           floor,
@@ -501,6 +535,9 @@ export default function AutonomousScienceBuildingPage() {
   const topBottlenecks = useMemo(() => (
     floor && activeTrace ? buildBottleneckSummaries(floor, activeTrace) : []
   ), [activeTrace, floor])
+  const gridCells = useMemo(() => (
+    gridTrace ? getRenderableGridCells(gridTrace) : []
+  ), [gridTrace])
   const exitUsage = useMemo(() => describeExitUsage(results), [results])
   const peakCongestion = useMemo(() => (activeTrace ? getPeakCongestion(activeTrace) : 0), [activeTrace])
 
@@ -525,11 +562,27 @@ export default function AutonomousScienceBuildingPage() {
     const nextTrace = createAutonomousTrace(floor)
     const initialCongestion = computeAccurateCongestion(nextState)
     const primedTrace = updateAutonomousTrace(nextTrace, initialCongestion, 0)
+    const initialPositions = nextState.agents
+      .filter((agent) => agent.state !== 'evacuated' && agent.state !== 'trapped')
+      .map((agent) => getAgentRenderPosition(agent, floor))
+    const primedGridTrace = updateSpatialGridTrace(
+      createSpatialGridTrace(),
+      initialPositions,
+      nextState.hazards.map((hazard) => ({
+        x: hazard.zone.x,
+        y: hazard.zone.y,
+        currentRadius: hazard.currentRadius,
+        active: hazard.active,
+      })),
+      0,
+    )
 
     simStateRef.current = nextState
     traceRef.current = primedTrace
+    gridTraceRef.current = primedGridTrace
     setSimState(nextState)
     setTrace(primedTrace)
+    setGridTrace(primedGridTrace)
     setResults(null)
     setSavedRunId(null)
     setSaveStatus('idle')
@@ -542,7 +595,9 @@ export default function AutonomousScienceBuildingPage() {
     setIsPlaying(false)
     setSimState(null)
     setTrace(null)
+    setGridTrace(null)
     traceRef.current = baseTrace
+    gridTraceRef.current = null
     launchedAgentCountRef.current = 0
     simStateRef.current = null
     setResults(null)
@@ -1179,43 +1234,26 @@ export default function AutonomousScienceBuildingPage() {
                    Pastel colors layered behind a Gaussian blur produce smooth
                    atmospheric blobs at congested nodes — readable at a glance,
                    never harsh, never competing with agent dots. */}
-              {showHeatmap && activeTrace && (
+              {showHeatmap && gridCells.length > 0 && (
                 <g
                   className="auto-heatmap-layer"
                   style={{ filter: 'url(#heatmap-soft-blur)' }}
                   pointerEvents="none"
                 >
-                  {floor.edges.map((edge) => {
-                    const fromNode = getNode(floor, edge.from)
-                    const toNode = getNode(floor, edge.to)
-                    if (!fromNode || !toNode) return null
-                    const intensity = getEdgeIntensity(edge, activeTrace)
-                    if (intensity < 0.10) return null
+                  {gridCells.map((cell) => {
+                    const rect = gridCellRect(cell)
+                    const intensity = Math.max(cell.intensity, cell.hazardIntensity * 0.75)
+                    if (intensity < 0.08) return null
                     return (
-                      <line
-                        key={`heat-edge-${edge.from}-${edge.to}`}
-                        x1={fromNode.x}
-                        y1={fromNode.y}
-                        x2={toNode.x}
-                        y2={toNode.y}
-                        stroke={getHeatmapColor(intensity)}
-                        strokeWidth={8 + intensity * 16}
-                        strokeLinecap="round"
-                        opacity={0.45 + intensity * 0.30}
-                      />
-                    )
-                  })}
-                  {floor.nodes.filter((node) => node.type !== 'room').map((node) => {
-                    const intensity = getNodeIntensity(node, activeTrace)
-                    if (intensity < 0.10) return null
-                    return (
-                      <circle
-                        key={`heat-node-${node.id}`}
-                        cx={node.x}
-                        cy={node.y}
-                        r={22 + intensity * 28}
+                      <rect
+                        key={`grid-cell-${cell.cellX}-${cell.cellY}`}
+                        x={rect.x}
+                        y={rect.y}
+                        width={rect.width}
+                        height={rect.height}
+                        rx="4"
                         fill={getHeatmapColor(intensity)}
-                        opacity={0.40 + intensity * 0.25}
+                        opacity={0.32 + intensity * 0.42}
                       />
                     )
                   })}
@@ -1232,18 +1270,25 @@ export default function AutonomousScienceBuildingPage() {
                 const stroke = blocked ? '#ef4444' : getHeatColor(intensity)
                 const opacity = blocked ? 0.95 : 0.25 + intensity * 0.6
 
+                const midX = (fromNode.x + toNode.x) / 2
+                const midY = (fromNode.y + toNode.y) / 2
+
                 return (
-                  <line
-                    key={`${edge.from}-${edge.to}`}
-                    x1={fromNode.x}
-                    y1={fromNode.y}
-                    x2={toNode.x}
-                    y2={toNode.y}
-                    stroke={stroke}
-                    strokeWidth={blocked ? 7 : 4 + intensity * 5}
-                    strokeLinecap="round"
-                    opacity={opacity}
-                  />
+                  <g key={`${edge.from}-${edge.to}`}>
+                    <line
+                      x1={fromNode.x}
+                      y1={fromNode.y}
+                      x2={toNode.x}
+                      y2={toNode.y}
+                      stroke={stroke}
+                      strokeWidth={blocked ? 7 : 4 + intensity * 5}
+                      strokeLinecap="round"
+                      opacity={opacity}
+                    />
+                    <text x={midX} y={midY - 5} textAnchor="middle" fontSize="8" fontWeight="700" fill={blocked ? '#b91c1c' : '#475569'}>
+                      {edge.width.toFixed(1)}m
+                    </text>
+                  </g>
                 )
               })}
 
@@ -1261,6 +1306,9 @@ export default function AutonomousScienceBuildingPage() {
                         {liveCount}
                       </text>
                     )}
+                    <text x={node.x} y={node.y + 18} textAnchor="middle" fontSize="8" fontWeight="700" fill="#334155">
+                      {node.kind ?? node.type}
+                    </text>
                   </g>
                 )
               })}
