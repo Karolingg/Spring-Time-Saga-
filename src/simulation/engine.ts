@@ -6,7 +6,8 @@
  */
 
 import type { FloorModel, HazardZone } from './building-model'
-import { getNode, findShortestPathToExit, findShortestPathToExitWeighted, edgeKey } from './building-model'
+import { getNode, findShortestPathToExitWeighted, edgeKey } from './building-model'
+import { computeHazardImpact } from './hazard-impact'
 
 /* ── Agent model ── */
 export interface Agent {
@@ -37,6 +38,8 @@ export interface Agent {
   rerouteStallTime: number
   /** Temporary anchor so reroutes don't visually snap */
   rerouteAnchor?: { x: number; y: number; nodeId: string; progress: number; distance: number }
+  /** Time when the agent should reconsider a risky-but-currently-best route */
+  riskRecheckAt?: number
 }
 
 /* ── Congestion tracker ── */
@@ -67,6 +70,14 @@ export interface SimulationState {
   /** Edges SOFT-blocked by smoke — agents can still traverse but pay a heavy penalty
    *  when routing and take extra slowdown + exposure while on them */
   softBlockedEdges: Set<string>
+  /** Nodes HARD-blocked by fire / debris / blocked zones */
+  blockedNodes: Set<string>
+  /** Exit nodes currently unreachable because the exit itself is in a hard hazard */
+  blockedExits: Set<string>
+  /** 0-1 danger score per edge, used for early rerouting before hard blocks */
+  edgeRisk: Record<string, number>
+  /** 0-1 danger score per node, used for early rerouting and path cost */
+  nodeRisk: Record<string, number>
   /** Is the simulation running */
   running: boolean
   /** Is the simulation finished */
@@ -86,6 +97,12 @@ const CONGESTION_WEIGHT = 1.5
  *  adds when another agent is re-planning. Spreads the load across
  *  multiple exits when one is getting piled on. */
 const EXIT_BIAS_PER_AGENT = 2.5
+
+/** Added route cost for a fully dangerous but not-yet-blocked edge. */
+const RISK_WEIGHT = 45
+
+/** Replan before the committed route turns into a hard block. */
+const RISK_REPLAN_THRESHOLD = 0.42
 
 /* ── Snapshot for replay ── */
 export interface SimSnapshot {
@@ -158,6 +175,7 @@ export function createSimulation(
         routingJitter: 0.85 + Math.random() * 0.30,
         rerouteStallTime: 0,
         rerouteAnchor: undefined,
+        riskRecheckAt: undefined,
       })
     }
   }
@@ -184,6 +202,7 @@ export function createSimulation(
       routingJitter: 1,
       rerouteStallTime: 0,
       rerouteAnchor: undefined,
+      riskRecheckAt: undefined,
     })
   }
 
@@ -203,6 +222,10 @@ export function createSimulation(
     hazardGrowthMultiplier: config.hazardGrowthMultiplier ?? 1,
     blockedEdges: new Set(),
     softBlockedEdges: new Set(),
+    blockedNodes: new Set(),
+    blockedExits: new Set(),
+    edgeRisk: {},
+    nodeRisk: {},
     running: false,
     finished: false,
   }
@@ -219,8 +242,8 @@ export function stepSimulation(
   // 1. Update hazards
   updateHazards(newState)
 
-  // 2. Update blocked edges based on hazards
-  updateBlockedEdges(newState, floor)
+  // 2. Update blocked graph elements based on hazards
+  updateHazardImpact(newState, floor)
 
   // 3. Update congestion counts
   updateCongestion(newState)
@@ -273,37 +296,14 @@ function updateHazards(state: SimulationState) {
  *     out — but it carries a heavy routing penalty so a clean detour is
  *     preferred, and the agent accrues extra slowdown + exposure while on it.
  */
-function updateBlockedEdges(state: SimulationState, floor: FloorModel) {
-  state.blockedEdges.clear()
-  state.softBlockedEdges.clear()
-
-  for (const h of state.hazards) {
-    if (!h.active) continue
-    const r = h.currentRadius
-    const isSoft = h.zone.type === 'smoke'
-
-    for (const edge of floor.edges) {
-      if (!edge.blockable) continue
-      const fromNode = getNode(floor, edge.from)
-      const toNode = getNode(floor, edge.to)
-      if (!fromNode || !toNode) continue
-
-      const mx = (fromNode.x + toNode.x) / 2
-      const my = (fromNode.y + toNode.y) / 2
-      const dist = Math.hypot(mx - h.zone.x, my - h.zone.y)
-      if (dist >= r) continue
-
-      const key = edgeKey(edge.from, edge.to)
-      if (isSoft) {
-        // Only downgrade to soft if no hard block already applies.
-        if (!state.blockedEdges.has(key)) state.softBlockedEdges.add(key)
-      } else {
-        state.blockedEdges.add(key)
-        // A hard block supersedes any earlier soft block.
-        state.softBlockedEdges.delete(key)
-      }
-    }
-  }
+function updateHazardImpact(state: SimulationState, floor: FloorModel) {
+  const impact = computeHazardImpact(floor, state.hazards)
+  state.blockedEdges = impact.blockedEdges
+  state.softBlockedEdges = impact.softBlockedEdges
+  state.blockedNodes = impact.blockedNodes
+  state.blockedExits = impact.blockedExits
+  state.edgeRisk = impact.edgeRisk
+  state.nodeRisk = impact.nodeRisk
 }
 
 /* ── Congestion tracking ── */
@@ -327,11 +327,36 @@ function updateCongestion(state: SimulationState) {
 /** Does any edge on the remaining portion of `path` (from `pathIndex` onward)
  *  have a HARD block? If so, the agent needs to reroute now instead of walking
  *  into a dead end. Soft blocks (smoke) don't count — the agent stays committed. */
-function remainingPathHasHardBlock(path: string[], pathIndex: number, blockedEdges: Set<string>): boolean {
+function remainingPathNeedsReroute(
+  state: SimulationState,
+  path: string[],
+  pathIndex: number,
+  includeRisk: boolean,
+): boolean {
   for (let i = pathIndex; i < path.length - 1; i++) {
-    if (blockedEdges.has(edgeKey(path[i], path[i + 1]))) return true
+    const fromId = path[i]
+    const toId = path[i + 1]
+    const key = edgeKey(fromId, toId)
+    if (state.blockedEdges.has(key)) return true
+    if (i > pathIndex && state.blockedNodes.has(fromId)) return true
+    if (state.blockedNodes.has(toId)) return true
+    if (state.blockedExits.has(toId)) return true
+    if (!includeRisk) continue
+    if ((state.edgeRisk[key] ?? 0) >= RISK_REPLAN_THRESHOLD) return true
+    if ((state.nodeRisk[toId] ?? 0) >= RISK_REPLAN_THRESHOLD) return true
   }
   return false
+}
+
+function pathMaxRisk(state: SimulationState, path: string[], pathIndex: number): number {
+  let maxRisk = 0
+  for (let i = pathIndex; i < path.length - 1; i++) {
+    const fromId = path[i]
+    const toId = path[i + 1]
+    const key = edgeKey(fromId, toId)
+    maxRisk = Math.max(maxRisk, state.edgeRisk[key] ?? 0, state.nodeRisk[fromId] ?? 0, state.nodeRisk[toId] ?? 0)
+  }
+  return maxRisk
 }
 
 /** Count how many still-active agents are currently aiming at each exit.
@@ -367,6 +392,11 @@ function replanAgent(
     state.softBlockedEdges,
     SOFT_EDGE_COST_MULTIPLIER,
     {
+      blockedNodes: state.blockedNodes,
+      blockedExits: state.blockedExits,
+      edgeRisk: state.edgeRisk,
+      nodeRisk: state.nodeRisk,
+      riskWeight: RISK_WEIGHT,
       edgeCounts: state.congestion.edgeCounts,
       congestionWeight: CONGESTION_WEIGHT,
       jitter: agent.routingJitter,
@@ -377,6 +407,9 @@ function replanAgent(
   agent.path = result.path
   agent.pathIndex = 0
   agent.targetExitId = result.exitId
+  agent.riskRecheckAt = pathMaxRisk(state, result.path, 0) >= RISK_REPLAN_THRESHOLD
+    ? state.elapsedTime + 4
+    : undefined
   return true
 }
 
@@ -442,11 +475,15 @@ function updateAgent(
   // committed path, reroute now — otherwise the agent keeps walking straight
   // into a dead end and only reacts at the last step.
   if (agent.state === 'moving' && agent.pathIndex < agent.path.length - 1) {
-    const nextEdgeKey = edgeKey(agent.path[agent.pathIndex], agent.path[agent.pathIndex + 1])
-    const nextHardBlocked = state.blockedEdges.has(nextEdgeKey)
-    const aheadHardBlocked = !nextHardBlocked && remainingPathHasHardBlock(agent.path, agent.pathIndex, state.blockedEdges)
+    const fromId = agent.path[agent.pathIndex]
+    const toId = agent.path[agent.pathIndex + 1]
+    const nextEdgeKey = edgeKey(fromId, toId)
+    const nextHardBlocked = state.blockedEdges.has(nextEdgeKey) || state.blockedNodes.has(toId) || state.blockedExits.has(toId)
+    const canRecheckRisk = (agent.riskRecheckAt ?? 0) <= state.elapsedTime
+    const nextRisky = canRecheckRisk && ((state.edgeRisk[nextEdgeKey] ?? 0) >= RISK_REPLAN_THRESHOLD || (state.nodeRisk[toId] ?? 0) >= RISK_REPLAN_THRESHOLD)
+    const aheadNeedsReroute = !nextHardBlocked && remainingPathNeedsReroute(state, agent.path, agent.pathIndex, canRecheckRisk)
 
-    if (nextHardBlocked || aheadHardBlocked) {
+    if (nextHardBlocked || nextRisky || aheadNeedsReroute) {
       if (agent.isUserAgent) {
         // User-drawn path is fixed — they get trapped at the blockage.
         if (nextHardBlocked) {
@@ -459,15 +496,21 @@ function updateAgent(
         agent.reroutes++
         agent.rerouteStallTime = 0
         if (agent.progress > 0 && agent.pathIndex < agent.path.length - 1) {
-          const fromId = agent.path[agent.pathIndex]
-          const toId = agent.path[agent.pathIndex + 1]
           const fromNode = getNode(floor, fromId)
           const toNode = getNode(floor, toId)
           if (fromNode && toNode) {
             const anchorX = fromNode.x + (toNode.x - fromNode.x) * agent.progress
             const anchorY = fromNode.y + (toNode.y - fromNode.y) * agent.progress
-            const anchorNodeId = agent.progress >= 0.5 ? toId : fromId
-            const anchorNode = agent.progress >= 0.5 ? toNode : fromNode
+            const fromSafe = !state.blockedNodes.has(fromId)
+            const toSafe = !nextHardBlocked && !state.blockedNodes.has(toId) && !state.blockedExits.has(toId)
+            const anchorNodeId = nextHardBlocked
+              ? (fromSafe ? fromId : null)
+              : (agent.progress >= 0.5 && toSafe ? toId : fromId)
+            if (!anchorNodeId) {
+              agent.state = 'trapped'
+              return
+            }
+            const anchorNode = anchorNodeId === toId ? toNode : fromNode
             const anchorDistance = Math.hypot(anchorNode.x - anchorX, anchorNode.y - anchorY)
             agent.rerouteAnchor = {
               x: anchorX,
@@ -494,7 +537,7 @@ function updateAgent(
     if (agent.pathIndex >= agent.path.length - 1) {
       // Check if at exit
       const currentNode = getNode(floor, agent.currentNodeId)
-      if (currentNode?.type === 'exit') {
+      if (currentNode?.type === 'exit' && !state.blockedExits.has(agent.currentNodeId)) {
         agent.state = 'evacuated'
       }
       return
@@ -518,17 +561,22 @@ function updateAgent(
     const edgeWidth = edge?.width || 2
     const congestionFactor = Math.max(0.3, 1 - (edgeCount / (edgeWidth * 5)))
 
+    if (state.blockedEdges.has(ek) || state.blockedNodes.has(toId) || state.blockedExits.has(toId)) {
+      agent.state = agent.isUserAgent ? 'trapped' : 'rerouting'
+      agent.reroutes += agent.isUserAgent ? 0 : 1
+      agent.rerouteStallTime = 0
+      agent.progress = 0
+      return
+    }
+
     // Hazard proximity slowdown
     let hazardFactor = 1.0
-    const mx = (fromNode.x + toNode.x) / 2
-    const my = (fromNode.y + toNode.y) / 2
-    for (const h of state.hazards) {
-      if (!h.active) continue
-      const dist = Math.hypot(mx - h.zone.x, my - h.zone.y)
-      if (dist < h.currentRadius * 1.5) {
-        hazardFactor = Math.min(hazardFactor, 0.5)
-        agent.hazardExposure += dt
-      }
+    const edgeRisk = state.edgeRisk[ek] ?? 0
+    const nodeRisk = Math.max(state.nodeRisk[fromId] ?? 0, state.nodeRisk[toId] ?? 0)
+    const risk = Math.max(edgeRisk, nodeRisk)
+    if (risk > 0) {
+      hazardFactor = Math.min(hazardFactor, Math.max(0.35, 1 - risk * 0.65))
+      agent.hazardExposure += dt * risk
     }
 
     // Walking directly through smoke (a soft-blocked edge) — cap speed at 0.5x
@@ -549,7 +597,7 @@ function updateAgent(
       agent.history.push({ nodeId: toId, time: state.elapsedTime })
 
       // Check if reached exit
-      if (toNode.type === 'exit') {
+      if (toNode.type === 'exit' && !state.blockedExits.has(toId)) {
         agent.state = 'evacuated'
       }
     }

@@ -14,7 +14,7 @@ Core stack:
 
 Primary flow:
 - User authenticates in `/auth`
-- User opens `/simulate` to choose building/scenario
+- User opens `/map` to choose a campus building/scenario (`/simulate` redirects there)
 - Simulation run pages live under `/simulate/[id]/...`
 - Dashboard `/` and `/analysis` read aggregated run data
 
@@ -23,7 +23,7 @@ Primary flow:
 ### App pages
 - `app/page.tsx`: Dashboard + stats + recent run table + quick actions
 - `app/auth/page.tsx`: Login/signup flow
-- `app/simulate/page.tsx`: Building selection and routing into scenario/run pages
+- `app/map/page.tsx`: Campus simulation workspace and routing into scenario/run pages
 - `app/simulate/[id]/disaster/page.tsx`: Scenario selection by building
 - `app/simulate/[id]/run/page.tsx`: Run page (dynamic)
 - `app/analysis/page.tsx`: Congestion/risk analysis views
@@ -88,7 +88,7 @@ Service mapping in `simulation.service.ts`:
 Verified by checks run in this audit and recent builds:
 - TypeScript compiles successfully (`next build`) ✅
 - App routes build successfully:
-  - `/`, `/analysis`, `/auth`, `/map`, `/settings`, `/simulate`
+  - `/`, `/analysis`, `/auth`, `/map`, `/settings`
   - dynamic routes `/simulate/[id]/disaster`, `/simulate/[id]/run`
 - Lint passes with clean source code (`npm run lint`) ✅
 - New services compile and type-check:
@@ -112,7 +112,7 @@ Fix:
 - Restored correct row rendering behavior for recent runs.
 
 ### B) Simulation page parse/type failures from stale logic
-File: `app/simulate/page.tsx`
+File: `app/simulate/page.tsx` (removed; `/simulate` now redirects to `/map`)
 
 Problem:
 - File contained stale simulation-state logic referencing undefined variables (`applied`, `setApplied`, `setAgents`, etc.).
@@ -244,7 +244,7 @@ Status:
 
 ## 6) Useless / Low-Value / Dead Items Identified
 
-1. Previous stale simulation logic in `app/simulate/page.tsx` was dead and disconnected.
+1. Previous stale simulation logic in `app/simulate/page.tsx` was dead and disconnected; the route now redirects to the Campus workspace.
 - Removed during earlier audit.
 
 2. `coverage/` generated artifacts are included in lint scope.

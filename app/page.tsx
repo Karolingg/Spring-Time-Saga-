@@ -121,7 +121,7 @@ export default function DashboardPage() {
             Campus evacuation overview &amp; drill analytics
           </p>
         </div>
-        <a href="/simulate" style={{
+        <a href="/map" style={{
           display: 'flex', alignItems: 'center', gap: '8px',
           padding: '10px 20px', background: '#2db8b0', color: '#fff',
           borderRadius: '8px', textDecoration: 'none', fontSize: '14px', fontWeight: '600', flexShrink: 0,
@@ -461,7 +461,7 @@ function MetricChip({ label, value }: { label: string; value: string }) {
 // ─── Quick Actions ────────────────────────────────────────────────────────────
 const QUICK_ACTIONS = [
   {
-    href: '/simulate',
+    href: '/map',
     label: 'Fire Simulation',
     sub: 'High urgency scenario',
     color: '#ff6b35',
@@ -473,7 +473,7 @@ const QUICK_ACTIONS = [
     ),
   },
   {
-    href: '/simulate',
+    href: '/map',
     label: 'Earthquake Drill',
     sub: 'Dynamic obstacles scenario',
     color: '#f59e0b',

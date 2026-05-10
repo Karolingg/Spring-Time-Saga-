@@ -183,6 +183,19 @@ export function edgeKey(from: string, to: string): string {
  * because smoke spread across a corridor.
  */
 export interface WeightedPathOptions {
+  /** Nodes covered by hard hazards. They are excluded except for the start node,
+   *  so an agent standing at the edge of a danger zone can still search for an
+   *  escape route if an adjacent edge remains usable. */
+  blockedNodes?: Set<string>
+  /** Exit nodes currently covered by hard hazards. */
+  blockedExits?: Set<string>
+  /** 0-1 risk score per edge. Higher values make the path less attractive
+   *  before it becomes fully blocked. */
+  edgeRisk?: Record<string, number>
+  /** 0-1 risk score per node. Used as an extra cost when stepping into a node. */
+  nodeRisk?: Record<string, number>
+  /** Meters of virtual detour added at risk=1. */
+  riskWeight?: number
   /** Live edge occupancy (people currently on each edge, keyed by
    *  canonical edgeKey). Used to push new arrivals toward emptier routes. */
   edgeCounts?: Record<string, number>
@@ -209,7 +222,17 @@ export function findShortestPathToExitWeighted(
   softPenalty = 3.5,
   options: WeightedPathOptions = {},
 ): { path: string[]; distance: number; exitId: string; walksThroughSmoke: boolean } | null {
-  const { edgeCounts, congestionWeight = 0, jitter = 1, exitBias } = options
+  const {
+    blockedNodes,
+    blockedExits,
+    edgeRisk,
+    nodeRisk,
+    riskWeight = 0,
+    edgeCounts,
+    congestionWeight = 0,
+    jitter = 1,
+    exitBias,
+  } = options
   const exits = getExits(floor)
   if (exits.length === 0) return null
 
@@ -236,7 +259,7 @@ export function findShortestPathToExitWeighted(
     visited.add(current)
 
     const currentNode = getNode(floor, current)
-    if (currentNode?.type === 'exit') {
+    if (currentNode?.type === 'exit' && !blockedExits?.has(current)) {
       const path: string[] = []
       let c: string | null = current
       while (c) {
@@ -254,11 +277,21 @@ export function findShortestPathToExitWeighted(
       return { path, distance: dist[current], exitId: current, walksThroughSmoke }
     }
 
+    if (current !== startId && blockedNodes?.has(current)) continue
+
     for (const { node: neighbor, edge } of getNeighbors(floor, current)) {
       const key = edgeKey(edge.from, edge.to)
       if (blockedEdges.has(key)) continue
+      if (neighbor.id !== startId && blockedNodes?.has(neighbor.id)) continue
+      if (neighbor.type === 'exit' && blockedExits?.has(neighbor.id)) continue
 
       let cost = edge.distance * (softBlockedEdges.has(key) ? softPenalty : 1)
+      if (edgeRisk && riskWeight > 0) {
+        cost += (edgeRisk[key] ?? 0) * riskWeight
+      }
+      if (nodeRisk && riskWeight > 0) {
+        cost += (nodeRisk[neighbor.id] ?? 0) * riskWeight * 0.5
+      }
       if (edgeCounts && congestionWeight > 0) {
         cost += (edgeCounts[key] ?? 0) * congestionWeight
       }

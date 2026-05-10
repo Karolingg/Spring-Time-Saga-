@@ -21,7 +21,7 @@ import {
 import { createSimulation, evaluateSimulation, stepSimulation, type SimulationResults, type SimulationState } from '@/src/simulation/engine'
 import { edgeKey, getBuildingById, getNode, type FloorModel } from '@/src/simulation/building-model'
 import { createSimulationRun, saveDensityCells, saveSimulationResults } from '@/src/services/simulation.service'
-import { getHazardStorageKey, loadHazardPlan, placedHazardToZone, saveHazardPlan, type PlacedHazard } from '@/src/simulation/hazard-placement'
+import { getDefaultHazardRadius, getHazardStorageKey, loadHazardPlan, placedHazardToZone, saveHazardPlan, type PlacedHazard } from '@/src/simulation/hazard-placement'
 import {
   createSpatialGridTrace,
   densityCellsFromTrace,
@@ -36,6 +36,8 @@ type DisasterType = 'fire' | 'earthquake'
 const SIMULATION_SECONDS_PER_MS = 0.35 / 120
 const MAX_FRAME_DELTA_MS = 48
 const HAZARD_GROWTH_MULTIPLIER = 0.45
+const FLOOR_VIEW_WIDTH = 1200
+const FLOOR_VIEW_HEIGHT = 675
 
 /** Brand teal — used for all UI chrome (buttons, sliders, section labels,
  *  highlights, links). Disaster-specific colors (`meta.accent`) are reserved
@@ -225,6 +227,9 @@ export default function AutonomousScienceBuildingPage() {
   const [placedHazards, setPlacedHazards] = useState<PlacedHazard[]>([])
   const [selectedHazardId, setSelectedHazardId] = useState<string | null>(null)
   const dropRef = useRef<HTMLDivElement | null>(null)
+  const svgRef = useRef<SVGSVGElement | null>(null)
+  const hazardDragRef = useRef<{ id: string; pointerId: number; offsetX: number; offsetY: number; invalidated: boolean } | null>(null)
+  const [draggingHazardId, setDraggingHazardId] = useState<string | null>(null)
 
   const simStateRef = useRef<SimulationState | null>(null)
   const traceRef = useRef<AutonomousTrace | null>(null)
@@ -236,6 +241,11 @@ export default function AutonomousScienceBuildingPage() {
     ? clamp(agentCountOverride ?? defaultAgentCount, 1, maxAgents)
     : 1
   const activeTrace = trace ?? baseTrace
+  const hazardEditingLocked = isPlaying
+  const selectedHazard = useMemo(
+    () => placedHazards.find((hazard) => hazard.id === selectedHazardId) ?? null,
+    [placedHazards, selectedHazardId],
+  )
   const hazardStorageKey = useMemo(() => getHazardStorageKey(regionId, floorIndex, disaster), [regionId, floorIndex, disaster])
   const hazardZones = useMemo(() => placedHazards.map((hazard) => placedHazardToZone(hazard, `ui-${regionId}-${floorIndex}`)), [placedHazards, regionId, floorIndex])
   const allowedHazardTypes = useMemo(() => {
@@ -267,31 +277,75 @@ export default function AutonomousScienceBuildingPage() {
     saveHazardPlan(hazardStorageKey, placedHazards)
   }, [hazardStorageKey, placedHazards])
 
+  const invalidateRuntimePreview = useCallback(() => {
+    if (isPlaying) return
+    if (!simStateRef.current && !gridTraceRef.current && !results && !savedRunId && saveStatus === 'idle') return
+
+    setSimState(null)
+    setTrace(null)
+    setGridTrace(null)
+    setResults(null)
+    setSavedRunId(null)
+    setSaveStatus('idle')
+    setSaveMessage('')
+    traceRef.current = baseTrace
+    gridTraceRef.current = null
+    simStateRef.current = null
+    launchedAgentCountRef.current = 0
+  }, [baseTrace, isPlaying, results, saveStatus, savedRunId])
+
+  const floorPointFromClient = useCallback((clientX: number, clientY: number) => {
+    const svg = svgRef.current
+    if (!svg) return null
+    const rect = svg.getBoundingClientRect()
+    if (!rect.width || !rect.height) return null
+    return {
+      x: ((clientX - rect.left) / rect.width) * FLOOR_VIEW_WIDTH,
+      y: ((clientY - rect.top) / rect.height) * FLOOR_VIEW_HEIGHT,
+    }
+  }, [])
+
+  const updateHazard = useCallback((hazardId: string, updater: (hazard: PlacedHazard) => PlacedHazard) => {
+    if (hazardEditingLocked) return
+    invalidateRuntimePreview()
+    setPlacedHazards((prev) => prev.map((hazard) => (
+      hazard.id === hazardId ? updater(hazard) : hazard
+    )))
+  }, [hazardEditingLocked, invalidateRuntimePreview])
+
   const handleDrop = useCallback((event: React.DragEvent<HTMLDivElement>) => {
     event.preventDefault()
+    if (hazardEditingLocked) return
     const type = event.dataTransfer.getData('application/x-hazard') as PlacedHazard['type']
     if (!type || !dropRef.current) return
     const rect = dropRef.current.getBoundingClientRect()
     if (!rect.width || !rect.height) return
-    const px = ((event.clientX - rect.left) / rect.width) * 1200
-    const py = ((event.clientY - rect.top) / rect.height) * 675
-    const radius = type === 'fire' ? 38 : type === 'smoke' ? 46 : 34
-    const x = clamp(px, radius, 1200 - radius)
-    const y = clamp(py, radius, 675 - radius)
+    const px = ((event.clientX - rect.left) / rect.width) * FLOOR_VIEW_WIDTH
+    const py = ((event.clientY - rect.top) / rect.height) * FLOOR_VIEW_HEIGHT
+    const radius = getDefaultHazardRadius(type)
+    const x = clamp(px, radius, FLOOR_VIEW_WIDTH - radius)
+    const y = clamp(py, radius, FLOOR_VIEW_HEIGHT - radius)
+    const id = `${type}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`
 
+    invalidateRuntimePreview()
+    setSelectedHazardId(id)
     setPlacedHazards((prev) => [
       ...prev,
       {
-        id: `${type}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+        id,
         type,
         x,
         y,
         radius,
       },
     ])
-  }, [])
+  }, [hazardEditingLocked, invalidateRuntimePreview])
 
   const handleDragStart = (type: PlacedHazard['type']) => (event: React.DragEvent<HTMLButtonElement>) => {
+    if (hazardEditingLocked) {
+      event.preventDefault()
+      return
+    }
     event.dataTransfer.setData('application/x-hazard', type)
     event.dataTransfer.effectAllowed = 'copy'
     if (typeof document !== 'undefined') {
@@ -302,13 +356,63 @@ export default function AutonomousScienceBuildingPage() {
   }
 
   const removeHazard = useCallback((hazardId: string) => {
+    if (hazardEditingLocked) return
+    invalidateRuntimePreview()
     setPlacedHazards((prev) => prev.filter((hazard) => hazard.id !== hazardId))
     if (selectedHazardId === hazardId) setSelectedHazardId(null)
-  }, [selectedHazardId])
+  }, [hazardEditingLocked, invalidateRuntimePreview, selectedHazardId])
 
   const clearHazards = useCallback(() => {
+    if (hazardEditingLocked) return
+    invalidateRuntimePreview()
     setPlacedHazards([])
     setSelectedHazardId(null)
+  }, [hazardEditingLocked, invalidateRuntimePreview])
+
+  const handleHazardPointerDown = useCallback((hazard: PlacedHazard) => (event: React.PointerEvent<SVGGElement>) => {
+    if (hazardEditingLocked) return
+    const point = floorPointFromClient(event.clientX, event.clientY)
+    if (!point) return
+
+    event.preventDefault()
+    event.stopPropagation()
+    setSelectedHazardId(hazard.id)
+    hazardDragRef.current = {
+      id: hazard.id,
+      pointerId: event.pointerId,
+      offsetX: point.x - hazard.x,
+      offsetY: point.y - hazard.y,
+      invalidated: false,
+    }
+    setDraggingHazardId(hazard.id)
+    event.currentTarget.setPointerCapture(event.pointerId)
+  }, [floorPointFromClient, hazardEditingLocked])
+
+  const handleHazardPointerMove = useCallback((event: React.PointerEvent<SVGSVGElement>) => {
+    const drag = hazardDragRef.current
+    if (!drag || hazardEditingLocked) return
+    const point = floorPointFromClient(event.clientX, event.clientY)
+    if (!point) return
+    if (!drag.invalidated) {
+      invalidateRuntimePreview()
+      drag.invalidated = true
+    }
+
+    setPlacedHazards((prev) => prev.map((hazard) => {
+      if (hazard.id !== drag.id) return hazard
+      return {
+        ...hazard,
+        x: clamp(point.x - drag.offsetX, hazard.radius, FLOOR_VIEW_WIDTH - hazard.radius),
+        y: clamp(point.y - drag.offsetY, hazard.radius, FLOOR_VIEW_HEIGHT - hazard.radius),
+      }
+    }))
+  }, [floorPointFromClient, hazardEditingLocked, invalidateRuntimePreview])
+
+  const handleHazardPointerEnd = useCallback((event: React.PointerEvent<SVGSVGElement>) => {
+    const drag = hazardDragRef.current
+    if (!drag || drag.pointerId !== event.pointerId) return
+    hazardDragRef.current = null
+    setDraggingHazardId(null)
   }, [])
 
   useEffect(() => {
@@ -363,7 +467,7 @@ export default function AutonomousScienceBuildingPage() {
 
       setSavedRunId(runId)
       setSaveStatus('saved')
-      setSaveMessage('Run saved. You can open the analysis page to inspect congestion zones and grid density.')
+      setSaveMessage('Run saved. Open the linked analysis to inspect this exact run.')
     } catch (error) {
       console.error('Failed to save autonomous run:', error)
       setSaveStatus('error')
@@ -591,7 +695,6 @@ export default function AutonomousScienceBuildingPage() {
   }, [disaster, floor, roomAllocations, effectiveAgentCount, hazardZones])
 
   const resetSimulation = useCallback(() => {
-    clearHazards()
     setIsPlaying(false)
     setSimState(null)
     setTrace(null)
@@ -604,7 +707,7 @@ export default function AutonomousScienceBuildingPage() {
     setSavedRunId(null)
     setSaveStatus('idle')
     setSaveMessage('')
-  }, [baseTrace, clearHazards])
+  }, [baseTrace])
 
   if (isLoading) {
     return (
@@ -1041,21 +1144,27 @@ export default function AutonomousScienceBuildingPage() {
               {allowedHazardTypes.map((type) => (
                 <button
                   key={type}
-                  draggable
+                  draggable={!hazardEditingLocked}
+                  disabled={hazardEditingLocked}
                   onDragStart={handleDragStart(type)}
                   style={{
                     display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px',
                     padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--border)',
-                    background: '#ffffff', color: 'var(--text-primary)', fontSize: '12px', fontWeight: 600, cursor: 'grab',
+                    background: hazardEditingLocked ? '#f8fafc' : '#ffffff',
+                    color: hazardEditingLocked ? 'var(--text-muted)' : 'var(--text-primary)',
+                    fontSize: '12px', fontWeight: 600, cursor: hazardEditingLocked ? 'not-allowed' : 'grab',
+                    opacity: hazardEditingLocked ? 0.65 : 1,
                     transition: 'all 0.15s',
                   }}
                 >
                   {hazardLabel(type, disaster)}
-                  <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>Drag to map</span>
+                  <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>{hazardEditingLocked ? 'Locked' : 'Drag to map'}</span>
                 </button>
               ))}
             </div>
-            <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Active hazards are listed on the right panel.</div>
+            <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+              {hazardEditingLocked ? 'Hazard editing unlocks when the run is paused, stopped, or reset.' : 'Placed hazards stay selectable and draggable on the map.'}
+            </div>
           </section>
 
           <section className="auto-panel-section">
@@ -1218,11 +1327,21 @@ export default function AutonomousScienceBuildingPage() {
             className="auto-map-shell"
             ref={dropRef}
             onDrop={handleDrop}
-            onDragOver={(event) => event.preventDefault()}
+            onDragOver={(event) => {
+              if (!hazardEditingLocked) event.preventDefault()
+            }}
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={floor.floorplanSrc} alt={`${building?.name ?? regionId} ${floor.label} floor plan`} />
-            <svg viewBox="0 0 1200 675" preserveAspectRatio="xMidYMid meet" aria-hidden="true">
+            <svg
+              ref={svgRef}
+              viewBox={`0 0 ${FLOOR_VIEW_WIDTH} ${FLOOR_VIEW_HEIGHT}`}
+              preserveAspectRatio="xMidYMid meet"
+              aria-hidden="true"
+              onPointerMove={handleHazardPointerMove}
+              onPointerUp={handleHazardPointerEnd}
+              onPointerCancel={handleHazardPointerEnd}
+            >
               {/* Defs: Gaussian blur filter for the heatmap blobs. */}
               <defs>
                 <filter id="heatmap-soft-blur" x="-50%" y="-50%" width="200%" height="200%">
@@ -1313,8 +1432,12 @@ export default function AutonomousScienceBuildingPage() {
                 )
               })}
 
-              {!simState && placedHazards.map((hazard) => (
-                <g key={hazard.id} onClick={() => setSelectedHazardId(hazard.id)} style={{ cursor: 'pointer' }}>
+              {!hazardEditingLocked && placedHazards.map((hazard) => (
+                <g
+                  key={hazard.id}
+                  onPointerDown={handleHazardPointerDown(hazard)}
+                  style={{ cursor: hazardEditingLocked ? 'not-allowed' : draggingHazardId === hazard.id ? 'grabbing' : 'grab' }}
+                >
                   {hazard.type === 'debris' ? (
                     <rect
                       x={hazard.x - hazard.radius}
@@ -1323,7 +1446,7 @@ export default function AutonomousScienceBuildingPage() {
                       height={hazard.radius * 2}
                       fill={selectedHazardId === hazard.id ? 'rgba(245, 158, 11, 0.35)' : 'rgba(120, 53, 15, 0.35)'}
                       stroke={selectedHazardId === hazard.id ? '#f59e0b' : '#92400e'}
-                      strokeWidth="2"
+                      strokeWidth={selectedHazardId === hazard.id ? '3' : '2'}
                       rx="4"
                     />
                   ) : (
@@ -1332,8 +1455,8 @@ export default function AutonomousScienceBuildingPage() {
                       cy={hazard.y}
                       r={hazard.radius}
                       fill={hazard.type === 'fire' ? 'rgba(239, 68, 68, 0.28)' : 'rgba(100, 116, 139, 0.28)'}
-                      stroke={hazard.type === 'fire' ? '#ef4444' : '#64748b'}
-                      strokeWidth="2"
+                      stroke={selectedHazardId === hazard.id ? APP_ACCENT_DARK : hazard.type === 'fire' ? '#ef4444' : '#64748b'}
+                      strokeWidth={selectedHazardId === hazard.id ? '3' : '2'}
                     />
                   )}
                   <text x={hazard.x} y={hazard.y + 4} textAnchor="middle" fontSize="10" fontWeight="700" fill="#0f172a">
@@ -1343,7 +1466,7 @@ export default function AutonomousScienceBuildingPage() {
               ))}
 
               {simState?.hazards.filter((hazard) => hazard.active).map((hazard) => (
-                <g key={hazard.zone.id}>
+                <g key={hazard.zone.id} pointerEvents="none" opacity={hazardEditingLocked ? 1 : 0.4}>
                   <circle
                     cx={hazard.zone.x}
                     cy={hazard.zone.y}
@@ -1505,12 +1628,12 @@ export default function AutonomousScienceBuildingPage() {
               <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)' }}>Active hazards</div>
               <button
                 onClick={clearHazards}
-                disabled={placedHazards.length === 0}
+                disabled={placedHazards.length === 0 || hazardEditingLocked}
                 style={{
-                  padding: '5px 10px', borderRadius: '6px', border: `1px solid ${placedHazards.length === 0 ? 'var(--border)' : 'rgba(239,68,68,0.2)'}`,
-                  background: placedHazards.length === 0 ? '#f8fafc' : '#fef2f2',
-                  color: placedHazards.length === 0 ? 'var(--text-muted)' : '#b91c1c',
-                  fontSize: '11px', fontWeight: 600, cursor: placedHazards.length === 0 ? 'not-allowed' : 'pointer',
+                  padding: '5px 10px', borderRadius: '6px', border: `1px solid ${placedHazards.length === 0 || hazardEditingLocked ? 'var(--border)' : 'rgba(239,68,68,0.2)'}`,
+                  background: placedHazards.length === 0 || hazardEditingLocked ? '#f8fafc' : '#fef2f2',
+                  color: placedHazards.length === 0 || hazardEditingLocked ? 'var(--text-muted)' : '#b91c1c',
+                  fontSize: '11px', fontWeight: 600, cursor: placedHazards.length === 0 || hazardEditingLocked ? 'not-allowed' : 'pointer',
                 }}
               >
                 Clear
@@ -1523,13 +1646,16 @@ export default function AutonomousScienceBuildingPage() {
               {placedHazards.map((hazard, index) => (
                 <div
                   key={hazard.id}
-                  onClick={() => setSelectedHazardId(hazard.id)}
+                  onClick={() => {
+                    if (!hazardEditingLocked) setSelectedHazardId(hazard.id)
+                  }}
                   style={{
                     display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px',
                     padding: '8px 10px', borderRadius: '10px',
                     border: selectedHazardId === hazard.id ? `1px solid ${APP_ACCENT}66` : '1px solid var(--border)',
                     background: selectedHazardId === hazard.id ? `${APP_ACCENT}14` : '#ffffff',
-                    cursor: 'pointer',
+                    cursor: hazardEditingLocked ? 'not-allowed' : 'pointer',
+                    opacity: hazardEditingLocked ? 0.7 : 1,
                   }}
                 >
                   <div>
@@ -1537,13 +1663,16 @@ export default function AutonomousScienceBuildingPage() {
                     <div style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>x {Math.round(hazard.x)}, y {Math.round(hazard.y)}</div>
                   </div>
                   <button
+                    disabled={hazardEditingLocked}
                     onClick={(event) => {
                       event.stopPropagation()
                       removeHazard(hazard.id)
                     }}
                     style={{
                       padding: '4px 10px', borderRadius: '6px', border: '1px solid rgba(239,68,68,0.2)',
-                      background: '#fef2f2', color: '#b91c1c', fontSize: '11px', fontWeight: 600, cursor: 'pointer',
+                      background: hazardEditingLocked ? '#f8fafc' : '#fef2f2',
+                      color: hazardEditingLocked ? 'var(--text-muted)' : '#b91c1c',
+                      fontSize: '11px', fontWeight: 600, cursor: hazardEditingLocked ? 'not-allowed' : 'pointer',
                     }}
                   >
                     Remove
@@ -1551,6 +1680,108 @@ export default function AutonomousScienceBuildingPage() {
                 </div>
               ))}
             </div>
+            {selectedHazard && (
+              <div style={{ marginTop: '12px', borderRadius: '12px', border: `1px solid ${APP_ACCENT}33`, background: `${APP_ACCENT}0f`, padding: '12px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', marginBottom: '10px' }}>
+                  <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-primary)' }}>
+                    Edit {hazardLabel(selectedHazard.type, disaster)}
+                  </div>
+                  {hazardEditingLocked && (
+                    <div style={{ fontSize: '10px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+                      Locked
+                    </div>
+                  )}
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '8px' }}>
+                  <label style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '10px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                    X
+                    <input
+                      type="number"
+                      min={selectedHazard.radius}
+                      max={FLOOR_VIEW_WIDTH - selectedHazard.radius}
+                      value={Math.round(selectedHazard.x)}
+                      disabled={hazardEditingLocked}
+                      onChange={(event) => {
+                        const value = Number.parseFloat(event.target.value)
+                        if (!Number.isFinite(value)) return
+                        updateHazard(selectedHazard.id, (hazard) => ({
+                          ...hazard,
+                          x: clamp(value, hazard.radius, FLOOR_VIEW_WIDTH - hazard.radius),
+                        }))
+                      }}
+                      style={{ padding: '7px 8px', borderRadius: '8px', border: '1px solid var(--border)', fontSize: '12px', color: 'var(--text-primary)', background: hazardEditingLocked ? '#f8fafc' : '#ffffff' }}
+                    />
+                  </label>
+                  <label style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '10px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                    Y
+                    <input
+                      type="number"
+                      min={selectedHazard.radius}
+                      max={FLOOR_VIEW_HEIGHT - selectedHazard.radius}
+                      value={Math.round(selectedHazard.y)}
+                      disabled={hazardEditingLocked}
+                      onChange={(event) => {
+                        const value = Number.parseFloat(event.target.value)
+                        if (!Number.isFinite(value)) return
+                        updateHazard(selectedHazard.id, (hazard) => ({
+                          ...hazard,
+                          y: clamp(value, hazard.radius, FLOOR_VIEW_HEIGHT - hazard.radius),
+                        }))
+                      }}
+                      style={{ padding: '7px 8px', borderRadius: '8px', border: '1px solid var(--border)', fontSize: '12px', color: 'var(--text-primary)', background: hazardEditingLocked ? '#f8fafc' : '#ffffff' }}
+                    />
+                  </label>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                  <label style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '10px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                    Type
+                    <select
+                      value={selectedHazard.type}
+                      disabled={hazardEditingLocked}
+                      onChange={(event) => {
+                        const nextType = event.target.value as PlacedHazard['type']
+                        updateHazard(selectedHazard.id, (hazard) => ({
+                          ...hazard,
+                          type: nextType,
+                          radius: hazard.radius || getDefaultHazardRadius(nextType),
+                        }))
+                      }}
+                      style={{ padding: '7px 8px', borderRadius: '8px', border: '1px solid var(--border)', fontSize: '12px', color: 'var(--text-primary)', background: hazardEditingLocked ? '#f8fafc' : '#ffffff' }}
+                    >
+                      {allowedHazardTypes.map((type) => (
+                        <option key={type} value={type}>{hazardLabel(type, disaster)}</option>
+                      ))}
+                    </select>
+                  </label>
+                  <label style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '10px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                    Radius
+                    <input
+                      type="number"
+                      min={10}
+                      max={160}
+                      value={Math.round(selectedHazard.radius)}
+                      disabled={hazardEditingLocked}
+                      onChange={(event) => {
+                        const value = Number.parseFloat(event.target.value)
+                        if (!Number.isFinite(value)) return
+                        updateHazard(selectedHazard.id, (hazard) => {
+                          const radius = clamp(value, 10, 160)
+                          return {
+                            ...hazard,
+                            radius,
+                            x: clamp(hazard.x, radius, FLOOR_VIEW_WIDTH - radius),
+                            y: clamp(hazard.y, radius, FLOOR_VIEW_HEIGHT - radius),
+                          }
+                        })
+                      }}
+                      style={{ padding: '7px 8px', borderRadius: '8px', border: '1px solid var(--border)', fontSize: '12px', color: 'var(--text-primary)', background: hazardEditingLocked ? '#f8fafc' : '#ffffff' }}
+                    />
+                  </label>
+                </div>
+              </div>
+            )}
           </section>
 
           <section className="auto-panel-section">
@@ -1601,10 +1832,20 @@ export default function AutonomousScienceBuildingPage() {
                 )}
                 <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                   <button
-                    onClick={() => router.push('/analysis')}
-                    style={{ padding: '10px 16px', borderRadius: '8px', border: 'none', background: '#2db8b0', color: '#ffffff', fontSize: '13px', fontWeight: 600, cursor: 'pointer' }}
+                    onClick={() => router.push(savedRunId ? `/analysis/runs?runId=${encodeURIComponent(savedRunId)}` : '/analysis/runs')}
+                    disabled={saveStatus === 'saving'}
+                    style={{
+                      padding: '10px 16px',
+                      borderRadius: '8px',
+                      border: 'none',
+                      background: saveStatus === 'saving' ? '#94a3b8' : '#2db8b0',
+                      color: '#ffffff',
+                      fontSize: '13px',
+                      fontWeight: 600,
+                      cursor: saveStatus === 'saving' ? 'not-allowed' : 'pointer',
+                    }}
                   >
-                    Open Analysis
+                    {saveStatus === 'saving' ? 'Saving Analysis...' : 'Open Analysis'}
                   </button>
                   <button
                     onClick={() => router.push(`/simulate/${encodeURIComponent(regionId)}/run?disaster=${disaster}&floor=${floorIndex}`)}

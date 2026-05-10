@@ -218,6 +218,7 @@ function toSimulationRun(
 ): SimulationRun {
   return {
     id: row.id as string,
+    analysisId: result ? (result.id as string) : null,
     userId: row.user_id as string,
     disasterType: (row.disaster_type as SimulationRun['disasterType']) ?? 'fire',
     status: (row.status as SimulationStatus) ?? 'pending',

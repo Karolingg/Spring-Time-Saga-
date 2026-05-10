@@ -321,10 +321,10 @@ export default function MapPage() {
         </div>
         <div>
           <h1 style={{ margin: '0 0 4px', fontSize: '22px', fontWeight: '700', color: 'var(--text-primary)' }}>
-            Campus Map Display
+            Campus Simulation Workspace
           </h1>
           <p style={{ margin: 0, fontSize: '13px', color: 'var(--text-secondary)' }}>
-            UP Cebu &middot; Lahug, Cebu City &middot; Click a building for details
+            UP Cebu &middot; Lahug, Cebu City &middot; Select a building to start a drill
           </p>
         </div>
       </div>

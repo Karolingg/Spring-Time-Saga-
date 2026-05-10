@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { useAuth } from '@/src/hooks/useAuth'
 import {
   getLatestSimulationRun,
@@ -32,6 +33,10 @@ interface RunHistoryItem {
 
 export default function AnalysisRunsPage() {
   const { isAuthenticated, isLoading: isAuthLoading } = useAuth()
+  const router = useRouter()
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
+  const requestedRunId = searchParams.get('runId')
 
   const [run, setRun] = useState<SimulationRun | null>(null)
   const [densityCells, setDensityCells] = useState<DensityCell[]>([])
@@ -48,20 +53,35 @@ export default function AnalysisRunsPage() {
 
   useEffect(() => {
     if (!isAuthenticated) return
-    loadInitialData()
+    loadInitialData(requestedRunId)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isAuthenticated])
+  }, [isAuthenticated, requestedRunId])
 
-  async function loadInitialData() {
+  async function loadInitialData(preferredRunId: string | null) {
     setIsLoadingData(true)
     try {
-      const [latest, history] = await Promise.all([
-        getLatestSimulationRun(),
-        getSimulationHistory(20),
-      ])
-      setRun(latest)
-      setDensityCells(latest ? await getDensityCells(latest.id) : [])
-      setRunHistory(buildRunHistory(history))
+      const history = await getSimulationHistory(20)
+      let selected: SimulationRun | null = null
+
+      if (preferredRunId) {
+        try {
+          selected = await getSimulationRun(preferredRunId)
+        } catch (err) {
+          console.error(`Failed to load requested simulation run ${preferredRunId}:`, err)
+        }
+      }
+
+      if (!selected) {
+        selected = await getLatestSimulationRun()
+      }
+
+      const historyWithSelected = selected && !history.some((item) => item.id === selected.id)
+        ? [selected, ...history]
+        : history
+
+      setRun(selected)
+      setDensityCells(selected ? await getDensityCells(selected.id) : [])
+      setRunHistory(buildRunHistory(historyWithSelected))
     } catch (err) {
       console.error('Failed to load simulation data:', err)
     } finally {
@@ -76,17 +96,10 @@ export default function AnalysisRunsPage() {
     }))
   }
 
-  async function handleRunChange(selectedRunId: string) {
-    setIsLoadingData(true)
-    try {
-      const selected = await getSimulationRun(selectedRunId)
-      setRun(selected)
-      setDensityCells(await getDensityCells(selectedRunId))
-    } catch (err) {
-      console.error('Failed to load simulation run:', err)
-    } finally {
-      setIsLoadingData(false)
-    }
+  function handleRunChange(selectedRunId: string) {
+    const next = new URLSearchParams(searchParams.toString())
+    next.set('runId', selectedRunId)
+    router.push(`${pathname}?${next.toString()}`)
   }
 
   async function handleDeleteRun(runId: string) {
@@ -98,10 +111,11 @@ export default function AnalysisRunsPage() {
 
       if (wasCurrentRun) {
         if (updatedHistory.length > 0) {
-          await handleRunChange(updatedHistory[0].id)
+          router.replace(`/analysis/runs?runId=${encodeURIComponent(updatedHistory[0].id)}`)
         } else {
           setRun(null)
           setDensityCells([])
+          router.replace('/analysis/runs')
         }
       }
     } catch (err) {
@@ -117,6 +131,7 @@ export default function AnalysisRunsPage() {
       setRun(null)
       setDensityCells([])
       setRunHistory([])
+      router.replace('/analysis/runs')
     } catch (err) {
       console.error('Failed to reset simulation data:', err)
     } finally {
@@ -282,7 +297,7 @@ function PageHeader({ runHistory, currentRunId, onRunChange, onRequestDelete, on
           Summary View
         </a>
 
-        <a href="/simulate?disaster=fire" style={{
+        <a href="/map" style={{
           display: 'inline-flex', alignItems: 'center', gap: '6px',
           padding: '8px 14px', background: '#2db8b0', color: '#ffffff',
           borderRadius: '8px', textDecoration: 'none', fontSize: '13px', fontWeight: '600', flexShrink: 0,
@@ -367,7 +382,7 @@ function EmptyState() {
       <p style={{ margin: 0, fontSize: '14px', color: 'var(--text-secondary)' }}>
         Run and complete a simulation first to see heatmap analysis here.
       </p>
-      <a href="/simulate?disaster=fire" style={{
+      <a href="/map" style={{
         display: 'inline-block', marginTop: '16px', padding: '10px 20px',
         background: '#2db8b0', color: '#ffffff', borderRadius: '8px',
         textDecoration: 'none', fontSize: '14px', fontWeight: '600',

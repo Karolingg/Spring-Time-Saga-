@@ -22,6 +22,7 @@ export interface SimulationResults {
 
 export interface SimulationRun {
   id: string
+  analysisId: string | null
   userId: string
   disasterType: DisasterType
   status: SimulationStatus
