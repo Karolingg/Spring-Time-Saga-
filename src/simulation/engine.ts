@@ -106,11 +106,27 @@ export interface SimConfig {
   userPath?: string[]
   /** Override hazard zones for the selected disaster type */
   hazardOverrides?: HazardZone[]
+  /** Optional RNG seed. When provided, agent reaction delays, speeds, and
+   *  routing jitter are drawn from a seeded PRNG — letting the replay view
+   *  reconstruct the exact agent population from the saved seed. */
+  seed?: number
 }
 
 const MIN_AGENT_SPEED = 1.0
 const MAX_AGENT_SPEED = 2.0
-const randomAgentSpeed = () => MIN_AGENT_SPEED + Math.random() * (MAX_AGENT_SPEED - MIN_AGENT_SPEED)
+
+/** Mulberry32 — 32-bit seedable PRNG. Cheap, good distribution, returns
+ *  values in [0, 1). Wrapped in a closure that captures the running state. */
+function createSeededRng(seed: number): () => number {
+  let state = (seed >>> 0) || 1
+  return () => {
+    state = (state + 0x6D2B79F5) >>> 0
+    let t = state
+    t = Math.imul(t ^ (t >>> 15), t | 1)
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61)
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296
+  }
+}
 
 /* ── Create initial simulation state ── */
 export function createSimulation(
@@ -119,6 +135,9 @@ export function createSimulation(
 ): SimulationState {
   const agents: Agent[] = []
   let agentIdx = 0
+
+  const rand = config.seed != null ? createSeededRng(config.seed) : Math.random
+  const randomAgentSpeed = () => MIN_AGENT_SPEED + rand() * (MAX_AGENT_SPEED - MIN_AGENT_SPEED)
 
   // Reaction delay range depends on the disaster:
   //  - Fire:        0.5–4s   — occupants smell smoke / hear alarm and move quickly.
@@ -129,13 +148,16 @@ export function createSimulation(
   const reactionMin = isQuake ? 6 : 0.5
   const reactionRange = isQuake ? 12 : 3.5
 
-  // Spawn agents in rooms
-  for (const [roomId, count] of Object.entries(config.agentsPerRoom)) {
+  // Spawn agents in rooms. We sort the room IDs so the order in which we
+  // consume RNG values is independent of the JS engine's object key order —
+  // critical for the replay seed to produce identical agents.
+  const roomEntries = Object.entries(config.agentsPerRoom).sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
+  for (const [roomId, count] of roomEntries) {
     const room = getNode(floor, roomId)
     if (!room) continue
 
     for (let i = 0; i < count; i++) {
-      const reactionDelay = reactionMin + Math.random() * reactionRange
+      const reactionDelay = reactionMin + rand() * reactionRange
       // Vary speeds: 1.0–2.0 m/s
       const speed = randomAgentSpeed()
 
@@ -155,7 +177,7 @@ export function createSimulation(
         history: [{ nodeId: roomId, time: 0 }],
         // Jitter range 0.85–1.15 — enough to swap ties between near-equal
         // routes without ever making a bad route look better than a good one.
-        routingJitter: 0.85 + Math.random() * 0.30,
+        routingJitter: 0.85 + rand() * 0.30,
         rerouteStallTime: 0,
         rerouteAnchor: undefined,
       })

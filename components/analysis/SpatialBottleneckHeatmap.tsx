@@ -1,14 +1,20 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { getBuildingById, type FloorModel, type NavNode } from '@/src/simulation/building-model'
 import type { DensityCell, SimulationZone } from '@/src/schema/simulation.types'
 import {
   GRID_VIEW_HEIGHT,
   GRID_VIEW_WIDTH,
+  createSpatialGridTrace,
+  densityCellsFromTrace,
   gridCellRect,
   renderableCellsFromDensityCells,
+  updateSpatialGridTrace,
 } from '@/src/simulation/spatial-grid'
+import { createSimulation, stepSimulation } from '@/src/simulation/engine'
+import { getAgentRenderPosition } from '@/src/simulation/autonomous-analytics'
+import { placedHazardToZone, type PlacedHazard } from '@/src/simulation/hazard-placement'
 
 const VIEW_WIDTH = GRID_VIEW_WIDTH
 const VIEW_HEIGHT = GRID_VIEW_HEIGHT
@@ -66,22 +72,171 @@ interface SpatialBottleneckHeatmapProps {
   buildingId: string | null
   zones: SimulationZone[]
   densityCells?: DensityCell[]
+  /** Index of the floor the run was actually simulated on. When the user
+   *  switches to a different floor we hide the heat overlay because the
+   *  recorded data doesn't apply there. */
+  simulatedFloorIndex?: number | null
+  /** When true, suppresses the internal title row because a parent tab
+   *  wrapper renders a unified header. */
+  hideHeader?: boolean
+  /** Replay inputs — when available, we re-simulate to derive a complete
+   *  grid heatmap regardless of what was saved to density_cells. */
+  hazards?: PlacedHazard[] | null
+  agentsPerRoom?: Record<string, number> | null
+  seed?: number | null
+  disasterType?: 'fire' | 'earthquake' | null
+  agentCount?: number | null
 }
 
-export function SpatialBottleneckHeatmap({ buildingId, zones, densityCells = [] }: SpatialBottleneckHeatmapProps) {
+const HAZARD_GROWTH_MULTIPLIER = 0.45
+const REPLAY_STEP_DT = 0.1
+const REPLAY_BATCH_BUDGET_MS = 12
+
+function getHeatColor(intensity: number) {
+  if (intensity >= 0.78) return '#e11d48'   // rose-600
+  if (intensity >= 0.55) return '#ea580c'   // orange-600
+  if (intensity >= 0.32) return '#f59e0b'   // amber-500
+  if (intensity >= 0.12) return '#22c55e'   // green-500
+  return '#4ade80'                            // green-400
+}
+
+export function SpatialBottleneckHeatmap({
+  buildingId,
+  zones,
+  densityCells = [],
+  simulatedFloorIndex = null,
+  hideHeader = false,
+  hazards = null,
+  agentsPerRoom = null,
+  seed = null,
+  disasterType = null,
+  agentCount = null,
+}: SpatialBottleneckHeatmapProps) {
   const building = useMemo(
     () => (buildingId ? getBuildingById(buildingId) ?? null : null),
     [buildingId],
   )
 
+  const simulatedFloor = useMemo(() => {
+    if (!building || simulatedFloorIndex == null) return null
+    return building.floors[simulatedFloorIndex] ?? null
+  }, [building, simulatedFloorIndex])
+
   const initialFloor = useMemo(
-    () => (building ? findFloorByZoneMatches(building.floors, zones) : null),
-    [building, zones],
+    () => simulatedFloor ?? (building ? findFloorByZoneMatches(building.floors, zones) : null),
+    [simulatedFloor, building, zones],
   )
   const [activeFloorId, setActiveFloorId] = useState<string | null>(initialFloor?.id ?? null)
+  // When a run records its simulated floor, lock the heatmap to that floor —
+  // the data isn't meaningful for any other floor of the same building.
+  const lockedToSimulatedFloor = simulatedFloor != null
+  const [syncedSimulatedFloorId, setSyncedSimulatedFloorId] = useState<string | null>(simulatedFloor?.id ?? null)
+  if (lockedToSimulatedFloor && syncedSimulatedFloorId !== simulatedFloor.id) {
+    setSyncedSimulatedFloorId(simulatedFloor.id)
+    setActiveFloorId(simulatedFloor.id)
+  }
+  /** Re-simulate using the saved replay inputs (seed + hazards +
+   *  per-room allocation) and capture a full grid trace. This guarantees
+   *  the grid heatmap renders even when density_cells weren't saved with
+   *  the run, and stays consistent with the Replay tab. */
+  const [replayDensityCells, setReplayDensityCells] = useState<DensityCell[]>([])
+  const [isReplayComputing, setIsReplayComputing] = useState(false)
+
+  const replayFloor = simulatedFloor
+  const replayAllocations = useMemo(() => {
+    if (agentsPerRoom && Object.keys(agentsPerRoom).length > 0) return agentsPerRoom
+    if (!replayFloor || !agentCount || agentCount <= 0) return null
+    const rooms = replayFloor.nodes.filter((n) => n.type === 'room')
+    const totalCap = rooms.reduce((sum, r) => sum + r.capacity, 0)
+    if (totalCap === 0) return null
+    const result: Record<string, number> = {}
+    let assigned = 0
+    const drafts = rooms.map((r) => {
+      const share = (agentCount * r.capacity) / totalCap
+      const floored = Math.floor(share)
+      assigned += floored
+      result[r.id] = floored
+      return { id: r.id, frac: share - floored, capacity: r.capacity }
+    })
+    drafts.sort((a, b) => b.frac - a.frac)
+    let i = 0
+    while (assigned < agentCount && i < drafts.length) {
+      if (result[drafts[i].id] < drafts[i].capacity) {
+        result[drafts[i].id]++
+        assigned++
+      }
+      i++
+    }
+    return result
+  }, [agentsPerRoom, replayFloor, agentCount])
+
+  useEffect(() => {
+    if (!replayFloor || !replayAllocations) {
+      setReplayDensityCells([])
+      return
+    }
+    const totalAgents = Object.values(replayAllocations).reduce((s, v) => s + v, 0)
+    if (totalAgents <= 0) {
+      setReplayDensityCells([])
+      return
+    }
+
+    let cancelled = false
+    setIsReplayComputing(true)
+
+    let state = createSimulation(replayFloor, {
+      disasterType: (disasterType ?? 'fire') as 'fire' | 'earthquake',
+      agentsPerRoom: replayAllocations,
+      hazardGrowthMultiplier: HAZARD_GROWTH_MULTIPLIER,
+      hazardOverrides: hazards != null
+        ? hazards.map((h) => placedHazardToZone(h, `heatmap-${buildingId}-${simulatedFloorIndex ?? 0}`))
+        : undefined,
+      seed: seed ?? undefined,
+    })
+    state.running = true
+    let trace = createSpatialGridTrace()
+    const maxStepsHardCap = 4000
+
+    const runBatch = () => {
+      if (cancelled) return
+      const batchStart = performance.now()
+      let stepsThisBatch = 0
+      while (!state.finished && performance.now() - batchStart < REPLAY_BATCH_BUDGET_MS && stepsThisBatch < maxStepsHardCap) {
+        state.hazardGrowthMultiplier = HAZARD_GROWTH_MULTIPLIER
+        state = stepSimulation(state, replayFloor, REPLAY_STEP_DT)
+        const positions = state.agents
+          .filter((a) => a.state !== 'evacuated' && a.state !== 'trapped')
+          .map((a) => getAgentRenderPosition(a, replayFloor))
+        const hzs = state.hazards.map((h) => ({ x: h.zone.x, y: h.zone.y, currentRadius: h.currentRadius, active: h.active }))
+        trace = updateSpatialGridTrace(trace, positions, hzs, REPLAY_STEP_DT)
+        stepsThisBatch++
+      }
+      if (state.finished || stepsThisBatch >= maxStepsHardCap) {
+        const finalCells = densityCellsFromTrace(trace).map((cell, i) => ({
+          ...cell,
+          id: `replay-${i}`,
+          runId: `replay-${buildingId}-${simulatedFloorIndex ?? 0}`,
+        })) as DensityCell[]
+        if (!cancelled) {
+          setReplayDensityCells(finalCells)
+          setIsReplayComputing(false)
+        }
+        return
+      }
+      // Yield to the browser between batches so we don't freeze the UI.
+      setTimeout(runBatch, 0)
+    }
+
+    runBatch()
+    return () => { cancelled = true }
+  }, [replayFloor, replayAllocations, hazards, seed, disasterType, buildingId, simulatedFloorIndex])
+
+  /** Prefer the freshly computed grid (always reflects the seeded run);
+   *  fall back to whatever density cells were saved alongside the run. */
+  const effectiveDensityCells = replayDensityCells.length > 0 ? replayDensityCells : densityCells
   const densityHeatCells = useMemo(
-    () => renderableCellsFromDensityCells(densityCells),
-    [densityCells],
+    () => renderableCellsFromDensityCells(effectiveDensityCells),
+    [effectiveDensityCells],
   )
 
   if (!building || !initialFloor) {
@@ -100,18 +255,25 @@ export function SpatialBottleneckHeatmap({ buildingId, zones, densityCells = [] 
   }
 
   const activeFloor = building.floors.find((f) => f.id === activeFloorId) ?? initialFloor
-  const hasDensityData = densityHeatCells.length > 0
+  // When the run recorded which floor it simulated, the heatmap data is only
+  // meaningful on that floor. On other floors we keep the floor plan visible
+  // for context but suppress the overlay + hotspot list and show a notice.
+  const matchesSimulatedFloor = simulatedFloor ? activeFloor.id === simulatedFloor.id : true
+  const showHeat = matchesSimulatedFloor
+  const hasDensityData = showHeat && densityHeatCells.length > 0
   const intensityByLabel = new Map(zones.map((z) => [z.zoneName, z.intensity]))
   const peakAgentsByLabel = new Map(zones.map((z) => [z.zoneName, z.agentCount]))
 
-  const heatNodes: HotNode[] = activeFloor.nodes
-    .map((node) => {
-      const intensity = intensityByLabel.get(node.label) ?? 0
-      const peak = peakAgentsByLabel.get(node.label) ?? 0
-      return { node, intensity, peak, band: bandFor(intensity) }
-    })
-    .filter((entry) => entry.intensity > 0 || entry.peak > 0)
-    .sort((a, b) => b.intensity - a.intensity)
+  const heatNodes: HotNode[] = showHeat
+    ? activeFloor.nodes
+        .map((node) => {
+          const intensity = intensityByLabel.get(node.label) ?? 0
+          const peak = peakAgentsByLabel.get(node.label) ?? 0
+          return { node, intensity, peak, band: bandFor(intensity) }
+        })
+        .filter((entry) => entry.intensity > 0 || entry.peak > 0)
+        .sort((a, b) => b.intensity - a.intensity)
+    : []
 
   const hasData = hasDensityData || heatNodes.length > 0
   const criticalCount = hasDensityData
@@ -145,57 +307,76 @@ export function SpatialBottleneckHeatmap({ buildingId, zones, densityCells = [] 
   return (
     <div>
       {/* ── Title row ────────────────────────────────────────────────── */}
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '16px', marginBottom: '16px', flexWrap: 'wrap' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <div style={{
-            width: '40px', height: '40px', borderRadius: '10px',
-            background: 'linear-gradient(135deg, #2db8b015 0%, #2db8b005 100%)',
-            border: '1px solid #2db8b033',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-          }}>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#2db8b0" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M12 22c4-3 8-7 8-12a8 8 0 0 0-16 0c0 5 4 9 8 12z" />
-              <circle cx="12" cy="10" r="3" />
-            </svg>
+      {!hideHeader && (
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '16px', marginBottom: '16px', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <div style={{
+              width: '40px', height: '40px', borderRadius: '10px',
+              background: 'linear-gradient(135deg, #2db8b015 0%, #2db8b005 100%)',
+              border: '1px solid #2db8b033',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#2db8b0" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 22c4-3 8-7 8-12a8 8 0 0 0-16 0c0 5 4 9 8 12z" />
+                <circle cx="12" cy="10" r="3" />
+              </svg>
+            </div>
+            <div>
+              <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.01em' }}>
+                Crowd Heatmap
+              </h3>
+              <p style={{ margin: '2px 0 0', fontSize: '12px', color: 'var(--text-secondary)' }}>
+                {building.name} · {activeFloor.label}
+              </p>
+            </div>
           </div>
-          <div>
-            <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.01em' }}>
-              Crowd Heatmap
-            </h3>
-            <p style={{ margin: '2px 0 0', fontSize: '12px', color: 'var(--text-secondary)' }}>
-              {building.name} · {activeFloor.label}
-            </p>
-          </div>
-        </div>
 
-        {building.floors.length > 1 && (
-          <div style={{
-            display: 'flex', gap: '2px', padding: '3px',
-            background: '#f1f5f9', borderRadius: '10px', border: '1px solid var(--border)',
-          }}>
-            {building.floors.map((floor) => {
-              const selected = floor.id === activeFloor.id
-              return (
-                <button
-                  key={floor.id}
-                  onClick={() => setActiveFloorId(floor.id)}
-                  style={{
-                    padding: '7px 14px', fontSize: '11px', fontWeight: 700,
-                    borderRadius: '7px', border: 'none',
-                    background: selected ? '#ffffff' : 'transparent',
-                    color: selected ? '#0f172a' : '#64748b',
-                    cursor: 'pointer',
-                    boxShadow: selected ? '0 1px 3px rgba(15,23,42,0.10)' : 'none',
-                    transition: 'all 0.15s', letterSpacing: '0.01em',
-                  }}
-                >
-                  {floor.label}
-                </button>
-              )
-            })}
-          </div>
-        )}
-      </div>
+          {lockedToSimulatedFloor ? (
+            <div
+              title="Heatmap is scoped to the floor that was actually simulated"
+              style={{
+                display: 'inline-flex', alignItems: 'center', gap: '8px',
+                padding: '7px 12px',
+                background: '#f1f5f9', borderRadius: '999px', border: '1px solid var(--border)',
+                fontSize: '11px', fontWeight: 700, color: '#475569',
+                letterSpacing: '0.04em',
+              }}
+            >
+              <span style={{
+                width: '6px', height: '6px', borderRadius: '50%',
+                background: '#2db8b0',
+              }} />
+              Simulated: {activeFloor.label}
+            </div>
+          ) : building.floors.length > 1 && (
+            <div style={{
+              display: 'flex', gap: '2px', padding: '3px',
+              background: '#f1f5f9', borderRadius: '10px', border: '1px solid var(--border)',
+            }}>
+              {building.floors.map((floor) => {
+                const selected = floor.id === activeFloor.id
+                return (
+                  <button
+                    key={floor.id}
+                    onClick={() => setActiveFloorId(floor.id)}
+                    style={{
+                      padding: '7px 14px', fontSize: '11px', fontWeight: 700,
+                      borderRadius: '7px', border: 'none',
+                      background: selected ? '#ffffff' : 'transparent',
+                      color: selected ? '#0f172a' : '#64748b',
+                      cursor: 'pointer',
+                      boxShadow: selected ? '0 1px 3px rgba(15,23,42,0.10)' : 'none',
+                      transition: 'all 0.15s', letterSpacing: '0.01em',
+                    }}
+                  >
+                    {floor.label}
+                  </button>
+                )
+              })}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* ── Stats strip ──────────────────────────────────────────────── */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '8px', marginBottom: '16px' }}>
@@ -282,7 +463,6 @@ export function SpatialBottleneckHeatmap({ buildingId, zones, densityCells = [] 
                 <g filter="url(#core-blur)">
                   {densityHeatCells.map((cell) => {
                     const rect = gridCellRect(cell)
-                    const opacity = 0.30 + cell.intensity * 0.50
                     return (
                       <rect
                         key={`density-cell-${cell.cellX}-${cell.cellY}`}
@@ -291,8 +471,8 @@ export function SpatialBottleneckHeatmap({ buildingId, zones, densityCells = [] 
                         width={rect.width}
                         height={rect.height}
                         rx="4"
-                        fill={bandFor(cell.intensity * 100).color}
-                        opacity={opacity}
+                        fill={getHeatColor(cell.intensity)}
+                        opacity={0.42 + cell.intensity * 0.45}
                       />
                     )
                   })}
@@ -337,13 +517,38 @@ export function SpatialBottleneckHeatmap({ buildingId, zones, densityCells = [] 
             </svg>
           </div>
 
-          {!hasData && (
+          {!hasData && !isReplayComputing && (
             <div style={{
               position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
               background: 'rgba(248,250,252,0.85)',
             }}>
-              <div style={{ textAlign: 'center', color: 'var(--text-secondary)', fontSize: '13px', padding: '24px' }}>
-                No congestion recorded for this floor.
+              <div style={{ textAlign: 'center', color: 'var(--text-secondary)', fontSize: '13px', padding: '24px', maxWidth: '320px' }}>
+                {!matchesSimulatedFloor
+                  ? 'Heatmap available only for the simulated floor.'
+                  : 'Run a simulation on this floor to see a heatmap.'}
+              </div>
+            </div>
+          )}
+
+          {isReplayComputing && !hasData && (
+            <div style={{
+              position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
+              background: 'rgba(248,250,252,0.7)',
+            }}>
+              <div style={{
+                display: 'inline-flex', alignItems: 'center', gap: '10px',
+                padding: '10px 16px', borderRadius: '999px',
+                background: '#ffffff', border: '1px solid var(--border)',
+                boxShadow: '0 4px 12px rgba(15,23,42,0.06)',
+                color: 'var(--text-secondary)', fontSize: '12px', fontWeight: 600,
+              }}>
+                <span style={{
+                  width: 10, height: 10, borderRadius: '50%',
+                  background: '#2db8b0',
+                  animation: 'sbm-pulse 1.1s ease-in-out infinite',
+                }} />
+                Computing heatmap…
+                <style>{`@keyframes sbm-pulse { 0%,100% { opacity: 0.4 } 50% { opacity: 1 } }`}</style>
               </div>
             </div>
           )}
@@ -370,7 +575,7 @@ export function SpatialBottleneckHeatmap({ buildingId, zones, densityCells = [] 
             <div style={{
               width: '16px',
               borderRadius: '6px',
-              background: 'linear-gradient(180deg, #f43f5e 0%, #f97316 35%, #f59e0b 60%, #4ade80 88%, #86efac 100%)',
+              background: 'linear-gradient(180deg, #e11d48 0%, #ea580c 35%, #f59e0b 60%, #22c55e 88%, #4ade80 100%)',
               boxShadow: 'inset 0 0 0 1px rgba(15,23,42,0.10)',
             }} />
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-between', padding: '2px 0' }}>
@@ -440,34 +645,6 @@ export function SpatialBottleneckHeatmap({ buildingId, zones, densityCells = [] 
         </div>
       )}
 
-      {/* ── Legend ───────────────────────────────────────────────────── */}
-      <div style={{
-        display: 'flex',
-        gap: '18px',
-        marginTop: '18px',
-        padding: '12px 16px',
-        background: '#f8fafc',
-        border: '1px solid var(--border)',
-        borderRadius: '10px',
-        flexWrap: 'wrap',
-        alignItems: 'center',
-      }}>
-        <span style={{ fontSize: '10px', fontWeight: 700, color: '#475569', letterSpacing: '0.1em', textTransform: 'uppercase' }}>
-          Intensity
-        </span>
-        {INTENSITY_BANDS.map((band) => (
-          <div key={band.label} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <div style={{
-              width: '16px', height: '16px', borderRadius: '50%',
-              background: `radial-gradient(circle, ${band.color} 0%, ${band.color}88 50%, ${band.color}22 100%)`,
-              boxShadow: `0 0 6px ${band.color}55`,
-            }} />
-            <span style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-secondary)' }}>
-              {band.label}{band.threshold > 0 ? ` (≥${band.threshold}%)` : ''}
-            </span>
-          </div>
-        ))}
-      </div>
     </div>
   )
 }

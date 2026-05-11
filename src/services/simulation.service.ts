@@ -9,7 +9,14 @@ import type {
   DensityCell,
 } from '@/src/schema/simulation.types'
 import type { RiskLevel, SeverityLevel, SimulationStatus } from '@/src/schema/enums'
+import type { PlacedHazard } from '@/src/simulation/hazard-placement'
 import { logAction } from '@/src/services/audit.service'
+
+export interface ReplayInputs {
+  hazards: PlacedHazard[]
+  agentsPerRoom: Record<string, number>
+  seed: number
+}
 
 type Row = Record<string, unknown>
 
@@ -30,7 +37,12 @@ async function ensureProfile(userId: string, email: string | undefined): Promise
 // Write
 // ---------------------------------------------------------------------------
 
-export async function createSimulationRun(config: SimulationConfig, buildingId?: string): Promise<string> {
+export async function createSimulationRun(
+  config: SimulationConfig,
+  buildingId?: string,
+  floorIndex?: number,
+  replay?: ReplayInputs,
+): Promise<string> {
   const { data: session, error: authError } = await supabase.auth.getUser()
   if (authError || !session.user) throw new Error('Not authenticated')
 
@@ -39,7 +51,16 @@ export async function createSimulationRun(config: SimulationConfig, buildingId?:
 
   const { data: run, error: runError } = await supabase
     .from('simulation_runs')
-    .insert({ user_id: user.id, disaster_type: config.disasterType, status: 'running', building_id: buildingId ?? null })
+    .insert({
+      user_id: user.id,
+      disaster_type: config.disasterType,
+      status: 'running',
+      building_id: buildingId ?? null,
+      floor_index: floorIndex ?? null,
+      hazards: (replay?.hazards ?? null) as never,
+      agents_per_room: (replay?.agentsPerRoom ?? null) as never,
+      seed: replay?.seed ?? null,
+    })
     .select('id')
     .single()
   if (runError) throw new Error(runError.message)
@@ -222,6 +243,10 @@ function toSimulationRun(
     disasterType: (row.disaster_type as SimulationRun['disasterType']) ?? 'fire',
     status: (row.status as SimulationStatus) ?? 'pending',
     buildingId: (row.building_id as string) ?? null,
+    floorIndex: (row.floor_index as number | null) ?? null,
+    hazards: (row.hazards as PlacedHazard[] | null) ?? null,
+    agentsPerRoom: (row.agents_per_room as Record<string, number> | null) ?? null,
+    seed: (row.seed as number | null) ?? null,
     notes: (row.notes as string) ?? null,
     createdAt: (row.created_at as string) ?? '',
     updatedAt: (row.updated_at as string) ?? '',

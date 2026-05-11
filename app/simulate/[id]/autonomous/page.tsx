@@ -21,12 +21,10 @@ import {
 import { createSimulation, evaluateSimulation, stepSimulation, type SimulationResults, type SimulationState } from '@/src/simulation/engine'
 import { edgeKey, getBuildingById, getNode, type FloorModel } from '@/src/simulation/building-model'
 import { createSimulationRun, saveDensityCells, saveSimulationResults } from '@/src/services/simulation.service'
-import { getHazardStorageKey, loadHazardPlan, placedHazardToZone, saveHazardPlan, type PlacedHazard } from '@/src/simulation/hazard-placement'
+import { getHazardStorageKey, isHazardStorageAvailable, loadHazardPlan, placedHazardToZone, saveHazardPlan, type PlacedHazard } from '@/src/simulation/hazard-placement'
 import {
   createSpatialGridTrace,
   densityCellsFromTrace,
-  getRenderableGridCells,
-  gridCellRect,
   updateSpatialGridTrace,
   type SpatialGridTrace,
 } from '@/src/simulation/spatial-grid'
@@ -156,20 +154,6 @@ function getHeatColor(intensity: number) {
   return '#22c55e'
 }
 
-/**
- * Softer pastel palette for the heatmap overlay. Distinct from `getHeatColor`
- * (which is used for alert-style severity badges) — these tones are
- * deliberately light so they layer over the floorplan without overwhelming
- * the underlying detail or competing with the agent dots.
- */
-function getHeatmapColor(intensity: number) {
-  if (intensity >= 0.78) return '#fb7185'   // soft coral
-  if (intensity >= 0.55) return '#fb923c'   // soft orange
-  if (intensity >= 0.32) return '#fcd34d'   // soft amber
-  if (intensity >= 0.12) return '#86efac'   // soft mint
-  return '#a7f3d0'                           // very pale mint
-}
-
 function describeExitUsage(results: SimulationResults | null) {
   if (!results) return []
   return Object.entries(results.exitUsage).sort((left, right) => right[1] - left[1])
@@ -211,8 +195,6 @@ export default function AutonomousScienceBuildingPage() {
    *  their fixed value; rooms NOT in this map share the remaining budget
    *  (totalAgents − sum of overrides) proportionally to their capacity. */
   const [roomOverrides, setRoomOverrides] = useState<Record<string, number>>({})
-  /** Toggle for the soft pastel congestion heatmap overlay on the floorplan. */
-  const [showHeatmap, setShowHeatmap] = useState(true)
   const [simulationSpeed, setSimulationSpeed] = useState(1)
   const [simState, setSimState] = useState<SimulationState | null>(null)
   const [trace, setTrace] = useState<AutonomousTrace | null>(null)
@@ -224,6 +206,7 @@ export default function AutonomousScienceBuildingPage() {
   const [savedRunId, setSavedRunId] = useState<string | null>(null)
   const [placedHazards, setPlacedHazards] = useState<PlacedHazard[]>([])
   const [selectedHazardId, setSelectedHazardId] = useState<string | null>(null)
+  const [storageAvailable] = useState(() => isHazardStorageAvailable())
   const dropRef = useRef<HTMLDivElement | null>(null)
 
   const simStateRef = useRef<SimulationState | null>(null)
@@ -232,6 +215,14 @@ export default function AutonomousScienceBuildingPage() {
   const launchedAgentCountRef = useRef(0)
   const animationFrameRef = useRef<number | null>(null)
   const lastFrameTimeRef = useRef<number | null>(null)
+  // Snapshot of the exact inputs the engine was given for the current run,
+  // captured at launch so the analysis "Replay" view can rebuild a bit-for-bit
+  // copy of the simulation later.
+  const launchedReplayInputsRef = useRef<{
+    seed: number
+    hazards: PlacedHazard[]
+    agentsPerRoom: Record<string, number>
+  } | null>(null)
   const totalAgents = maxAgents > 0
     ? clamp(agentCountOverride ?? defaultAgentCount, 1, maxAgents)
     : 1
@@ -334,6 +325,7 @@ export default function AutonomousScienceBuildingPage() {
       setSaveStatus('saving')
       setSaveMessage('Saving autonomous run to analysis history...')
 
+      const replayInputs = launchedReplayInputsRef.current
       const runId = await createSimulationRun({
         disasterType: disaster,
         agentCount,
@@ -342,7 +334,7 @@ export default function AutonomousScienceBuildingPage() {
         exitCount: floorModel.nodes.filter((node) => node.type === 'exit').length,
         wallDensity: 0,
         speedMs: Math.round(140 / simulationSpeed),
-      }, regionId)
+      }, regionId, floorIndex, replayInputs ?? undefined)
 
       await saveSimulationResults(
         runId,
@@ -369,7 +361,7 @@ export default function AutonomousScienceBuildingPage() {
       setSaveStatus('error')
       setSaveMessage('Simulation completed, but saving to analysis failed.')
     }
-  }, [disaster, regionId, simulationSpeed])
+  }, [disaster, regionId, floorIndex, simulationSpeed])
 
   useEffect(() => {
     if (!floor || !isPlaying) return
@@ -535,9 +527,6 @@ export default function AutonomousScienceBuildingPage() {
   const topBottlenecks = useMemo(() => (
     floor && activeTrace ? buildBottleneckSummaries(floor, activeTrace) : []
   ), [activeTrace, floor])
-  const gridCells = useMemo(() => (
-    gridTrace ? getRenderableGridCells(gridTrace) : []
-  ), [gridTrace])
   const exitUsage = useMemo(() => describeExitUsage(results), [results])
   const peakCongestion = useMemo(() => (activeTrace ? getPeakCongestion(activeTrace) : 0), [activeTrace])
 
@@ -549,11 +538,23 @@ export default function AutonomousScienceBuildingPage() {
   const launchSimulation = useCallback(() => {
     if (!floor) return
 
+    // Capture the inputs needed to replay this run exactly later. The seed
+    // makes per-agent attributes (reaction delay, speed, jitter)
+    // reproducible; the hazards + room allocations make the world state
+    // reproducible.
+    const seed = Math.floor(Math.random() * 0xffffffff) >>> 0
+    launchedReplayInputsRef.current = {
+      seed,
+      hazards: placedHazards.map((h) => ({ ...h })),
+      agentsPerRoom: { ...roomAllocations },
+    }
+
     const nextState = createSimulation(floor, {
       disasterType: disaster,
       agentsPerRoom: roomAllocations,
       hazardGrowthMultiplier: HAZARD_GROWTH_MULTIPLIER,
       hazardOverrides: hazardZones,
+      seed,
     })
 
     nextState.running = true
@@ -588,7 +589,7 @@ export default function AutonomousScienceBuildingPage() {
     setSaveStatus('idle')
     setSaveMessage('')
     setIsPlaying(true)
-  }, [disaster, floor, roomAllocations, effectiveAgentCount, hazardZones])
+  }, [disaster, floor, roomAllocations, effectiveAgentCount, hazardZones, placedHazards])
 
   const resetSimulation = useCallback(() => {
     clearHazards()
@@ -779,17 +780,6 @@ export default function AutonomousScienceBuildingPage() {
           border: 1px solid #dee5ee;
           background: #f4f7fb;
           padding: 12px 14px;
-        }
-
-        /* Gentle breathing pulse on heatmap blobs — adds life without
-           being distracting. */
-        @keyframes heatmap-pulse {
-          0%, 100% { opacity: 0.55; }
-          50%      { opacity: 0.75; }
-        }
-        .auto-heatmap-layer circle,
-        .auto-heatmap-layer line {
-          animation: heatmap-pulse 4s ease-in-out infinite;
         }
 
         .auto-map-card {
@@ -1037,6 +1027,15 @@ export default function AutonomousScienceBuildingPage() {
             <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '12px' }}>
               Drag hazards onto the map. You can place multiple fire, smoke, or debris zones.
             </div>
+            {!storageAvailable && (
+              <div style={{
+                marginBottom: '12px', padding: '8px 10px', borderRadius: '8px',
+                background: '#fff7ed', border: '1px solid #fed7aa',
+                fontSize: '11px', color: '#9a3412', lineHeight: 1.4,
+              }}>
+                Local storage is unavailable. Hazards will be kept in memory but lost on refresh.
+              </div>
+            )}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '12px' }}>
               {allowedHazardTypes.map((type) => (
                 <button
@@ -1172,36 +1171,6 @@ export default function AutonomousScienceBuildingPage() {
               <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>Autonomous crowd overlay on the real floorplan</div>
             </div>
             <div className="auto-chip-row">
-              <button
-                type="button"
-                onClick={() => setShowHeatmap((v) => !v)}
-                title="Toggle congestion heatmap overlay"
-                style={{
-                  padding: '6px 10px',
-                  borderRadius: '8px',
-                  background: showHeatmap ? `${APP_ACCENT}14` : '#ffffff',
-                  border: `1px solid ${showHeatmap ? `${APP_ACCENT}44` : 'var(--border)'}`,
-                  fontSize: '12px',
-                  fontWeight: 600,
-                  color: showHeatmap ? APP_ACCENT_DARK : 'var(--text-muted)',
-                  cursor: 'pointer',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '8px',
-                  transition: 'all 0.15s',
-                }}
-              >
-                <span style={{
-                  width: '24px',
-                  height: '6px',
-                  borderRadius: '3px',
-                  background: showHeatmap
-                    ? 'linear-gradient(90deg, #a7f3d0 0%, #fcd34d 50%, #fb923c 80%, #fb7185 100%)'
-                    : '#e2e8f0',
-                  transition: 'background 0.15s',
-                }} />
-                Heatmap {showHeatmap ? 'on' : 'off'}
-              </button>
               <div style={{ padding: '6px 10px', borderRadius: '8px', background: '#e8f0fb', border: '1px solid #c8d8ec', fontSize: '12px', fontWeight: 600, color: '#1e40af' }}>
                 Active {getActiveAgentCount(simState)}
               </div>
@@ -1223,43 +1192,6 @@ export default function AutonomousScienceBuildingPage() {
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={floor.floorplanSrc} alt={`${building?.name ?? regionId} ${floor.label} floor plan`} />
             <svg viewBox="0 0 1200 675" preserveAspectRatio="xMidYMid meet" aria-hidden="true">
-              {/* Defs: Gaussian blur filter for the heatmap blobs. */}
-              <defs>
-                <filter id="heatmap-soft-blur" x="-50%" y="-50%" width="200%" height="200%">
-                  <feGaussianBlur stdDeviation="16" />
-                </filter>
-              </defs>
-
-              {/* ── Heatmap layer (drawn FIRST so agents and exits sit on top) ──
-                   Pastel colors layered behind a Gaussian blur produce smooth
-                   atmospheric blobs at congested nodes — readable at a glance,
-                   never harsh, never competing with agent dots. */}
-              {showHeatmap && gridCells.length > 0 && (
-                <g
-                  className="auto-heatmap-layer"
-                  style={{ filter: 'url(#heatmap-soft-blur)' }}
-                  pointerEvents="none"
-                >
-                  {gridCells.map((cell) => {
-                    const rect = gridCellRect(cell)
-                    const intensity = Math.max(cell.intensity, cell.hazardIntensity * 0.75)
-                    if (intensity < 0.08) return null
-                    return (
-                      <rect
-                        key={`grid-cell-${cell.cellX}-${cell.cellY}`}
-                        x={rect.x}
-                        y={rect.y}
-                        width={rect.width}
-                        height={rect.height}
-                        rx="4"
-                        fill={getHeatmapColor(intensity)}
-                        opacity={0.32 + intensity * 0.42}
-                      />
-                    )
-                  })}
-                </g>
-              )}
-
               {SHOW_DEBUG_GRAPH && floor.edges.map((edge) => {
                 const fromNode = getNode(floor, edge.from)
                 const toNode = getNode(floor, edge.to)
@@ -1401,22 +1333,6 @@ export default function AutonomousScienceBuildingPage() {
               <span style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#ffffff', border: '2px solid #ff6b35', display: 'inline-block' }} />
               Exits
             </div>
-            {showHeatmap && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', paddingLeft: '12px', borderLeft: '1px solid var(--border)' }}>
-                <span style={{ fontSize: '10px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
-                  Congestion
-                </span>
-                <span style={{
-                  display: 'inline-block',
-                  width: '120px',
-                  height: '8px',
-                  borderRadius: '4px',
-                  background: 'linear-gradient(90deg, #a7f3d0 0%, #fcd34d 50%, #fb923c 80%, #fb7185 100%)',
-                  boxShadow: '0 1px 2px rgba(15,23,42,0.05)',
-                }} />
-                <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Low → High</span>
-              </div>
-            )}
           </div>
 
           <div className="auto-map-insights">

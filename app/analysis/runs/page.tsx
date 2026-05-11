@@ -11,7 +11,7 @@ import {
   getDensityCells,
 } from '@/src/services/simulation.service'
 import { CongestionHeatmap } from '@/components/analysis/CongestionHeatmap'
-import { SpatialBottleneckHeatmap } from '@/components/analysis/SpatialBottleneckHeatmap'
+import { RunVisualization } from '@/components/analysis/RunVisualization'
 import { BuildingRiskTable } from '@/components/analysis/BuildingRiskTable'
 import { ConfirmModal } from '@/components/ConfirmModal'
 import type { DensityCell, SimulationRun, SimulationZone } from '@/src/schema/simulation.types'
@@ -165,10 +165,16 @@ export default function AnalysisRunsPage() {
         <>
           {run.buildingId && (
             <div style={SECTION_CARD}>
-              <SpatialBottleneckHeatmap
+              <RunVisualization
                 buildingId={run.buildingId}
-                zones={usedZones}
+                simulatedFloorIndex={run.floorIndex}
                 densityCells={densityCells}
+                zones={usedZones}
+                agentCount={run.config?.agentCount ?? null}
+                disasterType={run.disasterType}
+                hazards={run.hazards}
+                agentsPerRoom={run.agentsPerRoom}
+                seed={run.seed}
               />
             </div>
           )}

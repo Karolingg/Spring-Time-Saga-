@@ -29,7 +29,19 @@ export function getDefaultHazardRadius(type: HazardType): number {
 }
 
 export function getHazardStorageKey(buildingId: string, floorIndex: number, disaster: HazardDisaster): string {
-  return `hazards:${buildingId}:${floorIndex}:${disaster}`
+  return `sim:planning:hazards:${buildingId}:${floorIndex}:${disaster}`
+}
+
+export function isHazardStorageAvailable(): boolean {
+  if (typeof window === 'undefined') return false
+  try {
+    const probe = '__sim_planning_probe__'
+    window.localStorage.setItem(probe, '1')
+    window.localStorage.removeItem(probe)
+    return true
+  } catch {
+    return false
+  }
 }
 
 export function loadHazardPlan(storageKey: string): HazardPlan | null {
@@ -52,7 +64,13 @@ export function saveHazardPlan(storageKey: string, hazards: PlacedHazard[]): voi
     hazards,
     updatedAt: new Date().toISOString(),
   }
-  window.localStorage.setItem(storageKey, JSON.stringify(payload))
+  try {
+    window.localStorage.setItem(storageKey, JSON.stringify(payload))
+  } catch {
+    // Storage unavailable (private mode, quota, disabled) — silently keep
+    // working from in-memory state. Callers may surface a warning via
+    // `isHazardStorageAvailable`.
+  }
 }
 
 // Hazard physics live in `./hazard-physics`. Re-exported here so any
