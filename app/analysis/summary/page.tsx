@@ -3,6 +3,7 @@
 import { useEffect } from 'react'
 import { useAuth } from '@/src/hooks/useAuth'
 import { AggregateAnalysis } from '@/components/analysis/AggregateAnalysis'
+import { AggregateFloorHeatmaps } from '@/components/analysis/AggregateFloorHeatmaps'
 
 export default function AnalysisSummaryPage() {
   const { isAuthenticated, isLoading: isAuthLoading } = useAuth()
@@ -55,6 +56,7 @@ export default function AnalysisSummaryPage() {
         </a>
       </div>
 
+      <AggregateFloorHeatmaps />
       <AggregateAnalysis />
     </div>
   )

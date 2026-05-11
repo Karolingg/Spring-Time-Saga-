@@ -27,6 +27,13 @@ export interface Agent {
   reroutes: number
   /** History of visited nodes with timestamps */
   history: { nodeId: string; time: number }[]
+  /** Cumulative seconds the agent has spent inside the radius of an active
+   *  hard hazard (fire / debris). Used to gate a short grace period before
+   *  the agent is marked as trapped. */
+  timeInsideFire: number
+  /** Cumulative seconds since the last attempt to retreat out of a fire so
+   *  we don't oscillate retreating every tick. */
+  retreatCooldown: number
   /** Whether this agent uses a fixed user-drawn path (no auto-reroute) */
   isUserAgent?: boolean
   /** Per-agent multiplier (~0.85–1.15) fed into path search so ties resolve
@@ -180,6 +187,8 @@ export function createSimulation(
         routingJitter: 0.85 + rand() * 0.30,
         rerouteStallTime: 0,
         rerouteAnchor: undefined,
+        timeInsideFire: 0,
+        retreatCooldown: 0,
       })
     }
   }
@@ -206,6 +215,8 @@ export function createSimulation(
       routingJitter: 1,
       rerouteStallTime: 0,
       rerouteAnchor: undefined,
+      timeInsideFire: 0,
+      retreatCooldown: 0,
     })
   }
 
@@ -402,6 +413,48 @@ function replanAgent(
   return true
 }
 
+/** Is the agent's current rendered position inside the radius of an active
+ *  hard hazard (fire / debris / blocked)? Smoke doesn't count — agents can
+ *  walk through smoke under panic. */
+function agentIsInsideHardHazard(agent: Agent, floor: FloorModel, state: SimulationState): boolean {
+  const node = getNode(floor, agent.currentNodeId)
+  if (!node) return false
+  let ax = node.x
+  let ay = node.y
+  if (agent.progress > 0 && agent.pathIndex < agent.path.length - 1) {
+    const next = getNode(floor, agent.path[agent.pathIndex + 1])
+    if (next) {
+      ax = node.x + (next.x - node.x) * agent.progress
+      ay = node.y + (next.y - node.y) * agent.progress
+    }
+  }
+  for (const h of state.hazards) {
+    if (!h.active) continue
+    if (h.zone.type !== 'fire' && h.zone.type !== 'debris' && h.zone.type !== 'blocked') continue
+    if (Math.hypot(ax - h.zone.x, ay - h.zone.y) < h.currentRadius) return true
+  }
+  return false
+}
+
+/** Snap the agent back to the previous node they visited (per their history)
+ *  and clear their committed path so they replan from a safer location next
+ *  tick. No-op if there's nowhere to retreat to. */
+function retreatOneNode(agent: Agent, floor: FloorModel): boolean {
+  if (agent.history.length < 2) return false
+  const previous = agent.history[agent.history.length - 2]
+  const prevNode = getNode(floor, previous.nodeId)
+  if (!prevNode) return false
+  agent.currentNodeId = previous.nodeId
+  agent.path = [previous.nodeId]
+  agent.pathIndex = 0
+  agent.progress = 0
+  agent.rerouteAnchor = undefined
+  // Drop the now-stale history tail so we don't bounce back into the fire.
+  agent.history.pop()
+  agent.reroutes++
+  return true
+}
+
 /* ── Agent update ── */
 function updateAgent(
   agent: Agent,
@@ -452,7 +505,14 @@ function updateAgent(
       agent.rerouteStallTime = 0
     } else {
       agent.rerouteStallTime += dt
-      if (agent.rerouteStallTime >= 6) {
+      // If the agent is currently sitting inside an active fire (or similar
+      // hard hazard) and replanning failed, fall back to retreating one node
+      // along their history. The previous node was reachable before the
+      // hazard expanded, so it's the safest immediate destination.
+      if (agent.retreatCooldown <= 0 && agentIsInsideHardHazard(agent, floor, state)) {
+        retreatOneNode(agent, floor)
+        agent.retreatCooldown = 1.2
+      } else if (agent.rerouteStallTime >= 6) {
         agent.state = 'trapped'
       }
     }
@@ -540,15 +600,39 @@ function updateAgent(
     const edgeWidth = edge?.width || 2
     const congestionFactor = Math.max(0.3, 1 - (edgeCount / (edgeWidth * 5)))
 
-    // Hazard proximity slowdown
-    let hazardFactor = 1.0
-    const mx = (fromNode.x + toNode.x) / 2
-    const my = (fromNode.y + toNode.y) / 2
+    // Hazard proximity behavior:
+    //   • Soft hazards (smoke):   slow down — discourage walking through.
+    //   • Hard hazards (fire / debris / blocked): predictor + panic boost.
+    //       Within 1.5x radius: speed up so the agent can clear the proximity.
+    //       Inside the radius:  speed up MORE (panic) and tick `timeInsideFire`
+    //                            so a grace period can elapse before trapping.
+    // The agent's current rendered position is interpolated along the edge so
+    // proximity checks reflect where the agent actually is, not just the
+    // edge midpoint.
+    const ax = fromNode.x + (toNode.x - fromNode.x) * agent.progress
+    const ay = fromNode.y + (toNode.y - fromNode.y) * agent.progress
+
+    let smokeFactor = 1.0
+    let panicFactor = 1.0
+    let insideHardHazard = false
+
     for (const h of state.hazards) {
       if (!h.active) continue
-      const dist = Math.hypot(mx - h.zone.x, my - h.zone.y)
-      if (dist < h.currentRadius * 1.5) {
-        hazardFactor = Math.min(hazardFactor, 0.5)
+      const dist = Math.hypot(ax - h.zone.x, ay - h.zone.y)
+      const isHardHazard = h.zone.type === 'fire' || h.zone.type === 'debris' || h.zone.type === 'blocked'
+
+      if (isHardHazard) {
+        if (dist < h.currentRadius) {
+          insideHardHazard = true
+          panicFactor = Math.max(panicFactor, 1.8)   // Run for your life.
+          agent.hazardExposure += dt * 2
+        } else if (dist < h.currentRadius * 1.5) {
+          // Predictor zone — adrenaline kick to clear the danger.
+          panicFactor = Math.max(panicFactor, 1.35)
+        }
+      } else if (dist < h.currentRadius * 1.5) {
+        // Smoke proximity: cautious slowdown + extra exposure tick.
+        smokeFactor = Math.min(smokeFactor, 0.5)
         agent.hazardExposure += dt
       }
     }
@@ -556,8 +640,29 @@ function updateAgent(
     // Walking directly through smoke (a soft-blocked edge) — cap speed at 0.5x
     // and double the exposure tick. The agent keeps moving; they're not stuck.
     if (state.softBlockedEdges.has(ek)) {
-      hazardFactor = Math.min(hazardFactor, 0.5)
+      smokeFactor = Math.min(smokeFactor, 0.5)
       agent.hazardExposure += dt
+    }
+
+    // Panic always overrides smoke caution — the agent needs to GTFO.
+    const hazardFactor = panicFactor > 1 ? panicFactor : smokeFactor
+
+    // Grace period inside fire. The agent gets a few seconds with a boosted
+    // panic speed to escape on their own. Past that, they're overcome.
+    if (insideHardHazard) {
+      agent.timeInsideFire += dt
+      if (agent.timeInsideFire >= 3) {
+        agent.state = 'trapped'
+        return
+      }
+    } else {
+      // Outside hazard — decay the in-fire counter so re-entries don't carry
+      // over from a previous exposure that the agent successfully escaped.
+      agent.timeInsideFire = Math.max(0, agent.timeInsideFire - dt * 0.5)
+    }
+
+    if (agent.retreatCooldown > 0) {
+      agent.retreatCooldown = Math.max(0, agent.retreatCooldown - dt)
     }
 
     const effectiveSpeed = agent.speed * congestionFactor * hazardFactor

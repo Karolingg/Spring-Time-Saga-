@@ -343,6 +343,93 @@ export async function resetAllSimulationData(): Promise<void> {
   await logAction('reset', 'run', 'all')
 }
 
+export interface AggregateFloorHeatmap {
+  buildingId: string
+  floorIndex: number
+  runCount: number
+  /** Aggregated grid cells — peakDensity is the average peak across the runs
+   *  that contributed (so a few outlier runs don't dominate the picture). */
+  cells: { cellX: number; cellY: number; peakDensity: number }[]
+}
+
+/**
+ * Aggregates density cells across every completed run, grouped by
+ * `(buildingId, floorIndex)`. For each cell we keep the average peak density
+ * across the runs that touched that cell — effectively "this is where crowds
+ * tend to build up on this floor."
+ */
+export async function getAggregateFloorHeatmaps(): Promise<AggregateFloorHeatmap[]> {
+  const { data: runs, error: runsError } = await supabase
+    .from('simulation_runs')
+    .select('id, building_id, floor_index')
+    .eq('status', 'completed')
+
+  if (runsError) throw new Error(runsError.message)
+  if (!runs || runs.length === 0) return []
+
+  const runsWithFloor = (runs as { id: string; building_id: string | null; floor_index: number | null }[])
+    .filter((r) => r.building_id != null && r.floor_index != null)
+
+  if (runsWithFloor.length === 0) return []
+
+  const runIds = runsWithFloor.map((r) => r.id)
+  const runMeta = new Map(runsWithFloor.map((r) => [r.id, { buildingId: r.building_id as string, floorIndex: r.floor_index as number }]))
+
+  // Pull density cells for all completed runs in a single round-trip.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: cellRows, error: cellsError } = await (supabase as any)
+    .from('density_cells')
+    .select('run_id, cell_x, cell_y, peak_density')
+    .in('run_id', runIds)
+
+  if (cellsError) throw new Error(cellsError.message)
+  if (!cellRows || cellRows.length === 0) return []
+
+  // Group by (buildingId, floorIndex) → cell key → { sum, count, runs }.
+  const groups = new Map<string, {
+    buildingId: string
+    floorIndex: number
+    runIds: Set<string>
+    cellSums: Map<string, { cellX: number; cellY: number; sum: number; count: number }>
+  }>()
+
+  for (const row of cellRows as { run_id: string; cell_x: number; cell_y: number; peak_density: number }[]) {
+    const meta = runMeta.get(row.run_id)
+    if (!meta) continue
+    const groupKey = `${meta.buildingId}:${meta.floorIndex}`
+    let group = groups.get(groupKey)
+    if (!group) {
+      group = {
+        buildingId: meta.buildingId,
+        floorIndex: meta.floorIndex,
+        runIds: new Set(),
+        cellSums: new Map(),
+      }
+      groups.set(groupKey, group)
+    }
+    group.runIds.add(row.run_id)
+    const cellKey = `${row.cell_x}:${row.cell_y}`
+    const cell = group.cellSums.get(cellKey)
+    if (cell) {
+      cell.sum += row.peak_density
+      cell.count++
+    } else {
+      group.cellSums.set(cellKey, { cellX: row.cell_x, cellY: row.cell_y, sum: row.peak_density, count: 1 })
+    }
+  }
+
+  return Array.from(groups.values()).map((group) => ({
+    buildingId: group.buildingId,
+    floorIndex: group.floorIndex,
+    runCount: group.runIds.size,
+    cells: Array.from(group.cellSums.values()).map((c) => ({
+      cellX: c.cellX,
+      cellY: c.cellY,
+      peakDensity: c.sum / c.count,
+    })),
+  }))
+}
+
 export async function getAggregateSimulationStats(): Promise<{
   totalRuns: number
   avgEvacuationRate: number
