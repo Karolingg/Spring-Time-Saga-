@@ -6,7 +6,7 @@
  */
 
 import type { FloorModel, HazardZone } from './building-model'
-import { getNode, findShortestPathToExit, findShortestPathToExitWeighted, edgeKey } from './building-model'
+import { getNode, findShortestPathToExitWeighted, edgeKey } from './building-model'
 
 /* ── Agent model ── */
 export interface Agent {
@@ -78,6 +78,29 @@ export interface SimulationState {
   running: boolean
   /** Is the simulation finished */
   finished: boolean
+  /** Active disaster type. Drives behavior gated on quake vs fire — currently
+   *  the tremor-phase movement penalty and the agent reaction-delay window. */
+  disasterType: 'fire' | 'earthquake'
+}
+
+/** Seconds of "shaking" at the start of an earthquake run during which
+ *  movement is sharply reduced. Models the period where the ground itself is
+ *  still moving — occupants who do start walking can only shuffle. After this
+ *  window, normal movement resumes. */
+const EARTHQUAKE_TREMOR_DURATION = 10
+/** Movement multiplier applied to any agent that's mid-walk during the tremor
+ *  window. Bounded above 0 so tremor agents still progress, just slowly. */
+const EARTHQUAKE_TREMOR_SPEED_MULTIPLIER = 0.3
+
+/** True while the earthquake tremor window is still ramping — used by the
+ *  agent loop to clamp movement speed and by the UI to badge "Tremor active." */
+export function isInTremorPhase(state: SimulationState): boolean {
+  return state.disasterType === 'earthquake' && state.elapsedTime < EARTHQUAKE_TREMOR_DURATION
+}
+
+export function getTremorTimeRemaining(state: SimulationState): number {
+  if (!isInTremorPhase(state)) return 0
+  return Math.max(0, EARTHQUAKE_TREMOR_DURATION - state.elapsedTime)
 }
 
 /** Penalty multiplier applied to smoke-filled edges during path search.
@@ -93,14 +116,6 @@ const CONGESTION_WEIGHT = 1.5
  *  adds when another agent is re-planning. Spreads the load across
  *  multiple exits when one is getting piled on. */
 const EXIT_BIAS_PER_AGENT = 2.5
-
-/* ── Snapshot for replay ── */
-export interface SimSnapshot {
-  time: number
-  agents: { id: string; nodeId: string; progress: number; state: Agent['state']; pathIndex: number; nextNodeId?: string; isUserAgent?: boolean }[]
-  hazards: { zoneId: string; active: boolean; currentRadius: number }[]
-  blockedEdges: string[]
-}
 
 /* ── Simulation config ── */
 export interface SimConfig {
@@ -238,6 +253,7 @@ export function createSimulation(
     softBlockedEdges: new Set(),
     running: false,
     finished: false,
+    disasterType: config.disasterType,
   }
 }
 
@@ -464,6 +480,14 @@ function updateAgent(
 ) {
   if (agent.state === 'evacuated' || agent.state === 'trapped') return
 
+  // Always tick the retreat cooldown. Decrementing it only inside the
+  // moving branch leaves the cooldown frozen while the agent is stuck
+  // rerouting — preventing the second retreat attempt and condemning the
+  // agent to the 6s stall trap.
+  if (agent.retreatCooldown > 0) {
+    agent.retreatCooldown = Math.max(0, agent.retreatCooldown - dt)
+  }
+
   if (agent.rerouteAnchor && agent.rerouteAnchor.progress < 1) {
     const anchor = agent.rerouteAnchor
     if (anchor.distance > 0) {
@@ -647,6 +671,11 @@ function updateAgent(
     // Panic always overrides smoke caution — the agent needs to GTFO.
     const hazardFactor = panicFactor > 1 ? panicFactor : smokeFactor
 
+    // Earthquake tremor: while the ground is still shaking, even moving
+    // agents only shuffle. Panic doesn't override this — the limit is the
+    // floor moving under them, not the agent's willingness to run.
+    const tremorFactor = isInTremorPhase(state) ? EARTHQUAKE_TREMOR_SPEED_MULTIPLIER : 1
+
     // Grace period inside fire. The agent gets a few seconds with a boosted
     // panic speed to escape on their own. Past that, they're overcome.
     if (insideHardHazard) {
@@ -661,11 +690,7 @@ function updateAgent(
       agent.timeInsideFire = Math.max(0, agent.timeInsideFire - dt * 0.5)
     }
 
-    if (agent.retreatCooldown > 0) {
-      agent.retreatCooldown = Math.max(0, agent.retreatCooldown - dt)
-    }
-
-    const effectiveSpeed = agent.speed * congestionFactor * hazardFactor
+    const effectiveSpeed = agent.speed * congestionFactor * hazardFactor * tremorFactor
     agent.progress += (effectiveSpeed * dt) / edgeDist
 
     if (agent.progress >= 1) {
@@ -792,24 +817,3 @@ export function evaluateSimulation(state: SimulationState, floor: FloorModel): S
   }
 }
 
-/* ── Snapshot for replay ── */
-export function takeSnapshot(state: SimulationState): SimSnapshot {
-  return {
-    time: state.elapsedTime,
-    agents: state.agents.map(a => ({
-      id: a.id,
-      nodeId: a.currentNodeId,
-      progress: a.progress,
-      state: a.state,
-      pathIndex: a.pathIndex,
-      nextNodeId: a.pathIndex < a.path.length - 1 ? a.path[a.pathIndex + 1] : undefined,
-      isUserAgent: a.isUserAgent,
-    })),
-    hazards: state.hazards.map(h => ({
-      zoneId: h.zone.id,
-      active: h.active,
-      currentRadius: h.currentRadius,
-    })),
-    blockedEdges: [...state.blockedEdges],
-  }
-}

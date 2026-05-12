@@ -18,10 +18,17 @@ import {
   type AccurateCongestion,
   type AutonomousTrace,
 } from '@/src/simulation/autonomous-analytics'
-import { createSimulation, evaluateSimulation, stepSimulation, type SimulationResults, type SimulationState } from '@/src/simulation/engine'
+import { createSimulation, evaluateSimulation, getTremorTimeRemaining, isInTremorPhase, stepSimulation, type SimulationResults, type SimulationState } from '@/src/simulation/engine'
 import { edgeKey, getBuildingById, getNode, type FloorModel } from '@/src/simulation/building-model'
 import { createSimulationRun, saveDensityCells, saveSimulationResults } from '@/src/services/simulation.service'
 import { getHazardStorageKey, isHazardStorageAvailable, loadHazardPlan, placedHazardToZone, saveHazardPlan, type PlacedHazard } from '@/src/simulation/hazard-placement'
+import {
+  getOccupancyRatio,
+  getPresetsFor,
+  getSeverityAccent,
+  resolvePresetHazardRadius,
+  type DemoPreset,
+} from '@/src/simulation/presets/demo-presets'
 import {
   createSpatialGridTrace,
   densityCellsFromTrace,
@@ -159,6 +166,21 @@ function describeExitUsage(results: SimulationResults | null) {
   return Object.entries(results.exitUsage).sort((left, right) => right[1] - left[1])
 }
 
+function describePresetOutcome(preset: DemoPreset, results: SimulationResults, peakCongestion: number): string {
+  // Tier 1: severe outcomes first — those carry the strongest stakeholder signal.
+  if (results.trappedCount > 0) {
+    return `${results.trappedCount} occupant${results.trappedCount === 1 ? '' : 's'} trapped — hazards blocked the only legal egress route. Matches the preset intent: ${preset.expectedOutcome}`
+  }
+  if (peakCongestion >= 75) {
+    return `Critical congestion (${peakCongestion} simultaneous agents on one edge) confirms the preset stress. ${preset.expectedOutcome}`
+  }
+  if (results.totalReroutes >= results.evacuatedCount * 0.4) {
+    return `${results.totalReroutes} reroutes triggered — agents heavily replanned mid-evacuation. ${preset.expectedOutcome}`
+  }
+  // Tier 2: clean completion under preset conditions.
+  return `Evacuation completed without critical blockage. ${preset.expectedOutcome}`
+}
+
 export default function AutonomousScienceBuildingPage() {
   const { isAuthenticated, isLoading } = useAuth()
   const params = useParams()
@@ -207,6 +229,7 @@ export default function AutonomousScienceBuildingPage() {
   const [placedHazards, setPlacedHazards] = useState<PlacedHazard[]>([])
   const [selectedHazardId, setSelectedHazardId] = useState<string | null>(null)
   const [storageAvailable] = useState(() => isHazardStorageAvailable())
+  const [appliedPreset, setAppliedPreset] = useState<DemoPreset | null>(null)
   const dropRef = useRef<HTMLDivElement | null>(null)
 
   const simStateRef = useRef<SimulationState | null>(null)
@@ -300,7 +323,38 @@ export default function AutonomousScienceBuildingPage() {
   const clearHazards = useCallback(() => {
     setPlacedHazards([])
     setSelectedHazardId(null)
+    setAppliedPreset(null)
   }, [])
+
+  const availablePresets = useMemo(
+    () => getPresetsFor(regionId, floorIndex, disaster),
+    [regionId, floorIndex, disaster],
+  )
+
+  const applyPreset = useCallback((preset: DemoPreset) => {
+    const stamp = Date.now()
+    const hazards: PlacedHazard[] = preset.hazards.map((hazard, index) => {
+      const radius = resolvePresetHazardRadius(hazard)
+      return {
+        id: `${preset.id}-${index}-${stamp}`,
+        type: hazard.type,
+        x: clamp(hazard.x, radius, 1200 - radius),
+        y: clamp(hazard.y, radius, 675 - radius),
+        radius,
+      }
+    })
+    setPlacedHazards(hazards)
+    setSelectedHazardId(null)
+    setAppliedPreset(preset)
+    if (maxAgents > 0) {
+      setAgentCountOverride(Math.max(1, Math.round(maxAgents * getOccupancyRatio(preset.occupancyPreset))))
+    }
+    setRoomOverrides({})
+  }, [maxAgents])
+
+  // Whenever the user manually edits hazards or occupancy, the "preset
+  // applied" label stops being accurate — drop it so the chip badge clears.
+  const clearAppliedPreset = useCallback(() => setAppliedPreset(null), [])
 
   useEffect(() => {
     simStateRef.current = simState
@@ -666,6 +720,10 @@ export default function AutonomousScienceBuildingPage() {
         'linear-gradient(180deg, #eaeff5 0%, #e4e9f1 100%)',
     }}>
       <style>{`
+        @keyframes tremorPulse {
+          0% { opacity: 0.4; transform: scale(0.85); }
+          100% { opacity: 1; transform: scale(1.15); }
+        }
         .auto-layout {
           display: grid;
           grid-template-columns: minmax(280px, 320px) minmax(0, 1fr) minmax(300px, 360px);
@@ -1020,6 +1078,88 @@ export default function AutonomousScienceBuildingPage() {
             </div>
           </section>
 
+          {availablePresets.length > 0 && (
+            <section className="auto-panel-section">
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', marginBottom: '10px' }}>
+                <div style={{ fontSize: '11px', fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', color: APP_ACCENT_DARK }}>
+                  Scenario Presets
+                </div>
+                {appliedPreset && (
+                  <button
+                    type="button"
+                    onClick={clearAppliedPreset}
+                    style={{
+                      background: 'none', border: 'none', padding: 0,
+                      color: APP_ACCENT_DARK, fontSize: '11px', fontWeight: 600,
+                      cursor: 'pointer', textDecoration: 'underline',
+                    }}
+                  >
+                    Clear label
+                  </button>
+                )}
+              </div>
+              <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginBottom: '12px', lineHeight: 1.5 }}>
+                One-click recipes from the stakeholder demo guide. Applying a preset replaces hazards and occupancy.
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                {availablePresets.map((preset) => {
+                  const isActive = appliedPreset?.id === preset.id
+                  const accent = getSeverityAccent(preset.severity)
+                  return (
+                    <button
+                      key={preset.id}
+                      type="button"
+                      onClick={() => applyPreset(preset)}
+                      style={{
+                        textAlign: 'left',
+                        padding: '10px 12px',
+                        borderRadius: '10px',
+                        border: `1px solid ${isActive ? accent : 'var(--border)'}`,
+                        background: isActive ? `${accent}14` : '#ffffff',
+                        boxShadow: isActive ? `0 0 0 1px ${accent}40` : 'none',
+                        cursor: 'pointer',
+                        transition: 'all 0.15s',
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '6px', marginBottom: '4px' }}>
+                        <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-primary)' }}>
+                          {preset.label}
+                        </div>
+                        <span style={{
+                          fontSize: '9px', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase',
+                          color: accent, padding: '2px 6px', borderRadius: '999px',
+                          background: `${accent}1f`,
+                        }}>
+                          {preset.severity}
+                        </span>
+                      </div>
+                      <div style={{ fontSize: '11px', color: 'var(--text-secondary)', lineHeight: 1.4, marginBottom: '4px' }}>
+                        {preset.description}
+                      </div>
+                      <div style={{ fontSize: '10px', color: 'var(--text-muted)' }}>
+                        {preset.hazards.length} hazard{preset.hazards.length === 1 ? '' : 's'} · {preset.occupancyPreset} occupancy
+                      </div>
+                    </button>
+                  )
+                })}
+              </div>
+              {appliedPreset && (
+                <div style={{
+                  marginTop: '10px',
+                  padding: '8px 10px',
+                  borderRadius: '8px',
+                  background: `${getSeverityAccent(appliedPreset.severity)}14`,
+                  border: `1px solid ${getSeverityAccent(appliedPreset.severity)}40`,
+                  fontSize: '11px',
+                  color: 'var(--text-secondary)',
+                  lineHeight: 1.5,
+                }}>
+                  <strong style={{ color: 'var(--text-primary)' }}>Watch for:</strong> {appliedPreset.expectedOutcome}
+                </div>
+              )}
+            </section>
+          )}
+
           <section className="auto-panel-section">
             <div style={{ fontSize: '11px', fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', color: APP_ACCENT_DARK, marginBottom: '12px' }}>
               Hazard placement
@@ -1171,6 +1311,20 @@ export default function AutonomousScienceBuildingPage() {
               <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>Autonomous crowd overlay on the real floorplan</div>
             </div>
             <div className="auto-chip-row">
+              {simState && isInTremorPhase(simState) && (
+                <div style={{
+                  padding: '6px 10px', borderRadius: '8px',
+                  background: '#fef3c7', border: '1px solid #fcd34d',
+                  fontSize: '12px', fontWeight: 700, color: '#92400e',
+                  display: 'flex', alignItems: 'center', gap: '6px',
+                }}>
+                  <span style={{
+                    width: '8px', height: '8px', borderRadius: '50%',
+                    background: '#f59e0b', animation: 'tremorPulse 0.6s infinite alternate',
+                  }} />
+                  Tremor {getTremorTimeRemaining(simState).toFixed(1)}s
+                </div>
+              )}
               <div style={{ padding: '6px 10px', borderRadius: '8px', background: '#e8f0fb', border: '1px solid #c8d8ec', fontSize: '12px', fontWeight: 600, color: '#1e40af' }}>
                 Active {getActiveAgentCount(simState)}
               </div>
@@ -1477,6 +1631,25 @@ export default function AutonomousScienceBuildingPage() {
                   <div style={{ fontSize: '32px', fontWeight: 700, color: results.trappedCount > 0 ? '#f97316' : '#22c55e', lineHeight: 1, letterSpacing: '-0.02em' }}>{formatSeconds(results.totalTime)}</div>
                   <div style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginTop: '4px' }}>Evacuation time</div>
                 </div>
+                {appliedPreset && (() => {
+                  const narrative = describePresetOutcome(appliedPreset, results, peakCongestion)
+                  const accent = getSeverityAccent(appliedPreset.severity)
+                  return (
+                    <div style={{
+                      borderRadius: '12px',
+                      border: `1px solid ${accent}40`,
+                      background: `${accent}10`,
+                      padding: '12px 14px',
+                    }}>
+                      <div style={{ fontSize: '11px', fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', color: accent, marginBottom: '4px' }}>
+                        Preset · {appliedPreset.label}
+                      </div>
+                      <div style={{ fontSize: '12px', color: 'var(--text-primary)', lineHeight: 1.5 }}>
+                        {narrative}
+                      </div>
+                    </div>
+                  )
+                })()}
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
                   <div className="auto-stat">
                     <div style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '4px' }}>Reroutes</div>
@@ -1485,6 +1658,14 @@ export default function AutonomousScienceBuildingPage() {
                   <div className="auto-stat">
                     <div style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '4px' }}>Avg exposure</div>
                     <div style={{ fontSize: '20px', fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>{results.avgHazardExposure.toFixed(1)}s</div>
+                  </div>
+                  <div className="auto-stat">
+                    <div style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '4px' }}>Peak congestion</div>
+                    <div style={{ fontSize: '20px', fontWeight: 700, color: peakCongestion >= 75 ? '#ef4444' : 'var(--text-primary)', letterSpacing: '-0.02em' }}>{peakCongestion}</div>
+                  </div>
+                  <div className="auto-stat">
+                    <div style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '4px' }}>Trapped</div>
+                    <div style={{ fontSize: '20px', fontWeight: 700, color: results.trappedCount > 0 ? '#ef4444' : 'var(--text-primary)', letterSpacing: '-0.02em' }}>{results.trappedCount}</div>
                   </div>
                 </div>
                 {exitUsage.length > 0 && (

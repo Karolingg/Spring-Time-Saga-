@@ -107,80 +107,17 @@ export function getExits(floor: FloorModel): NavNode[] {
   return floor.nodes.filter(n => n.type === 'exit')
 }
 
-export function getRooms(floor: FloorModel): NavNode[] {
-  return floor.nodes.filter(n => n.type === 'room')
-}
-
-/** Dijkstra shortest path from a node to the nearest exit */
-export function findShortestPathToExit(
-  floor: FloorModel,
-  startId: string,
-  blockedEdges: Set<string> = new Set(),
-): { path: string[]; distance: number; exitId: string } | null {
-  const exits = getExits(floor)
-  if (exits.length === 0) return null
-
-  const dist: Record<string, number> = {}
-  const prev: Record<string, string | null> = {}
-  const visited = new Set<string>()
-
-  for (const n of floor.nodes) {
-    dist[n.id] = Infinity
-    prev[n.id] = null
-  }
-  dist[startId] = 0
-
-  while (true) {
-    let current: string | null = null
-    let minDist = Infinity
-    for (const n of floor.nodes) {
-      if (!visited.has(n.id) && dist[n.id] < minDist) {
-        minDist = dist[n.id]
-        current = n.id
-      }
-    }
-    if (current === null) break
-    visited.add(current)
-
-    const currentNode = getNode(floor, current)
-    if (currentNode?.type === 'exit') {
-      const path: string[] = []
-      let c: string | null = current
-      while (c) {
-        path.unshift(c)
-        c = prev[c]
-      }
-      return { path, distance: dist[current], exitId: current }
-    }
-
-    for (const { node: neighbor, edge } of getNeighbors(floor, current)) {
-      const edgeKey = `${edge.from}-${edge.to}`
-      const edgeKeyR = `${edge.to}-${edge.from}`
-      if (blockedEdges.has(edgeKey) || blockedEdges.has(edgeKeyR)) continue
-
-      const alt = dist[current] + edge.distance
-      if (alt < dist[neighbor.id]) {
-        dist[neighbor.id] = alt
-        prev[neighbor.id] = current
-      }
-    }
-  }
-
-  return null
-}
-
 /** Get edge key for lookups */
 export function edgeKey(from: string, to: string): string {
   return from < to ? `${from}-${to}` : `${to}-${from}`
 }
 
 /**
- * Dijkstra that supports soft-blocked edges. Hard-blocked edges are skipped
- * entirely (as in `findShortestPathToExit`); soft-blocked edges (smoke) stay
- * traversable but their distance is multiplied by `softPenalty` so the
- * algorithm prefers a cleaner detour when one exists. If the only route goes
- * through smoke, the agent still gets a path — they won't be trapped purely
- * because smoke spread across a corridor.
+ * Dijkstra with soft-block support. Hard-blocked edges are skipped entirely;
+ * soft-blocked edges (smoke) stay traversable but their distance is multiplied
+ * by `softPenalty` so the algorithm prefers a cleaner detour when one exists.
+ * If the only route goes through smoke, the agent still gets a path — they
+ * won't be trapped purely because smoke spread across a corridor.
  */
 export interface WeightedPathOptions {
   /** Live edge occupancy (people currently on each edge, keyed by

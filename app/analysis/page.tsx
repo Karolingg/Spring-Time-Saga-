@@ -84,6 +84,19 @@ export default function AnalysisPage() {
             Open summary view
           </div>
         </a>
+
+        <a href="/analysis/compare" style={CARD_STYLE}>
+          <div style={{ fontSize: '12px', fontWeight: '700', letterSpacing: '0.08em', textTransform: 'uppercase', color: '#2db8b0' }}>
+            Comparison
+          </div>
+          <div style={{ fontSize: '18px', fontWeight: '700', color: '#0f172a' }}>Side-by-side drills</div>
+          <div style={{ fontSize: '13px', color: '#64748b', lineHeight: 1.6 }}>
+            Pick two completed runs and see which KPIs improved or regressed between them.
+          </div>
+          <div style={{ marginTop: '6px', fontSize: '13px', fontWeight: '600', color: '#2db8b0' }}>
+            Open comparison view
+          </div>
+        </a>
       </div>
     </div>
   )

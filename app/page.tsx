@@ -121,7 +121,7 @@ export default function DashboardPage() {
             Campus evacuation overview &amp; drill analytics
           </p>
         </div>
-        <a href="/simulate" style={{
+        <a href="/map" style={{
           display: 'flex', alignItems: 'center', gap: '8px',
           padding: '10px 20px', background: '#2db8b0', color: '#fff',
           borderRadius: '8px', textDecoration: 'none', fontSize: '14px', fontWeight: '600', flexShrink: 0,
@@ -231,6 +231,11 @@ export default function DashboardPage() {
       {/* ── Drill Activity Timeline ── */}
       <div style={SECTION_CARD}>
         <DrillTimeline runs={recentRuns} />
+      </div>
+
+      {/* ── Drill Comparison ── */}
+      <div style={SECTION_CARD}>
+        <DrillComparison runs={recentRuns} />
       </div>
 
       {/* ── Quick Actions ── */}
@@ -458,10 +463,188 @@ function MetricChip({ label, value }: { label: string; value: string }) {
   )
 }
 
+// ─── Drill Comparison ────────────────────────────────────────────────────────
+function evacRate(run: SimulationRun): number {
+  const agents = run.config?.agentCount ?? 0
+  const evacuated = run.results?.evacuatedCount ?? 0
+  return agents > 0 ? Math.round((evacuated / agents) * 100) : 0
+}
+
+function compareDelta(a: SimulationRun, b: SimulationRun): { evacDelta: number; timeDelta: number } {
+  const rateA = evacRate(a)
+  const rateB = evacRate(b)
+  const timeA = a.results?.evacuationTime ?? 0
+  const timeB = b.results?.evacuationTime ?? 0
+  return { evacDelta: rateB - rateA, timeDelta: timeB - timeA }
+}
+
+function DrillComparison({ runs }: { runs: SimulationRun[] }) {
+  const hasPair = runs.length >= 2
+  const a = hasPair ? runs[1] : null
+  const b = hasPair ? runs[0] : null
+
+  const compareUrl = hasPair && a && b
+    ? `/analysis/compare?a=${a.id}&b=${b.id}`
+    : '/analysis/compare'
+
+  return (
+    <>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#2db8b0" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M3 6h6" /><path d="M3 12h6" /><path d="M3 18h6" />
+          <path d="M15 6h6" /><path d="M15 12h6" /><path d="M15 18h6" />
+        </svg>
+        <span style={{ fontSize: '14px', fontWeight: '600', color: 'var(--text-primary)' }}>Drill Comparison</span>
+      </div>
+      <p style={{ margin: '0 0 16px', fontSize: '12px', color: 'var(--text-secondary)' }}>
+        See how the latest drill stacks up against the one before it
+      </p>
+
+      {hasPair && a && b ? (
+        <ComparisonPreview a={a} b={b} compareUrl={compareUrl} />
+      ) : (
+        <div style={{
+          padding: '24px 20px', textAlign: 'center',
+          background: '#f8fafc', border: '1px dashed #cbd5e1', borderRadius: '10px',
+        }}>
+          <div style={{ fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '4px' }}>
+            {runs.length === 1
+              ? 'Run one more simulation to unlock side-by-side comparison.'
+              : 'Run at least two simulations to compare them side by side.'}
+          </div>
+          <a href="/map" style={{
+            display: 'inline-block', marginTop: '8px', padding: '8px 16px',
+            background: '#2db8b0', color: '#ffffff', borderRadius: '6px',
+            textDecoration: 'none', fontSize: '13px', fontWeight: '600',
+          }}>
+            Run another simulation
+          </a>
+        </div>
+      )}
+    </>
+  )
+}
+
+function ComparisonPreview({ a, b, compareUrl }: { a: SimulationRun; b: SimulationRun; compareUrl: string }) {
+  const { evacDelta, timeDelta } = compareDelta(a, b)
+  const dtA = DISASTER_ICON[a.disasterType] ?? DISASTER_ICON.fire
+  const dtB = DISASTER_ICON[b.disasterType] ?? DISASTER_ICON.fire
+
+  return (
+    <div style={{
+      display: 'grid', gridTemplateColumns: '1fr auto 1fr auto', gap: '16px', alignItems: 'stretch',
+    }}>
+      <RunCard label="Baseline (A)" badgeColor="#64748b" run={a} dt={dtA} />
+
+      <div style={{ display: 'flex', alignItems: 'center', color: '#94a3b8' }}>
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <line x1="5" y1="12" x2="19" y2="12" />
+          <polyline points="12 5 19 12 12 19" />
+        </svg>
+      </div>
+
+      <RunCard label="Latest (B)" badgeColor="#2db8b0" run={b} dt={dtB} />
+
+      <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between', gap: '8px', minWidth: '180px' }}>
+        <DeltaPill
+          label="Evacuation rate"
+          delta={evacDelta}
+          format={(v) => `${v > 0 ? '+' : ''}${v}%`}
+          betterWhenHigher
+        />
+        <DeltaPill
+          label="Evacuation time"
+          delta={timeDelta}
+          format={(v) => `${v > 0 ? '+' : ''}${v.toFixed(1)}s`}
+          betterWhenHigher={false}
+        />
+        <a href={compareUrl} style={{
+          display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
+          padding: '9px 14px', background: '#2db8b0', color: '#ffffff',
+          borderRadius: '6px', textDecoration: 'none', fontSize: '13px', fontWeight: '600',
+        }}>
+          Open comparison
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="9 18 15 12 9 6" />
+          </svg>
+        </a>
+      </div>
+    </div>
+  )
+}
+
+function RunCard({ label, badgeColor, run, dt }: {
+  label: string
+  badgeColor: string
+  run: SimulationRun
+  dt: { color: string; bg: string; label: string }
+}) {
+  const agents = run.config?.agentCount ?? 0
+  const evacuated = run.results?.evacuatedCount ?? 0
+  const rate = evacRate(run)
+  const time = run.results?.evacuationTime
+
+  return (
+    <div style={{
+      padding: '12px 14px', background: '#f8fafc',
+      border: '1px solid #e2e8f0', borderRadius: '10px',
+      display: 'flex', flexDirection: 'column', gap: '8px',
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '6px' }}>
+        <span style={{
+          padding: '2px 8px', borderRadius: '5px', fontSize: '10px', fontWeight: '700', letterSpacing: '0.06em',
+          background: `${badgeColor}1A`, color: badgeColor,
+        }}>
+          {label}
+        </span>
+        <span style={{
+          padding: '2px 8px', borderRadius: '5px', fontSize: '11px', fontWeight: '600',
+          background: dt.bg, color: dt.color,
+        }}>
+          {dt.label}
+        </span>
+      </div>
+      <div style={{ display: 'flex', gap: '14px' }}>
+        <MetricChip label="Evacuated" value={`${evacuated}/${agents}`} />
+        <MetricChip label="Rate" value={`${rate}%`} />
+        <MetricChip label="Time" value={time != null ? `${time.toFixed(1)}s` : '—'} />
+      </div>
+      <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+        {timeAgo(run.createdAt)}
+      </div>
+    </div>
+  )
+}
+
+function DeltaPill({ label, delta, format, betterWhenHigher }: {
+  label: string
+  delta: number
+  format: (value: number) => string
+  betterWhenHigher: boolean
+}) {
+  const improved = delta !== 0 && (betterWhenHigher ? delta > 0 : delta < 0)
+  const color = delta === 0 ? '#64748b' : improved ? '#22c55e' : '#ef4444'
+  const bg = delta === 0 ? '#e2e8f0' : improved ? 'rgba(34,197,94,0.12)' : 'rgba(239,68,68,0.12)'
+
+  return (
+    <div>
+      <div style={{ fontSize: '10px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '3px' }}>
+        {label}
+      </div>
+      <div style={{
+        display: 'inline-block', padding: '3px 8px', borderRadius: '5px',
+        background: bg, color, fontSize: '13px', fontWeight: '600',
+      }}>
+        {delta === 0 ? 'Unchanged' : format(delta)}
+      </div>
+    </div>
+  )
+}
+
 // ─── Quick Actions ────────────────────────────────────────────────────────────
 const QUICK_ACTIONS = [
   {
-    href: '/simulate',
+    href: '/map',
     label: 'Fire Simulation',
     sub: 'High urgency scenario',
     color: '#ff6b35',
@@ -473,7 +656,7 @@ const QUICK_ACTIONS = [
     ),
   },
   {
-    href: '/simulate',
+    href: '/map',
     label: 'Earthquake Drill',
     sub: 'Dynamic obstacles scenario',
     color: '#f59e0b',

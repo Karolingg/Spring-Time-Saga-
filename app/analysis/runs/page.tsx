@@ -14,6 +14,7 @@ import { CongestionHeatmap } from '@/components/analysis/CongestionHeatmap'
 import { RunVisualization } from '@/components/analysis/RunVisualization'
 import { BuildingRiskTable } from '@/components/analysis/BuildingRiskTable'
 import { ConfirmModal } from '@/components/ConfirmModal'
+import { downloadRunCsv } from '@/src/services/csv-export'
 import type { DensityCell, SimulationRun, SimulationZone } from '@/src/schema/simulation.types'
 
 const SECTION_CARD: React.CSSProperties = {
@@ -148,6 +149,7 @@ export default function AnalysisRunsPage() {
       <PageHeader
         runHistory={runHistory}
         currentRunId={run?.id ?? ''}
+        currentRun={run}
         onRunChange={handleRunChange}
         onRequestDelete={id => setConfirmDeleteId(id)}
         onRequestReset={() => setIsConfirmResetOpen(true)}
@@ -243,12 +245,14 @@ export default function AnalysisRunsPage() {
 interface PageHeaderProps {
   runHistory: RunHistoryItem[]
   currentRunId: string
+  currentRun: SimulationRun | null
   onRunChange: (id: string) => void
   onRequestDelete: (id: string) => void
   onRequestReset: () => void
 }
 
-function PageHeader({ runHistory, currentRunId, onRunChange, onRequestDelete, onRequestReset }: PageHeaderProps) {
+function PageHeader({ runHistory, currentRunId, currentRun, onRunChange, onRequestDelete, onRequestReset }: PageHeaderProps) {
+  const hasRun = currentRun !== null
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '32px', flexWrap: 'wrap' }}>
       <div style={{
@@ -279,6 +283,72 @@ function PageHeader({ runHistory, currentRunId, onRunChange, onRequestDelete, on
           />
         )}
 
+        <button
+          type="button"
+          onClick={() => currentRun && downloadRunCsv(currentRun)}
+          disabled={!hasRun}
+          title={hasRun ? 'Download a CSV of this run summary + zones' : 'Load a run to enable export'}
+          style={{
+            display: 'inline-flex', alignItems: 'center', gap: '6px',
+            padding: '8px 14px',
+            background: hasRun ? '#ffffff' : '#f1f5f9',
+            color: hasRun ? '#0f172a' : '#94a3b8',
+            borderRadius: '8px', fontSize: '13px', fontWeight: '600',
+            border: '1px solid var(--border)',
+            cursor: hasRun ? 'pointer' : 'not-allowed',
+            flexShrink: 0,
+          }}
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+            <polyline points="7 10 12 15 17 10" />
+            <line x1="12" y1="15" x2="12" y2="3" />
+          </svg>
+          Export CSV
+        </button>
+
+        <a
+          href={hasRun && currentRun ? `/analysis/reports/${currentRun.id}` : undefined}
+          target={hasRun ? '_blank' : undefined}
+          rel={hasRun ? 'noopener noreferrer' : undefined}
+          onClick={(event) => { if (!hasRun) event.preventDefault() }}
+          style={{
+            display: 'inline-flex', alignItems: 'center', gap: '6px',
+            padding: '8px 14px',
+            background: hasRun ? '#ffffff' : '#f1f5f9',
+            color: hasRun ? '#0f172a' : '#94a3b8',
+            borderRadius: '8px', textDecoration: 'none', fontSize: '13px', fontWeight: '600',
+            border: '1px solid var(--border)',
+            cursor: hasRun ? 'pointer' : 'not-allowed',
+            flexShrink: 0,
+          }}
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+            <polyline points="14 2 14 8 20 8" />
+            <line x1="9" y1="13" x2="15" y2="13" />
+            <line x1="9" y1="17" x2="15" y2="17" />
+          </svg>
+          Generate Report
+        </a>
+
+        <a
+          href={hasRun && currentRun ? `/analysis/compare?a=${currentRun.id}` : '/analysis/compare'}
+          title={hasRun ? 'Compare this run against another' : 'Open the comparison view'}
+          style={{
+            display: 'inline-flex', alignItems: 'center', gap: '6px',
+            padding: '8px 14px', background: '#ffffff', color: '#0f172a',
+            borderRadius: '8px', textDecoration: 'none', fontSize: '13px', fontWeight: '600',
+            border: '1px solid var(--border)', flexShrink: 0,
+          }}
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M3 6h6" /><path d="M3 12h6" /><path d="M3 18h6" />
+            <path d="M15 6h6" /><path d="M15 12h6" /><path d="M15 18h6" />
+          </svg>
+          Compare
+        </a>
+
         <a href="/analysis/summary" style={{
           display: 'inline-flex', alignItems: 'center', gap: '6px',
           padding: '8px 14px', background: '#ffffff', color: '#0f172a',
@@ -288,7 +358,7 @@ function PageHeader({ runHistory, currentRunId, onRunChange, onRequestDelete, on
           Summary View
         </a>
 
-        <a href="/simulate?disaster=fire" style={{
+        <a href="/map" style={{
           display: 'inline-flex', alignItems: 'center', gap: '6px',
           padding: '8px 14px', background: '#2db8b0', color: '#ffffff',
           borderRadius: '8px', textDecoration: 'none', fontSize: '13px', fontWeight: '600', flexShrink: 0,
@@ -373,7 +443,7 @@ function EmptyState() {
       <p style={{ margin: 0, fontSize: '14px', color: 'var(--text-secondary)' }}>
         Run and complete a simulation first to see heatmap analysis here.
       </p>
-      <a href="/simulate?disaster=fire" style={{
+      <a href="/map" style={{
         display: 'inline-block', marginTop: '16px', padding: '10px 20px',
         background: '#2db8b0', color: '#ffffff', borderRadius: '8px',
         textDecoration: 'none', fontSize: '14px', fontWeight: '600',
