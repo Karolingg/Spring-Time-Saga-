@@ -4,7 +4,7 @@ This document defines three stakeholder-facing features and the exact parts of t
 
 ---
 
-## 1) Stakeholder Demo Mode (Autonomous runs only)
+## 1 Stakeholder Demo Mode (Autonomous runs only)
 
 ### Goal
 Provide one-click, high-impact scenario presets for autonomous simulations so demos feel intentional and repeatable.
