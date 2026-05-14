@@ -295,6 +295,10 @@ const FLOORPLAN_SRC_BY_BUILDING: Record<string, Record<string, string>> = {
     '5th Floor': '/floorplans/CSB%205th%20floor.svg',
     '6th Floor': '/floorplans/CSB%206th%20floor.svg',
   },
+  'management': {
+    '1st Floor': '/floorplans/Management%201st%20floor.svg',
+    '2nd Floor': '/floorplans/Management%202nd%20floor.svg',
+  },
   'up-cebu-library': {
     '1st Floor': '/floorplans/Library%201st%20floor.svg',
     '2nd Floor': '/floorplans/Library%202nd%20floor.svg',
@@ -310,7 +314,7 @@ const BUILDING_NAMES: Record<string, string> = {
   'asx': 'ASX',
   'as-west-wing': 'Arts & Sciences West Wing',
   'as-east-wing': 'Arts & Sciences East Wing',
-  'som-admin': 'School of Management Admin',
+  'management': 'School of Management Admin',
   'som-building-1': 'School of Management Building 1',
   'cultural-center': 'Cultural Center',
   'social-sciences': 'Social Sciences Building',

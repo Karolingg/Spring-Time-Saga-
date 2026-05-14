@@ -36,6 +36,8 @@ export interface Agent {
   retreatCooldown: number
   /** Whether this agent uses a fixed user-drawn path (no auto-reroute) */
   isUserAgent?: boolean
+  /** Preferred door node for rooms with multiple doors (initial routing only). */
+  preferredDoorId?: string
   /** Per-agent multiplier (~0.85–1.15) fed into path search so ties resolve
    *  differently for each agent. Keeps agents from all piling onto the same
    *  global-shortest route. Set once at spawn. */
@@ -161,6 +163,26 @@ export function createSimulation(
   const rand = config.seed != null ? createSeededRng(config.seed) : Math.random
   const randomAgentSpeed = () => MIN_AGENT_SPEED + rand() * (MAX_AGENT_SPEED - MIN_AGENT_SPEED)
 
+  const doorIdsByRoom = new Map<string, string[]>()
+  for (const edge of floor.edges) {
+    const from = getNode(floor, edge.from)
+    const to = getNode(floor, edge.to)
+    if (!from || !to) continue
+    if (from.type === 'room' && to.kind === 'door') {
+      const list = doorIdsByRoom.get(from.id) ?? []
+      list.push(to.id)
+      doorIdsByRoom.set(from.id, list)
+    }
+    if (to.type === 'room' && from.kind === 'door') {
+      const list = doorIdsByRoom.get(to.id) ?? []
+      list.push(from.id)
+      doorIdsByRoom.set(to.id, list)
+    }
+  }
+  for (const [roomId, list] of doorIdsByRoom.entries()) {
+    doorIdsByRoom.set(roomId, Array.from(new Set(list)).sort())
+  }
+
   // Reaction delay range depends on the disaster:
   //  - Fire:        0.5–4s   — occupants smell smoke / hear alarm and move quickly.
   //  - Earthquake:  6–18s    — Drop-Cover-Hold protocol. Real evacuation studies
@@ -178,10 +200,14 @@ export function createSimulation(
     const room = getNode(floor, roomId)
     if (!room) continue
 
+    const doorIds = doorIdsByRoom.get(roomId) ?? []
+    const useDoorSplit = doorIds.length > 1
+
     for (let i = 0; i < count; i++) {
       const reactionDelay = reactionMin + rand() * reactionRange
       // Vary speeds: 1.0–2.0 m/s
       const speed = randomAgentSpeed()
+      const preferredDoorId = useDoorSplit ? doorIds[i % doorIds.length] : undefined
 
       agents.push({
         id: `agent-${agentIdx++}`,
@@ -197,6 +223,7 @@ export function createSimulation(
         hazardExposure: 0,
         reroutes: 0,
         history: [{ nodeId: roomId, time: 0 }],
+        preferredDoorId,
         // Jitter range 0.85–1.15 — enough to swap ties between near-equal
         // routes without ever making a bad route look better than a good one.
         routingJitter: 0.85 + rand() * 0.30,
@@ -409,9 +436,9 @@ function replanAgent(
   floor: FloorModel,
 ): boolean {
   agent.progress = 0
-  const result = findShortestPathToExitWeighted(
+  const planFrom = (startId: string) => findShortestPathToExitWeighted(
     floor,
-    agent.currentNodeId,
+    startId,
     state.blockedEdges,
     state.softBlockedEdges,
     SOFT_EDGE_COST_MULTIPLIER,
@@ -422,6 +449,29 @@ function replanAgent(
       exitBias: buildExitBias(state),
     },
   )
+
+  if (agent.preferredDoorId) {
+    const currentNode = getNode(floor, agent.currentNodeId)
+    const doorNode = getNode(floor, agent.preferredDoorId)
+    const hasDoorEdge = currentNode?.type === 'room' && doorNode
+      ? floor.edges.some((edge) => (
+        (edge.from === agent.currentNodeId && edge.to === agent.preferredDoorId) ||
+        (edge.to === agent.currentNodeId && edge.from === agent.preferredDoorId)
+      ))
+      : false
+
+    if (hasDoorEdge) {
+      const result = planFrom(agent.preferredDoorId)
+      if (result) {
+        agent.path = [agent.currentNodeId, ...result.path]
+        agent.pathIndex = 0
+        agent.targetExitId = result.exitId
+        return true
+      }
+    }
+  }
+
+  const result = planFrom(agent.currentNodeId)
   if (!result) return false
   agent.path = result.path
   agent.pathIndex = 0

@@ -41,14 +41,19 @@ const SCIENCE_1F: FloorConfig = {
     r201: { label: 'Room 201', x: 730, y: 400, corridorEntryNode: 'East Corridor' },
   },
   corridorNodes: [
-    { label: 'Left Corridor', x: 364, y: 369, neighbors: ['Near Room 204'] },
+    { label: 'Left Corridor', x: 364, y: 369, neighbors: ['Near Room 204', 'Near Exit 2'] },
     { label: 'Near Room 204', x: 364, y: 255, neighbors: ['Left Corridor', 'Upper Corridor'] },
-    { label: 'Upper Corridor', x: 364, y: 173, neighbors: ['Near Room 204', 'Near Stairs'] },
+    { label: 'Upper Corridor', x: 364, y: 173, neighbors: ['Near Room 204', 'Near Stairs', 'Near Exit 1'] },
     { label: 'Near Stairs', x: 485, y: 173, neighbors: ['Upper Corridor', 'Near Toilet'] },
     { label: 'Near Toilet', x: 613, y: 173, neighbors: ['Near Stairs', 'Near Room 202'] },
     { label: 'Near Room 202', x: 613, y: 220, neighbors: ['Near Toilet', 'Near Room 201'] },
     { label: 'Near Room 201', x: 613, y: 310, neighbors: ['Near Room 202', 'East Corridor'] },
-    { label: 'East Corridor', x: 613, y: 412, neighbors: ['Near Room 201'] },
+    { label: 'East Corridor', x: 613, y: 412, neighbors: ['Near Room 201', 'Near Exit 3'] },
+    // Exit-adjacent waypoints. Without these, the labeled corridor graph
+    // never reaches an exit and every agent gets trapped at run start.
+    { label: 'Near Exit 1', x: 410, y: 120, neighbors: ['Upper Corridor', 'E1'] },
+    { label: 'Near Exit 2', x: 410, y: 470, neighbors: ['Left Corridor', 'E2'] },
+    { label: 'Near Exit 3', x: 580, y: 470, neighbors: ['East Corridor', 'E3'] },
   ],
 }
 

@@ -7,7 +7,7 @@ const BUILDING_FLOOR_LOADERS: Record<string, FloorConfigLoader> = {
   'asx': () => import('./asx').then((m) => m.ASX_FLOORS),
   'as-west-wing': () => import('./as-west-wing').then((m) => m.AS_WEST_WING_FLOORS),
   'as-east-wing': () => import('./as-east-wing').then((m) => m.AS_EAST_WING_FLOORS),
-  'som-admin': () => import('./som-admin').then((m) => m.SOM_ADMIN_FLOORS),
+  'management': () => import('./management').then((m) => m.MANAGEMENT_FLOORS),
   'som-building-1': () => import('./som-building-1').then((m) => m.SOM_BUILDING_1_FLOORS),
   'cultural-center': () => import('./cultural-center').then((m) => m.CULTURAL_CENTER_FLOORS),
   'social-sciences': () => import('./social-sciences').then((m) => m.SOCIAL_SCIENCES_FLOORS),

@@ -1260,6 +1260,34 @@ function ASXFloorPlan(props: FloorPlanProps) {
   )
 }
 
+function ManagementFloorPlan(props: FloorPlanProps) {
+  const { config } = props
+  const floorPlanSrcByLabel: Record<string, string> = {
+    '1st Floor': '/floorplans/Management%201st%20floor.svg',
+    '2nd Floor': '/floorplans/Management%202nd%20floor.svg', 
+  }
+  const floorPlanSrc = floorPlanSrcByLabel[config.floorLabel] ?? ''
+
+  return (
+    <div style={{ position: 'relative', width: '100%', height: '100%' }}>
+      {floorPlanSrc && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={floorPlanSrc}
+          alt="UP Cebu Management Floor Plan"
+          style={{ width: '100%', height: '100%', display: 'block', position: 'absolute', top: 0, left: 0, objectFit: 'contain', objectPosition: 'center' }}
+        />
+      )}
+      <svg
+        viewBox={`0 0 ${config.viewWidth} ${config.viewHeight}`} preserveAspectRatio="xMidYMid meet"
+        style={{ width: '100%', height: '100%', display: 'block', position: 'absolute', top: 0, left: 0 }}
+      >
+        <SimOverlay {...props} />
+      </svg>
+    </div>
+  )
+}
+
 function CSBFloorPlan(props: FloorPlanProps) {
   const { config } = props
   const floorPlanSrcByLabel: Record<string, string> = {
@@ -1315,6 +1343,7 @@ function FloorPlanView(props: FloorPlanProps & { buildingId: string }) {
   if (buildingId === 'science-building') return <CSBFloorPlan {...rest} />
   if (buildingId === 'up-cebu-library') return <LibraryFloorPlan {...rest} />
   if (buildingId === 'asx') return <ASXFloorPlan {...rest} />
+  if (buildingId === 'management') return <ManagementFloorPlan {...rest} />
   return <GenericFloorPlan {...rest} />
 }
 

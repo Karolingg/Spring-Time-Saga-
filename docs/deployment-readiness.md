@@ -6,37 +6,31 @@ This document lists what still needs to be completed in the codebase and the con
 
 ## 1) Core product gaps (must-fix before shipping)
 
-### 1.1 Campus data + analytics are still static
-Current behavior:
-- The campus map page uses a hardcoded building list and placeholder analytics.
+### 1.1 Campus building list is hardcoded — OUT OF SCOPE (by design)
+The app is scoped to a single, fixed university campus. The building list in
+`app/map/page.tsx` (`CAMPUS_BUILDINGS`) is intentionally hardcoded — a closed,
+known-at-build-time set does not need a database round-trip. This is not a gap.
 
-Where it shows up:
-- app/map/page.tsx (CAMPUS_BUILDINGS and PlaceholderAnalytics)
+Status: resolved by decision. No Supabase-backed building fetch is required.
 
-What to do:
-- Replace the static array with Supabase-backed data from src/services/building.service.ts.
-- Add a loading state and error state for failed building fetch.
-- Replace "BUILDING ANALYTICS (PLACEHOLDER)" with real KPIs derived from runs or a temporary DB table (if final analytics are not ready).
-
-Definition of done:
-- Buildings are loaded from Supabase.
-- Placeholder analytics text is removed.
-- The UI displays real values or a clean "No data yet" state.
+Note: the per-building side-panel still shows a "BUILDING ANALYTICS
+(PLACEHOLDER)" block in `app/map/page.tsx`. That label is a separate, smaller
+cleanup — either wire it to real run-derived KPIs or remove the block. Tracked
+loosely; not a ship blocker.
 
 ---
 
-### 1.2 Building admin UI is missing
-Current behavior:
-- components/buildings/BuildingList.tsx is empty.
-- components/buildings/BuildingEditModal.tsx is empty.
-- app/buildings/page.tsx redirects to /map.
+### 1.2 Building admin UI — OUT OF SCOPE (removed)
+There is deliberately no building admin UI. Because the building list is a
+fixed, single-campus set (see 1.1), CRUD tooling for it has no purpose.
 
-What to do (choose one):
-- Option A (preferred): build the Building admin UI using building.service.ts CRUD.
-- Option B: remove the route if admin UI is not part of the ship scope.
+Removed from the codebase:
+- `src/services/building.service.ts`
+- `components/buildings/BuildingList.tsx`, `BuildingEditModal.tsx`
+- `app/buildings/page.tsx` (the `/buildings` route)
+- The `Building` interface in `src/schema/building.types.ts`
 
-Definition of done:
-- Either a functional Building admin UI exists, or the route is removed from navigation and docs.
+Status: resolved by decision. No further work.
 
 ---
 
@@ -91,14 +85,15 @@ Definition of done:
 
 ---
 
-### 2.2 Seed initial building data
-What to do:
-- Insert building rows into the buildings table (id, name, polygon, capacity, floors, exits, risk_level).
-- Ensure polygon coordinates align with map display.
+### 2.2 Seed initial building data — OUT OF SCOPE (by design)
+Not required. The map reads its building list from the hardcoded
+`CAMPUS_BUILDINGS` array in `app/map/page.tsx` (see 1.1), not from the database.
 
-Definition of done:
-- Map loads building data from Supabase.
-- Selecting a building shows correct metadata.
+The `buildings` table still exists in migration
+`20260410_add_buildings_audit_tags.sql` and is harmless to leave in place —
+the same migration also creates `run_tags` / `audit_logs` and the
+`simulation_runs.building_id` column, all of which ARE used. Do not edit or
+remove that migration. The `buildings` table simply goes unused.
 
 ---
 
@@ -161,7 +156,7 @@ Functional checks:
 - Settings: profile and password update flows work.
 
 Data checks:
-- Building data is present and correctly rendered.
+- Campus map renders all buildings from the hardcoded list and selection works.
 - Simulation run data is persisted and retrievable.
 
 ---
@@ -193,9 +188,9 @@ Data checks:
 
 ## 8) Deployment acceptance criteria
 
-- Core product gaps in sections 1.1–1.4 are resolved and no placeholder data is visible in the UI.
-- Supabase migrations are applied and CRUD operations work against production.
-- Building seed data is present and renders correctly on the map.
+- Core product gaps 1.3–1.4 are resolved (1.1, 1.2 are out of scope by design).
+- The "BUILDING ANALYTICS (PLACEHOLDER)" block in `app/map/page.tsx` is wired to real data or removed.
+- Supabase migrations are applied and run/auth/tag CRUD works against production.
 - .env.example exists and all required env vars are set in the deployment platform.
 - README and Supabase setup docs match the current implementation.
 - `npm run lint` and `npm run build` pass locally.
@@ -207,10 +202,10 @@ Data checks:
 ## Appendix: Key files referenced
 
 - app/map/page.tsx
-- app/buildings/page.tsx
 - app/simulate/[id]/run/page.tsx
 - src/config/supabase.ts
-- src/services/building.service.ts
+- src/simulation/floor-config/placeholder.ts
+- src/config/building-floor-counts.ts
 - supabase/migrations/20260312142037_create_normalized_schema.sql
 - supabase/migrations/20260410_add_buildings_audit_tags.sql
 - docs/todos.md

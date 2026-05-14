@@ -3,7 +3,7 @@ export const BUILDING_FLOOR_COUNT: Record<string, number> = {
   'asx': 2,
   'as-west-wing': 3,
   'as-east-wing': 3,
-  'som-admin': 2,
+  'management': 2,
   'som-building-1': 3,
   'cultural-center': 1,
   'social-sciences': 2,

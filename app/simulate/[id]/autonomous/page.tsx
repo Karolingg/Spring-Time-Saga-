@@ -1343,8 +1343,10 @@ export default function AutonomousScienceBuildingPage() {
             onDrop={handleDrop}
             onDragOver={(event) => event.preventDefault()}
           >
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={floor.floorplanSrc} alt={`${building?.name ?? regionId} ${floor.label} floor plan`} />
+            {floor.floorplanSrc ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={floor.floorplanSrc} alt={`${building?.name ?? regionId} ${floor.label} floor plan`} />
+            ) : null}
             <svg viewBox="0 0 1200 675" preserveAspectRatio="xMidYMid meet" aria-hidden="true">
               {SHOW_DEBUG_GRAPH && floor.edges.map((edge) => {
                 const fromNode = getNode(floor, edge.from)

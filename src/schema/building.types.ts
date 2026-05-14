@@ -1,20 +1,3 @@
-import type { RiskLevel } from './enums'
-
-export interface Building {
-  id: string
-  name: string
-  type: string
-  polygon: [number, number][] // [lat, lng] pairs
-  capacity: number
-  floors: number
-  exits: number
-  riskLevel: RiskLevel
-  lastDrillDate: string | null
-  notes: string | null
-  createdAt: string
-  updatedAt: string
-}
-
 export interface RunTag {
   id: string
   runId: string

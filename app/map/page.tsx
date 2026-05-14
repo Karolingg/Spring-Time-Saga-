@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/src/hooks/useAuth'
 import MapView, { type MapMarker } from '@/components/MapView'
+import {BUILDING_FLOOR_COUNT} from '@/src/config/building-floor-counts'
 
 /* UP Cebu campus center — used for the default top-down view */
 const CAMPUS_CENTER: [number, number] = [123.8988, 10.3228] // [lng, lat]
@@ -28,6 +29,7 @@ interface CampusBuilding {
   riskLevel: 'LOW' | 'MEDIUM' | 'HIGH' | 'N/A'
   lastDrillDate: string
   notes: string
+  status: 'available' | 'closed' | 'coming soon'
 }
 
 interface PlaceholderAnalytics {
@@ -37,12 +39,19 @@ interface PlaceholderAnalytics {
   drillReadiness: number
 }
 
+/**
+ * Campus building list. Intentionally hardcoded — the app is scoped to a
+ * single, fixed university campus, so this set never changes at runtime.
+ * There is deliberately no buildings DB table / admin UI: a closed,
+ * known-at-build-time list does not need one. Edit this array to change
+ * which buildings appear on the map.
+ */
 const CAMPUS_BUILDINGS: CampusBuilding[] = [
   {
     id: 'social-sciences',
     name: 'Social Sciences Building',
     type: 'Academic',
-    bounds: { south: 10.3221, north: 10.3255, west: 123.8971, east: 123.8987 },
+    bounds: { south: 10.3221, north: 10.3250, west: 123.8970, east: 123.8987 },
     center: [10.3256, 123.8975],
     capacity: 180,
     floors: 2,
@@ -50,12 +59,13 @@ const CAMPUS_BUILDINGS: CampusBuilding[] = [
     riskLevel: 'LOW',
     lastDrillDate: '2025-09-12',
     notes: 'Houses social science classrooms and faculty offices. Main exit leads to the campus quadrangle.',
+    status: 'available',
   },
   {
     id: 'asx',
     name: 'ASX Building',
     type: 'Academic',
-    bounds: { south: 10.3237, north: 10.3241, west: 123.8977, east: 123.8981 },
+    bounds: { south: 10.3237, north: 10.3242, west: 123.8978, east: 123.8981 },
     center: [10.3239, 123.8979],
     capacity: 120,
     floors: 2,
@@ -63,12 +73,13 @@ const CAMPUS_BUILDINGS: CampusBuilding[] = [
     riskLevel: 'LOW',
     lastDrillDate: '2025-08-30',
     notes: 'Annex learning space supporting Arts & Sciences classes and overflow seminars.',
+    status: 'available',
   },
   {
     id: 'som-building-1',
     name: 'SOM Building 1',
     type: 'Academic',
-    bounds: { south: 10.3218, north: 10.3241, west: 123.8969, east: 123.8987 },
+    bounds: { south: 10.3218, north: 10.3244, west: 123.8969, east: 123.8987 },
     center: [10.3247, 123.8975],
     capacity: 180,
     floors: 3,
@@ -76,12 +87,13 @@ const CAMPUS_BUILDINGS: CampusBuilding[] = [
     riskLevel: 'LOW',
     lastDrillDate: '2025-08-20',
     notes: 'School of Management lecture halls. Ground floor has a wide corridor that serves as the main evacuation route.',
+    status: 'available',
   },
   {
-    id: 'som-admin',
-    name: 'SOM Administration',
+    id: 'management',
+    name: 'Management Building',
     type: 'Administrative',
-    bounds: { south: 10.3218, north: 10.3237, west: 123.8972, east: 123.8983 },
+    bounds: { south: 10.3218, north: 10.3233, west: 123.8971, east: 123.8984 },
     center: [10.3239, 123.8975],
     capacity: 120,
     floors: 2,
@@ -89,6 +101,7 @@ const CAMPUS_BUILDINGS: CampusBuilding[] = [
     riskLevel: 'LOW',
     lastDrillDate: '2025-07-10',
     notes: 'SOM administrative offices and faculty rooms. Connected to SOM Building 1 via covered walkway.',
+    status: 'available',
   },
   {
     id: 'admin-building',
@@ -102,6 +115,7 @@ const CAMPUS_BUILDINGS: CampusBuilding[] = [
     riskLevel: 'MEDIUM',
     lastDrillDate: '2025-09-20',
     notes: 'Central administrative offices. Houses the registrar, cashier, and chancellor\'s office.',
+    status: 'available',
   },
   {
     id: 'science-building',
@@ -115,12 +129,13 @@ const CAMPUS_BUILDINGS: CampusBuilding[] = [
     riskLevel: 'HIGH',
     lastDrillDate: '2025-10-12',
     notes: 'Core facility for natural sciences instruction. Contains chemistry, biology, and physics laboratories with stricter evacuation constraints.',
+    status: 'available',
   },
   {
     id: 'as-west-wing',
     name: 'AS West Wing',
     type: 'Academic',
-    bounds: { south: 10.3212, north: 10.3256, west: 123.8984, east: 123.9005 },
+    bounds: { south: 10.3212, north: 10.3257, west: 123.8984, east: 123.9005 },
     center: [10.3252, 123.9000],
     capacity: 200,
     floors: 3,
@@ -128,12 +143,13 @@ const CAMPUS_BUILDINGS: CampusBuilding[] = [
     riskLevel: 'MEDIUM',
     lastDrillDate: '2025-10-05',
     notes: 'Arts and Sciences wing with laboratories. Chemical storage on 2nd floor requires extra caution during evacuation.',
+    status: 'available',
   },
   {
     id: 'as-east-wing',
     name: 'AS East Wing',
     type: 'Academic',
-    bounds: { south: 10.3212, north: 10.3250, west: 123.8985, east: 123.9007 },
+    bounds: { south: 10.3212, north: 10.3251, west: 123.8985, east: 123.9007 },
     center: [10.3245, 123.9012],
     capacity: 220,
     floors: 3,
@@ -141,6 +157,7 @@ const CAMPUS_BUILDINGS: CampusBuilding[] = [
     riskLevel: 'MEDIUM',
     lastDrillDate: '2025-10-05',
     notes: 'Classrooms and research labs. Connected to West Wing via covered bridge on 2nd floor.',
+    status: 'available',
   },
   {
     id: 'cultural-center',
@@ -154,6 +171,7 @@ const CAMPUS_BUILDINGS: CampusBuilding[] = [
     riskLevel: 'LOW',
     lastDrillDate: '2025-09-01',
     notes: 'Large cultural hall and performance venue on the eastern side of campus. Multiple exits open onto Gorordo Avenue.',
+    status: 'closed',
   },
   {
     id: 'up-cebu-library',
@@ -167,6 +185,7 @@ const CAMPUS_BUILDINGS: CampusBuilding[] = [
     riskLevel: 'LOW',
     lastDrillDate: '2025-09-05',
     notes: 'University library housing academic resources. Quiet zone with limited occupancy per floor.',
+    status: 'available',
   },
   {
     id: 'liadlaw-hall',
@@ -180,12 +199,13 @@ const CAMPUS_BUILDINGS: CampusBuilding[] = [
     riskLevel: 'LOW',
     lastDrillDate: '2025-08-28',
     notes: 'Multi-purpose academic hall used for lectures and public events. Wide central corridor aids evacuation.',
+    status: 'available',
   },
   {
     id: 'up-high-school',
     name: 'UP High School – Cebu',
     type: 'Academic',
-    bounds: { south: 10.3213, north: 10.3224, west: 123.8942, east: 123.9048 },
+    bounds: { south: 10.3197, north: 10.3238, west: 123.8930, east: 123.9063 },
     center: [10.3218, 123.9020],
     capacity: 350,
     floors: 3,
@@ -193,6 +213,7 @@ const CAMPUS_BUILDINGS: CampusBuilding[] = [
     riskLevel: 'HIGH',
     lastDrillDate: '2025-11-15',
     notes: 'Largest building by occupancy. High student density during class hours. Multiple wing exits connect to the covered court and parking area.',
+    status: 'coming soon',
   },
 ]
 
@@ -477,6 +498,39 @@ export default function MapPage() {
               </div>
             </div>
 
+            {/* Building Image Placeholder */}
+            <div style={{ padding: '0 22px 16px' }}>
+              <div style={{
+                width: '100%',
+                height: '180px',
+                background: 'rgba(148,163,184,0.1)',
+                borderRadius: '12px',
+                border: '1px dashed rgba(148,163,184,0.3)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: '#94a3b8',
+                fontSize: '13px',
+                overflow: 'hidden'
+              }}>
+                <img 
+                  src={`/floorplans/${building.id}.png`}
+                  alt={`${building.name} floorplan`}
+                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                  onError={(e) => {
+                    e.currentTarget.style.display = 'none'
+                  }}
+                />
+              </div>
+            </div>
+
+            {/* Description */}
+            <div style={{ padding: '0 22px 16px' }}>
+              <p style={{ margin: 0, fontSize: '13px', color: '#475569', lineHeight: 1.7 }}>
+                {building.notes}
+              </p>
+            </div>
+
             {/* Prominent stat: Capacity */}
             <div style={{
               margin: '0 22px 16px', padding: '20px',
@@ -491,13 +545,6 @@ export default function MapPage() {
               <div style={{ fontSize: '12px', fontWeight: '600', color: '#64748b', textTransform: 'uppercase', letterSpacing: '1px' }}>
                 Max Occupancy
               </div>
-            </div>
-
-            {/* Description */}
-            <div style={{ padding: '0 22px 16px' }}>
-              <p style={{ margin: 0, fontSize: '13px', color: '#475569', lineHeight: 1.7 }}>
-                {building.notes}
-              </p>
             </div>
 
             {/* Placeholder analytics */}
@@ -532,44 +579,44 @@ export default function MapPage() {
 
             {/* Stats grid */}
             <div style={{ padding: '0 22px' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '16px' }}>
-                {/* Floors */}
-                <div style={{
-                  padding: '16px', background: 'rgba(255,255,255,0.58)', borderRadius: '12px',
-                  border: '1px solid rgba(148,163,184,0.16)',
-                  display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px',
-                  boxShadow: '0 10px 24px rgba(15,23,42,0.05)',
-                }}>
-                  <svg width="64" height="64" viewBox="0 0 64 64">
-                    <circle cx="32" cy="32" r="24" fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="5" />
-                    <circle cx="32" cy="32" r="24" fill="none" stroke="#f59e0b" strokeWidth="5"
-                      strokeDasharray={`${(building.floors / 5) * 150.8} 150.8`}
-                      strokeLinecap="round" transform="rotate(-90 32 32)" />
-                    <text x="32" y="30" textAnchor="middle" fill="#0f172a" fontSize="16" fontWeight="700">{building.floors}</text>
-                    <text x="32" y="42" textAnchor="middle" fill="#64748b" fontSize="7" fontWeight="500">levels</text>
-                  </svg>
-                  <span style={{ fontSize: '10px', color: '#64748b', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Floors</span>
-                </div>
+              {building.status === 'available' ? (
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '16px' }}>
+                  {/* Floors */}
+                  <div style={{
+                    padding: '16px', background: 'rgba(255,255,255,0.58)', borderRadius: '12px',
+                    border: '1px solid rgba(148,163,184,0.16)',
+                    display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px',
+                    boxShadow: '0 10px 24px rgba(15,23,42,0.05)',
+                  }}>
+                    <span style={{ fontSize: '12px', color: '#64748b', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.5px', paddingTop: '18px' }}>Floors</span>
+                    <span style={{ fontSize: '16px', fontWeight: '700', color: '#0f172a', paddingTop: '12px' }}>{BUILDING_FLOOR_COUNT[building.id]}</span>
+                  </div>
 
-                {/* Exits */}
-                <div style={{
-                  padding: '16px', background: 'rgba(255,255,255,0.58)', borderRadius: '12px',
-                  border: '1px solid rgba(148,163,184,0.16)',
-                  display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px',
-                  boxShadow: '0 10px 24px rgba(15,23,42,0.05)',
-                }}>
-                  <svg width="64" height="64" viewBox="0 0 64 64">
-                    <circle cx="32" cy="32" r="24" fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="5" />
-                    <circle cx="32" cy="32" r="24" fill="none" stroke={riskColor} strokeWidth="5"
-                      strokeDasharray={`${(building.exits / 6) * 150.8} 150.8`}
-                      strokeLinecap="round" transform="rotate(-90 32 32)" />
-                    <text x="32" y="30" textAnchor="middle" fill="#0f172a" fontSize="16" fontWeight="700">{building.exits}</text>
-                    <text x="32" y="42" textAnchor="middle" fill="#64748b" fontSize="7" fontWeight="500">exits</text>
-                  </svg>
-                  <span style={{ fontSize: '10px', color: '#64748b', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Exit Points</span>
+                  {/* Exits */}
+                  <div style={{
+                    padding: '16px', background: 'rgba(255,255,255,0.58)', borderRadius: '12px',
+                    border: '1px solid rgba(148,163,184,0.16)',
+                    display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px',
+                    boxShadow: '0 10px 24px rgba(15,23,42,0.05)',
+                  }}>
+                    <span style={{ fontSize: '12px', color: '#64748b', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.5px', paddingTop: '18px' }}>Exit Points</span>
+                    <span style={{ fontSize: '16px', fontWeight: '700', color: '#0f172a', paddingTop: '12px' }}>{building.exits}</span>
+                  </div>
                 </div>
-              </div>
-
+              ) : (
+                <div style={{
+                  padding: '24px',
+                  background: 'rgba(148,163,184,0.1)',
+                  borderRadius: '12px',
+                  textAlign: 'center',
+                  color: '#64748b',
+                  marginBottom: '16px',
+                }}>
+                  <div style={{ fontSize: '14px', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                    {building.status === 'closed' ? 'Currently Closed' : 'Coming Soon'}
+                  </div>
+                </div>
+              )}
               {/* Last drill */}
               <div style={{
                 padding: '14px 16px', background: 'rgba(255,255,255,0.58)', borderRadius: '12px',
@@ -587,26 +634,40 @@ export default function MapPage() {
               </div>
             </div>
 
+            
             {/* Run Simulation button */}
             <div style={{ padding: '0 22px 20px' }}>
               <button
+                disabled={building.status !== 'available'}
                 onClick={() => router.push(`/simulate/${encodeURIComponent(building.id)}/disaster`)}
                 style={{
                   width: '100%', padding: '14px 20px',
-                  background: 'linear-gradient(135deg, #2db8b0 0%, #1a9e97 100%)',
+                  background: building.status === 'available' ? 'linear-gradient(135deg, #2db8b0 0%, #1a9e97 100%)' : 'rgba(148,163,184,0.3)',
                   border: 'none', borderRadius: '12px',
-                  color: '#fff', fontSize: '14px', fontWeight: '700',
-                  cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px',
-                  boxShadow: '0 4px 16px rgba(45,184,176,0.3)',
+                  color: building.status === 'available' ? '#fff' : '#94a3b8', 
+                  fontSize: '14px', fontWeight: '700',
+                  cursor: building.status === 'available' ? 'pointer' : 'not-allowed',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px',
+                  boxShadow: building.status === 'available' ? '0 4px 16px rgba(45,184,176,0.3)' : 'none',
                   transition: 'transform 0.15s, box-shadow 0.15s',
                 }}
-                onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.boxShadow = '0 6px 24px rgba(45,184,176,0.4)' }}
-                onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 4px 16px rgba(45,184,176,0.3)' }}
+                onMouseEnter={e => { 
+                  if (building.status === 'available') {
+                    e.currentTarget.style.transform = 'translateY(-1px)'; 
+                    e.currentTarget.style.boxShadow = '0 6px 24px rgba(45,184,176,0.4)'
+                  }
+                }}
+                onMouseLeave={e => { 
+                  if (building.status === 'available') {
+                    e.currentTarget.style.transform = 'translateY(0)'; 
+                    e.currentTarget.style.boxShadow = '0 4px 16px rgba(45,184,176,0.3)'
+                  }
+                }}
               >
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                   <polygon points="5 3 19 12 5 21 5 3"/>
                 </svg>
-                Run Simulation
+                {building.status === 'available' ? 'Run Simulation' : 'Not Available'}
               </button>
             </div>
             </>
