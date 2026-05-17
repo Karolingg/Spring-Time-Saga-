@@ -27,7 +27,7 @@ export interface AssemblyPoint {
 export const ASSEMBLY_POINTS: AssemblyPoint[] = [
   {
     id: 'central-quadrangle',
-    name: ' ',
+    name: 'Admin Field ',
     description: 'Open lawn between the academic buildings — primary muster point for the west campus.',
     position: [10.3215, 123.8985  ],
     capacity: 800,

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import Image from 'next/image'
 import { useAuth } from '@/src/hooks/useAuth'
 import MapView, { type AssemblyMarker, type MapMarker } from '@/components/MapView'
 import {BUILDING_FLOOR_COUNT} from '@/src/config/building-floor-counts'
@@ -44,7 +45,7 @@ interface CampusBuilding {
 const CAMPUS_BUILDINGS: CampusBuilding[] = [
   {
     id: 'social-sciences',
-    name: 'Social Sciences Building',
+    name: 'Undergraduate Building',
     type: 'Academic',
     bounds: { south: 10.3221, north: 10.3250, west: 123.8970, east: 123.8987 },
     center: [10.3256, 123.8975],
@@ -60,7 +61,7 @@ const CAMPUS_BUILDINGS: CampusBuilding[] = [
     id: 'asx',
     name: 'ASX Building',
     type: 'Academic',
-    bounds: { south: 10.3237, north: 10.3242, west: 123.8978, east: 123.8981 },
+    bounds: { south: 10.3237, north: 10.3243, west: 123.8978, east: 123.8981 },
     center: [10.3239, 123.8979],
     capacity: 120,
     floors: 2,
@@ -241,6 +242,7 @@ export default function MapPage() {
   const [forcedCenter, setForcedCenter] = useState<[number, number] | null>(null)
   const [selectedAssembly, setSelectedAssembly] = useState<string | null>(null)
   const [assemblyPopupPos, setAssemblyPopupPos] = useState<{ x: number; y: number } | null>(null)
+  const [fullscreenImage, setFullscreenImage] = useState<string | null>(null)
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) window.location.href = '/auth'
@@ -571,26 +573,33 @@ export default function MapPage() {
 
             {/* Building Image Placeholder */}
             <div style={{ padding: '0 22px 16px' }}>
-              <div style={{
-                width: '100%',
-                height: '180px',
-                background: 'rgba(148,163,184,0.1)',
-                borderRadius: '12px',
-                border: '1px dashed rgba(148,163,184,0.3)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                color: '#94a3b8',
-                fontSize: '13px',
-                overflow: 'hidden'
-              }}>
-                <img 
+              <div
+                onClick={() => setFullscreenImage(`/floorplans/${building.id}.png`)}
+                style={{
+                  width: '100%',
+                  height: '180px',
+                  background: 'rgba(148,163,184,0.1)',
+                  borderRadius: '12px',
+                  border: '1px dashed rgba(148,163,184,0.3)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: '#94a3b8',
+                  fontSize: '13px',
+                  overflow: 'hidden',
+                  position: 'relative',
+                  cursor: 'pointer',
+                  transition: 'opacity 0.2s',
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.opacity = '0.8'}
+                onMouseLeave={(e) => e.currentTarget.style.opacity = '1'}
+              >
+                <Image
                   src={`/floorplans/${building.id}.png`}
-                  alt={`${building.name} floorplan`}
-                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                  onError={(e) => {
-                    e.currentTarget.style.display = 'none'
-                  }}
+                  alt={`${building.name}`}
+                  fill
+                  style={{ objectFit: 'cover' }}
+                  onError={() => {}}
                 />
               </div>
             </div>
@@ -985,17 +994,28 @@ export default function MapPage() {
             <div style={{ padding: '12px' }}>
               {/* Image frame */}
               {selectedAssemblyData.image ? (
-                <img
-                  src={selectedAssemblyData.image}
-                  alt={selectedAssemblyData.name}
+                <div
+                  onClick={() => setFullscreenImage(selectedAssemblyData.image!)}
                   style={{
+                    position: 'relative',
                     width: '100%',
                     height: '130px',
-                    objectFit: 'cover',
                     borderRadius: '12px',
+                    overflow: 'hidden',
                     border: '1px solid #f0f0f0',
+                    cursor: 'pointer',
+                    transition: 'opacity 0.2s',
                   }}
-                />
+                  onMouseEnter={(e) => e.currentTarget.style.opacity = '0.8'}
+                  onMouseLeave={(e) => e.currentTarget.style.opacity = '1'}
+                >
+                  <Image
+                    src={selectedAssemblyData.image}
+                    alt={selectedAssemblyData.name}
+                    fill
+                    style={{ objectFit: 'cover' }}
+                  />
+                </div>
               ) : (
                 <div style={{
                   width: '100%',
@@ -1056,6 +1076,90 @@ export default function MapPage() {
               borderTop: '11px solid #ffffff',
               filter: 'drop-shadow(0 2px 2px rgba(0,0,0,0.06))',
             }} />
+          </div>
+        </>
+      )}
+
+      {/* Fullscreen image modal */}
+      {fullscreenImage && (
+        <>
+          <div
+            onClick={() => setFullscreenImage(null)}
+            style={{
+              position: 'fixed',
+              inset: 0,
+              background: 'rgba(0, 0, 0, 0.85)',
+              zIndex: 3000,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: '20px',
+            }}
+          />
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              position: 'fixed',
+              inset: 0,
+              zIndex: 3001,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: '20px',
+            }}
+            onClick={() => setFullscreenImage(null)}
+          >
+            <div
+              onClick={(e) => e.stopPropagation()}
+              style={{
+                position: 'relative',
+                maxWidth: '90vw',
+                maxHeight: '90vh',
+                background: '#fff',
+                borderRadius: '16px',
+                overflow: 'hidden',
+                boxShadow: '0 20px 60px rgba(0, 0, 0, 0.3)',
+              }}
+            >
+              <Image
+                src={fullscreenImage}
+                alt="Full size image"
+                width={1200}
+                height={900}
+                style={{
+                  width: '100%',
+                  height: '100%',
+                  objectFit: 'contain',
+                  maxHeight: '90vh',
+                }}
+              />
+              <button
+                onClick={() => setFullscreenImage(null)}
+                style={{
+                  position: 'absolute',
+                  top: '16px',
+                  right: '16px',
+                  width: '40px',
+                  height: '40px',
+                  borderRadius: '50%',
+                  background: 'rgba(255, 255, 255, 0.9)',
+                  border: 'none',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+                  transition: 'background 0.2s',
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.background = '#fff'}
+                onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.9)'}
+              >
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                  <line x1="18" y1="6" x2="6" y2="18" />
+                  <line x1="6" y1="6" x2="18" y2="18" />
+                </svg>
+              </button>
+            </div>
           </div>
         </>
       )}
