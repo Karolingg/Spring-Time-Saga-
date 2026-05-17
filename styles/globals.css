@@ -52,6 +52,48 @@ body {
   to   { opacity: 1; transform: translate(-50%, -100%) translateY(-18px) scale(1); }
 }
 
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* ─── Mobile safety net ────────────────────────────────────────────────
+ * Most pages use inline styles for layout, which we can't override from
+ * here without `!important`. The `data-page-shell` attribute is added to
+ * each page's outer container so this CSS can shrink wide horizontal
+ * padding into something usable on phones without each page having to
+ * thread its own `useIsMobile` hook in. */
+/* Hide native scrollbars on horizontal scroller rows (mobile tab strips,
+ * carousel-style pill bars). Looks like a tab bar, scrolls via swipe. */
+.scroll-hide-x::-webkit-scrollbar { display: none; }
+.scroll-hide-x { scrollbar-width: none; -ms-overflow-style: none; }
+
+@media (max-width: 768px) {
+  /* Generic page wrappers: cap horizontal padding regardless of inline px. */
+  body [data-page-shell] {
+    padding-left: 14px !important;
+    padding-right: 14px !important;
+  }
+
+  /* Make Tailwind/CSS-grid blocks stack rather than overflow horizontally
+     when an explicit multi-column template was supplied inline. */
+  body [data-stack-mobile] {
+    grid-template-columns: 1fr !important;
+    flex-direction: column !important;
+  }
+
+  /* Headings that lock big sizes via inline styles still scale down on
+     phones (28–32px → 22px), keeping single-line titles readable. */
+  body [data-page-shell] h1 {
+    font-size: clamp(20px, 5.4vw, 24px) !important;
+    letter-spacing: -0.02em;
+  }
+
+  body [data-page-shell] h2 {
+    font-size: clamp(16px, 4.6vw, 19px) !important;
+  }
+}
+
 /* Grid background utility */
 .grid-bg {
   background-color: var(--bg);

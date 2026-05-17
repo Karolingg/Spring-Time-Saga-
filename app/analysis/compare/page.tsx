@@ -233,7 +233,7 @@ export default function CompareRunsPage() {
   const sameRun = runA && runB && runA.id === runB.id
 
   return (
-    <div style={{ minHeight: '100vh', padding: '88px 40px 56px', maxWidth: '1280px', margin: '0 auto' }}>
+    <div data-page-shell style={{ minHeight: '100vh', padding: '88px 40px 56px', maxWidth: '1280px', margin: '0 auto' }}>
       <Header />
 
       {error && (

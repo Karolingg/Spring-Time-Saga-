@@ -693,6 +693,34 @@ function buildExitBias(state: SimulationState): Record<string, number> {
  *  but not excluded. Also pushes the agent away from crowded edges and
  *  already-popular exits, and applies the agent's personal jitter so ties
  *  don't all resolve the same way. Returns true if a path was found. */
+/** Scan all exit nodes and return any that sit within the danger ring of an
+ *  active fire hazard. Used by `replanAgent` so every replan — including the
+ *  initial path picked when an agent first wakes from its reaction delay —
+ *  proactively avoids exits that are already compromised, rather than the
+ *  old behavior of "pick the closest exit, then reroute once the threat
+ *  predictor fires." The agent still has the fallback path inside replanAgent
+ *  if every exit is compromised. */
+function findHazardCompromisedExits(
+  floor: FloorModel,
+  state: SimulationState,
+): Set<string> {
+  const compromised = new Set<string>()
+  if (state.hazards.length === 0) return compromised
+  for (const node of floor.nodes) {
+    if (node.type !== 'exit') continue
+    for (const h of state.hazards) {
+      if (!h.active) continue
+      if (h.zone.type !== 'fire') continue
+      const dangerRadius = h.currentRadius * FIRE_DANGER_RADIUS_MULTIPLIER
+      if (Math.hypot(node.x - h.zone.x, node.y - h.zone.y) < dangerRadius) {
+        compromised.add(node.id)
+        break
+      }
+    }
+  }
+  return compromised
+}
+
 function replanAgent(
   agent: Agent,
   state: SimulationState,
@@ -701,7 +729,38 @@ function replanAgent(
   forbiddenNodeIds?: Set<string>,
 ): boolean {
   agent.progress = 0
-  const planFrom = (startId: string, forbidden?: Set<string>) => findShortestPathToExitWeighted(
+
+  // Hazard-aware exit filtering: at spawn time and on every replan, avoid
+  // any exit currently sitting inside a fire danger ring. Caller-supplied
+  // excludes (e.g. proximity reroute's targetExitId ban) are unioned in so
+  // both sources of "don't pick this exit" are respected together.
+  const compromisedExits = findHazardCompromisedExits(floor, state)
+  let effectiveExcludeExits = excludeExitIds
+  if (compromisedExits.size > 0) {
+    effectiveExcludeExits = new Set<string>(compromisedExits)
+    if (excludeExitIds) {
+      for (const id of excludeExitIds) effectiveExcludeExits.add(id)
+    }
+  }
+
+  // Back-and-forth guard: forbid the agent's immediately-previous graph
+  // node by default. This stops a fresh replan from opening with a U-turn
+  // along the edge the agent just traversed, which was the most common
+  // cause of "agents oscillating near a fire hazard." The fallback below
+  // releases this constraint when it would leave the agent with no path.
+  let effectiveForbiddenNodes = forbiddenNodeIds
+  if (!effectiveForbiddenNodes && agent.history.length >= 2) {
+    const prev = agent.history[agent.history.length - 2]
+    if (prev?.nodeId && prev.nodeId !== agent.currentNodeId) {
+      effectiveForbiddenNodes = new Set<string>([prev.nodeId])
+    }
+  }
+
+  const planFrom = (
+    startId: string,
+    forbidden?: Set<string>,
+    excludeOverride?: Set<string>,
+  ) => findShortestPathToExitWeighted(
     floor,
     startId,
     state.blockedEdges,
@@ -714,7 +773,7 @@ function replanAgent(
       exitBias: buildExitBias(state),
       threatenedEdges: state.threatenedEdges,
       threatPenalty: THREATENED_EDGE_COST_MULTIPLIER,
-      excludeExitIds,
+      excludeExitIds: excludeOverride !== undefined ? excludeOverride : effectiveExcludeExits,
       forbiddenNodeIds: forbidden,
     },
   )
@@ -730,7 +789,7 @@ function replanAgent(
       : false
 
     if (hasDoorEdge) {
-      const result = planFrom(agent.preferredDoorId, forbiddenNodeIds)
+      const result = planFrom(agent.preferredDoorId, effectiveForbiddenNodes)
       if (result) {
         agent.path = [agent.currentNodeId, ...result.path]
         agent.pathIndex = 0
@@ -740,12 +799,13 @@ function replanAgent(
     }
   }
 
-  const result = planFrom(agent.currentNodeId, forbiddenNodeIds)
+  const result = planFrom(agent.currentNodeId, effectiveForbiddenNodes)
   if (!result) {
     // If the forbidden-nodes set killed every path (fire surrounds the
-    // agent on all sides), retry without it — better to walk through the
-    // danger zone than to go trapped doing nothing.
-    if (forbiddenNodeIds && forbiddenNodeIds.size > 0) {
+    // agent on all sides, OR our default no-U-turn guard is preventing
+    // escape), retry without forbidden nodes — better to backtrack one
+    // node than be permanently stuck.
+    if (effectiveForbiddenNodes && effectiveForbiddenNodes.size > 0) {
       const fallback = planFrom(agent.currentNodeId, undefined)
       if (fallback) {
         agent.path = fallback.path
@@ -754,9 +814,11 @@ function replanAgent(
         return true
       }
     }
-    // Same idea for excludeExitIds — release the ban as a last resort.
-    if (excludeExitIds && excludeExitIds.size > 0) {
-      const fallback = planFrom(agent.currentNodeId, undefined)
+    // Same idea for excludeExitIds — release the ban (including the
+    // hazard-compromised exits) as a last resort so the agent has
+    // *some* exit to head toward rather than being declared trapped.
+    if (effectiveExcludeExits && effectiveExcludeExits.size > 0) {
+      const fallback = planFrom(agent.currentNodeId, undefined, new Set<string>())
       if (fallback) {
         agent.path = fallback.path
         agent.pathIndex = 0
@@ -924,7 +986,22 @@ function updateAgent(
   if (agent.rerouteAnchor && agent.rerouteAnchor.progress < 1) {
     const anchor = agent.rerouteAnchor
     if (anchor.distance > 0) {
-      anchor.progress = Math.min(1, anchor.progress + (agent.speed * dt) / anchor.distance)
+      // Match the in-edge panic boost when the agent is sliding to their
+      // anchor near an active hazard — otherwise rerouting visibly looked
+      // like a slowdown right when the agent should be running fastest.
+      let anchorPanic = 1
+      for (const h of state.hazards) {
+        if (!h.active) continue
+        const isHard = h.zone.type === 'fire' || h.zone.type === 'debris' || h.zone.type === 'blocked'
+        const d = Math.hypot(anchor.x - h.zone.x, anchor.y - h.zone.y)
+        if (isHard) {
+          if (d < h.currentRadius) anchorPanic = Math.max(anchorPanic, 2.4)
+          else if (d < h.currentRadius * 1.8) anchorPanic = Math.max(anchorPanic, 1.75)
+        } else if (d < h.currentRadius * 1.5) {
+          anchorPanic = Math.max(anchorPanic, 1.25)
+        }
+      }
+      anchor.progress = Math.min(1, anchor.progress + (agent.speed * anchorPanic * dt) / anchor.distance)
     } else {
       anchor.progress = 1
     }
@@ -1122,16 +1199,25 @@ function updateAgent(
 
       if (isHardHazard) {
         if (dist < h.currentRadius) {
+          // Touched by a hard hazard — full panic sprint to clear it.
+          // The agent has a `timeInsideFire` grace window (handled below)
+          // before they're declared trapped, so going faster directly
+          // improves their chance of escape.
           insideHardHazard = true
-          panicFactor = Math.max(panicFactor, 1.8)   // Run for your life.
+          panicFactor = Math.max(panicFactor, 2.4)
           agent.hazardExposure += dt * 2
-        } else if (dist < h.currentRadius * 1.5) {
-          // Predictor zone — adrenaline kick to clear the danger.
-          panicFactor = Math.max(panicFactor, 1.35)
+        } else if (dist < h.currentRadius * 1.8) {
+          // Near a hard hazard — stronger adrenaline kick (was 1.35x).
+          // Widened proximity ring (1.5x → 1.8x) so the speed-up engages
+          // earlier as the agent approaches the danger.
+          panicFactor = Math.max(panicFactor, 1.75)
         }
       } else if (dist < h.currentRadius * 1.5) {
-        // Smoke proximity: cautious slowdown + extra exposure tick.
-        smokeFactor = Math.min(smokeFactor, 0.5)
+        // Smoke proximity now also accelerates the agent rather than
+        // making them cautious — the demo brief is "speed up near
+        // hazards." Exposure still ticks so the analytics layer can
+        // surface the contact.
+        panicFactor = Math.max(panicFactor, 1.25)
         agent.hazardExposure += dt
       }
     }

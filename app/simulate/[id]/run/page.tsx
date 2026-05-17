@@ -1927,7 +1927,7 @@ export default function SimulationRunPage() {
   const displayName = regionId.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
 
   if (!hasFloors) return (
-    <div style={{ minHeight: '100vh', padding: '88px 40px 56px', maxWidth: '1280px', margin: '0 auto' }}>
+    <div data-page-shell style={{ minHeight: '100vh', padding: '88px 40px 56px', maxWidth: '1280px', margin: '0 auto' }}>
       <button onClick={() => router.push(`/simulate/${encodeURIComponent(regionId)}/disaster`)}
         style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: 'none', border: 'none', color: 'var(--text-secondary)', fontSize: '13px', cursor: 'pointer', padding: 0, marginBottom: '28px' }}>
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6" /></svg>
@@ -1966,7 +1966,7 @@ export default function SimulationRunPage() {
   const canBackOneNode = selectedVias.length > 0
 
   return (
-    <div style={{ minHeight: '100vh', padding: '80px 32px 48px', maxWidth: '1600px', margin: '0 auto', background: 'linear-gradient(180deg, #f6fbff 0%, #f7fafc 44%, #eef4f8 100%)', borderRadius: '20px' }}>
+    <div data-page-shell style={{ minHeight: '100vh', padding: '80px 32px 48px', maxWidth: '1600px', margin: '0 auto', background: 'linear-gradient(180deg, #f6fbff 0%, #f7fafc 44%, #eef4f8 100%)', borderRadius: '20px' }}>
 
       <button
         onClick={() => router.push(`/simulate/${encodeURIComponent(regionId)}/disaster`)}
