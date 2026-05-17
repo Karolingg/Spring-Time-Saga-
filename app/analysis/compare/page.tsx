@@ -182,20 +182,23 @@ export default function CompareRunsPage() {
     return () => { cancelled = true }
   }, [isAuthenticated, searchParams])
 
+  const runAId = runA?.id
+  const runBId = runB?.id
+
   /* Load density cells for each run (for the heatmap overlays) */
   useEffect(() => {
-    if (!runA) { setDensityCellsA([]); return }
+    if (!runAId) { setDensityCellsA([]); return }
     let cancelled = false
-    getDensityCells(runA.id).then(cells => { if (!cancelled) setDensityCellsA(cells) })
+    getDensityCells(runAId).then(cells => { if (!cancelled) setDensityCellsA(cells) })
     return () => { cancelled = true }
-  }, [runA?.id])
+  }, [runAId])
 
   useEffect(() => {
-    if (!runB) { setDensityCellsB([]); return }
+    if (!runBId) { setDensityCellsB([]); return }
     let cancelled = false
-    getDensityCells(runB.id).then(cells => { if (!cancelled) setDensityCellsB(cells) })
+    getDensityCells(runBId).then(cells => { if (!cancelled) setDensityCellsB(cells) })
     return () => { cancelled = true }
-  }, [runB?.id])
+  }, [runBId])
 
   async function selectRun(slot: 'A' | 'B', runId: string) {
     if (!runId) {
