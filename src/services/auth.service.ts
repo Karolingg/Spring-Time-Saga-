@@ -10,6 +10,16 @@ export async function loginWithGoogle() {
   if (error) throw new Error(error.message)
 }
 
+export async function loginWithEmail(email: string, password: string) {
+  const { error } = await supabase.auth.signInWithPassword({ email, password })
+  if (error) throw new Error(error.message)
+}
+
+export async function signUpWithEmail(email: string, password: string) {
+  const { error } = await supabase.auth.signUp({ email, password })
+  if (error) throw new Error(error.message)
+}
+
 export async function logout() {
   const { error } = await supabase.auth.signOut()
   if (error) throw new Error(error.message)

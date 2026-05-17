@@ -96,7 +96,10 @@ export function Navbar() {
   const [drawerOpen, setDrawerOpen] = useState(false)
 
   // Close the drawer on every route change so navigating away dismisses it.
-  useEffect(() => { setDrawerOpen(false) }, [pathname])
+  useEffect(() => {
+    const timeoutId = window.setTimeout(() => setDrawerOpen(false), 0)
+    return () => window.clearTimeout(timeoutId)
+  }, [pathname])
 
   // Lock body scroll while the mobile drawer is open so background pages
   // don't scroll under the overlay.

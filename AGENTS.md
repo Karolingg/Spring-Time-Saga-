@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-EVACSIM is a Next.js App Router application for agent-based evacuation simulation and congestion analysis for the University of the Philippines Cebu campus. Users authenticate with Supabase Google OAuth, choose a campus building on a Mapbox map, run fire or earthquake evacuation scenarios, and review saved analysis data such as heatmaps, bottlenecks, CSV exports, reports, comparisons, and aggregate readiness metrics.
+EVACSIM is a Next.js App Router application for agent-based evacuation simulation and congestion analysis for the University of the Philippines Cebu campus. Users authenticate with Supabase (email/password and Google OAuth), choose a campus building on a Mapbox map, run fire or earthquake evacuation scenarios, and review saved analysis data such as heatmaps, bottlenecks, CSV exports, reports, comparisons, and aggregate readiness metrics.
 
 The app is primarily client-rendered. Most pages are marked `'use client'`, and backend work is handled directly from browser-side Supabase service modules under `src/services/`.
 
@@ -23,7 +23,7 @@ The app is primarily client-rendered. Most pages are marked `'use client'`, and 
 - `app/layout.tsx` - Root layout, global CSS imports, Mapbox CSS import, and `Providers` wrapper.
 - `app/providers.tsx` - Wraps the app in `AuthProvider`, renders `Navbar`, and offsets authenticated pages by sidebar width.
 - `app/page.tsx` - Auth-gated dashboard with aggregate stats, recent drills, drill comparison preview, and quick actions.
-- `app/auth/page.tsx` - Google OAuth-only sign-in UI.
+- `app/auth/page.tsx` - Email/password sign-in/sign-up UI plus Google OAuth sign-in.
 - `app/auth/callback/page.tsx` - Supabase OAuth code exchange and redirect.
 - `app/map/page.tsx` - Hardcoded UP Cebu building list, Mapbox campus UI, building details, assembly point highlighting, and navigation to simulations.
 - `app/simulate/[id]/disaster/page.tsx` - Disaster and floor picker. Routes selected floors to manual or autonomous simulation.
@@ -34,7 +34,7 @@ The app is primarily client-rendered. Most pages are marked `'use client'`, and 
 - `app/analysis/summary/page.tsx` - Aggregate floor heatmaps and aggregate zone trends.
 - `app/analysis/compare/page.tsx` - Side-by-side run comparison with KPI deltas and heatmaps.
 - `app/analysis/reports/[runId]/page.tsx` - Printable evacuation report for one run.
-- `app/settings/page.tsx` - Account settings UI; display name uses Supabase profile services, Google provider email is read-only, notification/simulation defaults are local UI state only.
+- `app/settings/page.tsx` - Account settings UI; profile display name uses Supabase profile services; email/password updates are available via Supabase auth APIs.
 - `components/` - Shared UI components (`Navbar`, `MapView`, `ConfirmModal`, etc.).
 - `components/analysis/` - Heatmaps, replay, aggregate analysis, run visualization, zone panels, and feature containers.
 - `src/config/` - Supabase client, building floor counts, and assembly point data.
@@ -67,7 +67,7 @@ The app is primarily client-rendered. Most pages are marked `'use client'`, and 
   - UI: `app/auth/page.tsx`, `app/auth/callback/page.tsx`
   - Context/hook: `src/context/AuthContext.tsx`, `src/hooks/useAuth.ts`
   - Service: `src/services/auth.service.ts`
-  - Current mode: Google OAuth only. Email/password login, sign-up, email updates, and password updates are intentionally not exposed.
+  - Current mode: Email/password auth plus Google OAuth.
 
 - Dashboard:
   - `app/page.tsx`
@@ -120,7 +120,7 @@ The app is primarily client-rendered. Most pages are marked `'use client'`, and 
 - Settings/profile:
   - UI: `app/settings/page.tsx`
   - Service: `src/services/user.service.ts`
-  - Display name is editable through `profiles.display_name`; provider email and password are managed by Google, not EVACSIM.
+  - Display name is editable through `profiles.display_name`; email/password updates use `supabase.auth.updateUser`.
 
 ## Backend, Database, And API Flow
 
@@ -129,7 +129,7 @@ There are no Next.js API route handlers in the current codebase. Browser client 
 Supabase setup:
 
 - Client: `src/config/supabase.ts`
-- Auth provider: Google OAuth only. Supabase must have Google enabled, and redirect URLs must include `/auth/callback` for local and production deployments.
+- Auth provider: Supabase email/password plus Google OAuth. For Google OAuth, Supabase must have Google enabled and redirect URLs must include `/auth/callback` for local and production deployments.
 - Required env vars used by code:
   - `NEXT_PUBLIC_SUPABASE_URL`
   - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
@@ -185,7 +185,7 @@ Notable service behavior:
 - `README.md` says to copy `.env.example`, but no `.env.example` is present in the repo.
 - `README.md` lists Leaflet/react-leaflet, but current map implementation uses Mapbox/react-map-gl. Leaflet packages remain installed.
 - Several docs are stale or internally inconsistent. For example, `docs/CODEBASE_AUDIT.md` references files/routes that no longer exist or changed, while `docs/deployment-readiness.md` notes some docs drift.
-- Several docs still mention older email/password auth. The source of truth is now the Google OAuth-only flow in `app/auth/page.tsx` and `src/services/auth.service.ts`.
+- Several docs may drift on auth details. Trust the source of truth in `app/auth/page.tsx` and `src/services/auth.service.ts`.
 - `app/map/page.tsx` intentionally hardcodes campus buildings. The migration-created `buildings` table is currently not used by the map.
 - `src/schema/building.types.ts` defines `RunTag`, `AuditLog`, and `DensityCell`, but no active `Building` type/service is present.
 - `app/settings/page.tsx` notification preferences and simulation defaults are local UI state only; there is no persistence visible in current code.
@@ -227,7 +227,7 @@ Notable service behavior:
   - `app/simulate/[id]/disaster/page.tsx` if autonomous routing eligibility changes
 - Treat `app/simulate/[id]/run/page.tsx`, `app/simulate/[id]/autonomous/page.tsx`, `src/simulation/engine.ts`, and `src/simulation/building-model.ts` as high-risk areas. Make focused changes and verify carefully.
 - Preserve RLS/owner-scoped assumptions in Supabase queries.
-- Keep authentication Google OAuth-only unless the user explicitly asks to add another provider or restore password auth. Do not reintroduce `signInWithPassword`, `signUp`, email update, or password update UI as incidental cleanup.
+- Keep auth flows consistent: if changing supported providers or credential flows, update `app/auth/page.tsx`, `src/services/auth.service.ts`, `app/settings/page.tsx`, and any related docs together.
 - Do not fabricate readiness/analytics data. Existing scoring code intentionally returns empty/no-data states when runs are missing.
 - If docs conflict with source code, trust source code and note the discrepancy.
 - Run `npm run lint` after code changes when feasible. Run `npm run build` for broad changes, especially route, schema, simulation, or Supabase changes.
@@ -246,7 +246,7 @@ Notable service behavior:
 ## Suggested Next Steps
 
 - Add `.env.example` with `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, and `NEXT_PUBLIC_MAPBOX_TOKEN`.
-- Update `README.md` and stale docs to reflect Mapbox/react-map-gl, current routes, Google OAuth-only auth, and the hardcoded building-map decision.
+- Update `README.md` and stale docs to reflect Mapbox/react-map-gl, current routes, the mixed email/password + Google OAuth auth model, and the hardcoded building-map decision.
 - Add basic automated tests for `src/services/simulation.service.ts`, `src/services/building-analytics.service.ts`, and key simulation helpers.
 - Decide whether settings notification/default preferences should be persisted or clearly marked as local-only.
 - Audit floorplan mappings in `src/simulation/floor-config/to-floor-model.ts` against `public/floorplans/`.
