@@ -53,7 +53,7 @@ export default function LoginPage() {
   }
 
   return (
-    <div style={{
+    <div data-page-shell style={{
       minHeight: '100vh',
       display: 'flex',
       flexDirection: 'column',

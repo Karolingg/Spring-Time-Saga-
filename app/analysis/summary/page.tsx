@@ -28,7 +28,7 @@ export default function AnalysisSummaryPage() {
   }
 
   return (
-    <div style={{ minHeight: '100vh', padding: '88px 40px 56px', maxWidth: '1280px', margin: '0 auto' }}>
+    <div data-page-shell style={{ minHeight: '100vh', padding: '88px 40px 56px', maxWidth: '1280px', margin: '0 auto' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '28px', flexWrap: 'wrap' }}>
         <div style={{
           width: '44px', height: '44px', borderRadius: '12px',

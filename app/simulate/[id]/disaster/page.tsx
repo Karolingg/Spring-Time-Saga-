@@ -112,7 +112,7 @@ export default function DisasterPickerPage() {
   const step = selectedDisaster ? 2 : 1
 
   return (
-    <div style={{
+    <div data-page-shell style={{
       minHeight: '100vh',
       padding: '64px 24px 56px',
       background:

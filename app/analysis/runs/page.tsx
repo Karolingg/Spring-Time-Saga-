@@ -145,7 +145,7 @@ export default function AnalysisRunsPage() {
   const hasAnalysisData = hasUsedZones || hasDensityCells
 
   return (
-    <div style={{ minHeight: '100vh', padding: '88px 40px 56px', maxWidth: '1280px', margin: '0 auto' }}>
+    <div data-page-shell style={{ minHeight: '100vh', padding: '88px 40px 56px', maxWidth: '1280px', margin: '0 auto' }}>
 
       <PageHeader
         runHistory={runHistory}

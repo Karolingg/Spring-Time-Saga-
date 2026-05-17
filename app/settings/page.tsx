@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useAuth } from '@/src/hooks/useAuth'
+import { useIsMobile } from '@/src/hooks/useIsMobile'
 import { updateUserEmail, updateUserPassword, getUserProfile, updateUserProfile } from '@/src/services/user.service'
 
 type Section = 'profile' | 'security' | 'notifications' | 'simulation' | 'about'
@@ -42,6 +43,7 @@ const divider: React.CSSProperties = {
 export default function SettingsPage() {
   const { isAuthenticated, isLoading, user, handleLogout } = useAuth()
   const [section, setSection] = useState<Section>('profile')
+  const isMobile = useIsMobile()
 
   if (isLoading) {
     return (
@@ -82,95 +84,149 @@ export default function SettingsPage() {
   ]
 
   return (
-    <div style={{ minHeight: '100vh', padding: '88px 40px 56px', maxWidth: '860px', margin: '0 auto' }}>
+    <div data-page-shell style={{
+      minHeight: '100vh',
+      padding: isMobile ? '20px 14px 32px' : '88px 40px 56px',
+      maxWidth: '860px',
+      margin: '0 auto',
+    }}>
 
       {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '24px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? '10px' : '14px', marginBottom: isMobile ? '16px' : '24px' }}>
         <div style={{
-          width: '44px', height: '44px', borderRadius: '12px',
+          width: isMobile ? '38px' : '44px',
+          height: isMobile ? '38px' : '44px',
+          borderRadius: '12px',
           background: 'rgba(45,184,176,0.1)',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
+          flexShrink: 0,
         }}>
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#2db8b0" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <svg width={isMobile ? 18 : 22} height={isMobile ? 18 : 22} viewBox="0 0 24 24" fill="none" stroke="#2db8b0" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
           </svg>
         </div>
-        <div>
-          <h1 style={{ margin: '0 0 4px', fontSize: '22px', fontWeight: '700', color: 'var(--text-primary)' }}>Settings</h1>
-          <p style={{ margin: 0, fontSize: '13px', color: 'var(--text-secondary)' }}>Manage your account and preferences</p>
+        <div style={{ minWidth: 0 }}>
+          <h1 style={{ margin: '0 0 4px', fontSize: isMobile ? '18px' : '22px', fontWeight: '700', color: 'var(--text-primary)' }}>Settings</h1>
+          <p style={{ margin: 0, fontSize: isMobile ? '12px' : '13px', color: 'var(--text-secondary)' }}>Manage your account and preferences</p>
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '200px 1fr', gap: '20px', alignItems: 'start' }}>
-
-        {/* Sidebar */}
-        <div style={{
-          background: '#fff', border: '1px solid var(--border)', borderRadius: '12px',
-          padding: '8px', boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
-        }}>
-          {/* User pill */}
-          <div style={{
-            display: 'flex', alignItems: 'center', gap: '10px',
-            padding: '12px 10px', marginBottom: '4px',
-            borderBottom: '1px solid var(--border)',
+      {isMobile ? (
+        // ── Mobile: tab strip above a full-width content card ──
+        // The user pill and sign-out button are intentionally dropped on
+        // mobile because the global top bar's account chip already shows
+        // who's signed in, and the drawer menu has its own sign-out path.
+        <>
+          <div className="scroll-hide-x" style={{
+            display: 'flex',
+            gap: '6px',
+            overflowX: 'auto',
+            padding: '4px 2px',
+            margin: '0 -2px 12px',
+            WebkitOverflowScrolling: 'touch',
           }}>
+            {nav.map(item => (
+              <button key={item.id} onClick={() => setSection(item.id)} style={{
+                display: 'inline-flex', alignItems: 'center', gap: '8px',
+                padding: '9px 14px',
+                border: '1px solid',
+                borderColor: section === item.id ? '#2db8b0' : 'var(--border)',
+                borderRadius: '999px',
+                background: section === item.id ? 'rgba(45,184,176,0.10)' : '#fff',
+                color: section === item.id ? '#0f766e' : 'var(--text-secondary)',
+                fontSize: '13px', fontWeight: section === item.id ? 600 : 500,
+                cursor: 'pointer', flexShrink: 0, whiteSpace: 'nowrap',
+                transition: 'all 0.12s',
+              }}>
+                {item.icon}
+                {item.label}
+              </button>
+            ))}
+          </div>
+
+          <div style={{
+            background: '#fff', border: '1px solid var(--border)', borderRadius: '12px',
+            padding: '18px 16px',
+            boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
+          }}>
+            {section === 'profile' && <ProfilePanel userEmail={email} />}
+            {section === 'security' && <SecurityPanel />}
+            {section === 'notifications' && <NotificationsPanel />}
+            {section === 'simulation' && <SimulationDefaultsPanel />}
+            {section === 'about' && <AboutPanel />}
+          </div>
+        </>
+      ) : (
+        // ── Desktop: sidebar + content grid ──
+        <div style={{ display: 'grid', gridTemplateColumns: '200px 1fr', gap: '20px', alignItems: 'start' }}>
+
+          {/* Sidebar */}
+          <div style={{
+            background: '#fff', border: '1px solid var(--border)', borderRadius: '12px',
+            padding: '8px', boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
+          }}>
+            {/* User pill */}
             <div style={{
-              width: '32px', height: '32px', borderRadius: '8px', flexShrink: 0,
-              background: '#2db8b0', display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: '14px', fontWeight: '700', color: '#fff',
-            }}>{initial}</div>
-            <div style={{ overflow: 'hidden' }}>
+              display: 'flex', alignItems: 'center', gap: '10px',
+              padding: '12px 10px', marginBottom: '4px',
+              borderBottom: '1px solid var(--border)',
+            }}>
               <div style={{
-                fontSize: '13px', fontWeight: '600', color: 'var(--text-primary)',
-                whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-              }}>{email}</div>
-              <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Signed in</div>
+                width: '32px', height: '32px', borderRadius: '8px', flexShrink: 0,
+                background: '#2db8b0', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: '14px', fontWeight: '700', color: '#fff',
+              }}>{initial}</div>
+              <div style={{ overflow: 'hidden' }}>
+                <div style={{
+                  fontSize: '13px', fontWeight: '600', color: 'var(--text-primary)',
+                  whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                }}>{email}</div>
+                <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Signed in</div>
+              </div>
+            </div>
+
+            {nav.map(item => (
+              <button key={item.id} onClick={() => setSection(item.id)} style={{
+                display: 'flex', alignItems: 'center', gap: '10px', width: '100%',
+                padding: '9px 10px', border: 'none', borderRadius: '8px',
+                background: section === item.id ? '#f0fdfa' : 'transparent',
+                color: section === item.id ? '#0f766e' : 'var(--text-secondary)',
+                fontSize: '13px', fontWeight: section === item.id ? '600' : '400',
+                cursor: 'pointer', textAlign: 'left', transition: 'background 0.12s',
+              }}>
+                {item.icon}
+                {item.label}
+              </button>
+            ))}
+
+            <div style={{ borderTop: '1px solid var(--border)', marginTop: '4px', paddingTop: '4px' }}>
+              <button onClick={handleLogout} style={{
+                display: 'flex', alignItems: 'center', gap: '10px', width: '100%',
+                padding: '9px 10px', border: 'none', borderRadius: '8px',
+                background: 'transparent', color: '#ef4444',
+                fontSize: '13px', fontWeight: '400', cursor: 'pointer', textAlign: 'left',
+              }}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>
+                </svg>
+                Sign out
+              </button>
             </div>
           </div>
 
-          {/* Nav links */}
-          {nav.map(item => (
-            <button key={item.id} onClick={() => setSection(item.id)} style={{
-              display: 'flex', alignItems: 'center', gap: '10px', width: '100%',
-              padding: '9px 10px', border: 'none', borderRadius: '8px',
-              background: section === item.id ? '#f0fdfa' : 'transparent',
-              color: section === item.id ? '#0f766e' : 'var(--text-secondary)',
-              fontSize: '13px', fontWeight: section === item.id ? '600' : '400',
-              cursor: 'pointer', textAlign: 'left', transition: 'background 0.12s',
-            }}>
-              {item.icon}
-              {item.label}
-            </button>
-          ))}
-
-          {/* Sign out */}
-          <div style={{ borderTop: '1px solid var(--border)', marginTop: '4px', paddingTop: '4px' }}>
-            <button onClick={handleLogout} style={{
-              display: 'flex', alignItems: 'center', gap: '10px', width: '100%',
-              padding: '9px 10px', border: 'none', borderRadius: '8px',
-              background: 'transparent', color: '#ef4444',
-              fontSize: '13px', fontWeight: '400', cursor: 'pointer', textAlign: 'left',
-            }}>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>
-              </svg>
-              Sign out
-            </button>
+          {/* Content */}
+          <div style={{
+            background: '#fff', border: '1px solid var(--border)', borderRadius: '12px',
+            padding: '28px 32px', boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
+          }}>
+            {section === 'profile' && <ProfilePanel userEmail={email} />}
+            {section === 'security' && <SecurityPanel />}
+            {section === 'notifications' && <NotificationsPanel />}
+            {section === 'simulation' && <SimulationDefaultsPanel />}
+            {section === 'about' && <AboutPanel />}
           </div>
         </div>
-
-        {/* Content */}
-        <div style={{
-          background: '#fff', border: '1px solid var(--border)', borderRadius: '12px',
-          padding: '28px 32px', boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
-        }}>
-          {section === 'profile' && <ProfilePanel userEmail={email} />}
-          {section === 'security' && <SecurityPanel />}
-          {section === 'notifications' && <NotificationsPanel />}
-          {section === 'simulation' && <SimulationDefaultsPanel />}
-          {section === 'about' && <AboutPanel />}
-        </div>
-      </div>
+      )}
     </div>
   )
 }

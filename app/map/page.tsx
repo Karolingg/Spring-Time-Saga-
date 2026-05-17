@@ -4,8 +4,10 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import { useAuth } from '@/src/hooks/useAuth'
+import { useIsMobile } from '@/src/hooks/useIsMobile'
 import MapView, { type AssemblyMarker, type MapMarker } from '@/components/MapView'
 import {BUILDING_FLOOR_COUNT} from '@/src/config/building-floor-counts'
+import { BUILDING_FLOOR_OCCUPANCY, getBuildingTotalCapacity } from '@/src/config/building-floor-occupancy'
 import { ASSEMBLY_POINTS, getNearestAssembly } from '@/src/config/assembly-points'
 import { getBuildingScore, type BuildingGrade, type BuildingScore, type FloorScore } from '@/src/services/building-analytics.service'
 
@@ -35,13 +37,6 @@ interface CampusBuilding {
   status: 'available' | 'closed' | 'coming soon'
 }
 
-/**
- * Campus building list. Intentionally hardcoded — the app is scoped to a
- * single, fixed university campus, so this set never changes at runtime.
- * There is deliberately no buildings DB table / admin UI: a closed,
- * known-at-build-time list does not need one. Edit this array to change
- * which buildings appear on the map.
- */
 const CAMPUS_BUILDINGS: CampusBuilding[] = [
   {
     id: 'social-sciences',
@@ -243,6 +238,8 @@ export default function MapPage() {
   const [selectedAssembly, setSelectedAssembly] = useState<string | null>(null)
   const [assemblyPopupPos, setAssemblyPopupPos] = useState<{ x: number; y: number } | null>(null)
   const [fullscreenImage, setFullscreenImage] = useState<string | null>(null)
+  const [scoringModalOpen, setScoringModalOpen] = useState(false)
+  const isMobile = useIsMobile()
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) window.location.href = '/auth'
@@ -309,7 +306,9 @@ export default function MapPage() {
   }, [building])
 
   const riskColor = building ? RISK_COLORS[building.riskLevel] : '#22c55e'
-  const panelOffset = building ? 416 : 0
+  // On mobile the detail panel covers the full map, so map UI buttons don't
+  // need to slide left out of its way.
+  const panelOffset = building && !isMobile ? 416 : 0
 
   // When a building is selected, focus on its center so the map zooms/tilts to it.
   // Otherwise, use a forced recenter target or the campus center for the top view.
@@ -398,26 +397,34 @@ export default function MapPage() {
   }
 
   return (
-    <div style={{ minHeight: '100vh', padding: '88px 40px 56px', maxWidth: '1400px', margin: '0 auto' }}>
+    <div style={{
+      minHeight: '100vh',
+      padding: isMobile ? '72px 16px 32px' : '88px 40px 56px',
+      maxWidth: '1400px',
+      margin: '0 auto',
+    }}>
 
       {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '20px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? '10px' : '14px', marginBottom: isMobile ? '14px' : '20px' }}>
         <div style={{
-          width: '44px', height: '44px', borderRadius: '12px',
+          width: isMobile ? '38px' : '44px',
+          height: isMobile ? '38px' : '44px',
+          borderRadius: '12px',
           background: 'rgba(45,184,176,0.1)',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
+          flexShrink: 0,
         }}>
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#2db8b0" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <svg width={isMobile ? 18 : 22} height={isMobile ? 18 : 22} viewBox="0 0 24 24" fill="none" stroke="#2db8b0" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
             <circle cx="12" cy="10" r="3"/>
           </svg>
         </div>
-        <div>
-          <h1 style={{ margin: '0 0 4px', fontSize: '22px', fontWeight: '700', color: 'var(--text-primary)' }}>
+        <div style={{ minWidth: 0 }}>
+          <h1 style={{ margin: '0 0 4px', fontSize: isMobile ? '18px' : '22px', fontWeight: '700', color: 'var(--text-primary)' }}>
             Campus Map Display
           </h1>
-          <p style={{ margin: 0, fontSize: '13px', color: 'var(--text-secondary)' }}>
-            UP Cebu &middot; Lahug, Cebu City &middot; Click a building for details
+          <p style={{ margin: 0, fontSize: isMobile ? '12px' : '13px', color: 'var(--text-secondary)' }}>
+            {isMobile ? 'UP Cebu · Tap a building' : 'UP Cebu · Lahug, Cebu City · Click a building for details'}
           </p>
         </div>
       </div>
@@ -430,7 +437,7 @@ export default function MapPage() {
         borderRadius: '14px',
         boxShadow: '0 4px 24px rgba(0,0,0,0.2)',
         overflow: 'hidden',
-        height: '640px',
+        height: isMobile ? '460px' : '640px',
       }}>
         {/* Map container */}
         <div style={{
@@ -493,16 +500,16 @@ export default function MapPage() {
           />
         </div>
 
-        {/* Detail panel — slides in from right */}
+        {/* Detail panel — slides in from right (full-screen overlay on mobile) */}
         <div style={{
             position: 'absolute',
             top: 0,
             right: 0,
             bottom: 0,
-            width: '400px',
+            width: isMobile ? '100%' : '400px',
             background: 'linear-gradient(180deg, rgba(241,245,249,0.97) 0%, rgba(232,240,247,0.95) 100%)',
-            borderLeft: '1px solid rgba(148,163,184,0.24)',
-            borderRadius: '0 14px 14px 0',
+            borderLeft: isMobile ? 'none' : '1px solid rgba(148,163,184,0.24)',
+            borderRadius: isMobile ? '14px' : '0 14px 14px 0',
             boxShadow: 'inset 1px 0 0 rgba(255,255,255,0.35)',
             display: 'flex', flexDirection: 'column',
             maxHeight: '100%',
@@ -611,21 +618,63 @@ export default function MapPage() {
               </p>
             </div>
 
-            {/* Prominent stat: Capacity */}
-            <div style={{
-              margin: '0 22px 16px', padding: '20px',
-              background: 'rgba(255,255,255,0.58)',
-              border: '1px solid rgba(148,163,184,0.18)',
-              borderRadius: '12px', textAlign: 'center',
-              boxShadow: '0 10px 24px rgba(15,23,42,0.06)',
-            }}>
-              <div style={{ fontSize: '42px', fontWeight: '800', color: '#2db8b0', lineHeight: 1, marginBottom: '4px' }}>
-                {building.capacity}
-              </div>
-              <div style={{ fontSize: '12px', fontWeight: '600', color: '#64748b', textTransform: 'uppercase', letterSpacing: '1px' }}>
-                Max Occupancy
-              </div>
-            </div>
+            {/* Per-floor capacity breakdown — replaces the previous single
+                "max occupancy" number with the per-floor rated limits set in
+                src/config/building-floor-occupancy.ts. */}
+            {(() => {
+              const floorOccupancy = BUILDING_FLOOR_OCCUPANCY[building.id]
+              if (!floorOccupancy || floorOccupancy.length === 0) return null
+              return (
+                <div style={{
+                  margin: '0 22px 16px', padding: '16px 18px',
+                  background: 'rgba(255,255,255,0.58)',
+                  border: '1px solid rgba(148,163,184,0.18)',
+                  borderRadius: '12px',
+                  boxShadow: '0 10px 24px rgba(15,23,42,0.06)',
+                }}>
+                  <div style={{
+                    fontSize: '11px', fontWeight: '700', color: '#2db8b0',
+                    letterSpacing: '0.7px', marginBottom: '12px',
+                  }}>
+                    FLOOR OCCUPANCY
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                    {floorOccupancy.map((capacity, idx) => {
+                      const floorNum = idx + 1
+                      const floorLabel = floorNum === 1 ? 'Ground Floor' : `Floor ${floorNum}`
+                      return (
+                        <div key={floorNum} style={{
+                          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                          padding: '8px 12px', borderRadius: '8px',
+                          background: 'rgba(255,255,255,0.7)',
+                          border: '1px solid rgba(148,163,184,0.14)',
+                        }}>
+                          <span style={{ fontSize: '12px', color: '#475569', fontWeight: 600 }}>
+                            {floorLabel}
+                          </span>
+                          <span style={{ fontSize: '14px', color: '#0f172a', fontWeight: 700 }}>
+                            {capacity}
+                            <span style={{ fontSize: '10px', color: '#94a3b8', fontWeight: 600, marginLeft: '4px' }}>max</span>
+                          </span>
+                        </div>
+                      )
+                    })}
+                  </div>
+                  <div style={{
+                    marginTop: '10px', paddingTop: '10px',
+                    borderTop: '1px solid rgba(148,163,184,0.18)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                  }}>
+                    <span style={{ fontSize: '11px', color: '#64748b', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                      Total
+                    </span>
+                    <span style={{ fontSize: '18px', fontWeight: 800, color: '#2db8b0' }}>
+                      {getBuildingTotalCapacity(building.id)}
+                    </span>
+                  </div>
+                </div>
+              )
+            })()}
 
             {/* Evacuation Readiness Score — real metrics aggregated from
                 saved simulation runs. Shows an empty state when the building
@@ -638,8 +687,36 @@ export default function MapPage() {
                 borderRadius: '12px',
                 boxShadow: '0 10px 24px rgba(15,23,42,0.05)',
               }}>
-                <div style={{ fontSize: '11px', color: '#2db8b0', fontWeight: '700', letterSpacing: '0.7px', marginBottom: '12px' }}>
-                  EVACUATION READINESS
+                <div style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                  marginBottom: '12px',
+                }}>
+                  <span style={{ fontSize: '11px', color: '#2db8b0', fontWeight: '700', letterSpacing: '0.7px' }}>
+                    EVACUATION READINESS
+                  </span>
+                  <button
+                    onClick={() => setScoringModalOpen(true)}
+                    title="How is this score calculated?"
+                    style={{
+                      width: '22px', height: '22px', borderRadius: '50%',
+                      background: 'rgba(45,184,176,0.12)',
+                      border: '1px solid rgba(45,184,176,0.28)',
+                      color: '#2db8b0', fontSize: '12px', fontWeight: 700,
+                      cursor: 'pointer',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      transition: 'background 0.15s, transform 0.15s',
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.background = 'rgba(45,184,176,0.22)'
+                      e.currentTarget.style.transform = 'scale(1.08)'
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.background = 'rgba(45,184,176,0.12)'
+                      e.currentTarget.style.transform = 'scale(1)'
+                    }}
+                  >
+                    ?
+                  </button>
                 </div>
                 {scoreLoading ? (
                   <div style={{ fontSize: '12px', color: '#94a3b8', textAlign: 'center', padding: '14px 0' }}>
@@ -1097,7 +1174,7 @@ export default function MapPage() {
             }}
           />
           <div
-            onClick={(e) => e.stopPropagation()}
+            onClick={() => setFullscreenImage(null)}
             style={{
               position: 'fixed',
               inset: 0,
@@ -1107,7 +1184,6 @@ export default function MapPage() {
               justifyContent: 'center',
               padding: '20px',
             }}
-            onClick={() => setFullscreenImage(null)}
           >
             <div
               onClick={(e) => e.stopPropagation()}
@@ -1162,6 +1238,148 @@ export default function MapPage() {
             </div>
           </div>
         </>
+      )}
+
+      {/* Scoring methodology modal — surfaces the formula behind the
+          Evacuation Readiness Score so demo audiences (and stakeholders)
+          can audit how a building's grade is calculated. The numbers are
+          kept in sync with src/services/building-analytics.service.ts. */}
+      {scoringModalOpen && (
+        <div
+          onClick={() => setScoringModalOpen(false)}
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(15, 23, 42, 0.72)',
+            backdropFilter: 'blur(4px)',
+            zIndex: 3000,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: isMobile ? '16px' : '32px',
+            animation: 'fadeIn 0.18s ease-out',
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              position: 'relative',
+              width: '100%',
+              maxWidth: '560px',
+              maxHeight: '90vh',
+              overflowY: 'auto',
+              background: '#ffffff',
+              borderRadius: '16px',
+              boxShadow: '0 20px 60px rgba(0, 0, 0, 0.3)',
+              padding: isMobile ? '20px' : '28px 32px',
+            }}
+          >
+            <button
+              onClick={() => setScoringModalOpen(false)}
+              style={{
+                position: 'absolute', top: '14px', right: '14px',
+                width: '32px', height: '32px', borderRadius: '50%',
+                background: '#f1f5f9', border: 'none', cursor: 'pointer',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                color: '#475569', transition: 'background 0.15s',
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.background = '#e2e8f0'}
+              onMouseLeave={(e) => e.currentTarget.style.background = '#f1f5f9'}
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <line x1="18" y1="6" x2="6" y2="18" />
+                <line x1="6" y1="6" x2="18" y2="18" />
+              </svg>
+            </button>
+
+            <h2 style={{ margin: '0 0 6px', fontSize: '20px', fontWeight: 800, color: '#0f172a' }}>
+              How the Readiness Score Works
+            </h2>
+            <p style={{ margin: '0 0 20px', fontSize: '13px', color: '#64748b', lineHeight: 1.6 }}>
+              Every number is derived from completed simulation drills — no fabricated data.
+              A building&apos;s grade reflects what its real evacuation runs actually show.
+            </p>
+
+            {/* Per-run breakdown */}
+            <div style={{
+              padding: '14px 16px', background: '#f8fafc', borderRadius: '10px',
+              border: '1px solid #e2e8f0', marginBottom: '16px',
+            }}>
+              <div style={{ fontSize: '11px', fontWeight: 700, color: '#2db8b0', letterSpacing: '0.6px', marginBottom: '10px' }}>
+                PER-RUN SCORE (0–100)
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: '6px 16px', fontSize: '13px', color: '#334155' }}>
+                <span>Evacuation rate <span style={{ color: '#94a3b8' }}>(evacuated / total)</span></span>
+                <span style={{ fontWeight: 700, color: '#0f172a' }}>50 pts</span>
+                <span>Evacuation time <span style={{ color: '#94a3b8' }}>(≤60s = full, ≥300s = 0)</span></span>
+                <span style={{ fontWeight: 700, color: '#0f172a' }}>25 pts</span>
+                <span>Bottlenecks <span style={{ color: '#94a3b8' }}>(0 = full, ≥5 = 0)</span></span>
+                <span style={{ fontWeight: 700, color: '#0f172a' }}>15 pts</span>
+                <span>Peak crowd density <span style={{ color: '#94a3b8' }}>(≤50% = full)</span></span>
+                <span style={{ fontWeight: 700, color: '#0f172a' }}>10 pts</span>
+              </div>
+            </div>
+
+            {/* Grade scale */}
+            <div style={{ marginBottom: '16px' }}>
+              <div style={{ fontSize: '11px', fontWeight: 700, color: '#64748b', letterSpacing: '0.6px', marginBottom: '8px' }}>
+                LETTER GRADE
+              </div>
+              <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                {([
+                  { grade: 'A' as const, min: 90, color: '#16a34a' },
+                  { grade: 'B' as const, min: 80, color: '#22c55e' },
+                  { grade: 'C' as const, min: 70, color: '#f59e0b' },
+                  { grade: 'D' as const, min: 60, color: '#f97316' },
+                  { grade: 'F' as const, min: 0,  color: '#ef4444' },
+                ]).map(g => (
+                  <div key={g.grade} style={{
+                    flex: '1 1 80px',
+                    padding: '8px 10px', borderRadius: '8px',
+                    background: `${g.color}14`, border: `1px solid ${g.color}40`,
+                    textAlign: 'center',
+                  }}>
+                    <div style={{ fontSize: '18px', fontWeight: 800, color: g.color }}>{g.grade}</div>
+                    <div style={{ fontSize: '10px', color: '#64748b', marginTop: '2px' }}>
+                      {g.grade === 'F' ? '< 60' : `≥ ${g.min}`}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Run weighting */}
+            <div style={{
+              padding: '12px 14px', background: '#fffbeb', borderRadius: '10px',
+              border: '1px solid #fde68a', marginBottom: '12px',
+            }}>
+              <div style={{ fontSize: '12px', fontWeight: 700, color: '#92400e', marginBottom: '4px' }}>
+                Anti-gaming weighting
+              </div>
+              <div style={{ fontSize: '12px', color: '#78350f', lineHeight: 1.6 }}>
+                Each run counts as <strong>scenario_multiplier × occupancy_ratio</strong>.
+                A severe + full-building drill counts ~10× more than a near-empty minor drill,
+                so easy runs can&apos;t inflate the grade.
+              </div>
+            </div>
+
+            {/* Coverage cap */}
+            <div style={{
+              padding: '12px 14px', background: '#fff7ed', borderRadius: '10px',
+              border: '1px solid #fed7aa',
+            }}>
+              <div style={{ fontSize: '12px', fontWeight: 700, color: '#9a3412', marginBottom: '6px' }}>
+                Mandatory coverage cap
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: '4px 12px', fontSize: '12px', color: '#7c2d12' }}>
+                <span>Has a severe drill</span><span style={{ fontWeight: 700 }}>no cap</span>
+                <span>Moderate only</span><span style={{ fontWeight: 700 }}>max B (≤89)</span>
+                <span>Minor only</span><span style={{ fontWeight: 700 }}>max C (≤79)</span>
+                <span>No drills run yet</span><span style={{ fontWeight: 700 }}>Unassessed</span>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
 
       <p style={{ marginTop: '12px', fontSize: '11px', color: 'var(--text-muted)', textAlign: 'center' }}>

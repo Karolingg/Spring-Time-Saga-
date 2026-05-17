@@ -238,7 +238,7 @@ export default function EvacuationReportPage() {
 
 function ReportShell({ children }: { children: React.ReactNode }) {
   return (
-    <div className="report-page">
+    <div data-page-shell className="report-page">
       <style>{`
         .report-page {
           max-width: 820px;
@@ -248,6 +248,11 @@ function ReportShell({ children }: { children: React.ReactNode }) {
           font-family: inherit;
           background: #ffffff;
           min-height: 100vh;
+        }
+        @media (max-width: 768px) {
+          .report-page {
+            padding: 24px 14px 40px;
+          }
         }
         .report-toolbar {
           display: flex;

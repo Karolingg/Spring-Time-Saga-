@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useAuth } from '@/src/hooks/useAuth'
+import { useIsMobile } from '@/src/hooks/useIsMobile'
 import {
   getSimulationHistory,
   getAggregateSimulationStats,
@@ -68,6 +69,7 @@ function userName(email?: string | null): string {
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 export default function DashboardPage() {
+  const isMobile = useIsMobile()
   const { user, isAuthenticated, isLoading: isAuthLoading } = useAuth()
   const [stats, setStats] = useState<AggregateStats | null>(null)
   const [recentRuns, setRecentRuns] = useState<SimulationRun[]>([])
@@ -109,7 +111,12 @@ export default function DashboardPage() {
   const greeting = getGreeting()
 
   return (
-    <div style={{ minHeight: '100vh', padding: '88px 40px 56px', maxWidth: '1280px', margin: '0 auto' }}>
+    <div data-page-shell style={{
+      minHeight: '100vh',
+      padding: isMobile ? '20px 14px 32px' : '88px 40px 56px',
+      maxWidth: '1280px',
+      margin: '0 auto',
+    }}>
 
       {/* ── Welcome Header ── */}
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '32px', gap: '16px', flexWrap: 'wrap' }}>
@@ -134,7 +141,7 @@ export default function DashboardPage() {
       </div>
 
       {/* ── Readiness + Coverage row ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '24px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '16px', marginBottom: '24px' }}>
 
         {/* Campus Readiness Score */}
         <div style={{
@@ -222,7 +229,7 @@ export default function DashboardPage() {
       </div>
 
       {/* ── Stat Cards ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px', marginBottom: '24px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(4, 1fr)', gap: '16px', marginBottom: '24px' }}>
         {statCards.map((card, i) => (
           <StatCard key={i} {...card} />
         ))}

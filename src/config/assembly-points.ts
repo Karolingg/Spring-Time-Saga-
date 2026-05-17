@@ -1,17 +1,3 @@
-/**
- * Campus evacuation assembly areas.
- *
- * Designated muster points where occupants gather after exiting a building.
- * Used by the campus map to:
- *   - Render distinct assembly markers (separate from building markers)
- *   - Tell each building which assembly point to direct its occupants to
- *
- * IMPORTANT — verify coordinates with UP Cebu facilities before deploying.
- * The positions below are PROTOTYPE placements at plausible open areas on
- * the campus; the real designated assembly points should be confirmed and
- * substituted here.
- */
-
 export interface AssemblyPoint {
   id: string
   name: string
@@ -48,6 +34,14 @@ export const ASSEMBLY_POINTS: AssemblyPoint[] = [
     position: [10.3215, 123.9030],
     capacity: 600,
     image: '/assembly-areas/high-school-field.jpg',
+  },
+  {
+    id: 'as-parking',
+    name: 'AS Parking Area',
+    description: 'Open area parking outside the AS building.',
+    position: [10.3231, 123.8990],
+    capacity: 600,
+    image: '/floorplans/as-parking.png',
   },
 ]
 
