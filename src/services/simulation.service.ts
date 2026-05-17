@@ -86,7 +86,7 @@ async function insertRunWithFallback(
   for (let attempt = 0; attempt <= OPTIONAL_RUN_COLUMNS.length; attempt++) {
     const { data, error } = await supabase
       .from('simulation_runs')
-      .insert(current)
+      .insert(current as any) // eslint-disable-line @typescript-eslint/no-explicit-any
       .select('id')
       .single()
 

@@ -301,7 +301,7 @@ async function fetchRunRows(buildingId: string): Promise<RunRow[] | null> {
     .eq('status', 'completed')
 
   if (!primary.error) {
-    return (primary.data ?? []) as RunRow[]
+    return (primary.data ?? []) as unknown as RunRow[]
   }
 
   // Fallback 1 — scenario_severity column missing (migration 20260516 not applied)
@@ -313,7 +313,7 @@ async function fetchRunRows(buildingId: string): Promise<RunRow[] | null> {
       .eq('status', 'completed')
 
     if (!noSeverity.error) {
-      return (noSeverity.data as { id: string; floor_index: number | null }[]).map(r => ({
+      return (noSeverity.data as unknown as { id: string; floor_index: number | null }[]).map(r => ({
         id: r.id,
         floor_index: r.floor_index,
         scenario_severity: null,
@@ -328,7 +328,7 @@ async function fetchRunRows(buildingId: string): Promise<RunRow[] | null> {
         .eq('building_id', buildingId)
         .eq('status', 'completed')
       if (bare.error) throw new Error(bare.error.message)
-      return (bare.data as { id: string }[]).map(r => ({
+      return (bare.data as unknown as { id: string }[]).map(r => ({
         id: r.id,
         floor_index: null,
         scenario_severity: null,

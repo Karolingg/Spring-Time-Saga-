@@ -1,15 +1,5 @@
 import { supabase } from '@/src/config/supabase'
 
-export async function updateUserEmail(newEmail: string) {
-  const { error } = await supabase.auth.updateUser({ email: newEmail })
-  if (error) throw new Error(error.message)
-}
-
-export async function updateUserPassword(newPassword: string) {
-  const { error } = await supabase.auth.updateUser({ password: newPassword })
-  if (error) throw new Error(error.message)
-}
-
 export async function getUserProfile() {
   const { data: session, error: authError } = await supabase.auth.getUser()
   if (authError || !session.user) throw new Error('Not authenticated')

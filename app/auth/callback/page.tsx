@@ -13,7 +13,7 @@ export default function AuthCallbackPage() {
     const error = new URL(window.location.href).searchParams.get('error')
 
     if (error) {
-      setStatus('error')
+      setTimeout(() => setStatus('error'), 0)
       setTimeout(() => router.replace('/auth'), 2000)
       return
     }
