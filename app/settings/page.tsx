@@ -90,7 +90,8 @@ export default function SettingsPage() {
   if (isMobile) {
     return (
       <div data-page-shell style={{ minHeight: '100vh', padding: '20px 14px 32px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '20px' }}>
+        {/* Header */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
           <div style={{
             width: '38px',
             height: '38px',
@@ -107,6 +108,41 @@ export default function SettingsPage() {
           <div>
             <h1 style={{ margin: 0, fontSize: '18px', fontWeight: '700', color: 'var(--text-primary)' }}>Settings</h1>
             <p style={{ margin: 0, fontSize: '12px', color: 'var(--text-secondary)' }}>Manage your account</p>
+          </div>
+        </div>
+
+        {/* User card */}
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '12px',
+          padding: '14px',
+          background: '#fff',
+          border: '1px solid var(--border)',
+          borderRadius: '12px',
+          marginBottom: '14px',
+          boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
+        }}>
+          <div style={{
+            width: '36px',
+            height: '36px',
+            borderRadius: '10px',
+            flexShrink: 0,
+            background: '#2db8b0',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: '15px',
+            fontWeight: '700',
+            color: '#fff',
+          }}>
+            {initial}
+          </div>
+          <div style={{ overflow: 'hidden', flex: 1 }}>
+            <div style={{ fontSize: '13px', fontWeight: '600', color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              {email}
+            </div>
+            <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Signed in with Google</div>
           </div>
         </div>
 
@@ -155,10 +191,10 @@ export default function SettingsPage() {
       </div>
     )
   }
-
-  // ── Desktop layout ──
+  
   return (
-    <div data-page-shell style={{ minHeight: '100vh', padding: '88px 40px 56px', maxWidth: '860px', margin: '0 auto' }}>
+    <div data-page-shell style={{ minHeight: '100vh', padding: '88px 40px 56px', maxWidth: '920px', margin: '0 auto' }}>
+      {/* Page header */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '24px' }}>
         <div style={{
           width: '44px',
@@ -179,8 +215,62 @@ export default function SettingsPage() {
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '200px 1fr', gap: '20px', alignItems: 'start' }}>
-        {/* Sidebar nav */}
+      {/* User info card — full width */}
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: '14px',
+        padding: '16px 20px',
+        background: '#fff',
+        border: '1px solid var(--border)',
+        borderRadius: '12px',
+        marginBottom: '20px',
+        boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
+      }}>
+        <div style={{
+          width: '40px',
+          height: '40px',
+          borderRadius: '10px',
+          flexShrink: 0,
+          background: '#2db8b0',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          fontSize: '16px',
+          fontWeight: '700',
+          color: '#fff',
+        }}>
+          {initial}
+        </div>
+        <div style={{ flex: 1, overflow: 'hidden' }}>
+          <div style={{ fontSize: '14px', fontWeight: '600', color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+            {email}
+          </div>
+          <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Signed in with Google</div>
+        </div>
+        <button onClick={handleLogout} style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '6px',
+          padding: '8px 14px',
+          border: '1px solid #fecaca',
+          borderRadius: '8px',
+          background: '#fff',
+          color: '#ef4444',
+          fontSize: '12px',
+          fontWeight: '500',
+          cursor: 'pointer',
+          transition: 'background 0.12s',
+        }}>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>
+          </svg>
+          Sign out
+        </button>
+      </div>
+
+      {/* Main grid: sidebar nav + content */}
+      <div style={{ display: 'grid', gridTemplateColumns: '220px 1fr', gap: '20px', alignItems: 'start' }}>
         <div style={{
           background: '#fff',
           border: '1px solid var(--border)',
@@ -188,37 +278,13 @@ export default function SettingsPage() {
           padding: '8px',
           boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '12px 10px', marginBottom: '4px', borderBottom: '1px solid var(--border)' }}>
-            <div style={{
-              width: '32px',
-              height: '32px',
-              borderRadius: '8px',
-              flexShrink: 0,
-              background: '#2db8b0',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontSize: '14px',
-              fontWeight: '700',
-              color: '#fff',
-            }}>
-              {initial}
-            </div>
-            <div style={{ overflow: 'hidden' }}>
-              <div style={{ fontSize: '13px', fontWeight: '600', color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                {email}
-              </div>
-              <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Signed in with Google</div>
-            </div>
-          </div>
-
           {nav.map(item => (
             <button key={item.id} onClick={() => setSection(item.id)} style={{
               display: 'flex',
               alignItems: 'center',
               gap: '10px',
               width: '100%',
-              padding: '9px 10px',
+              padding: '10px 12px',
               border: 'none',
               borderRadius: '8px',
               background: section === item.id ? '#f0fdfa' : 'transparent',
@@ -228,34 +294,12 @@ export default function SettingsPage() {
               cursor: 'pointer',
               textAlign: 'left',
               transition: 'background 0.12s',
+              marginBottom: '2px',
             }}>
               {navIcons[item.id]}
               {item.label}
             </button>
           ))}
-
-          <div style={{ borderTop: '1px solid var(--border)', marginTop: '4px', paddingTop: '4px' }}>
-            <button onClick={handleLogout} style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '10px',
-              width: '100%',
-              padding: '9px 10px',
-              border: 'none',
-              borderRadius: '8px',
-              background: 'transparent',
-              color: '#ef4444',
-              fontSize: '13px',
-              fontWeight: '400',
-              cursor: 'pointer',
-              textAlign: 'left',
-            }}>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>
-              </svg>
-              Sign out
-            </button>
-          </div>
         </div>
 
         {/* Content panel */}
@@ -265,6 +309,7 @@ export default function SettingsPage() {
           borderRadius: '12px',
           padding: '28px 32px',
           boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
+          minHeight: '380px',
         }}>
           {section === 'profile' && <ProfilePanel userEmail={email} />}
           {section === 'security' && <SecurityPanel userEmail={email} onSignOut={handleLogout} />}
@@ -492,3 +537,4 @@ function SecurityPanel({ userEmail, onSignOut }: { userEmail: string; onSignOut:
     </div>
   )
 }
+
