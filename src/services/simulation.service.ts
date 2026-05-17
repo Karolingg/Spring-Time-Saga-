@@ -18,17 +18,38 @@ export interface ReplayInputs {
   seed: number
 }
 
+/** Severity bucket a saved run falls into. Drives the building's
+ *  difficulty-weighted score and the mandatory-coverage grade cap. */
+export type ScenarioSeverity = 'minor' | 'moderate' | 'severe'
+
 type Row = Record<string, unknown>
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
-/** Ensures the authenticated user has a profiles row (handles pre-migration users). */
-async function ensureProfile(userId: string, email: string | undefined): Promise<void> {
+/**
+ * Ensures the authenticated user has a profiles row (handles pre-migration
+ * users and the OAuth-trigger race condition). Mirrors the handle_new_user
+ * trigger by deriving a display name from auth metadata when present.
+ */
+async function ensureProfile(
+  userId: string,
+  email: string | undefined,
+  metadata?: Record<string, unknown> | null,
+): Promise<void> {
+  const meta = metadata ?? {}
+  const displayName =
+    (meta.full_name as string | undefined) ??
+    (meta.name as string | undefined) ??
+    (email ? email.split('@')[0] : null)
+
   const { error } = await supabase
     .from('profiles')
-    .upsert({ id: userId, email: email ?? null }, { onConflict: 'id' })
+    .upsert(
+      { id: userId, email: email ?? null, display_name: displayName },
+      { onConflict: 'id' },
+    )
 
   if (error) throw new Error(`Failed to ensure profile: ${error.message}`)
 }
@@ -37,33 +58,78 @@ async function ensureProfile(userId: string, email: string | undefined): Promise
 // Write
 // ---------------------------------------------------------------------------
 
+/**
+ * Optional columns that depend on later migrations. If a column is missing
+ * (because that migration hasn't run against the connected Supabase project
+ * yet), we strip it from the insert payload and retry. This lets the app
+ * survive a partially-migrated database — important during the ship-to-
+ * stakeholders window where prod might lag the codebase.
+ *
+ * Each entry maps a payload key → matcher for the error message Postgres
+ * returns when that column is missing. Order matters: rarer/newer columns
+ * first so we retry minimally.
+ */
+const OPTIONAL_RUN_COLUMNS: { key: string; matcher: RegExp }[] = [
+  { key: 'scenario_severity', matcher: /scenario_severity/i }, // migration 20260516
+  { key: 'hazards',           matcher: /hazards/i           }, // migration 20260513
+  { key: 'agents_per_room',   matcher: /agents_per_room/i   }, // migration 20260513
+  { key: 'seed',              matcher: /\bseed\b/i          }, // migration 20260513
+  { key: 'floor_index',       matcher: /floor_index/i       }, // migration 20260512
+  { key: 'building_id',       matcher: /building_id/i       }, // migration 20260410
+]
+
+async function insertRunWithFallback(
+  payload: Record<string, unknown>,
+): Promise<{ id: string }> {
+  let current = { ...payload }
+  // Try up to N+1 times — each retry strips one missing column
+  for (let attempt = 0; attempt <= OPTIONAL_RUN_COLUMNS.length; attempt++) {
+    const { data, error } = await supabase
+      .from('simulation_runs')
+      .insert(current)
+      .select('id')
+      .single()
+
+    if (!error) return data as { id: string }
+
+    // Try to identify which optional column caused the failure
+    const missing = OPTIONAL_RUN_COLUMNS.find(c =>
+      c.matcher.test(error.message) && c.key in current,
+    )
+    if (!missing) throw new Error(error.message)
+
+    // Strip the offending column and try again
+    const next = { ...current }
+    delete next[missing.key]
+    current = next
+  }
+  throw new Error('Failed to insert simulation run after column-fallback retries')
+}
+
 export async function createSimulationRun(
   config: SimulationConfig,
   buildingId?: string,
   floorIndex?: number,
   replay?: ReplayInputs,
+  scenarioSeverity?: ScenarioSeverity,
 ): Promise<string> {
   const { data: session, error: authError } = await supabase.auth.getUser()
   if (authError || !session.user) throw new Error('Not authenticated')
 
   const user = session.user
-  await ensureProfile(user.id, user.email)
+  await ensureProfile(user.id, user.email, user.user_metadata ?? null)
 
-  const { data: run, error: runError } = await supabase
-    .from('simulation_runs')
-    .insert({
-      user_id: user.id,
-      disaster_type: config.disasterType,
-      status: 'running',
-      building_id: buildingId ?? null,
-      floor_index: floorIndex ?? null,
-      hazards: (replay?.hazards ?? null) as never,
-      agents_per_room: (replay?.agentsPerRoom ?? null) as never,
-      seed: replay?.seed ?? null,
-    })
-    .select('id')
-    .single()
-  if (runError) throw new Error(runError.message)
+  const run = await insertRunWithFallback({
+    user_id: user.id,
+    disaster_type: config.disasterType,
+    status: 'running',
+    building_id: buildingId ?? null,
+    floor_index: floorIndex ?? null,
+    hazards: replay?.hazards ?? null,
+    agents_per_room: replay?.agentsPerRoom ?? null,
+    seed: replay?.seed ?? null,
+    scenario_severity: scenarioSeverity ?? null,
+  })
 
   const { error: cfgError } = await supabase
     .from('simulation_configs')

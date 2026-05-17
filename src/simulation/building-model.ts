@@ -33,6 +33,11 @@ export interface NavEdge {
   width: number
   /** Can this edge be blocked by hazards? */
   blockable: boolean
+  /** Structurally fragile — eligible for earthquake collapse rolls. When an
+   *  earthquake run rolls this edge as collapsed, a debris hazard is spawned
+   *  at its midpoint. Authored via `fragile` on a corridor neighbor, or
+   *  auto-derived for any edge touching a `stairs` node. */
+  fragile?: boolean
 }
 
 export interface HazardZone {
@@ -113,11 +118,12 @@ export function edgeKey(from: string, to: string): string {
 }
 
 /**
- * Dijkstra with soft-block support. Hard-blocked edges are skipped entirely;
- * soft-blocked edges (smoke) stay traversable but their distance is multiplied
- * by `softPenalty` so the algorithm prefers a cleaner detour when one exists.
- * If the only route goes through smoke, the agent still gets a path — they
- * won't be trapped purely because smoke spread across a corridor.
+ * Dijkstra with soft-block + threat-zone support. Hard-blocked edges are
+ * skipped entirely; soft-blocked edges (smoke) stay traversable but cost
+ * `softPenalty`x; threatened edges (just outside a growing hard hazard's
+ * radius) cost `threatPenalty`x so agents proactively route around fire that
+ * is about to swallow their next corridor — without being unreachable when
+ * the threat is the only way out.
  */
 export interface WeightedPathOptions {
   /** Live edge occupancy (people currently on each edge, keyed by
@@ -136,6 +142,23 @@ export interface WeightedPathOptions {
    *  spread the crowd across multiple exits when the raw shortest path
    *  would funnel everyone into one. */
   exitBias?: Record<string, number>
+  /** Edges in the threat zone of an active hard hazard — within
+   *  `currentRadius + buffer` but not yet inside the radius. Treated as
+   *  very high cost so agents prefer a clean detour, but still traversable
+   *  if no alternative exists. */
+  threatenedEdges?: Set<string>
+  /** Cost multiplier applied to threatened edges. Should be ≥ softPenalty
+   *  since walking next to fire is worse than walking through smoke. */
+  threatPenalty?: number
+  /** Exits the search must avoid returning. Used by proximity-driven reroutes
+   *  so an agent that just barely escaped a fire hazard does not pick the
+   *  same exit again on the very next replan. */
+  excludeExitIds?: Set<string>
+  /** Nodes the search must NOT route through (except as the start node).
+   *  Used by proximity-driven reroutes to forbid the agent's new path from
+   *  passing through the danger zone of any active fire — so they never
+   *  "go backward" through the flames to reach another exit. */
+  forbiddenNodeIds?: Set<string>
 }
 
 export function findShortestPathToExitWeighted(
@@ -146,7 +169,7 @@ export function findShortestPathToExitWeighted(
   softPenalty = 3.5,
   options: WeightedPathOptions = {},
 ): { path: string[]; distance: number; exitId: string; walksThroughSmoke: boolean } | null {
-  const { edgeCounts, congestionWeight = 0, jitter = 1, exitBias } = options
+  const { edgeCounts, congestionWeight = 0, jitter = 1, exitBias, threatenedEdges, threatPenalty = 1, excludeExitIds, forbiddenNodeIds } = options
   const exits = getExits(floor)
   if (exits.length === 0) return null
 
@@ -173,7 +196,12 @@ export function findShortestPathToExitWeighted(
     visited.add(current)
 
     const currentNode = getNode(floor, current)
-    if (currentNode?.type === 'exit') {
+    // Skip exits that the caller explicitly banned (e.g. the exit the agent
+    // was originally heading toward, which now sits dangerously close to a
+    // fire). The search continues looking for any other reachable exit.
+    if (currentNode?.type === 'exit' && excludeExitIds?.has(current)) {
+      // Don't return — keep expanding so we can find another exit.
+    } else if (currentNode?.type === 'exit') {
       const path: string[] = []
       let c: string | null = current
       while (c) {
@@ -194,8 +222,16 @@ export function findShortestPathToExitWeighted(
     for (const { node: neighbor, edge } of getNeighbors(floor, current)) {
       const key = edgeKey(edge.from, edge.to)
       if (blockedEdges.has(key)) continue
+      // Forbid routing through danger-zone nodes. The start node itself may be
+      // inside the zone (agent needs to escape outward), but any subsequent
+      // hop into the zone is banned — that's what kept causing "go backward
+      // through the fire" reroutes.
+      if (forbiddenNodeIds?.has(neighbor.id) && neighbor.id !== startId) continue
 
       let cost = edge.distance * (softBlockedEdges.has(key) ? softPenalty : 1)
+      if (threatenedEdges?.has(key) && threatPenalty > 1) {
+        cost *= threatPenalty
+      }
       if (edgeCounts && congestionWeight > 0) {
         cost += (edgeCounts[key] ?? 0) * congestionWeight
       }

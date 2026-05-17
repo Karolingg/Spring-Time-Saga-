@@ -3,9 +3,11 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { useAuth } from '@/src/hooks/useAuth'
-import { getSimulationHistory, getSimulationRun } from '@/src/services/simulation.service'
+import { getSimulationHistory, getSimulationRun, getDensityCells } from '@/src/services/simulation.service'
 import { getBuildingById } from '@/src/simulation/building-model'
-import type { SimulationRun, SimulationZone } from '@/src/schema/simulation.types'
+import type { SimulationRun, SimulationZone, DensityCell } from '@/src/schema/simulation.types'
+import { SpatialBottleneckHeatmap } from '@/components/analysis/SpatialBottleneckHeatmap'
+import { FeatureContainer } from '@/components/analysis/FeatureContainer'
 
 const SECTION_CARD: React.CSSProperties = {
   background: '#ffffff',
@@ -133,6 +135,8 @@ export default function CompareRunsPage() {
   const [history, setHistory] = useState<SimulationRun[]>([])
   const [runA, setRunA] = useState<SimulationRun | null>(null)
   const [runB, setRunB] = useState<SimulationRun | null>(null)
+  const [densityCellsA, setDensityCellsA] = useState<DensityCell[]>([])
+  const [densityCellsB, setDensityCellsB] = useState<DensityCell[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -177,6 +181,21 @@ export default function CompareRunsPage() {
     void load()
     return () => { cancelled = true }
   }, [isAuthenticated, searchParams])
+
+  /* Load density cells for each run (for the heatmap overlays) */
+  useEffect(() => {
+    if (!runA) { setDensityCellsA([]); return }
+    let cancelled = false
+    getDensityCells(runA.id).then(cells => { if (!cancelled) setDensityCellsA(cells) })
+    return () => { cancelled = true }
+  }, [runA?.id])
+
+  useEffect(() => {
+    if (!runB) { setDensityCellsB([]); return }
+    let cancelled = false
+    getDensityCells(runB.id).then(cells => { if (!cancelled) setDensityCellsB(cells) })
+    return () => { cancelled = true }
+  }, [runB?.id])
 
   async function selectRun(slot: 'A' | 'B', runId: string) {
     if (!runId) {
@@ -245,13 +264,58 @@ export default function CompareRunsPage() {
 
           {canCompare && (
             <>
-              <div style={SECTION_CARD}>
+              {/* ── Layer 1: Key Metrics ─────────────────────────── */}
+              <FeatureContainer
+                title="Key Metrics"
+                subtitle="Side-by-side evacuation statistics with directional delta indicators"
+                accent="#2db8b0"
+                badge="Layer 1"
+                icon={
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M3 3v18h18" />
+                    <path d="M7 14l4-4 4 4 5-5" />
+                  </svg>
+                }
+              >
                 <KpiGrid runA={runA!} runB={runB!} />
-              </div>
+              </FeatureContainer>
 
-              <div style={SECTION_CARD}>
+              {/* ── Layer 2: Floor Heatmaps ──────────────────────── */}
+              <FeatureContainer
+                title="Floor Heatmaps"
+                subtitle="Side-by-side crowd density comparison between the two runs"
+                accent="#2db8b0"
+                badge="Layer 2"
+                icon={
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="3" y="3" width="18" height="18" rx="2" />
+                    <path d="M9 3v18M15 3v18M3 9h18M3 15h18" />
+                  </svg>
+                }
+              >
+                <CompareHeatmaps
+                  runA={runA!}
+                  runB={runB!}
+                  densityCellsA={densityCellsA}
+                  densityCellsB={densityCellsB}
+                />
+              </FeatureContainer>
+
+              {/* ── Layer 3: Biggest Zone Shifts ─────────────────── */}
+              <FeatureContainer
+                title="Biggest Zone Shifts"
+                subtitle="Top zones ranked by absolute change in intensity between A and B"
+                accent="#2db8b0"
+                badge="Layer 3"
+                icon={
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M3 6h6" /><path d="M3 12h6" /><path d="M3 18h6" />
+                    <path d="M15 6h6" /><path d="M15 12h6" /><path d="M15 18h6" />
+                  </svg>
+                }
+              >
                 <ZoneDeltaTable rows={zoneDeltas} />
-              </div>
+              </FeatureContainer>
             </>
           )}
         </>
@@ -281,14 +345,27 @@ function Header() {
           Pick two completed runs to see how key metrics moved between them.
         </p>
       </div>
-      <a href="/analysis/runs" style={{
-        display: 'inline-flex', alignItems: 'center', gap: '6px',
-        padding: '8px 14px', background: '#ffffff', color: '#0f172a',
-        borderRadius: '8px', textDecoration: 'none', fontSize: '13px', fontWeight: 600,
-        border: '1px solid var(--border)',
-      }}>
-        Back to runs
-      </a>
+      <div style={{ display: 'flex', gap: '8px' }}>
+        <a href="/analysis" style={{
+          display: 'inline-flex', alignItems: 'center', gap: '6px',
+          padding: '8px 14px', background: '#ffffff', color: '#0f172a',
+          borderRadius: '8px', textDecoration: 'none', fontSize: '13px', fontWeight: 600,
+          border: '1px solid var(--border)', flexShrink: 0,
+        }}>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="15 18 9 12 15 6" />
+          </svg>
+          Back
+        </a>
+        <a href="/analysis/runs" style={{
+          display: 'inline-flex', alignItems: 'center', gap: '6px',
+          padding: '8px 14px', background: '#ffffff', color: '#0f172a',
+          borderRadius: '8px', textDecoration: 'none', fontSize: '13px', fontWeight: 600,
+          border: '1px solid var(--border)', flexShrink: 0,
+        }}>
+          View Runs
+        </a>
+      </div>
     </div>
   )
 }
@@ -390,15 +467,10 @@ function RunSlot({ slotLabel, slotColor, history, currentId, currentRun, onChang
 
 function KpiGrid({ runA, runB }: { runA: SimulationRun; runB: SimulationRun }) {
   return (
-    <div>
-      <h2 style={{ margin: '0 0 14px', fontSize: '14px', fontWeight: 600, color: 'var(--text-primary)' }}>
-        Key metrics
-      </h2>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '12px' }}>
-        {METRICS.map((metric) => (
-          <KpiDeltaCard key={metric.key} metric={metric} runA={runA} runB={runB} />
-        ))}
-      </div>
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '12px' }}>
+      {METRICS.map((metric) => (
+        <KpiDeltaCard key={metric.key} metric={metric} runA={runA} runB={runB} />
+      ))}
     </div>
   )
 }
@@ -450,25 +522,14 @@ function KpiDeltaCard({ metric, runA, runB }: { metric: MetricDef; runA: Simulat
 function ZoneDeltaTable({ rows }: { rows: ZoneDelta[] }) {
   if (rows.length === 0) {
     return (
-      <>
-        <h2 style={{ margin: '0 0 6px', fontSize: '14px', fontWeight: 600, color: 'var(--text-primary)' }}>
-          Zones with the biggest shift
-        </h2>
-        <p style={{ margin: 0, fontSize: '13px', color: 'var(--text-secondary)' }}>
-          Neither run recorded zone intensity, so there is nothing to compare here.
-        </p>
-      </>
+      <p style={{ margin: 0, fontSize: '13px', color: 'var(--text-secondary)' }}>
+        Neither run recorded zone intensity, so there is nothing to compare here.
+      </p>
     )
   }
 
   return (
     <>
-      <h2 style={{ margin: '0 0 4px', fontSize: '14px', fontWeight: 600, color: 'var(--text-primary)' }}>
-        Zones with the biggest shift
-      </h2>
-      <p style={{ margin: '0 0 14px', fontSize: '12px', color: 'var(--text-secondary)' }}>
-        Top 8 zones ranked by absolute change in intensity between A and B.
-      </p>
       <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
         <thead>
           <tr>
@@ -525,6 +586,112 @@ function Td({ children, align = 'left' }: { children: React.ReactNode; align?: '
     }}>
       {children}
     </td>
+  )
+}
+
+/* ── Side-by-side heatmap comparison ──────────────────────────────── */
+
+function CompareHeatmaps({
+  runA,
+  runB,
+  densityCellsA,
+  densityCellsB,
+}: {
+  runA: SimulationRun
+  runB: SimulationRun
+  densityCellsA: DensityCell[]
+  densityCellsB: DensityCell[]
+}) {
+  const buildingA = runA.buildingId ? getBuildingById(runA.buildingId) : null
+  const buildingB = runB.buildingId ? getBuildingById(runB.buildingId) : null
+  const hasFloorA = buildingA && runA.floorIndex != null
+  const hasFloorB = buildingB && runB.floorIndex != null
+
+  if (!hasFloorA && !hasFloorB) {
+    return (
+      <div style={{
+        padding: '32px 20px', textAlign: 'center', fontSize: '13px',
+        color: 'var(--text-secondary)',
+        background: 'linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%)',
+        borderRadius: '12px', border: '1px dashed #cbd5e1',
+      }}>
+        Neither run has a floor-plan model — heatmaps need a building with an autonomous floor model.
+      </div>
+    )
+  }
+
+  return (
+    <div>
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: '1fr 1fr',
+        gap: '20px',
+      }}>
+        {/* Slot A */}
+        <div>
+          <div style={{
+            display: 'inline-block', padding: '3px 10px', borderRadius: '6px',
+            fontSize: '11px', fontWeight: 700, letterSpacing: '0.06em',
+            background: 'rgba(100,116,139,0.1)', color: '#64748b',
+            marginBottom: '10px',
+          }}>
+            A · Baseline
+          </div>
+          <SpatialBottleneckHeatmap
+            buildingId={runA.buildingId}
+            zones={runA.zones}
+            densityCells={densityCellsA}
+            simulatedFloorIndex={runA.floorIndex}
+            hideHeader
+            hazards={runA.hazards}
+            agentsPerRoom={runA.agentsPerRoom}
+            seed={runA.seed}
+            disasterType={runA.disasterType}
+            agentCount={runA.config?.agentCount ?? null}
+          />
+          <div style={{
+            marginTop: '8px', padding: '8px 12px',
+            background: '#f8fafc', borderRadius: '8px',
+            border: '1px solid var(--border)',
+            fontSize: '12px', color: 'var(--text-secondary)', lineHeight: 1.4,
+          }}>
+            {describeRun(runA)}
+          </div>
+        </div>
+
+        {/* Slot B */}
+        <div>
+          <div style={{
+            display: 'inline-block', padding: '3px 10px', borderRadius: '6px',
+            fontSize: '11px', fontWeight: 700, letterSpacing: '0.06em',
+            background: 'rgba(45,184,176,0.1)', color: '#2db8b0',
+            marginBottom: '10px',
+          }}>
+            B · Comparison
+          </div>
+          <SpatialBottleneckHeatmap
+            buildingId={runB.buildingId}
+            zones={runB.zones}
+            densityCells={densityCellsB}
+            simulatedFloorIndex={runB.floorIndex}
+            hideHeader
+            hazards={runB.hazards}
+            agentsPerRoom={runB.agentsPerRoom}
+            seed={runB.seed}
+            disasterType={runB.disasterType}
+            agentCount={runB.config?.agentCount ?? null}
+          />
+          <div style={{
+            marginTop: '8px', padding: '8px 12px',
+            background: '#f8fafc', borderRadius: '8px',
+            border: '1px solid var(--border)',
+            fontSize: '12px', color: 'var(--text-secondary)', lineHeight: 1.4,
+          }}>
+            {describeRun(runB)}
+          </div>
+        </div>
+      </div>
+    </div>
   )
 }
 

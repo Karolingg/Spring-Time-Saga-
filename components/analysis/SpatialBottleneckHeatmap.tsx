@@ -31,7 +31,7 @@ const INTENSITY_BANDS: IntensityBand[] = [
   { threshold: 75, color: '#f43f5e', label: 'Critical' },   // rose-500
   { threshold: 55, color: '#f97316', label: 'High'     },   // orange-500
   { threshold: 35, color: '#f59e0b', label: 'Medium'   },   // amber-500
-  { threshold: 0,  color: '#4ade80', label: 'Low'      },   // green-400
+  { threshold: 0,  color: '#16a34a', label: 'Low'      },   // green-600 (darker)
 ]
 
 const SCALE_TICKS = [
@@ -96,8 +96,8 @@ function getHeatColor(intensity: number) {
   if (intensity >= 0.78) return '#e11d48'   // rose-600
   if (intensity >= 0.55) return '#ea580c'   // orange-600
   if (intensity >= 0.32) return '#f59e0b'   // amber-500
-  if (intensity >= 0.12) return '#22c55e'   // green-500
-  return '#4ade80'                            // green-400
+  if (intensity >= 0.12) return '#15803d'   // green-700 (deeper for contrast against light rooms)
+  return '#16a34a'                            // green-600 (darker than the old #4ade80)
 }
 
 export function SpatialBottleneckHeatmap({
@@ -410,8 +410,12 @@ export function SpatialBottleneckHeatmap({
                 position: 'absolute', inset: 0,
                 width: '100%', height: '100%',
                 objectFit: 'contain', objectPosition: 'center',
-                opacity: 0.92,
-                filter: 'saturate(0.35) contrast(1.08) brightness(1.04)',
+                opacity: 0.95,
+                // Keep the original room colours but lighten them: high
+                // brightness + reduced contrast pushes everything toward
+                // a pastel palette so the heatmap pops while rooms stay
+                // identifiable.
+                filter: 'saturate(0.75) contrast(0.85) brightness(1.18)',
               }}
             />
           )}
@@ -429,12 +433,14 @@ export function SpatialBottleneckHeatmap({
             >
               <defs>
                 {/* Outer halo — muted-warm tint, slightly deeper than pure
-                   pastel for readability. Fades cleanly to nothing. */}
+                   pastel for readability. Fades cleanly to nothing.
+                   Green fade now uses #16a34a (green-600) so the halo
+                   contrasts with the lighter pastel floor plan. */}
                 <radialGradient id="halo-blob" cx="50%" cy="50%">
                   <stop offset="0%"   stopColor="rgba(244,63,94,0.50)"  />
                   <stop offset="35%"  stopColor="rgba(249,115,22,0.40)" />
-                  <stop offset="65%"  stopColor="rgba(245,158,11,0.28)" />
-                  <stop offset="100%" stopColor="rgba(74,222,128,0)"    />
+                  <stop offset="65%"  stopColor="rgba(245,158,11,0.30)" />
+                  <stop offset="100%" stopColor="rgba(22,163,74,0)"     />
                 </radialGradient>
 
                 {/* Inner core — warm rose peak. Deep enough to read as a
@@ -443,8 +449,8 @@ export function SpatialBottleneckHeatmap({
                   <stop offset="0%"   stopColor="rgba(244,63,94,0.78)"  />
                   <stop offset="30%"  stopColor="rgba(249,115,22,0.65)" />
                   <stop offset="55%"  stopColor="rgba(245,158,11,0.45)" />
-                  <stop offset="80%"  stopColor="rgba(74,222,128,0.22)" />
-                  <stop offset="100%" stopColor="rgba(74,222,128,0)"    />
+                  <stop offset="80%"  stopColor="rgba(22,163,74,0.26)"  />
+                  <stop offset="100%" stopColor="rgba(22,163,74,0)"     />
                 </radialGradient>
 
                 {/* Heavy blur for the outer halo — fuses neighbouring blobs */}
@@ -575,7 +581,7 @@ export function SpatialBottleneckHeatmap({
             <div style={{
               width: '16px',
               borderRadius: '6px',
-              background: 'linear-gradient(180deg, #e11d48 0%, #ea580c 35%, #f59e0b 60%, #22c55e 88%, #4ade80 100%)',
+              background: 'linear-gradient(180deg, #e11d48 0%, #ea580c 35%, #f59e0b 60%, #15803d 88%, #16a34a 100%)',
               boxShadow: 'inset 0 0 0 1px rgba(15,23,42,0.10)',
             }} />
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-between', padding: '2px 0' }}>

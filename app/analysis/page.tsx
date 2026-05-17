@@ -3,17 +3,16 @@
 import { useEffect } from 'react'
 import { useAuth } from '@/src/hooks/useAuth'
 
-const CARD_STYLE: React.CSSProperties = {
-  display: 'flex',
-  flexDirection: 'column',
-  gap: '10px',
-  padding: '24px 26px',
-  borderRadius: '16px',
-  border: '1px solid var(--border)',
-  background: '#ffffff',
-  boxShadow: '0 6px 24px rgba(15, 23, 42, 0.08)',
-  textDecoration: 'none',
+interface FeatureButtonProps {
+  href: string
+  category: string
+  title: string
+  description: string
+  cta: string
 }
+
+/* Uniform brand accent for all three feature buttons. */
+const ACCENT = '#2db8b0'
 
 export default function AnalysisPage() {
   const { isAuthenticated, isLoading: isAuthLoading } = useAuth()
@@ -37,14 +36,15 @@ export default function AnalysisPage() {
   }
 
   return (
-    <div style={{ minHeight: '100vh', padding: '88px 40px 56px', maxWidth: '1200px', margin: '0 auto' }}>
+    <div style={{ minHeight: '100vh', padding: '88px 40px 56px', maxWidth: '900px', margin: '0 auto' }}>
+      {/* ── Page header ──────────────────────────────────────── */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '16px' }}>
         <div style={{
           width: '44px', height: '44px', borderRadius: '12px',
           background: 'rgba(45,184,176,0.1)',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
         }}>
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#2db8b0" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={ACCENT} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M3 3v18h18"/><path d="M18.7 8l-5.1 5.2-2.8-2.7L7 14.3"/>
           </svg>
         </div>
@@ -58,46 +58,114 @@ export default function AnalysisPage() {
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '18px', marginTop: '18px' }}>
-        <a href="/analysis/runs" style={CARD_STYLE}>
-          <div style={{ fontSize: '12px', fontWeight: '700', letterSpacing: '0.08em', textTransform: 'uppercase', color: '#2db8b0' }}>
-            Individual runs
-          </div>
-          <div style={{ fontSize: '18px', fontWeight: '700', color: '#0f172a' }}>Run analysis</div>
-          <div style={{ fontSize: '13px', color: '#64748b', lineHeight: 1.6 }}>
-            Inspect heatmaps, bottlenecks, and outcomes for a single simulation run.
-          </div>
-          <div style={{ marginTop: '6px', fontSize: '13px', fontWeight: '600', color: '#2db8b0' }}>
-            Open run analysis
-          </div>
-        </a>
+      {/* ── Stacked feature buttons ─────────────────────────── */}
+      <div style={{
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '14px',
+        marginTop: '28px',
+      }}>
+        <FeatureButton
+          href="/analysis/runs"
+          category="Individual Runs"
+          title="Run analysis"
+          description="Inspect heatmaps, bottlenecks, and outcomes for a single simulation run."
+          cta="Open run analysis"
+        />
 
-        <a href="/analysis/summary" style={CARD_STYLE}>
-          <div style={{ fontSize: '12px', fontWeight: '700', letterSpacing: '0.08em', textTransform: 'uppercase', color: '#2db8b0' }}>
-            Summary
-          </div>
-          <div style={{ fontSize: '18px', fontWeight: '700', color: '#0f172a' }}>Aggregate insights</div>
-          <div style={{ fontSize: '13px', color: '#64748b', lineHeight: 1.6 }}>
-            Review overall congestion trends and risk levels across all runs.
-          </div>
-          <div style={{ marginTop: '6px', fontSize: '13px', fontWeight: '600', color: '#2db8b0' }}>
-            Open summary view
-          </div>
-        </a>
+        <FeatureButton
+          href="/analysis/summary"
+          category="Summary"
+          title="Aggregate insights"
+          description="Review overall congestion trends and risk levels across all runs."
+          cta="Open summary view"
+        />
 
-        <a href="/analysis/compare" style={CARD_STYLE}>
-          <div style={{ fontSize: '12px', fontWeight: '700', letterSpacing: '0.08em', textTransform: 'uppercase', color: '#2db8b0' }}>
-            Comparison
-          </div>
-          <div style={{ fontSize: '18px', fontWeight: '700', color: '#0f172a' }}>Side-by-side drills</div>
-          <div style={{ fontSize: '13px', color: '#64748b', lineHeight: 1.6 }}>
-            Pick two completed runs and see which KPIs improved or regressed between them.
-          </div>
-          <div style={{ marginTop: '6px', fontSize: '13px', fontWeight: '600', color: '#2db8b0' }}>
-            Open comparison view
-          </div>
-        </a>
+        <FeatureButton
+          href="/analysis/compare"
+          category="Comparison"
+          title="Side-by-side drills"
+          description="Pick two completed runs and see which KPIs improved or regressed between them."
+          cta="Open comparison view"
+        />
       </div>
     </div>
+  )
+}
+
+function FeatureButton({
+  href,
+  category,
+  title,
+  description,
+  cta,
+}: FeatureButtonProps) {
+  return (
+    <a
+      href={href}
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '8px',
+        padding: '22px 26px',
+        background: '#ffffff',
+        border: '1px solid var(--border)',
+        borderRadius: '14px',
+        textDecoration: 'none',
+        boxShadow: '0 4px 18px rgba(15, 23, 42, 0.05), 0 1px 3px rgba(15, 23, 42, 0.04)',
+        transition: 'transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease',
+        cursor: 'pointer',
+      }}
+      onMouseEnter={(e) => {
+        e.currentTarget.style.transform = 'translateY(-2px)'
+        e.currentTarget.style.borderColor = ACCENT
+        e.currentTarget.style.boxShadow = `0 10px 28px rgba(45, 184, 176, 0.16), 0 2px 6px rgba(15, 23, 42, 0.06)`
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.transform = 'translateY(0)'
+        e.currentTarget.style.borderColor = 'var(--border)'
+        e.currentTarget.style.boxShadow = '0 4px 18px rgba(15, 23, 42, 0.05), 0 1px 3px rgba(15, 23, 42, 0.04)'
+      }}
+    >
+      <div style={{
+        fontSize: '11px',
+        fontWeight: 700,
+        letterSpacing: '0.1em',
+        textTransform: 'uppercase',
+        color: ACCENT,
+      }}>
+        {category}
+      </div>
+      <div style={{
+        fontSize: '20px',
+        fontWeight: 700,
+        color: '#0f172a',
+        letterSpacing: '-0.01em',
+      }}>
+        {title}
+      </div>
+      <div style={{
+        fontSize: '13px',
+        color: '#64748b',
+        lineHeight: 1.6,
+      }}>
+        {description}
+      </div>
+      <div style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: '6px',
+        marginTop: '4px',
+        fontSize: '13px',
+        fontWeight: 600,
+        color: ACCENT,
+      }}>
+        {cta}
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+          <line x1="5" y1="12" x2="19" y2="12" />
+          <polyline points="12 5 19 12 12 19" />
+        </svg>
+      </div>
+    </a>
   )
 }

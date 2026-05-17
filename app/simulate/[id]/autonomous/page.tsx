@@ -18,10 +18,10 @@ import {
   type AccurateCongestion,
   type AutonomousTrace,
 } from '@/src/simulation/autonomous-analytics'
-import { createSimulation, evaluateSimulation, getTremorTimeRemaining, isInTremorPhase, stepSimulation, type SimulationResults, type SimulationState } from '@/src/simulation/engine'
+import { createSimulation, evaluateSimulation, getTremorTimeRemaining, isInTremorPhase, stepSimulation, type QuakeScenario, type SimulationResults, type SimulationState } from '@/src/simulation/engine'
 import { edgeKey, getBuildingById, getNode, type FloorModel } from '@/src/simulation/building-model'
 import { createSimulationRun, saveDensityCells, saveSimulationResults } from '@/src/services/simulation.service'
-import { getHazardStorageKey, isHazardStorageAvailable, loadHazardPlan, placedHazardToZone, saveHazardPlan, type PlacedHazard } from '@/src/simulation/hazard-placement'
+import { computeFireSeverity, getHazardStorageKey, isHazardStorageAvailable, loadHazardPlan, placedHazardToZone, saveHazardPlan, type PlacedHazard } from '@/src/simulation/hazard-placement'
 import {
   getOccupancyRatio,
   getPresetsFor,
@@ -67,6 +67,15 @@ const DISASTER_META: Record<DisasterType, {
     subtitle: 'Agents move conservatively toward stair exits while debris zones progressively choke key corridors.',
   },
 }
+
+/** Earthquake severity presets. The administrator picks a scenario — an
+ *  earthquake happens to the building, it isn't a magnitude dial they set.
+ *  The engine rolls a concrete magnitude inside the scenario's band. */
+const QUAKE_SCENARIOS: { id: QuakeScenario; label: string; description: string; accent: string }[] = [
+  { id: 'minor', label: 'Minor', description: 'Light shaking — fragile points usually hold.', accent: '#f59e0b' },
+  { id: 'moderate', label: 'Moderate', description: 'A stairwell or long span is likely to fail.', accent: '#f97316' },
+  { id: 'severe', label: 'Severe', description: 'Most weak points collapse; aftershocks follow.', accent: '#ef4444' },
+]
 
 function clamp(value: number, min: number, max: number) {
   return Math.min(Math.max(value, min), max)
@@ -217,6 +226,7 @@ export default function AutonomousScienceBuildingPage() {
    *  their fixed value; rooms NOT in this map share the remaining budget
    *  (totalAgents − sum of overrides) proportionally to their capacity. */
   const [roomOverrides, setRoomOverrides] = useState<Record<string, number>>({})
+  const [roomFilter, setRoomFilter] = useState<string>('')
   const [simulationSpeed, setSimulationSpeed] = useState(1)
   const [simState, setSimState] = useState<SimulationState | null>(null)
   const [trace, setTrace] = useState<AutonomousTrace | null>(null)
@@ -230,6 +240,10 @@ export default function AutonomousScienceBuildingPage() {
   const [selectedHazardId, setSelectedHazardId] = useState<string | null>(null)
   const [storageAvailable] = useState(() => isHazardStorageAvailable())
   const [appliedPreset, setAppliedPreset] = useState<DemoPreset | null>(null)
+  // Earthquake-only. Severity scenario — the engine rolls a magnitude inside
+  // the scenario's band and the structural-collapse model runs the building's
+  // fragile edges against it on the next run.
+  const [quakeScenario, setQuakeScenario] = useState<QuakeScenario>('moderate')
   const dropRef = useRef<HTMLDivElement | null>(null)
 
   const simStateRef = useRef<SimulationState | null>(null)
@@ -246,6 +260,12 @@ export default function AutonomousScienceBuildingPage() {
     hazards: PlacedHazard[]
     agentsPerRoom: Record<string, number>
   } | null>(null)
+  // Severity bucket the launched run falls into. Earthquakes inherit it from
+  // the picked QuakeScenario; fires are auto-classified from the hazards
+  // placed on the floor. Captured at launch and persisted to the saved run
+  // so the building-readiness score can apply difficulty weighting and the
+  // mandatory-coverage cap downstream.
+  const launchedSeverityRef = useRef<'minor' | 'moderate' | 'severe'>('minor')
   const totalAgents = maxAgents > 0
     ? clamp(agentCountOverride ?? defaultAgentCount, 1, maxAgents)
     : 1
@@ -388,7 +408,7 @@ export default function AutonomousScienceBuildingPage() {
         exitCount: floorModel.nodes.filter((node) => node.type === 'exit').length,
         wallDensity: 0,
         speedMs: Math.round(140 / simulationSpeed),
-      }, regionId, floorIndex, replayInputs ?? undefined)
+      }, regionId, floorIndex, replayInputs ?? undefined, launchedSeverityRef.current)
 
       await saveSimulationResults(
         runId,
@@ -574,6 +594,15 @@ export default function AutonomousScienceBuildingPage() {
     setRoomOverrides({})
   }, [])
 
+  // Previewed severity bucket this run would save as if launched right now.
+  // Shown next to the hazard placement panel so the user knows whether their
+  // scenario counts as minor / moderate / severe toward the building's
+  // Evacuation Readiness Score — buildings can't earn an A without at least
+  // one severe drill on file.
+  const previewSeverity: 'minor' | 'moderate' | 'severe' = useMemo(() => (
+    disaster === 'earthquake' ? quakeScenario : computeFireSeverity(placedHazards)
+  ), [disaster, quakeScenario, placedHazards])
+
   const liveCongestion = useMemo(() => getCounts(simState, floor), [simState, floor])
   const topHotspots = useMemo(() => (
     floor && activeTrace ? getTopNodeHotspots(floor, activeTrace, 4) : []
@@ -602,6 +631,13 @@ export default function AutonomousScienceBuildingPage() {
       hazards: placedHazards.map((h) => ({ ...h })),
       agentsPerRoom: { ...roomAllocations },
     }
+    // Earthquake severity is picked explicitly via the scenario buttons.
+    // Fire severity is derived from the hazards the user actually placed —
+    // an empty placement counts as 'minor', and the score scales up with
+    // hazard count and type (see computeFireSeverity).
+    launchedSeverityRef.current = disaster === 'earthquake'
+      ? quakeScenario
+      : computeFireSeverity(placedHazards)
 
     const nextState = createSimulation(floor, {
       disasterType: disaster,
@@ -609,6 +645,7 @@ export default function AutonomousScienceBuildingPage() {
       hazardGrowthMultiplier: HAZARD_GROWTH_MULTIPLIER,
       hazardOverrides: hazardZones,
       seed,
+      quakeScenario: disaster === 'earthquake' ? quakeScenario : undefined,
     })
 
     nextState.running = true
@@ -643,7 +680,7 @@ export default function AutonomousScienceBuildingPage() {
     setSaveStatus('idle')
     setSaveMessage('')
     setIsPlaying(true)
-  }, [disaster, floor, roomAllocations, effectiveAgentCount, hazardZones, placedHazards])
+  }, [disaster, floor, roomAllocations, effectiveAgentCount, hazardZones, placedHazards, quakeScenario])
 
   const resetSimulation = useCallback(() => {
     clearHazards()
@@ -748,7 +785,13 @@ export default function AutonomousScienceBuildingPage() {
         .auto-panel-section {
           padding: 18px 20px;
           border-bottom: 1px solid #e4e9ef;
+          /* Consistent vertical rhythm between stacked sections. */
+          display: flex;
+          flex-direction: column;
+          gap: 12px;
         }
+        .auto-panel-section > :first-child { margin-top: 0; }
+        .auto-panel-section > :last-child { margin-bottom: 0; }
 
         .auto-panel-section:last-child {
           border-bottom: 0;
@@ -836,8 +879,14 @@ export default function AutonomousScienceBuildingPage() {
         .auto-stat {
           border-radius: 12px;
           border: 1px solid #dee5ee;
-          background: #f4f7fb;
+          background: linear-gradient(180deg, #ffffff 0%, #f4f7fb 100%);
           padding: 12px 14px;
+          /* Match the height of the largest stat in the same grid so the
+             panel sections look balanced. */
+          display: flex;
+          flex-direction: column;
+          justify-content: center;
+          min-height: 64px;
         }
 
         .auto-map-card {
@@ -863,17 +912,99 @@ export default function AutonomousScienceBuildingPage() {
           display: block;
         }
 
-        .auto-room-grid {
-          display: grid;
-          grid-template-columns: 1fr 1fr;
-          gap: 8px;
+        /* Compact single-column list — scales to dozens of rooms without
+           dominating the side panel. Caps height and scrolls internally. */
+        .auto-room-list {
+          display: flex;
+          flex-direction: column;
+          gap: 6px;
+          max-height: 380px;
+          overflow-y: auto;
+          padding-right: 4px;
+        }
+        .auto-room-list::-webkit-scrollbar { width: 6px; }
+        .auto-room-list::-webkit-scrollbar-thumb {
+          background: #cbd5e1;
+          border-radius: 3px;
         }
 
-        .auto-room-card {
-          border-radius: 12px;
+        .auto-room-row {
+          display: grid;
+          grid-template-columns: minmax(0, 1fr) 56px 60px 34px;
+          align-items: center;
+          gap: 8px;
+          padding: 6px 10px;
+          border-radius: 8px;
           border: 1px solid #dee5ee;
-          background: #f4f7fb;
-          padding: 10px 12px;
+          background: #ffffff;
+          transition: border-color 120ms, box-shadow 120ms;
+        }
+        .auto-room-row--override {
+          border-color: ${APP_ACCENT};
+          box-shadow: 0 0 0 1px ${APP_ACCENT}33;
+        }
+        .auto-room-row__label {
+          font-size: 12px;
+          font-weight: 600;
+          color: var(--text-primary);
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+        .auto-room-row__capacity {
+          font-size: 10px;
+          color: var(--text-muted);
+          font-weight: 500;
+        }
+        .auto-room-row__input {
+          width: 100%;
+          padding: 5px 6px;
+          border-radius: 6px;
+          border: 1px solid var(--border);
+          background: #ffffff;
+          color: ${APP_ACCENT_DARK};
+          font-size: 13px;
+          font-weight: 700;
+          text-align: center;
+          outline: none;
+          font-feature-settings: "tnum";
+        }
+        .auto-room-row__input--override {
+          border-color: ${APP_ACCENT};
+        }
+        .auto-room-row__bar {
+          height: 4px;
+          border-radius: 2px;
+          background: #e2e8f0;
+          overflow: hidden;
+        }
+        .auto-room-row__bar-fill {
+          height: 100%;
+          transition: width 200ms, background 200ms;
+        }
+        .auto-room-row__pct {
+          font-size: 10px;
+          font-weight: 700;
+          text-align: right;
+          font-feature-settings: "tnum";
+        }
+
+        .auto-room-search {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          padding: 6px 10px;
+          border-radius: 8px;
+          border: 1px solid var(--border);
+          background: #ffffff;
+        }
+        .auto-room-search input {
+          flex: 1;
+          border: none;
+          outline: none;
+          font-size: 12px;
+          color: var(--text-primary);
+          background: transparent;
         }
 
         .auto-map-insights {
@@ -1160,12 +1291,82 @@ export default function AutonomousScienceBuildingPage() {
             </section>
           )}
 
+          {disaster === 'earthquake' && (
+            <section className="auto-panel-section">
+              <div style={{ fontSize: '11px', fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', color: APP_ACCENT_DARK, marginBottom: '12px' }}>
+                Earthquake scenario
+              </div>
+              <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '14px' }}>
+                Pick a severity and run. You don&apos;t place debris — the building&apos;s
+                own weak points decide what fails. Stairwells and long spans are rolled
+                against the quake; collapsed sections drop debris, and aftershocks
+                re-roll whatever is still standing.
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                {QUAKE_SCENARIOS.map((scenario) => {
+                  const active = quakeScenario === scenario.id
+                  return (
+                    <button
+                      key={scenario.id}
+                      type="button"
+                      onClick={() => setQuakeScenario(scenario.id)}
+                      disabled={!!simState}
+                      style={{
+                        display: 'flex', flexDirection: 'column', gap: '2px', textAlign: 'left',
+                        padding: '10px 12px', borderRadius: '8px',
+                        border: `1px solid ${active ? scenario.accent : 'var(--border)'}`,
+                        background: active ? `${scenario.accent}14` : '#ffffff',
+                        cursor: simState ? 'not-allowed' : 'pointer',
+                        transition: 'all 0.15s',
+                      }}
+                    >
+                      <span style={{ fontSize: '12px', fontWeight: 700, color: active ? scenario.accent : 'var(--text-primary)' }}>
+                        {scenario.label}
+                      </span>
+                      <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
+                        {scenario.description}
+                      </span>
+                    </button>
+                  )
+                })}
+              </div>
+              <div style={{ marginTop: '10px', fontSize: '11px', color: 'var(--text-muted)', lineHeight: 1.5 }}>
+                Collapse points are defined per floor. Science Building 2F has its
+                stairwells and east span flagged — other floors fall back to authored
+                hazards only.
+              </div>
+            </section>
+          )}
+
           <section className="auto-panel-section">
             <div style={{ fontSize: '11px', fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', color: APP_ACCENT_DARK, marginBottom: '12px' }}>
               Hazard placement
             </div>
             <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '12px' }}>
               Drag hazards onto the map. You can place multiple fire, smoke, or debris zones.
+            </div>
+            {/* Severity preview — tells the user how this run will count
+                toward the building's Evacuation Readiness Score. */}
+            <div style={{
+              marginBottom: '12px', padding: '8px 10px', borderRadius: '8px',
+              background: previewSeverity === 'severe' ? '#fef2f2'
+                : previewSeverity === 'moderate' ? '#fff7ed' : '#f0f9ff',
+              border: `1px solid ${previewSeverity === 'severe' ? '#fecaca'
+                : previewSeverity === 'moderate' ? '#fed7aa' : '#bae6fd'}`,
+              fontSize: '11px', color: previewSeverity === 'severe' ? '#991b1b'
+                : previewSeverity === 'moderate' ? '#9a3412' : '#075985',
+              lineHeight: 1.5,
+            }}>
+              <strong style={{ textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                Saves as: {previewSeverity}
+              </strong>
+              <div style={{ marginTop: '2px', opacity: 0.85 }}>
+                {previewSeverity === 'severe'
+                  ? 'Severe drills unlock A–F grading for this building.'
+                  : previewSeverity === 'moderate'
+                  ? 'Moderate drills cap the building grade at B.'
+                  : 'Minor / clean drills cap the building grade at C.'}
+              </div>
             </div>
             {!storageAvailable && (
               <div style={{
@@ -1219,87 +1420,122 @@ export default function AutonomousScienceBuildingPage() {
                 </>
               )}
             </div>
-            <div className="auto-room-grid">
-              {floor.nodes.filter((node) => node.type === 'room').map((roomNode) => {
-                const allocated = roomAllocations[roomNode.id] ?? 0
-                const isOverridden = Object.prototype.hasOwnProperty.call(roomOverrides, roomNode.id)
-                const utilization = roomNode.capacity > 0 ? allocated / roomNode.capacity : 0
-                const utilColor = utilization >= 0.9 ? '#ef4444' : utilization >= 0.6 ? '#f59e0b' : '#22c55e'
-                return (
-                  <div
-                    key={roomNode.id}
-                    className="auto-room-card"
-                    style={{
-                      borderColor: isOverridden ? APP_ACCENT : 'var(--border)',
-                      boxShadow: isOverridden ? `0 0 0 1px ${APP_ACCENT}` : 'none',
-                      transition: 'box-shadow 120ms, border-color 120ms',
-                    }}
-                  >
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '6px', marginBottom: '6px' }}>
-                      <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        {roomNode.label}
-                      </div>
-                      {isOverridden && (
+            {(() => {
+              const allRooms = floor.nodes.filter((node) => node.type === 'room')
+              const needle = roomFilter.trim().toLowerCase()
+              const visibleRooms = needle
+                ? allRooms.filter((r) => r.label.toLowerCase().includes(needle))
+                : allRooms
+
+              return (
+                <>
+                  {/* Search filter — only shown when there are enough rooms
+                      to justify it, so small buildings stay clean. */}
+                  {allRooms.length > 8 && (
+                    <div className="auto-room-search">
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--text-muted)', flexShrink: 0 }}>
+                        <circle cx="11" cy="11" r="8" />
+                        <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                      </svg>
+                      <input
+                        type="text"
+                        placeholder={`Search ${allRooms.length} rooms…`}
+                        value={roomFilter}
+                        onChange={(e) => setRoomFilter(e.target.value)}
+                      />
+                      {roomFilter && (
                         <button
                           type="button"
-                          onClick={() => clearRoomOverride(roomNode.id)}
-                          aria-label={`Reset ${roomNode.label} to auto`}
-                          title="Reset to auto"
-                          style={{ background: 'none', border: 'none', padding: 0, color: 'var(--text-muted)', fontSize: '10px', fontWeight: 600, cursor: 'pointer', textTransform: 'uppercase', letterSpacing: '0.08em' }}
+                          onClick={() => setRoomFilter('')}
+                          style={{ background: 'none', border: 'none', padding: 0, color: 'var(--text-muted)', fontSize: '11px', fontWeight: 600, cursor: 'pointer' }}
                         >
-                          Auto
+                          Clear
                         </button>
                       )}
                     </div>
-                    <input
-                      type="number"
-                      min={0}
-                      max={roomNode.capacity}
-                      step={1}
-                      value={allocated}
-                      onChange={(event) => {
-                        const raw = event.target.value
-                        if (raw === '') {
-                          clearRoomOverride(roomNode.id)
-                          return
-                        }
-                        const parsed = Number.parseInt(raw, 10)
-                        if (!Number.isFinite(parsed)) return
-                        setRoomOverride(roomNode.id, parsed, roomNode.capacity)
-                      }}
-                      onFocus={(event) => event.currentTarget.select()}
-                      style={{
-                        width: '100%',
-                        padding: '6px 8px',
-                        borderRadius: '8px',
-                        border: `1px solid ${isOverridden ? APP_ACCENT : 'var(--border)'}`,
-                        background: '#ffffff',
-                        color: APP_ACCENT_DARK,
-                        fontSize: '18px',
-                        fontWeight: 700,
-                        letterSpacing: '-0.02em',
-                        textAlign: 'center',
-                        outline: 'none',
-                      }}
-                    />
-                    <div style={{ marginTop: '6px', height: '4px', borderRadius: '2px', background: '#e2e8f0', overflow: 'hidden' }}>
-                      <div
-                        style={{
-                          width: `${Math.min(100, utilization * 100)}%`,
-                          height: '100%',
-                          background: utilColor,
-                          transition: 'width 200ms, background 200ms',
-                        }}
-                      />
-                    </div>
-                    <div style={{ fontSize: '10px', color: 'var(--text-secondary)', marginTop: '4px', display: 'flex', justifyContent: 'space-between' }}>
-                      <span>capacity {roomNode.capacity}</span>
-                      <span style={{ color: utilColor, fontWeight: 700 }}>{Math.round(utilization * 100)}%</span>
-                    </div>
+                  )}
+
+                  <div className="auto-room-list">
+                    {visibleRooms.map((roomNode) => {
+                      const allocated = roomAllocations[roomNode.id] ?? 0
+                      const isOverridden = Object.prototype.hasOwnProperty.call(roomOverrides, roomNode.id)
+                      const utilization = roomNode.capacity > 0 ? allocated / roomNode.capacity : 0
+                      const utilColor = utilization >= 0.9 ? '#ef4444' : utilization >= 0.6 ? '#f59e0b' : '#22c55e'
+                      return (
+                        <div
+                          key={roomNode.id}
+                          className={`auto-room-row${isOverridden ? ' auto-room-row--override' : ''}`}
+                        >
+                          {/* Room label + capacity */}
+                          <div style={{ minWidth: 0 }}>
+                            <div className="auto-room-row__label" title={roomNode.label}>
+                              {roomNode.label}
+                            </div>
+                            <div className="auto-room-row__capacity">
+                              cap {roomNode.capacity}
+                              {isOverridden && (
+                                <>
+                                  {' · '}
+                                  <button
+                                    type="button"
+                                    onClick={() => clearRoomOverride(roomNode.id)}
+                                    style={{ background: 'none', border: 'none', padding: 0, color: APP_ACCENT_DARK, fontSize: '10px', fontWeight: 600, cursor: 'pointer' }}
+                                  >
+                                    auto
+                                  </button>
+                                </>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Number input */}
+                          <input
+                            type="number"
+                            min={0}
+                            max={roomNode.capacity}
+                            step={1}
+                            value={allocated}
+                            onChange={(event) => {
+                              const raw = event.target.value
+                              if (raw === '') {
+                                clearRoomOverride(roomNode.id)
+                                return
+                              }
+                              const parsed = Number.parseInt(raw, 10)
+                              if (!Number.isFinite(parsed)) return
+                              setRoomOverride(roomNode.id, parsed, roomNode.capacity)
+                            }}
+                            onFocus={(event) => event.currentTarget.select()}
+                            className={`auto-room-row__input${isOverridden ? ' auto-room-row__input--override' : ''}`}
+                          />
+
+                          {/* Utilization bar */}
+                          <div className="auto-room-row__bar">
+                            <div
+                              className="auto-room-row__bar-fill"
+                              style={{
+                                width: `${Math.min(100, utilization * 100)}%`,
+                                background: utilColor,
+                              }}
+                            />
+                          </div>
+
+                          {/* Percent */}
+                          <span className="auto-room-row__pct" style={{ color: utilColor }}>
+                            {Math.round(utilization * 100)}%
+                          </span>
+                        </div>
+                      )
+                    })}
+                    {visibleRooms.length === 0 && (
+                      <div style={{ padding: '14px 10px', fontSize: '12px', color: 'var(--text-muted)', textAlign: 'center' }}>
+                        No rooms match &ldquo;{roomFilter}&rdquo;.
+                      </div>
+                    )}
                   </div>
-                )
-              })}
-            </div>
+                </>
+              )
+            })()}
           </section>
 
         </aside>
@@ -1652,6 +1888,9 @@ export default function AutonomousScienceBuildingPage() {
                     </div>
                   )
                 })()}
+                {/* Compact 2-up grid — Peak congestion and Trapped already
+                    appear in the Live Metrics section above, so we keep
+                    only the post-run summary metrics here. */}
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
                   <div className="auto-stat">
                     <div style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '4px' }}>Reroutes</div>
@@ -1660,14 +1899,6 @@ export default function AutonomousScienceBuildingPage() {
                   <div className="auto-stat">
                     <div style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '4px' }}>Avg exposure</div>
                     <div style={{ fontSize: '20px', fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>{results.avgHazardExposure.toFixed(1)}s</div>
-                  </div>
-                  <div className="auto-stat">
-                    <div style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '4px' }}>Peak congestion</div>
-                    <div style={{ fontSize: '20px', fontWeight: 700, color: peakCongestion >= 75 ? '#ef4444' : 'var(--text-primary)', letterSpacing: '-0.02em' }}>{peakCongestion}</div>
-                  </div>
-                  <div className="auto-stat">
-                    <div style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '4px' }}>Trapped</div>
-                    <div style={{ fontSize: '20px', fontWeight: 700, color: results.trappedCount > 0 ? '#ef4444' : 'var(--text-primary)', letterSpacing: '-0.02em' }}>{results.trappedCount}</div>
                   </div>
                 </div>
                 {exitUsage.length > 0 && (

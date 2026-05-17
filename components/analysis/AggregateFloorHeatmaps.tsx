@@ -18,8 +18,8 @@ function getHeatColor(intensity: number) {
   if (intensity >= 0.78) return '#e11d48'
   if (intensity >= 0.55) return '#ea580c'
   if (intensity >= 0.32) return '#f59e0b'
-  if (intensity >= 0.12) return '#22c55e'
-  return '#4ade80'
+  if (intensity >= 0.12) return '#15803d'   // green-700 (darker for contrast)
+  return '#16a34a'                            // green-600 (darker minimum)
 }
 
 interface ResolvedFloorHeatmap extends AggregateFloorHeatmap {
@@ -34,7 +34,12 @@ interface BuildingGroup {
   totalRuns: number
 }
 
-export function AggregateFloorHeatmaps() {
+interface AggregateFloorHeatmapsProps {
+  /** Hide the internal section header (use when wrapping in a FeatureContainer). */
+  hideHeader?: boolean
+}
+
+export function AggregateFloorHeatmaps({ hideHeader = false }: AggregateFloorHeatmapsProps = {}) {
   const [heatmaps, setHeatmaps] = useState<AggregateFloorHeatmap[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -125,7 +130,7 @@ export function AggregateFloorHeatmaps() {
   const selectedHeatmap = selectedGroup?.floors.find((f) => f.floorIndex === selectedFloorIndex) ?? null
 
   return (
-    <div style={{
+    <div style={hideHeader ? {} : {
       background: '#ffffff',
       border: '1px solid var(--border)',
       borderRadius: '14px',
@@ -134,31 +139,33 @@ export function AggregateFloorHeatmaps() {
       marginBottom: '20px',
     }}>
       {/* ── Header ──────────────────────────────────────────── */}
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '16px', marginBottom: '20px', flexWrap: 'wrap' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <div style={{
-            width: '40px', height: '40px', borderRadius: '10px',
-            background: `linear-gradient(135deg, ${ACCENT}1f 0%, ${ACCENT}08 100%)`,
-            border: `1px solid ${ACCENT}33`,
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-          }}>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={ACCENT} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <rect x="3" y="3" width="7" height="7" rx="1.5" />
-              <rect x="14" y="3" width="7" height="7" rx="1.5" />
-              <rect x="3" y="14" width="7" height="7" rx="1.5" />
-              <rect x="14" y="14" width="7" height="7" rx="1.5" />
-            </svg>
-          </div>
-          <div>
-            <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.01em' }}>
-              Aggregated Floor Heatmaps
-            </h3>
-            <p style={{ margin: '2px 0 0', fontSize: '12px', color: 'var(--text-secondary)' }}>
-              Average crowd density per floor across all completed runs.
-            </p>
+      {!hideHeader && (
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '16px', marginBottom: '20px', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <div style={{
+              width: '40px', height: '40px', borderRadius: '10px',
+              background: `linear-gradient(135deg, ${ACCENT}1f 0%, ${ACCENT}08 100%)`,
+              border: `1px solid ${ACCENT}33`,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={ACCENT} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="3" y="3" width="7" height="7" rx="1.5" />
+                <rect x="14" y="3" width="7" height="7" rx="1.5" />
+                <rect x="3" y="14" width="7" height="7" rx="1.5" />
+                <rect x="14" y="14" width="7" height="7" rx="1.5" />
+              </svg>
+            </div>
+            <div>
+              <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.01em' }}>
+                Aggregated Floor Heatmaps
+              </h3>
+              <p style={{ margin: '2px 0 0', fontSize: '12px', color: 'var(--text-secondary)' }}>
+                Average crowd density per floor across all completed runs.
+              </p>
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       {isLoading && (
         <div style={{ padding: '40px 20px', textAlign: 'center', color: 'var(--text-secondary)', fontSize: '13px' }}>
@@ -394,8 +401,11 @@ function FloorHeatmapView({ entry }: { entry: ResolvedFloorHeatmap }) {
               position: 'absolute', inset: 0,
               width: '100%', height: '100%',
               objectFit: 'contain', objectPosition: 'center',
-              opacity: 0.92,
-              filter: 'saturate(0.4) contrast(1.05) brightness(1.04)',
+              opacity: 0.95,
+              // Light-pastel treatment — keeps original room colours so the
+              // floor plan stays identifiable while the heatmap stays the
+              // visual focus.
+              filter: 'saturate(0.75) contrast(0.85) brightness(1.18)',
             }}
           />
         )}

@@ -1237,6 +1237,7 @@ function ASXFloorPlan(props: FloorPlanProps) {
   const { config } = props
   const floorPlanSrcByLabel: Record<string, string> = {
     '1st Floor': '/floorplans/ASX%201st%20floor.svg',
+    '2nd Floor': '/floorplans/ASX%202nd%20floor.svg',
   }
   const floorPlanSrc = floorPlanSrcByLabel[config.floorLabel] ?? ''
 
@@ -1288,6 +1289,62 @@ function ManagementFloorPlan(props: FloorPlanProps) {
   )
 }
 
+function UGFloorPlan(props: FloorPlanProps) {
+  const { config } = props
+  const floorPlanSrcByLabel: Record<string, string> = {
+    '1st Floor': '/floorplans/UG%201st%20floor.svg',
+    '2nd Floor': '/floorplans/UG%202nd%20floor.svg',
+  }
+  const floorPlanSrc = floorPlanSrcByLabel[config.floorLabel] ?? ''
+
+  return (
+    <div style={{ position: 'relative', width: '100%', height: '100%' }}>
+      {floorPlanSrc && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={floorPlanSrc}
+          alt="UP Cebu Undergraduate Building Floor Plan"
+          style={{ width: '100%', height: '100%', display: 'block', position: 'absolute', top: 0, left: 0, objectFit: 'contain', objectPosition: 'center' }}
+        />
+      )}
+      <svg
+        viewBox={`0 0 ${config.viewWidth} ${config.viewHeight}`} preserveAspectRatio="xMidYMid meet"
+        style={{ width: '100%', height: '100%', display: 'block', position: 'absolute', top: 0, left: 0 }}
+      >
+        <SimOverlay {...props} />
+      </svg>
+    </div>
+  )
+}
+
+function Som1FloorPlan(props: FloorPlanProps) {
+  const { config } = props
+  const floorPlanSrcByLabel: Record<string, string> = {
+    '1st Floor': '/floorplans/Som1%201st%20floor.svg',
+    '2nd Floor': '/floorplans/Som1%202nd%20floor.svg',
+  }
+  const floorPlanSrc = floorPlanSrcByLabel[config.floorLabel] ?? ''
+
+  return (
+    <div style={{ position: 'relative', width: '100%', height: '100%' }}>
+      {floorPlanSrc && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={floorPlanSrc}
+          alt="UP Cebu Science Building Floor Plan"
+          style={{ width: '100%', height: '100%', display: 'block', position: 'absolute', top: 0, left: 0, objectFit: 'contain', objectPosition: 'center' }}
+        />
+      )}
+      <svg
+        viewBox={`0 0 ${config.viewWidth} ${config.viewHeight}`} preserveAspectRatio="xMidYMid meet"
+        style={{ width: '100%', height: '100%', display: 'block', position: 'absolute', top: 0, left: 0 }}
+      >
+        <SimOverlay {...props} />
+      </svg>
+    </div>
+  )
+}
+
 function CSBFloorPlan(props: FloorPlanProps) {
   const { config } = props
   const floorPlanSrcByLabel: Record<string, string> = {
@@ -1320,6 +1377,8 @@ function CSBFloorPlan(props: FloorPlanProps) {
   )
 }
 
+
+
 // Generic fallback floor plan for buildings without a custom layout — overlays
 // the simulation on a blank canvas so the page still renders.
 function GenericFloorPlan(props: FloorPlanProps) {
@@ -1344,6 +1403,8 @@ function FloorPlanView(props: FloorPlanProps & { buildingId: string }) {
   if (buildingId === 'up-cebu-library') return <LibraryFloorPlan {...rest} />
   if (buildingId === 'asx') return <ASXFloorPlan {...rest} />
   if (buildingId === 'management') return <ManagementFloorPlan {...rest} />
+  if (buildingId === 'social-sciences') return <UGFloorPlan {...rest} />
+  if (buildingId === 'som-building-1') return <Som1FloorPlan {...rest} />
   return <GenericFloorPlan {...rest} />
 }
 

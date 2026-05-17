@@ -28,6 +28,36 @@ export function getDefaultHazardRadius(type: HazardType): number {
   return DEFAULT_RADII[type]
 }
 
+/**
+ * Classify a fire-disaster run's severity from the hazards placed on the floor.
+ *
+ * Used by the Evacuation Readiness Score to weight a run's contribution and
+ * to enforce the mandatory-coverage cap (see `building-analytics.service.ts`).
+ * Fire severity comes from how many sources are present and what type:
+ *
+ *   • fire zones count double — an active fire blocks hard, escalates fast
+ *   • smoke zones count single — soft block, slow agents but rarely trap
+ *
+ * Buckets (matching the earthquake scenario tiers):
+ *   • score ≤ 1  → minor       (no hazards, or one smoke zone)
+ *   • score ≤ 3  → moderate    (one fire, or two smokes, or fire + smoke)
+ *   • score ≥ 4  → severe      (two+ fires, or large mixed hazard set)
+ *
+ * An empty placement is classified as 'minor' rather than null so we never
+ * lose track of an actual completed run — the cap mechanic treats "minor"
+ * and "unclassified legacy" the same way (max grade C).
+ */
+export function computeFireSeverity(hazards: PlacedHazard[]): 'minor' | 'moderate' | 'severe' {
+  if (hazards.length === 0) return 'minor'
+  let score = 0
+  for (const h of hazards) {
+    score += h.type === 'fire' ? 2 : 1
+  }
+  if (score <= 1) return 'minor'
+  if (score <= 3) return 'moderate'
+  return 'severe'
+}
+
 export function getHazardStorageKey(buildingId: string, floorIndex: number, disaster: HazardDisaster): string {
   return `sim:planning:hazards:${buildingId}:${floorIndex}:${disaster}`
 }

@@ -3,9 +3,10 @@
 :root {
   --font-geist-sans: "Segoe UI";
   --font-geist-mono: "Consolas";
-  --bg: #eef0f2;
-  --bg-center-highlight: rgba(255, 255, 255, 0.35);
-  --grid-line: rgba(0, 0, 0, 0.04);
+  --bg: #eef2f5;
+  --bg-center-highlight: rgba(45, 184, 176, 0.10);
+  --bg-warm-highlight: rgba(99, 102, 241, 0.04);
+  --grid-dot: rgba(45, 184, 176, 0.12);
   --bg-card: #ffffff;
   --teal: #2db8b0;
   --teal-dark: #1f9991;
@@ -34,23 +35,30 @@ html, body {
 body {
   background-color: var(--bg);
   background-image:
-    linear-gradient(90deg, transparent 0%, var(--bg-center-highlight) 42%, var(--bg-center-highlight) 58%, transparent 100%),
-    linear-gradient(var(--grid-line) 1px, transparent 1px),
-    linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
-  background-size: 100% 100%, 32px 32px, 32px 32px;
+    radial-gradient(ellipse 70% 50% at 50% 0%, var(--bg-center-highlight), transparent 70%),
+    radial-gradient(ellipse 60% 50% at 80% 90%, var(--bg-warm-highlight), transparent 70%),
+    radial-gradient(circle 1.2px at center, var(--grid-dot) 1px, transparent 1px);
+  background-size: 100% 100%, 100% 100%, 28px 28px;
   background-position: center, center, center;
+  background-attachment: fixed;
   color: var(--text-primary);
   font-family: var(--font-geist-sans), 'Inter', system-ui, -apple-system, sans-serif;
   -webkit-font-smoothing: antialiased;
+}
+
+/* Assembly marker speech-bubble pop-in */
+@keyframes assemblyBubbleIn {
+  from { opacity: 0; transform: translate(-50%, -100%) translateY(-8px) scale(0.92); }
+  to   { opacity: 1; transform: translate(-50%, -100%) translateY(-18px) scale(1); }
 }
 
 /* Grid background utility */
 .grid-bg {
   background-color: var(--bg);
   background-image:
-    linear-gradient(90deg, transparent 0%, var(--bg-center-highlight) 42%, var(--bg-center-highlight) 58%, transparent 100%),
-    linear-gradient(var(--grid-line) 1px, transparent 1px),
-    linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
-  background-size: 100% 100%, 32px 32px, 32px 32px;
+    radial-gradient(ellipse 70% 50% at 50% 0%, var(--bg-center-highlight), transparent 70%),
+    radial-gradient(ellipse 60% 50% at 80% 90%, var(--bg-warm-highlight), transparent 70%),
+    radial-gradient(circle 1.2px at center, var(--grid-dot) 1px, transparent 1px);
+  background-size: 100% 100%, 100% 100%, 28px 28px;
   background-position: center, center, center;
 }

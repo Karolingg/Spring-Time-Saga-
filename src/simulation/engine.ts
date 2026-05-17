@@ -7,6 +7,7 @@
 
 import type { FloorModel, HazardZone } from './building-model'
 import { getNode, findShortestPathToExitWeighted, edgeKey } from './building-model'
+import { hazardGrowthRate } from './hazard-physics'
 
 /* ── Agent model ── */
 export interface Agent {
@@ -34,6 +35,10 @@ export interface Agent {
   /** Cumulative seconds since the last attempt to retreat out of a fire so
    *  we don't oscillate retreating every tick. */
   retreatCooldown: number
+  /** Seconds remaining on the agent's commit window after a predictor-driven
+   *  reroute. While >0 they won't re-evaluate the threat predictor again, so
+   *  near-equal alternatives don't ping-pong. Hard-block reroutes ignore it. */
+  threatRerouteCooldown: number
   /** Whether this agent uses a fixed user-drawn path (no auto-reroute) */
   isUserAgent?: boolean
   /** Preferred door node for rooms with multiple doors (initial routing only). */
@@ -76,6 +81,12 @@ export interface SimulationState {
   /** Edges SOFT-blocked by smoke — agents can still traverse but pay a heavy penalty
    *  when routing and take extra slowdown + exposure while on them */
   softBlockedEdges: Set<string>
+  /** Edges in the THREAT zone of an active hard hazard — within
+   *  `currentRadius + THREAT_BUFFER_PX` but not yet inside the radius. The
+   *  predictor warning zone: agents pathfind with a heavy cost penalty on
+   *  these and reroute proactively when their committed path passes through
+   *  one, rather than waiting for the hazard to actually swallow the edge. */
+  threatenedEdges: Set<string>
   /** Is the simulation running */
   running: boolean
   /** Is the simulation finished */
@@ -119,6 +130,49 @@ const CONGESTION_WEIGHT = 1.5
  *  multiple exits when one is getting piled on. */
 const EXIT_BIAS_PER_AGENT = 2.5
 
+/** Predictor / proactive avoidance.
+ *  Pixels of buffer beyond a hard hazard's current radius where an edge is
+ *  flagged as "threatened". Sized to roughly one growth-period of typical
+ *  hazards — enough lead time for agents to detour, small enough that the
+ *  threat ring doesn't swallow most of the graph when several hazards are
+ *  active simultaneously. */
+const THREAT_BUFFER_PX = 12
+
+/** Cost multiplier applied to threatened edges during path search. Higher
+ *  than SOFT_EDGE_COST_MULTIPLIER because walking next to a growing fire is
+ *  worse than walking through smoke — but still finite so agents take a
+ *  threatened path when it's the only way out. */
+const THREATENED_EDGE_COST_MULTIPLIER = 5
+
+/** How many edges ahead the predictor looks when deciding whether to reroute
+ *  proactively. Threats further along the committed path are ignored — by
+ *  the time the agent reaches them, the situation will have changed and
+ *  another check will fire if it's still relevant. Keeps the trigger from
+ *  thrashing on distant hazards that don't yet matter. */
+const THREAT_LOOKAHEAD_EDGES = 3
+
+/** Seconds an agent commits to a freshly-replanned path after a threat
+ *  reroute before re-checking the threat predictor. Prevents oscillation
+ *  when the alternative is also (slightly) threatened — the agent goes,
+ *  rather than thrashing between two near-equal options. Hard-block reroutes
+ *  bypass this cooldown because their path is actually severed. */
+const THREAT_REROUTE_COOLDOWN = 3
+
+/** Fire-hazard "danger zone" multiplier. When an agent's interpolated
+ *  position is within `currentRadius * FIRE_DANGER_RADIUS_MULTIPLIER` of an
+ *  active fire (smoke is excluded — agents walk through smoke), they
+ *  immediately replan toward a different exit. The multiplier is greater
+ *  than 1 so the agent reacts before they're actually inside the flames,
+ *  giving them lead time to redirect to a safer route. */
+const FIRE_DANGER_RADIUS_MULTIPLIER = 2.0
+
+/** Seconds an agent commits to the new path after a fire-proximity reroute.
+ *  Same purpose as THREAT_REROUTE_COOLDOWN but specifically for the
+ *  proximity-triggered "find another exit" reroute — long enough to clear
+ *  the danger zone, short enough that the agent re-evaluates if the new
+ *  path also takes them near another fire. */
+const FIRE_DANGER_REROUTE_COOLDOWN = 4
+
 /* ── Simulation config ── */
 export interface SimConfig {
   disasterType: 'fire' | 'earthquake'
@@ -134,6 +188,13 @@ export interface SimConfig {
    *  routing jitter are drawn from a seeded PRNG — letting the replay view
    *  reconstruct the exact agent population from the saved seed. */
   seed?: number
+  /** Earthquake-only. Severity scenario the administrator selected. When set
+   *  on an earthquake run, a magnitude is rolled within the scenario's band
+   *  (see QUAKE_SCENARIO_RANGES) and the building's structurally fragile
+   *  edges (stairwells / long spans) are rolled against it — collapsed edges
+   *  spawn debris instead of the user hand-placing it. Unset → no structural
+   *  collapse model (authored hazards only). */
+  quakeScenario?: QuakeScenario
 }
 
 const MIN_AGENT_SPEED = 1.0
@@ -150,6 +211,158 @@ function createSeededRng(seed: number): () => number {
     t ^= t + Math.imul(t ^ (t >>> 7), t | 61)
     return ((t ^ (t >>> 14)) >>> 0) / 4294967296
   }
+}
+
+/* ── Earthquake structural-collapse model ──
+ *
+ * Fire is spatial: the user places a source and it spreads outward. An
+ * earthquake is structural: the user sets a magnitude and the building's
+ * own weak points fail. Every edge flagged `fragile` (stairwell approaches,
+ * long unsupported spans, plus anything auto-derived from a `stairs` node)
+ * is rolled against the magnitude; a collapsed edge drops a debris hazard at
+ * its midpoint. Aftershocks re-roll the survivors, so a route that holds the
+ * main shock can still fail mid-evacuation.
+ */
+
+/** Probability a single fragile edge collapses in the main shock, as a
+ *  function of magnitude (0–1). Quadratic: low magnitudes barely disturb the
+ *  building, high magnitudes reliably sever weak points. */
+function edgeCollapseProbability(magnitude: number): number {
+  const m = Math.max(0, Math.min(1, magnitude))
+  return Math.min(0.95, m * m * 1.1)
+}
+
+/** Earthquake severity scenarios. The administrator picks one of these
+ *  instead of a raw magnitude — an earthquake is something that happens to
+ *  the building, not a dial you set. */
+export type QuakeScenario = 'minor' | 'moderate' | 'severe'
+
+/** Scenario → magnitude band. The actual magnitude is rolled inside the band
+ *  at simulation start, so two runs of the same scenario differ slightly —
+ *  but a seeded run reproduces exactly. */
+const QUAKE_SCENARIO_RANGES: Record<QuakeScenario, [number, number]> = {
+  minor: [0.25, 0.35],
+  moderate: [0.55, 0.65],
+  severe: [0.85, 0.95],
+}
+
+/** Roll a concrete magnitude inside the scenario's band. */
+function rollQuakeMagnitude(scenario: QuakeScenario, rand: () => number): number {
+  const [lo, hi] = QUAKE_SCENARIO_RANGES[scenario]
+  return lo + rand() * (hi - lo)
+}
+
+/** Main shock at t=0, then two weaker aftershocks. */
+const EARTHQUAKE_SHOCK_TIMES = [0, 18, 36]
+const AFTERSHOCK_PROBABILITY_FACTOR = 0.5
+/** Collapse debris is kept tight to the edge it severs — big enough to block
+ *  that edge's midpoint, small enough that it does not bleed into a
+ *  neighbouring room's only doorway and seal it. */
+const COLLAPSE_DEBRIS_RADIUS = 16
+const COLLAPSE_DEBRIS_MAX_RADIUS = 26
+
+/** Edges hard-blocked by a set of hazard zones evaluated at each zone's
+ *  initial radius — the picture at the moment a shock drops its debris,
+ *  before any growth. Smoke is ignored (it never hard-blocks). Mirrors the
+ *  runtime logic in `updateBlockedEdges`, but for the static drop-instant
+ *  picture used by the earthquake realism guard. */
+function edgesHardBlockedOnDrop(floor: FloorModel, zones: HazardZone[]): Set<string> {
+  const blocked = new Set<string>()
+  for (const zone of zones) {
+    if (zone.type === 'smoke') continue
+    const r = zone.radius
+    for (const edge of floor.edges) {
+      if (!edge.blockable) continue
+      const from = getNode(floor, edge.from)
+      const to = getNode(floor, edge.to)
+      if (!from || !to) continue
+      const mx = (from.x + to.x) / 2
+      const my = (from.y + to.y) / 2
+      if (Math.hypot(mx - zone.x, my - zone.y) < r) {
+        blocked.add(edgeKey(edge.from, edge.to))
+      }
+    }
+  }
+  return blocked
+}
+
+/** True when every room can still reach some exit through the residual graph
+ *  (all edges minus `blockedEdges`). */
+function allRoomsCanReachExit(floor: FloorModel, blockedEdges: Set<string>): boolean {
+  const noSoftBlocks = new Set<string>()
+  for (const node of floor.nodes) {
+    if (node.type !== 'room') continue
+    if (!findShortestPathToExitWeighted(floor, node.id, blockedEdges, noSoftBlocks, 1)) {
+      return false
+    }
+  }
+  return true
+}
+
+/**
+ * Roll the floor's fragile edges against `magnitude` across the shock
+ * timeline and return a debris HazardZone for each collapsed edge. Consumes
+ * `rand` so a seeded run reproduces the exact collapse pattern. Returns []
+ * when the floor has no fragile edges authored.
+ *
+ * Realism guard: an earthquake can block routes and trap individuals, but it
+ * should never seal a room from the instant a shock hits. After rolling, the
+ * drop-instant blocked-edge picture (collapse debris + authored hazards, at
+ * initial radius) is checked for per-room reachability; while any room is
+ * fully sealed, the most recent collapse is dropped — aftershock debris
+ * first — until every room retains at least one viable path to an exit when
+ * the debris appears. Debris still grows and aftershocks still pile on, so
+ * occupants who linger can be cut off later — only the unsurvivable
+ * instant-seal case is ruled out.
+ */
+function generateEarthquakeCollapses(
+  floor: FloorModel,
+  magnitude: number,
+  rand: () => number,
+  authoredHazards: HazardZone[],
+): HazardZone[] {
+  const fragileEdges = floor.edges.filter(e => e.fragile)
+  if (fragileEdges.length === 0) return []
+
+  const baseProb = edgeCollapseProbability(magnitude)
+  const collapsed = new Set<string>()
+  const zones: HazardZone[] = []
+  let idx = 0
+
+  for (const shockTime of EARTHQUAKE_SHOCK_TIMES) {
+    const shockProb = shockTime === 0 ? baseProb : baseProb * AFTERSHOCK_PROBABILITY_FACTOR
+    for (const edge of fragileEdges) {
+      const key = edgeKey(edge.from, edge.to)
+      if (collapsed.has(key)) continue
+      if (rand() >= shockProb) continue
+      collapsed.add(key)
+      const from = getNode(floor, edge.from)
+      const to = getNode(floor, edge.to)
+      if (!from || !to) continue
+      zones.push({
+        id: `quake-collapse-${idx++}`,
+        type: 'debris',
+        x: (from.x + to.x) / 2,
+        y: (from.y + to.y) / 2,
+        radius: COLLAPSE_DEBRIS_RADIUS,
+        growthRate: hazardGrowthRate('debris'),
+        appearsAt: shockTime,
+        maxRadius: COLLAPSE_DEBRIS_MAX_RADIUS,
+      })
+    }
+  }
+
+  // Realism guard — drop collapses (newest first) until no room is sealed at
+  // the moment its debris drops. Runs after every `rand()` draw above, so it
+  // never shifts the seeded collapse pattern; it only trims a tail that would
+  // be unrealistic.
+  while (zones.length > 0) {
+    const blocked = edgesHardBlockedOnDrop(floor, [...authoredHazards, ...zones])
+    if (allRoomsCanReachExit(floor, blocked)) break
+    zones.pop()
+  }
+
+  return zones
 }
 
 /* ── Create initial simulation state ── */
@@ -231,6 +444,7 @@ export function createSimulation(
         rerouteAnchor: undefined,
         timeInsideFire: 0,
         retreatCooldown: 0,
+        threatRerouteCooldown: 0,
       })
     }
   }
@@ -259,11 +473,25 @@ export function createSimulation(
       rerouteAnchor: undefined,
       timeInsideFire: 0,
       retreatCooldown: 0,
+      threatRerouteCooldown: 0,
     })
   }
 
-  // Initialize hazards
-  const hazardDefs = config.hazardOverrides ?? (floor.hazards[config.disasterType] || [])
+  // Initialize hazards. For an earthquake run with a magnitude set, the
+  // structural-collapse model generates debris from the building's fragile
+  // edges and appends it to any authored hazards. Generated last so it never
+  // shifts the RNG draws used for agent spawning above.
+  const authoredHazards = config.hazardOverrides ?? (floor.hazards[config.disasterType] || [])
+  const collapseHazards =
+    config.disasterType === 'earthquake' && config.quakeScenario != null
+      ? generateEarthquakeCollapses(
+          floor,
+          rollQuakeMagnitude(config.quakeScenario, rand),
+          rand,
+          authoredHazards,
+        )
+      : []
+  const hazardDefs = [...authoredHazards, ...collapseHazards]
   const hazards: ActiveHazard[] = hazardDefs.map(z => ({
     zone: z,
     currentRadius: 0,
@@ -278,6 +506,7 @@ export function createSimulation(
     hazardGrowthMultiplier: config.hazardGrowthMultiplier ?? 1,
     blockedEdges: new Set(),
     softBlockedEdges: new Set(),
+    threatenedEdges: new Set(),
     running: false,
     finished: false,
     disasterType: config.disasterType,
@@ -348,15 +577,24 @@ function updateHazards(state: SimulationState) {
  *     should be able to push through a smoky corridor if it's their only way
  *     out — but it carries a heavy routing penalty so a clean detour is
  *     preferred, and the agent accrues extra slowdown + exposure while on it.
+ *
+ * Also populates a THREAT zone for each hard hazard — the ring of edges just
+ * outside the current radius, within `THREAT_BUFFER_PX`. These edges aren't
+ * blocked yet, but the predictor flags them so agents route around them
+ * proactively and only walk them when no clean alternative exists.
  */
 function updateBlockedEdges(state: SimulationState, floor: FloorModel) {
   state.blockedEdges.clear()
   state.softBlockedEdges.clear()
+  state.threatenedEdges.clear()
 
   for (const h of state.hazards) {
     if (!h.active) continue
     const r = h.currentRadius
     const isSoft = h.zone.type === 'smoke'
+    // Smoke has no threat ring — agents push through it under panic; only
+    // hard hazards (fire / debris / blocked) get a predictor zone.
+    const threatRadius = isSoft ? r : r + THREAT_BUFFER_PX
 
     for (const edge of floor.edges) {
       if (!edge.blockable) continue
@@ -367,16 +605,20 @@ function updateBlockedEdges(state: SimulationState, floor: FloorModel) {
       const mx = (fromNode.x + toNode.x) / 2
       const my = (fromNode.y + toNode.y) / 2
       const dist = Math.hypot(mx - h.zone.x, my - h.zone.y)
-      if (dist >= r) continue
+      if (dist >= threatRadius) continue
 
       const key = edgeKey(edge.from, edge.to)
       if (isSoft) {
         // Only downgrade to soft if no hard block already applies.
         if (!state.blockedEdges.has(key)) state.softBlockedEdges.add(key)
-      } else {
+      } else if (dist < r) {
         state.blockedEdges.add(key)
-        // A hard block supersedes any earlier soft block.
+        // A hard block supersedes any earlier soft / threat flag.
         state.softBlockedEdges.delete(key)
+        state.threatenedEdges.delete(key)
+      } else if (!state.blockedEdges.has(key)) {
+        // Inside the threat ring but outside the radius — predictor zone.
+        state.threatenedEdges.add(key)
       }
     }
   }
@@ -410,6 +652,27 @@ function remainingPathHasHardBlock(path: string[], pathIndex: number, blockedEdg
   return false
 }
 
+/** Does the next `lookahead` edges of the agent's path fall inside an active
+ *  hazard's THREAT zone? Predictor trigger — fires before a hard block, so
+ *  the agent reroutes while a clean alternative is still available rather
+ *  than walking up to the wall of fire and only then changing course. We
+ *  scan a small window rather than the whole remaining path: distant threats
+ *  may resolve themselves (or get superseded by other reroutes) before the
+ *  agent reaches them, and reacting to them now just produces thrashing. */
+function remainingPathHasThreatenedEdge(
+  path: string[],
+  pathIndex: number,
+  threatenedEdges: Set<string>,
+  lookahead: number,
+): boolean {
+  if (threatenedEdges.size === 0) return false
+  const end = Math.min(path.length - 1, pathIndex + lookahead)
+  for (let i = pathIndex; i < end; i++) {
+    if (threatenedEdges.has(edgeKey(path[i], path[i + 1]))) return true
+  }
+  return false
+}
+
 /** Count how many still-active agents are currently aiming at each exit.
  *  Used to bias new arrivals toward under-used exits. */
 function buildExitBias(state: SimulationState): Record<string, number> {
@@ -434,9 +697,11 @@ function replanAgent(
   agent: Agent,
   state: SimulationState,
   floor: FloorModel,
+  excludeExitIds?: Set<string>,
+  forbiddenNodeIds?: Set<string>,
 ): boolean {
   agent.progress = 0
-  const planFrom = (startId: string) => findShortestPathToExitWeighted(
+  const planFrom = (startId: string, forbidden?: Set<string>) => findShortestPathToExitWeighted(
     floor,
     startId,
     state.blockedEdges,
@@ -447,6 +712,10 @@ function replanAgent(
       congestionWeight: CONGESTION_WEIGHT,
       jitter: agent.routingJitter,
       exitBias: buildExitBias(state),
+      threatenedEdges: state.threatenedEdges,
+      threatPenalty: THREATENED_EDGE_COST_MULTIPLIER,
+      excludeExitIds,
+      forbiddenNodeIds: forbidden,
     },
   )
 
@@ -461,7 +730,7 @@ function replanAgent(
       : false
 
     if (hasDoorEdge) {
-      const result = planFrom(agent.preferredDoorId)
+      const result = planFrom(agent.preferredDoorId, forbiddenNodeIds)
       if (result) {
         agent.path = [agent.currentNodeId, ...result.path]
         agent.pathIndex = 0
@@ -471,12 +740,120 @@ function replanAgent(
     }
   }
 
-  const result = planFrom(agent.currentNodeId)
-  if (!result) return false
+  const result = planFrom(agent.currentNodeId, forbiddenNodeIds)
+  if (!result) {
+    // If the forbidden-nodes set killed every path (fire surrounds the
+    // agent on all sides), retry without it — better to walk through the
+    // danger zone than to go trapped doing nothing.
+    if (forbiddenNodeIds && forbiddenNodeIds.size > 0) {
+      const fallback = planFrom(agent.currentNodeId, undefined)
+      if (fallback) {
+        agent.path = fallback.path
+        agent.pathIndex = 0
+        agent.targetExitId = fallback.exitId
+        return true
+      }
+    }
+    // Same idea for excludeExitIds — release the ban as a last resort.
+    if (excludeExitIds && excludeExitIds.size > 0) {
+      const fallback = planFrom(agent.currentNodeId, undefined)
+      if (fallback) {
+        agent.path = fallback.path
+        agent.pathIndex = 0
+        agent.targetExitId = fallback.exitId
+        return true
+      }
+    }
+    return false
+  }
   agent.path = result.path
   agent.pathIndex = 0
   agent.targetExitId = result.exitId
   return true
+}
+
+/** Detect whether the agent's current rendered position is within the
+ *  proximity "danger zone" of an active fire hazard. Returns the exit IDs
+ *  that should now be avoided — typically the agent's current target exit
+ *  if that exit's path takes them too close to the flames.
+ *
+ *  This is the reactive trigger that makes agents abandon their current
+ *  exit and pick a different one as soon as they get near fire. */
+function findFireProximityDanger(
+  agent: Agent,
+  floor: FloorModel,
+  state: SimulationState,
+): { triggered: boolean; excludeExits: Set<string>; forbiddenNodes: Set<string> } {
+  if (agent.state === 'evacuated' || agent.state === 'trapped') {
+    return { triggered: false, excludeExits: new Set(), forbiddenNodes: new Set() }
+  }
+
+  // Interpolated position — same formula used elsewhere for proximity checks.
+  const node = getNode(floor, agent.currentNodeId)
+  if (!node) return { triggered: false, excludeExits: new Set(), forbiddenNodes: new Set() }
+  let ax = node.x
+  let ay = node.y
+  if (agent.progress > 0 && agent.pathIndex < agent.path.length - 1) {
+    const next = getNode(floor, agent.path[agent.pathIndex + 1])
+    if (next) {
+      ax = node.x + (next.x - node.x) * agent.progress
+      ay = node.y + (next.y - node.y) * agent.progress
+    }
+  }
+
+  const excludeExits = new Set<string>()
+  const forbiddenNodes = new Set<string>()
+  let triggered = false
+
+  // First pass — determine whether ANY active fire is close enough to
+  // trigger a proximity reroute, and compute exits to ban for this agent.
+  for (const h of state.hazards) {
+    if (!h.active) continue
+    if (h.zone.type !== 'fire') continue
+
+    const dangerRadius = h.currentRadius * FIRE_DANGER_RADIUS_MULTIPLIER
+    const dist = Math.hypot(ax - h.zone.x, ay - h.zone.y)
+    if (dist >= dangerRadius) continue
+
+    triggered = true
+    if (agent.targetExitId) {
+      excludeExits.add(agent.targetExitId)
+    }
+  }
+
+  if (!triggered) {
+    return { triggered, excludeExits, forbiddenNodes }
+  }
+
+  // Second pass — for EVERY active fire (not just the one triggering this
+  // reroute), mark every floor node inside its danger ring as forbidden.
+  // The new path must NOT route through any of these, so the agent can
+  // never "go backward through the fire" to reach another exit. Combined
+  // with the start-node exemption in Dijkstra, this lets the agent escape
+  // outward from inside a danger ring but never re-enter one.
+  for (const h of state.hazards) {
+    if (!h.active) continue
+    if (h.zone.type !== 'fire') continue
+    const dangerRadius = h.currentRadius * FIRE_DANGER_RADIUS_MULTIPLIER
+    for (const n of floor.nodes) {
+      if (Math.hypot(n.x - h.zone.x, n.y - h.zone.y) < dangerRadius) {
+        forbiddenNodes.add(n.id)
+      }
+    }
+  }
+
+  // Additionally — forbid the agent's IMMEDIATELY-PREVIOUS node so the new
+  // path doesn't open with a U-turn back the way they just came. If that
+  // node is the only escape we'll release this constraint via the fallback
+  // in replanAgent; otherwise the agent commits to forward progress.
+  if (agent.history.length >= 2) {
+    const prev = agent.history[agent.history.length - 2]
+    if (prev?.nodeId && prev.nodeId !== agent.currentNodeId) {
+      forbiddenNodes.add(prev.nodeId)
+    }
+  }
+
+  return { triggered, excludeExits, forbiddenNodes }
 }
 
 /** Is the agent's current rendered position inside the radius of an active
@@ -537,6 +914,12 @@ function updateAgent(
   if (agent.retreatCooldown > 0) {
     agent.retreatCooldown = Math.max(0, agent.retreatCooldown - dt)
   }
+  // Threat reroute cooldown — commits the agent to a freshly-replanned path
+  // for a few seconds after a predictor reroute so they don't ping-pong
+  // between two near-equal threatened options.
+  if (agent.threatRerouteCooldown > 0) {
+    agent.threatRerouteCooldown = Math.max(0, agent.threatRerouteCooldown - dt)
+  }
 
   if (agent.rerouteAnchor && agent.rerouteAnchor.progress < 1) {
     const anchor = agent.rerouteAnchor
@@ -594,15 +977,41 @@ function updateAgent(
   }
 
   // Revalidate path: look ahead at the *entire* remaining portion, not just the
-  // next edge. If a fire/debris block appeared anywhere further down the
-  // committed path, reroute now — otherwise the agent keeps walking straight
-  // into a dead end and only reacts at the last step.
+  // next edge. Three triggers fire here:
+  //   1. Hard block on remaining path  → must reroute (path is severed).
+  //   2. Predictor threat on remaining path + cooldown ready → should reroute
+  //      now so the agent reaches the exit through a clean corridor instead
+  //      of walking up to the fire and only then reacting.
+  //   3. Fire-proximity danger → agent is within the expanded danger ring of
+  //      an active fire and must immediately pick a different exit.
   if (agent.state === 'moving' && agent.pathIndex < agent.path.length - 1) {
     const nextEdgeKey = edgeKey(agent.path[agent.pathIndex], agent.path[agent.pathIndex + 1])
     const nextHardBlocked = state.blockedEdges.has(nextEdgeKey)
     const aheadHardBlocked = !nextHardBlocked && remainingPathHasHardBlock(agent.path, agent.pathIndex, state.blockedEdges)
+    // Predictor trigger — only for auto agents, only when no hard-block reroute
+    // already covers it, and only when the cooldown has elapsed (so the agent
+    // doesn't re-evaluate the predictor every tick on a still-threatened path).
+    const threatTriggered =
+      !agent.isUserAgent &&
+      !nextHardBlocked &&
+      !aheadHardBlocked &&
+      agent.threatRerouteCooldown <= 0 &&
+      remainingPathHasThreatenedEdge(agent.path, agent.pathIndex, state.threatenedEdges, THREAT_LOOKAHEAD_EDGES)
 
-    if (nextHardBlocked || aheadHardBlocked) {
+    // Fire-proximity trigger — agent has gotten close to an active fire and
+    // must redirect to a different exit. Auto agents only; user agents are
+    // committed to their drawn path. Shares the threat cooldown so we don't
+    // trigger this on every tick after a fresh reroute, but is independent
+    // enough that hard blocks still take priority.
+    const proximityDanger = !agent.isUserAgent && !nextHardBlocked && !aheadHardBlocked
+      ? findFireProximityDanger(agent, floor, state)
+      : { triggered: false, excludeExits: new Set<string>(), forbiddenNodes: new Set<string>() }
+    const fireProximityTriggered =
+      proximityDanger.triggered &&
+      agent.threatRerouteCooldown <= 0 &&
+      proximityDanger.excludeExits.size > 0
+
+    if (nextHardBlocked || aheadHardBlocked || threatTriggered || fireProximityTriggered) {
       if (agent.isUserAgent) {
         // User-drawn path is fixed — they get trapped at the blockage.
         if (nextHardBlocked) {
@@ -637,8 +1046,24 @@ function updateAgent(
             agent.progress = 0
           }
         }
-        if (replanAgent(agent, state, floor)) {
+        // Pass excluded exits AND forbidden danger-zone nodes only on a
+        // fire-proximity reroute — for other triggers we want the full
+        // exit set & node graph in case the original target is still the
+        // safest option. The forbidden-nodes ban is what prevents the agent
+        // from rerouting backward through the fire to reach another exit.
+        const isProximityOnly = fireProximityTriggered && !nextHardBlocked && !aheadHardBlocked
+        const replanExcludes = isProximityOnly ? proximityDanger.excludeExits : undefined
+        const replanForbidden = isProximityOnly ? proximityDanger.forbiddenNodes : undefined
+        if (replanAgent(agent, state, floor, replanExcludes, replanForbidden)) {
           agent.state = 'moving'
+        }
+        // Predictor / proximity reroutes commit to the new path for a window
+        // — hard-block reroutes don't (their path is actually severed and a
+        // fresh block on the new path must be reacted to immediately).
+        if (fireProximityTriggered && !nextHardBlocked && !aheadHardBlocked) {
+          agent.threatRerouteCooldown = FIRE_DANGER_REROUTE_COOLDOWN
+        } else if (threatTriggered && !nextHardBlocked && !aheadHardBlocked) {
+          agent.threatRerouteCooldown = THREAT_REROUTE_COOLDOWN
         }
         return
       }

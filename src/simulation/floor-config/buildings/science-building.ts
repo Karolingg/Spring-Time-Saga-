@@ -101,16 +101,20 @@ const SCIENCE_2F: FloorConfig = {
     r202: { label: 'Room 202', x: 770, y: 355, corridorEntryNode: 'Near Room 201' },
     r201: { label: 'Room 201', x: 770, y: 485, corridorEntryNode: 'East Corridor' },
   },
+  // `fragile` marks edges eligible for earthquake structural-collapse rolls.
+  // Edges touching 'Near Stairs' (a stairs-kind node) are auto-fragile; the
+  // explicit flags below add the three stairwell-exit approaches (S1/S2/S3)
+  // and the long unsupported East Corridor span.
   corridorNodes: [
-    { label: 'Left Corridor', x: 445, y: 412, neighbors: ['Near Room 204', 'S2'] },
+    { label: 'Left Corridor', x: 445, y: 412, neighbors: ['Near Room 204', { label: 'S2', fragile: true }] },
     { label: 'Near Room 204', x: 445, y: 255, neighbors: ['Left Corridor', 'Upper Corridor'] },
     { label: 'Upper Corridor', x: 445, y: 190, neighbors: ['Near Room 204', 'Near Stairs'] },
     { label: 'Near Stairs', x: 592, y: 190, neighbors: ['Upper Corridor', 'Near Toilet', 'S4'] },
     { label: 'Near Toilet', x: 740, y: 190, neighbors: ['Near Stairs', 'Near Room 202'] },
     { label: 'Near Room 202', x: 740, y: 220, neighbors: ['Near Toilet', 'Near Room 201'] },
-    { label: 'Near Room 201', x: 740, y: 355, neighbors: ['Near Room 202', 'East Corridor'] },
-    { label: 'East Corridor', x: 740, y: 485, neighbors: ['Near Room 201', 'S3'] },
-    { label: 'Near Exit 1', x: 590, y: 55, neighbors: ['Near Stairs', 'S1'] },
+    { label: 'Near Room 201', x: 740, y: 355, neighbors: ['Near Room 202', { label: 'East Corridor', fragile: true }] },
+    { label: 'East Corridor', x: 740, y: 485, neighbors: ['Near Room 201', { label: 'S3', fragile: true }] },
+    { label: 'Near Exit 1', x: 590, y: 55, neighbors: ['Near Stairs', { label: 'S1', fragile: true }] },
   ],
 }
 

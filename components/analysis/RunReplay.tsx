@@ -49,8 +49,8 @@ function getHeatColor(intensity: number) {
   if (intensity >= 0.78) return '#e11d48'   // rose-600 — strong, readable
   if (intensity >= 0.55) return '#ea580c'   // orange-600
   if (intensity >= 0.32) return '#f59e0b'   // amber-500
-  if (intensity >= 0.12) return '#22c55e'   // green-500
-  return '#4ade80'                            // green-400
+  if (intensity >= 0.12) return '#15803d'   // green-700 (darker for contrast)
+  return '#16a34a'                            // green-600 (darker minimum)
 }
 
 /** Legend entries — ordered from most to least intense. The thresholds and
@@ -60,8 +60,8 @@ const HEATMAP_LEGEND: { label: string; color: string; rangeLabel: string }[] = [
   { label: 'Critical', color: '#e11d48', rangeLabel: '≥ 78%' },
   { label: 'High',     color: '#ea580c', rangeLabel: '55–78%' },
   { label: 'Medium',   color: '#f59e0b', rangeLabel: '32–55%' },
-  { label: 'Low',      color: '#22c55e', rangeLabel: '12–32%' },
-  { label: 'Minimal',  color: '#4ade80', rangeLabel: '< 12%' },
+  { label: 'Low',      color: '#15803d', rangeLabel: '12–32%' },
+  { label: 'Minimal',  color: '#16a34a', rangeLabel: '< 12%' },
 ]
 
 /** Distribute a total agent count proportionally across rooms by capacity. */
@@ -368,8 +368,11 @@ export function RunReplay({
               position: 'absolute', inset: 0,
               width: '100%', height: '100%',
               objectFit: 'contain', objectPosition: 'center',
-              opacity: 0.92,
-              filter: 'saturate(0.45) contrast(1.08) brightness(1.04)',
+              opacity: 0.95,
+              // Light-pastel treatment — keeps original room colours so the
+              // floor plan stays identifiable while the heatmap stays the
+              // visual focus.
+              filter: 'saturate(0.75) contrast(0.85) brightness(1.18)',
             }}
           />
         )}

@@ -78,7 +78,7 @@ export function floorConfigToFloorModel(
   const edgeSeen = new Set<string>()
   const edges: NavEdge[] = []
 
-  const addEdge = (fromId: string, toId: string, width = 2.0, blockable = true) => {
+  const addEdge = (fromId: string, toId: string, width = 2.0, blockable = true, fragile = false) => {
     if (fromId === toId) return
     const key = fromId < toId ? `${fromId}|${toId}` : `${toId}|${fromId}`
     if (edgeSeen.has(key)) return
@@ -86,12 +86,17 @@ export function floorConfigToFloorModel(
     const to = nodes.find(n => n.id === toId)
     if (!from || !to) return
     edgeSeen.add(key)
+    // Auto-derive fragility: any edge touching a stairwell node is structurally
+    // fragile by default, so earthquake collapse rolls get sensible coverage
+    // without per-floor authoring. An explicit `fragile` flag adds to this.
+    const isFragile = fragile || from.type === 'stairs' || to.type === 'stairs'
     edges.push({
       from: fromId,
       to: toId,
       distance: Math.max(1, pxDistance(from, to)),
       width,
       blockable,
+      fragile: isFragile,
     })
   }
 
@@ -144,7 +149,7 @@ export function floorConfigToFloorModel(
         exitIdByKey.get(neighbor.label) ??
         nodes.find(n => n.label === neighbor.label)?.id
       if (!toId) continue
-      addEdge(fromId, toId, neighbor.width ?? 2.0, neighbor.blockable ?? true)
+      addEdge(fromId, toId, neighbor.width ?? 2.0, neighbor.blockable ?? true, neighbor.fragile ?? false)
     }
   }
 
@@ -286,6 +291,7 @@ const FLOORPLAN_SRC_BY_BUILDING: Record<string, Record<string, string>> = {
   },
   'asx': {
     '1st Floor': '/floorplans/ASX%201st%20floor.svg',
+    '2nd Floor': '/floorplans/ASX%202nd%20floor.svg',
   },
   'science-building': {
     '1st Floor': '/floorplans/CSB%201st%20floor.svg',
@@ -298,6 +304,10 @@ const FLOORPLAN_SRC_BY_BUILDING: Record<string, Record<string, string>> = {
   'management': {
     '1st Floor': '/floorplans/Management%201st%20floor.svg',
     '2nd Floor': '/floorplans/Management%202nd%20floor.svg',
+  },
+  'social-sciences': {
+    '1st Floor': '/floorplans/UG%201st%20floor.svg',
+    '2nd Floor': '/floorplans/Ug%202nd%20floor.svg',
   },
   'up-cebu-library': {
     '1st Floor': '/floorplans/Library%201st%20floor.svg',

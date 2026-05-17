@@ -2,9 +2,10 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { useParams } from 'next/navigation'
-import { getSimulationRun } from '@/src/services/simulation.service'
+import { getSimulationRun, getDensityCells } from '@/src/services/simulation.service'
 import { getBuildingById } from '@/src/simulation/building-model'
-import type { SimulationRun, SimulationZone } from '@/src/schema/simulation.types'
+import { SpatialBottleneckHeatmap } from '@/components/analysis/SpatialBottleneckHeatmap'
+import type { DensityCell, SimulationRun, SimulationZone } from '@/src/schema/simulation.types'
 
 const REPORT_MAX_ZONES = 6
 
@@ -66,6 +67,7 @@ export default function EvacuationReportPage() {
   const params = useParams()
   const runId = params.runId as string
   const [run, setRun] = useState<SimulationRun | null>(null)
+  const [densityCells, setDensityCells] = useState<DensityCell[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [generatedAt] = useState(() => new Date().toLocaleString())
@@ -74,8 +76,14 @@ export default function EvacuationReportPage() {
     let cancelled = false
     async function load() {
       try {
-        const data = await getSimulationRun(runId)
-        if (!cancelled) setRun(data)
+        const [data, cells] = await Promise.all([
+          getSimulationRun(runId),
+          getDensityCells(runId).catch(() => []),
+        ])
+        if (!cancelled) {
+          setRun(data)
+          setDensityCells(cells)
+        }
       } catch (err) {
         if (!cancelled) setError((err as Error).message)
       } finally {
@@ -151,6 +159,31 @@ export default function EvacuationReportPage() {
         <h2>Summary</h2>
         <p>{narrative || 'Run completed.'}</p>
       </section>
+
+      {run.buildingId && (
+        <section className="report-heatmap">
+          <h2>Crowd Heatmap</h2>
+          <p className="report-heatmap-caption">
+            Spatial density across the floor plan during the drill. Warmer
+            areas indicate sustained congestion; cooler greens indicate light
+            traffic.
+          </p>
+          <div className="report-heatmap-shell">
+            <SpatialBottleneckHeatmap
+              buildingId={run.buildingId}
+              zones={run.zones}
+              densityCells={densityCells}
+              simulatedFloorIndex={run.floorIndex}
+              hideHeader
+              hazards={run.hazards}
+              agentsPerRoom={run.agentsPerRoom}
+              seed={run.seed}
+              disasterType={run.disasterType}
+              agentCount={run.config?.agentCount ?? null}
+            />
+          </div>
+        </section>
+      )}
 
       {featuredZones.length > 0 && (
         <section className="report-zones">
@@ -362,6 +395,28 @@ function ReportShell({ children }: { children: React.ReactNode }) {
           font-size: 11px;
           color: #64748b;
         }
+        .report-heatmap {
+          margin-bottom: 24px;
+        }
+        .report-heatmap h2 {
+          font-size: 15px;
+          letter-spacing: 0.04em;
+          text-transform: uppercase;
+          color: #0f172a;
+          margin: 0 0 8px;
+        }
+        .report-heatmap-caption {
+          font-size: 12px;
+          color: #475569;
+          margin: 0 0 12px;
+          line-height: 1.55;
+        }
+        .report-heatmap-shell {
+          border: 1px solid #e2e8f0;
+          border-radius: 12px;
+          padding: 12px;
+          background: #ffffff;
+        }
         @media print {
           .report-page {
             padding: 24px 28px;
@@ -369,6 +424,10 @@ function ReportShell({ children }: { children: React.ReactNode }) {
           }
           .report-toolbar { display: none; }
           .report-print-btn { display: none; }
+          .report-heatmap-shell {
+            page-break-inside: avoid;
+            break-inside: avoid;
+          }
           body { background: #ffffff; }
           @page { margin: 16mm; size: A4; }
         }
