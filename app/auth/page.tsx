@@ -1,13 +1,29 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { GOOGLE_SIGN_IN_COOLDOWN_MS } from '@/src/config/rate-limits'
+import {
+  SESSION_TIMEOUT_NOTICE_KEY,
+  SESSION_TIMEOUT_NOTICE_VALUE,
+} from '@/src/config/session-timeout'
 import { loginWithGoogle } from '@/src/services/auth.service'
 
 export default function LoginPage() {
   const [isGoogleLoading, setIsGoogleLoading] = useState(false)
   const [errorMessage, setErrorMessage] = useState('')
+  const [infoMessage, setInfoMessage] = useState('')
   const [lastGoogleAttemptAt, setLastGoogleAttemptAt] = useState(0)
+
+  useEffect(() => {
+    const timeoutNotice = window.localStorage.getItem(SESSION_TIMEOUT_NOTICE_KEY)
+    if (timeoutNotice === SESSION_TIMEOUT_NOTICE_VALUE) {
+      window.localStorage.removeItem(SESSION_TIMEOUT_NOTICE_KEY)
+      const timeoutId = window.setTimeout(() => {
+        setInfoMessage('Your session expired due to inactivity. Please sign in again.')
+      }, 0)
+      return () => window.clearTimeout(timeoutId)
+    }
+  }, [])
 
   async function handleGoogleSignIn() {
     const now = Date.now()
@@ -96,6 +112,20 @@ export default function LoginPage() {
         <p style={{ margin: '0 0 24px', fontSize: '13px', color: '#64748b', lineHeight: 1.5 }}>
           Use your Google account to access EVACSIM simulations, saved runs, and readiness analytics.
         </p>
+
+        {infoMessage && (
+          <div style={{
+            marginBottom: '16px',
+            padding: '10px 14px',
+            background: '#eff6ff',
+            border: '1px solid #bfdbfe',
+            borderRadius: '8px',
+            color: '#1d4ed8',
+            fontSize: '13px',
+          }}>
+            {infoMessage}
+          </div>
+        )}
 
         {errorMessage && (
           <div style={{
