@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useAuth } from '@/src/hooks/useAuth'
 import {
   getLatestSimulationRun,
@@ -15,6 +15,7 @@ import { ZoneAnalysisPanel } from '@/components/analysis/ZoneAnalysisPanel'
 import { FeatureContainer } from '@/components/analysis/FeatureContainer'
 import { ConfirmModal } from '@/components/ConfirmModal'
 import { downloadRunCsv } from '@/src/services/csv-export'
+import { getFriendlyErrorMessage } from '@/src/services/rate-limit.service'
 import type { DensityCell, SimulationRun, SimulationZone } from '@/src/schema/simulation.types'
 
 const SECTION_CARD: React.CSSProperties = {
@@ -41,6 +42,11 @@ export default function AnalysisRunsPage() {
   const [isLoadingData, setIsLoadingData] = useState(true)
   const [isConfirmResetOpen, setIsConfirmResetOpen] = useState(false)
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
+  const [deletingRunId, setDeletingRunId] = useState<string | null>(null)
+  const [isResettingData, setIsResettingData] = useState(false)
+  const [actionMessage, setActionMessage] = useState('')
+  const [isActionError, setIsActionError] = useState(false)
+  const isMutationInFlightRef = useRef(false)
 
   useEffect(() => {
     if (!isAuthLoading && !isAuthenticated) {
@@ -92,6 +98,12 @@ export default function AnalysisRunsPage() {
   }
 
   async function handleDeleteRun(runId: string) {
+    if (isMutationInFlightRef.current || deletingRunId !== null || isResettingData) return
+
+    isMutationInFlightRef.current = true
+    setDeletingRunId(runId)
+    setActionMessage('')
+    setIsActionError(false)
     try {
       await deleteSimulationRun(runId)
       const wasCurrentRun = run?.id === runId
@@ -108,12 +120,22 @@ export default function AnalysisRunsPage() {
       }
     } catch (err) {
       console.error('Failed to delete simulation run:', err)
+      setIsActionError(true)
+      setActionMessage(getFriendlyErrorMessage(err, 'Failed to delete simulation run.'))
     } finally {
+      isMutationInFlightRef.current = false
+      setDeletingRunId(null)
       setConfirmDeleteId(null)
     }
   }
 
   async function handleResetAll() {
+    if (isMutationInFlightRef.current || isResettingData || deletingRunId !== null) return
+
+    isMutationInFlightRef.current = true
+    setIsResettingData(true)
+    setActionMessage('')
+    setIsActionError(false)
     try {
       await resetAllSimulationData()
       setRun(null)
@@ -121,7 +143,11 @@ export default function AnalysisRunsPage() {
       setRunHistory([])
     } catch (err) {
       console.error('Failed to reset simulation data:', err)
+      setIsActionError(true)
+      setActionMessage(getFriendlyErrorMessage(err, 'Failed to reset simulation data.'))
     } finally {
+      isMutationInFlightRef.current = false
+      setIsResettingData(false)
       setIsConfirmResetOpen(false)
     }
   }
@@ -154,7 +180,23 @@ export default function AnalysisRunsPage() {
         onRunChange={handleRunChange}
         onRequestDelete={id => setConfirmDeleteId(id)}
         onRequestReset={() => setIsConfirmResetOpen(true)}
+        isDeleting={deletingRunId !== null}
+        isResetting={isResettingData}
       />
+
+      {actionMessage && (
+        <div style={{
+          marginBottom: '20px',
+          padding: '12px 14px',
+          borderRadius: '10px',
+          background: isActionError ? '#fef2f2' : '#ecfdf5',
+          border: `1px solid ${isActionError ? '#fecaca' : '#bbf7d0'}`,
+          color: isActionError ? '#b91c1c' : '#166534',
+          fontSize: '13px',
+        }}>
+          {actionMessage}
+        </div>
+      )}
 
       {isLoadingData && (
         <div style={{ textAlign: 'center', padding: '60px 0', color: 'var(--text-secondary)', fontSize: '14px' }}>
@@ -255,18 +297,24 @@ export default function AnalysisRunsPage() {
         isOpen={isConfirmResetOpen}
         title="Reset All Simulation Data"
         message="This will permanently delete all simulation runs and their data. This action cannot be undone."
-        confirmLabel="Delete All"
+        confirmLabel={isResettingData ? 'Deleting...' : 'Delete All'}
+        isConfirming={isResettingData}
         onConfirm={handleResetAll}
-        onCancel={() => setIsConfirmResetOpen(false)}
+        onCancel={() => {
+          if (!isResettingData) setIsConfirmResetOpen(false)
+        }}
       />
 
       <ConfirmModal
         isOpen={confirmDeleteId !== null}
         title="Delete Simulation Run"
         message="This will permanently delete this simulation run and all its data. This action cannot be undone."
-        confirmLabel="Delete Run"
+        confirmLabel={deletingRunId !== null ? 'Deleting...' : 'Delete Run'}
+        isConfirming={deletingRunId !== null}
         onConfirm={() => confirmDeleteId && handleDeleteRun(confirmDeleteId)}
-        onCancel={() => setConfirmDeleteId(null)}
+        onCancel={() => {
+          if (deletingRunId === null) setConfirmDeleteId(null)
+        }}
       />
     </div>
   )
@@ -283,10 +331,22 @@ interface PageHeaderProps {
   onRunChange: (id: string) => void
   onRequestDelete: (id: string) => void
   onRequestReset: () => void
+  isDeleting: boolean
+  isResetting: boolean
 }
 
-function PageHeader({ runHistory, currentRunId, currentRun, onRunChange, onRequestDelete, onRequestReset }: PageHeaderProps) {
+function PageHeader({
+  runHistory,
+  currentRunId,
+  currentRun,
+  onRunChange,
+  onRequestDelete,
+  onRequestReset,
+  isDeleting,
+  isResetting,
+}: PageHeaderProps) {
   const hasRun = currentRun !== null
+  const isMutating = isDeleting || isResetting
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '32px', flexWrap: 'wrap' }}>
       <div style={{
@@ -325,6 +385,7 @@ function PageHeader({ runHistory, currentRunId, currentRun, onRunChange, onReque
             currentRunId={currentRunId}
             onRunChange={onRunChange}
             onRequestDelete={onRequestDelete}
+            isDisabled={isMutating}
           />
         )}
 
@@ -416,13 +477,18 @@ function PageHeader({ runHistory, currentRunId, currentRun, onRunChange, onReque
 
         <button
           onClick={onRequestReset}
+          disabled={isMutating}
           style={{
             padding: '8px 14px', background: '#ffffff',
             border: '1px solid #ef4444', borderRadius: '8px',
-            fontSize: '13px', fontWeight: '600', color: '#ef4444', cursor: 'pointer', flexShrink: 0,
+            fontSize: '13px', fontWeight: '600',
+            color: isMutating ? '#fca5a5' : '#ef4444',
+            cursor: isMutating ? 'not-allowed' : 'pointer',
+            opacity: isMutating ? 0.7 : 1,
+            flexShrink: 0,
           }}
         >
-          Reset All Data
+          {isResetting ? 'Resetting...' : 'Reset All Data'}
         </button>
       </div>
     </div>
@@ -434,19 +500,23 @@ interface RunControlsProps {
   currentRunId: string
   onRunChange: (id: string) => void
   onRequestDelete: (id: string) => void
+  isDisabled: boolean
 }
 
-function RunControls({ runHistory, currentRunId, onRunChange, onRequestDelete }: RunControlsProps) {
+function RunControls({ runHistory, currentRunId, onRunChange, onRequestDelete, isDisabled }: RunControlsProps) {
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
       <select
         onChange={e => onRunChange(e.target.value)}
         value={currentRunId}
+        disabled={isDisabled}
         style={{
           padding: '8px 12px', borderRadius: '8px',
           border: '1px solid var(--border)', fontSize: '12px',
           color: 'var(--text-primary)', background: '#ffffff',
           maxWidth: '320px',
+          cursor: isDisabled ? 'not-allowed' : 'default',
+          opacity: isDisabled ? 0.7 : 1,
         }}
       >
         {runHistory.map(r => (
@@ -455,11 +525,15 @@ function RunControls({ runHistory, currentRunId, onRunChange, onRequestDelete }:
       </select>
       <button
         onClick={() => onRequestDelete(currentRunId)}
+        disabled={isDisabled}
         title="Delete this simulation run"
         style={{
           padding: '8px 10px', background: '#fff5f5',
           border: '1px solid #fecaca', borderRadius: '8px',
-          color: '#ef4444', cursor: 'pointer', flexShrink: 0,
+          color: '#ef4444',
+          cursor: isDisabled ? 'not-allowed' : 'pointer',
+          opacity: isDisabled ? 0.55 : 1,
+          flexShrink: 0,
           display: 'flex', alignItems: 'center',
         }}
       >

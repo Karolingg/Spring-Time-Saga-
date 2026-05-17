@@ -21,6 +21,7 @@ import {
 import { createSimulation, evaluateSimulation, getTremorTimeRemaining, isInTremorPhase, stepSimulation, type QuakeScenario, type SimulationResults, type SimulationState } from '@/src/simulation/engine'
 import { edgeKey, getBuildingById, getNode, type FloorModel } from '@/src/simulation/building-model'
 import { createSimulationRun, saveDensityCells, saveSimulationResults } from '@/src/services/simulation.service'
+import { getFriendlyErrorMessage, isRateLimitError } from '@/src/services/rate-limit.service'
 import { computeFireSeverity, getHazardStorageKey, isHazardStorageAvailable, loadHazardPlan, placedHazardToZone, saveHazardPlan, type PlacedHazard } from '@/src/simulation/hazard-placement'
 import {
   getOccupancyRatio,
@@ -235,6 +236,7 @@ export default function AutonomousScienceBuildingPage() {
   const [isPlaying, setIsPlaying] = useState(false)
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
   const [saveMessage, setSaveMessage] = useState('')
+  const [isRunLimitPopupOpen, setIsRunLimitPopupOpen] = useState(false)
   const [savedRunId, setSavedRunId] = useState<string | null>(null)
   const [placedHazards, setPlacedHazards] = useState<PlacedHazard[]>([])
   const [selectedHazardId, setSelectedHazardId] = useState<string | null>(null)
@@ -430,10 +432,13 @@ export default function AutonomousScienceBuildingPage() {
       setSavedRunId(runId)
       setSaveStatus('saved')
       setSaveMessage('Run saved. You can open the analysis page to inspect congestion zones and grid density.')
+      setIsRunLimitPopupOpen(false)
     } catch (error) {
       console.error('Failed to save autonomous run:', error)
+      const friendlyMessage = getFriendlyErrorMessage(error, 'Simulation completed, but saving to analysis failed.')
       setSaveStatus('error')
-      setSaveMessage('Simulation completed, but saving to analysis failed.')
+      setSaveMessage(friendlyMessage)
+      if (isRateLimitError(error)) setIsRunLimitPopupOpen(true)
     }
   }, [disaster, regionId, floorIndex, simulationSpeed])
 
@@ -679,6 +684,7 @@ export default function AutonomousScienceBuildingPage() {
     setSavedRunId(null)
     setSaveStatus('idle')
     setSaveMessage('')
+    setIsRunLimitPopupOpen(false)
     setIsPlaying(true)
   }, [disaster, floor, roomAllocations, effectiveAgentCount, hazardZones, placedHazards, quakeScenario])
 
@@ -696,6 +702,7 @@ export default function AutonomousScienceBuildingPage() {
     setSavedRunId(null)
     setSaveStatus('idle')
     setSaveMessage('')
+    setIsRunLimitPopupOpen(false)
   }, [baseTrace, clearHazards])
 
   if (isLoading) {
@@ -1170,6 +1177,78 @@ export default function AutonomousScienceBuildingPage() {
           </div>
         </div>
       </div>
+
+      {isRunLimitPopupOpen && (
+        <div style={{
+          position: 'fixed',
+          inset: 0,
+          zIndex: 1200,
+          background: 'rgba(15, 23, 42, 0.45)',
+          backdropFilter: 'blur(4px)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '20px',
+        }}>
+          <div style={{
+            width: '100%',
+            maxWidth: '440px',
+            background: '#ffffff',
+            border: '1px solid #e2e8f0',
+            borderRadius: '16px',
+            boxShadow: '0 24px 60px -24px rgba(15, 23, 42, 0.45)',
+            padding: '28px',
+          }}>
+            <div style={{
+              width: '42px',
+              height: '42px',
+              borderRadius: '12px',
+              background: '#fef2f2',
+              color: '#dc2626',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              marginBottom: '16px',
+            }}>
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="10" />
+                <path d="M12 8v5" />
+                <path d="M12 17h.01" />
+              </svg>
+            </div>
+
+            <h2 style={{ margin: '0 0 8px', fontSize: '18px', fontWeight: 700, color: 'var(--text-primary)' }}>
+              Saved run limit reached
+            </h2>
+            <p style={{ margin: '0 0 8px', fontSize: '14px', lineHeight: 1.6, color: 'var(--text-secondary)' }}>
+              You have used all saved autonomous runs for now. Wait a few minutes, then try saving another run.
+            </p>
+            {saveMessage && (
+              <p style={{ margin: '0 0 24px', fontSize: '12px', lineHeight: 1.5, color: '#991b1b' }}>
+                {saveMessage}
+              </p>
+            )}
+
+            <button
+              type="button"
+              onClick={() => setIsRunLimitPopupOpen(false)}
+              style={{
+                width: '100%',
+                padding: '10px 16px',
+                borderRadius: '8px',
+                border: 'none',
+                background: APP_ACCENT_DARK,
+                color: '#ffffff',
+                fontSize: '14px',
+                fontWeight: 700,
+                cursor: 'pointer',
+              }}
+            >
+              Got it
+            </button>
+          </div>
+        </div>
+      )}
 
       <div className="auto-layout">
         <aside className="auto-panel auto-panel--sticky">

@@ -10,6 +10,7 @@ import type {
 } from '@/src/schema/simulation.types'
 import type { RiskLevel, SeverityLevel, SimulationStatus } from '@/src/schema/enums'
 import type { PlacedHazard } from '@/src/simulation/hazard-placement'
+import { GRID_COLS, GRID_ROWS } from '@/src/simulation/spatial-grid'
 import { logAction } from '@/src/services/audit.service'
 
 export interface ReplayInputs {
@@ -23,6 +24,37 @@ export interface ReplayInputs {
 export type ScenarioSeverity = 'minor' | 'moderate' | 'severe'
 
 type Row = Record<string, unknown>
+
+const AGGREGATE_CACHE_MS = 60_000
+const MAX_DENSITY_CELLS_PER_RUN = GRID_COLS * GRID_ROWS
+
+const aggregateCache = new Map<string, { expiresAt: number; value?: unknown; promise?: Promise<unknown> }>()
+
+async function getCachedAggregate<T>(key: string, loader: () => Promise<T>): Promise<T> {
+  const now = Date.now()
+  const cached = aggregateCache.get(key)
+  if (cached && cached.expiresAt > now) {
+    if (cached.value !== undefined) return cached.value as T
+    if (cached.promise) return cached.promise as Promise<T>
+  }
+
+  const promise = loader()
+    .then((value) => {
+      aggregateCache.set(key, { expiresAt: Date.now() + AGGREGATE_CACHE_MS, value })
+      return value
+    })
+    .catch((error) => {
+      aggregateCache.delete(key)
+      throw error
+    })
+
+  aggregateCache.set(key, { expiresAt: now + AGGREGATE_CACHE_MS, promise })
+  return promise
+}
+
+function clearAggregateCache() {
+  aggregateCache.clear()
+}
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -48,7 +80,7 @@ async function ensureProfile(
     .from('profiles')
     .upsert(
       { id: userId, email: email ?? null, display_name: displayName },
-      { onConflict: 'id' },
+      { onConflict: 'id', ignoreDuplicates: true },
     )
 
   if (error) throw new Error(`Failed to ensure profile: ${error.message}`)
@@ -86,7 +118,7 @@ async function insertRunWithFallback(
   for (let attempt = 0; attempt <= OPTIONAL_RUN_COLUMNS.length; attempt++) {
     const { data, error } = await supabase
       .from('simulation_runs')
-      .insert(current)
+      .insert(current as any) // eslint-disable-line @typescript-eslint/no-explicit-any
       .select('id')
       .single()
 
@@ -238,6 +270,7 @@ export async function saveSimulationResults(
     evacuatedCount: results.evacuatedCount,
     evacuationTime: results.evacuationTime,
   })
+  clearAggregateCache()
 }
 
 // ---------------------------------------------------------------------------
@@ -383,30 +416,32 @@ export async function getSimulationHistory(limit: number = 5): Promise<Simulatio
 }
 
 export async function deleteSimulationRun(runId: string): Promise<void> {
-  const { error } = await supabase
-    .from('simulation_runs')
-    .delete()
-    .eq('id', runId)
+  // Generated Supabase types may lag migrations, so keep this RPC call loose.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error } = await (supabase as any).rpc('delete_simulation_run_rate_limited', {
+    p_run_id: runId,
+  })
 
   if (error) throw new Error(error.message)
 
   // Log the action
   await logAction('delete', 'run', runId)
+  clearAggregateCache()
 }
 
 export async function resetAllSimulationData(): Promise<void> {
   const { data: session, error: authError } = await supabase.auth.getUser()
   if (authError || !session.user) throw new Error('Not authenticated')
 
-  const { error } = await supabase
-    .from('simulation_runs')
-    .delete()
-    .eq('user_id', session.user.id)
+  // Generated Supabase types may lag migrations, so keep this RPC call loose.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error } = await (supabase as any).rpc('reset_simulation_data_rate_limited')
 
   if (error) throw new Error(error.message)
 
   // Log the action
   await logAction('reset', 'run', 'all')
+  clearAggregateCache()
 }
 
 export interface AggregateFloorHeatmap {
@@ -425,6 +460,7 @@ export interface AggregateFloorHeatmap {
  * tend to build up on this floor."
  */
 export async function getAggregateFloorHeatmaps(): Promise<AggregateFloorHeatmap[]> {
+  return getCachedAggregate('aggregate-floor-heatmaps', async () => {
   const { data: runs, error: runsError } = await supabase
     .from('simulation_runs')
     .select('id, building_id, floor_index')
@@ -494,6 +530,7 @@ export async function getAggregateFloorHeatmaps(): Promise<AggregateFloorHeatmap
       peakDensity: c.sum / c.count,
     })),
   }))
+  })
 }
 
 export async function getAggregateSimulationStats(): Promise<{
@@ -503,6 +540,7 @@ export async function getAggregateSimulationStats(): Promise<{
   avgBottlenecksPerRun: number
   avgEvacuationTime: number
 }> {
+  return getCachedAggregate('aggregate-simulation-stats', async () => {
   const { data: runs, error: runsError } = await supabase
     .from('simulation_runs')
     .select('id')
@@ -553,6 +591,7 @@ export async function getAggregateSimulationStats(): Promise<{
     avgBottlenecksPerRun,
     avgEvacuationTime,
   }
+  })
 }
 
 export async function getAggregateZoneStats(): Promise<{
@@ -562,6 +601,7 @@ export async function getAggregateZoneStats(): Promise<{
   totalBottlenecks: number
   dominantRiskLevel: RiskLevel
 }[]> {
+  return getCachedAggregate('aggregate-zone-stats', async () => {
   const { data: runs, error: runsError } = await supabase
     .from('simulation_runs')
     .select('id')
@@ -599,6 +639,7 @@ export async function getAggregateZoneStats(): Promise<{
     const dominantRiskLevel = (Object.entries(data.riskCounts).sort((a, b) => b[1] - a[1])[0]?.[0] ?? 'LOW') as RiskLevel
     return { zoneName, avgIntensity, avgAgentCount: Math.round(avgAgentCount), totalBottlenecks: data.bottlenecks, dominantRiskLevel }
   }).sort((a, b) => b.avgIntensity - a.avgIntensity)
+  })
 }
 
 // ---------------------------------------------------------------------------
@@ -705,6 +746,23 @@ export async function updateRunNotes(runId: string, notes: string): Promise<void
 
 export async function saveDensityCells(runId: string, cells: Omit<DensityCell, 'id' | 'runId'>[]): Promise<void> {
   try {
+    if (cells.length > MAX_DENSITY_CELLS_PER_RUN) {
+      console.error(`Rejected density cells for run ${runId}: ${cells.length} exceeds max ${MAX_DENSITY_CELLS_PER_RUN}`)
+      return
+    }
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { count: existingCount, error: countError } = await (supabase as any)
+      .from('density_cells')
+      .select('id', { count: 'exact', head: true })
+      .eq('run_id', runId)
+
+    if (countError) throw new Error(`Failed to check existing density cells: ${countError.message}`)
+    if ((existingCount ?? 0) > 0) {
+      console.warn(`Rejected duplicate density cells save for run ${runId}`)
+      return
+    }
+
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { error: deleteError } = await (supabase as any).from('density_cells').delete().eq('run_id', runId)
     if (deleteError) throw new Error(`Failed to clear density cells: ${deleteError.message}`)

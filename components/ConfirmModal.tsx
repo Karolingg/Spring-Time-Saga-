@@ -4,6 +4,7 @@ interface ConfirmModalProps {
   message: string
   confirmLabel?: string
   confirmColor?: string
+  isConfirming?: boolean
   onConfirm: () => void
   onCancel: () => void
 }
@@ -14,6 +15,7 @@ export function ConfirmModal({
   message,
   confirmLabel = 'Confirm',
   confirmColor = '#ef4444',
+  isConfirming = false,
   onConfirm,
   onCancel,
 }: ConfirmModalProps) {
@@ -41,20 +43,26 @@ export function ConfirmModal({
         <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
           <button
             onClick={onCancel}
+            disabled={isConfirming}
             style={{
               padding: '9px 18px', borderRadius: '8px',
               border: '1px solid var(--border)', background: '#f8fafc',
-              fontSize: '14px', fontWeight: '600', color: 'var(--text-secondary)', cursor: 'pointer',
+              fontSize: '14px', fontWeight: '600', color: 'var(--text-secondary)',
+              cursor: isConfirming ? 'not-allowed' : 'pointer',
+              opacity: isConfirming ? 0.65 : 1,
             }}
           >
             Cancel
           </button>
           <button
             onClick={onConfirm}
+            disabled={isConfirming}
             style={{
               padding: '9px 18px', borderRadius: '8px',
               border: 'none', background: confirmColor,
-              fontSize: '14px', fontWeight: '600', color: '#ffffff', cursor: 'pointer',
+              fontSize: '14px', fontWeight: '600', color: '#ffffff',
+              cursor: isConfirming ? 'not-allowed' : 'pointer',
+              opacity: isConfirming ? 0.75 : 1,
             }}
           >
             {confirmLabel}

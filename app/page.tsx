@@ -7,6 +7,7 @@ import {
   getSimulationHistory,
   getAggregateSimulationStats,
 } from '@/src/services/simulation.service'
+import { getUserProfile } from '@/src/services/user.service'
 import type { SimulationRun } from '@/src/schema/simulation.types'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -61,10 +62,23 @@ function readinessLabel(score: number): { text: string; color: string } {
   return { text: 'No Data', color: '#94a3b8' }
 }
 
-function userName(email?: string | null): string {
+function nameFromEmail(email?: string | null): string {
   if (!email) return 'Operator'
   const local = email.split('@')[0]
   return local.charAt(0).toUpperCase() + local.slice(1)
+}
+
+function userName(displayName: string | null, metadata: Record<string, unknown> | null | undefined, email?: string | null): string {
+  const profileName = displayName?.trim()
+  if (profileName) return profileName
+
+  const metadataFullName = typeof metadata?.full_name === 'string' ? metadata.full_name.trim() : ''
+  if (metadataFullName) return metadataFullName
+
+  const metadataName = typeof metadata?.name === 'string' ? metadata.name.trim() : ''
+  if (metadataName) return metadataName
+
+  return nameFromEmail(email)
 }
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
@@ -73,6 +87,7 @@ export default function DashboardPage() {
   const { user, isAuthenticated, isLoading: isAuthLoading } = useAuth()
   const [stats, setStats] = useState<AggregateStats | null>(null)
   const [recentRuns, setRecentRuns] = useState<SimulationRun[]>([])
+  const [profileName, setProfileName] = useState<{ userId: string; displayName: string | null } | null>(null)
 
   useEffect(() => {
     if (!isAuthLoading && !isAuthenticated) {
@@ -97,6 +112,25 @@ export default function DashboardPage() {
     loadData()
   }, [isAuthenticated])
 
+  useEffect(() => {
+    if (!isAuthenticated || !user?.id) return
+
+    let active = true
+
+    getUserProfile()
+      .then(profile => {
+        if (active) setProfileName({ userId: user.id, displayName: profile?.display_name ?? null })
+      })
+      .catch(err => {
+        console.error('Failed to load user profile:', err)
+        if (active) setProfileName({ userId: user.id, displayName: null })
+      })
+
+    return () => {
+      active = false
+    }
+  }, [isAuthenticated, user?.id])
+
   if (isAuthLoading) {
     return (
       <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg)' }}>
@@ -109,6 +143,7 @@ export default function DashboardPage() {
   const rl = readinessLabel(readiness)
   const statCards = buildStatCards(stats)
   const greeting = getGreeting()
+  const displayName = profileName && profileName.userId === user?.id ? profileName.displayName : null
 
   return (
     <div data-page-shell style={{
@@ -122,7 +157,7 @@ export default function DashboardPage() {
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '32px', gap: '16px', flexWrap: 'wrap' }}>
         <div>
           <h1 style={{ margin: '0 0 4px', fontSize: '26px', fontWeight: '700', color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>
-            {greeting}, {userName(user?.email)}
+            {greeting}, {userName(displayName, user?.user_metadata, user?.email)}
           </h1>
           <p style={{ margin: 0, fontSize: '14px', color: 'var(--text-secondary)' }}>
             Campus evacuation overview &amp; drill analytics
