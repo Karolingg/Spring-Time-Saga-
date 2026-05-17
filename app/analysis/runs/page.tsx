@@ -15,6 +15,7 @@ import { ZoneAnalysisPanel } from '@/components/analysis/ZoneAnalysisPanel'
 import { FeatureContainer } from '@/components/analysis/FeatureContainer'
 import { ConfirmModal } from '@/components/ConfirmModal'
 import { downloadRunCsv } from '@/src/services/csv-export'
+import { getFriendlyErrorMessage } from '@/src/services/rate-limit.service'
 import type { DensityCell, SimulationRun, SimulationZone } from '@/src/schema/simulation.types'
 
 const SECTION_CARD: React.CSSProperties = {
@@ -41,6 +42,8 @@ export default function AnalysisRunsPage() {
   const [isLoadingData, setIsLoadingData] = useState(true)
   const [isConfirmResetOpen, setIsConfirmResetOpen] = useState(false)
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
+  const [actionMessage, setActionMessage] = useState('')
+  const [isActionError, setIsActionError] = useState(false)
 
   useEffect(() => {
     if (!isAuthLoading && !isAuthenticated) {
@@ -92,6 +95,8 @@ export default function AnalysisRunsPage() {
   }
 
   async function handleDeleteRun(runId: string) {
+    setActionMessage('')
+    setIsActionError(false)
     try {
       await deleteSimulationRun(runId)
       const wasCurrentRun = run?.id === runId
@@ -108,12 +113,16 @@ export default function AnalysisRunsPage() {
       }
     } catch (err) {
       console.error('Failed to delete simulation run:', err)
+      setIsActionError(true)
+      setActionMessage(getFriendlyErrorMessage(err, 'Failed to delete simulation run.'))
     } finally {
       setConfirmDeleteId(null)
     }
   }
 
   async function handleResetAll() {
+    setActionMessage('')
+    setIsActionError(false)
     try {
       await resetAllSimulationData()
       setRun(null)
@@ -121,6 +130,8 @@ export default function AnalysisRunsPage() {
       setRunHistory([])
     } catch (err) {
       console.error('Failed to reset simulation data:', err)
+      setIsActionError(true)
+      setActionMessage(getFriendlyErrorMessage(err, 'Failed to reset simulation data.'))
     } finally {
       setIsConfirmResetOpen(false)
     }
@@ -155,6 +166,20 @@ export default function AnalysisRunsPage() {
         onRequestDelete={id => setConfirmDeleteId(id)}
         onRequestReset={() => setIsConfirmResetOpen(true)}
       />
+
+      {actionMessage && (
+        <div style={{
+          marginBottom: '20px',
+          padding: '12px 14px',
+          borderRadius: '10px',
+          background: isActionError ? '#fef2f2' : '#ecfdf5',
+          border: `1px solid ${isActionError ? '#fecaca' : '#bbf7d0'}`,
+          color: isActionError ? '#b91c1c' : '#166534',
+          fontSize: '13px',
+        }}>
+          {actionMessage}
+        </div>
+      )}
 
       {isLoadingData && (
         <div style={{ textAlign: 'center', padding: '60px 0', color: 'var(--text-secondary)', fontSize: '14px' }}>

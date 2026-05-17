@@ -42,6 +42,7 @@ export async function updateUserProfile(displayName: string) {
   const { data: session, error: authError } = await supabase.auth.getUser()
   if (authError || !session.user) throw new Error('Not authenticated')
 
+  // The profile update rate limit is enforced by the profiles trigger.
   const { error } = await supabase
     .from('profiles')
     .update({ display_name: displayName, updated_at: new Date().toISOString() })

@@ -1,13 +1,22 @@
 'use client'
 
 import { useState } from 'react'
+import { GOOGLE_SIGN_IN_COOLDOWN_MS } from '@/src/config/rate-limits'
 import { loginWithGoogle } from '@/src/services/auth.service'
 
 export default function LoginPage() {
   const [isGoogleLoading, setIsGoogleLoading] = useState(false)
   const [errorMessage, setErrorMessage] = useState('')
+  const [lastGoogleAttemptAt, setLastGoogleAttemptAt] = useState(0)
 
   async function handleGoogleSignIn() {
+    const now = Date.now()
+    if (now - lastGoogleAttemptAt < GOOGLE_SIGN_IN_COOLDOWN_MS) {
+      setErrorMessage('Please wait a few seconds before trying Google sign-in again.')
+      return
+    }
+
+    setLastGoogleAttemptAt(now)
     setIsGoogleLoading(true)
     setErrorMessage('')
     try {

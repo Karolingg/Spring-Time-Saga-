@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useAuth } from '@/src/hooks/useAuth'
+import { getFriendlyErrorMessage } from '@/src/services/rate-limit.service'
 import { getUserProfile, updateUserProfile } from '@/src/services/user.service'
 
 type Section = 'profile' | 'security'
@@ -234,7 +235,7 @@ function ProfilePanel({ userEmail }: { userEmail: string }) {
       setMessage('Profile updated successfully.')
     } catch (err) {
       setHasError(true)
-      setMessage((err as Error).message)
+      setMessage(getFriendlyErrorMessage(err, (err as Error).message))
     } finally {
       setSubmitting(false)
     }
