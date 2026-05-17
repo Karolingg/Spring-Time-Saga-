@@ -2,8 +2,14 @@
 
 import { useEffect, useState } from 'react'
 import { useAuth } from '@/src/hooks/useAuth'
+import { useIsMobile } from '@/src/hooks/useIsMobile'
 import { getFriendlyErrorMessage } from '@/src/services/rate-limit.service'
-import { getUserProfile, updateUserProfile } from '@/src/services/user.service'
+import {
+  getUserProfile,
+  updateUserEmail,
+  updateUserPassword,
+  updateUserProfile,
+} from '@/src/services/user.service'
 
 type Section = 'profile' | 'security'
 
@@ -60,8 +66,16 @@ const btnPrimary = (enabled: boolean): React.CSSProperties => ({
 })
 
 const navIcons: Record<Section, React.ReactNode> = {
-  profile: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>,
-  security: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>,
+  profile: (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
+    </svg>
+  ),
+  security: (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+    </svg>
+  ),
 }
 
 export default function SettingsPage() {
@@ -87,7 +101,7 @@ export default function SettingsPage() {
   ]
 
   return (
-    <div style={{ minHeight: '100vh', padding: '88px 40px 56px', maxWidth: '860px', margin: '0 auto' }}>
+    <div style={{ minHeight: '100vh', padding: '88px 24px 56px', maxWidth: '920px', margin: '0 auto' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '24px' }}>
         <div style={{
           width: '44px',
@@ -108,7 +122,12 @@ export default function SettingsPage() {
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '200px 1fr', gap: '20px', alignItems: 'start' }}>
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: isMobile ? '1fr' : '220px 1fr',
+        gap: '20px',
+        alignItems: 'start',
+      }}>
         <div style={{
           background: '#fff',
           border: '1px solid var(--border)',
@@ -136,13 +155,9 @@ export default function SettingsPage() {
               <div style={{ fontSize: '13px', fontWeight: '600', color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                 {email}
               </div>
-              <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Signed in with Google</div>
+              <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Signed in</div>
             </div>
           </div>
-        </>
-      ) : (
-        // ── Desktop: sidebar + content grid ──
-        <div style={{ display: 'grid', gridTemplateColumns: '200px 1fr', gap: '20px', alignItems: 'start' }}>
 
           {nav.map(item => (
             <button key={item.id} onClick={() => setSection(item.id)} style={{
@@ -188,6 +203,7 @@ export default function SettingsPage() {
               Sign out
             </button>
           </div>
+        </div>
 
         <div style={{
           background: '#fff',
@@ -197,16 +213,18 @@ export default function SettingsPage() {
           boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
         }}>
           {section === 'profile' && <ProfilePanel userEmail={email} />}
-          {section === 'security' && <SecurityPanel userEmail={email} onSignOut={handleLogout} />}
+          {section === 'security' && <SecurityPanel userEmail={email} />}
         </div>
-      )}
+      </div>
     </div>
   )
 }
 
 function ProfilePanel({ userEmail }: { userEmail: string }) {
+  const [email, setEmail] = useState(userEmail)
   const [displayName, setDisplayName] = useState('')
   const [initialDisplayName, setInitialDisplayName] = useState('')
+  const [initialEmail, setInitialEmail] = useState(userEmail)
   const [loadingProfile, setLoadingProfile] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [message, setMessage] = useState('')
@@ -218,14 +236,17 @@ function ProfilePanel({ userEmail }: { userEmail: string }) {
         const profileName = profile?.display_name ?? ''
         setDisplayName(profileName)
         setInitialDisplayName(profileName)
+        setEmail(userEmail)
+        setInitialEmail(userEmail)
       })
       .catch(() => {})
       .finally(() => setLoadingProfile(false))
-  }, [])
+  }, [userEmail])
 
   const initial = userEmail.charAt(0).toUpperCase() || '?'
   const trimmedDisplayName = displayName.trim()
-  const hasChanges = trimmedDisplayName !== initialDisplayName
+  const trimmedEmail = email.trim()
+  const hasChanges = trimmedDisplayName !== initialDisplayName || trimmedEmail !== initialEmail
 
   async function save(event: React.FormEvent) {
     event.preventDefault()
@@ -233,10 +254,20 @@ function ProfilePanel({ userEmail }: { userEmail: string }) {
     setMessage('')
     setHasError(false)
     try {
-      await updateUserProfile(trimmedDisplayName)
-      setInitialDisplayName(trimmedDisplayName)
-      setDisplayName(trimmedDisplayName)
-      setMessage('Profile updated successfully.')
+      if (trimmedDisplayName !== initialDisplayName) {
+        await updateUserProfile(trimmedDisplayName)
+        setInitialDisplayName(trimmedDisplayName)
+        setDisplayName(trimmedDisplayName)
+      }
+
+      if (trimmedEmail !== initialEmail) {
+        await updateUserEmail(trimmedEmail)
+        setInitialEmail(trimmedEmail)
+        setEmail(trimmedEmail)
+        setMessage('Check your inbox to confirm the new email.')
+      } else {
+        setMessage('Profile updated successfully.')
+      }
     } catch (err) {
       setHasError(true)
       setMessage(getFriendlyErrorMessage(err, (err as Error).message))
@@ -271,7 +302,7 @@ function ProfilePanel({ userEmail }: { userEmail: string }) {
             {displayName || userEmail}
           </div>
           <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '2px' }}>
-            {displayName ? userEmail : 'Google account'}
+            {displayName ? userEmail : 'Registered account'}
           </div>
         </div>
       </div>
@@ -285,7 +316,7 @@ function ProfilePanel({ userEmail }: { userEmail: string }) {
             onChange={event => setDisplayName(event.target.value)}
             style={inputBase}
             placeholder={loadingProfile ? 'Loading...' : 'Enter your name'}
-            disabled={loadingProfile}
+            disabled={loadingProfile || submitting}
             onFocus={event => event.currentTarget.style.borderColor = '#2db8b0'}
             onBlur={event => event.currentTarget.style.borderColor = '#e2e8f0'}
           />
@@ -293,11 +324,18 @@ function ProfilePanel({ userEmail }: { userEmail: string }) {
 
         <div style={{ marginBottom: '20px' }}>
           <label style={labelStyle}>Email address</label>
-          <div style={{ ...inputBase, color: 'var(--text-secondary)', cursor: 'default' }}>
-            {userEmail || 'No provider email available'}
-          </div>
+          <input
+            type="email"
+            value={email}
+            onChange={event => setEmail(event.target.value)}
+            style={inputBase}
+            required
+            disabled={submitting}
+            onFocus={event => event.currentTarget.style.borderColor = '#2db8b0'}
+            onBlur={event => event.currentTarget.style.borderColor = '#e2e8f0'}
+          />
           <span style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px', display: 'block' }}>
-            Email is managed by your Google account.
+            Changing your email may require confirmation.
           </span>
         </div>
 
@@ -335,13 +373,43 @@ function ProfilePanel({ userEmail }: { userEmail: string }) {
   )
 }
 
-function SecurityPanel({ userEmail, onSignOut }: { userEmail: string; onSignOut: () => Promise<void> }) {
+function SecurityPanel({ userEmail }: { userEmail: string }) {
+  const { handleLogout } = useAuth()
+  const [pw, setPw] = useState('')
+  const [confirm, setConfirm] = useState('')
+  const [submitting, setSubmitting] = useState(false)
+  const [msg, setMsg] = useState('')
+  const [hasError, setHasError] = useState(false)
   const [isSigningOut, setIsSigningOut] = useState(false)
+
+  const mismatch = confirm.length > 0 && pw !== confirm
+  const tooShort = pw.length > 0 && pw.length < 6
+
+  async function save(event: React.FormEvent) {
+    event.preventDefault()
+    setMsg('')
+    setHasError(false)
+    if (pw !== confirm) { setHasError(true); setMsg('Passwords do not match.'); return }
+    if (pw.length < 6) { setHasError(true); setMsg('Use at least 6 characters.'); return }
+
+    setSubmitting(true)
+    try {
+      await updateUserPassword(pw)
+      setMsg('Password updated.')
+      setPw('')
+      setConfirm('')
+    } catch (error) {
+      setHasError(true)
+      setMsg(getFriendlyErrorMessage(error, (error as Error).message))
+    } finally {
+      setSubmitting(false)
+    }
+  }
 
   async function handleSignOut() {
     setIsSigningOut(true)
     try {
-      await onSignOut()
+      await handleLogout()
     } finally {
       setIsSigningOut(false)
     }
@@ -350,7 +418,7 @@ function SecurityPanel({ userEmail, onSignOut }: { userEmail: string; onSignOut:
   return (
     <div>
       <h2 style={sectionTitle}>Security</h2>
-      <p style={sectionDesc}>Your EVACSIM account is protected through Google OAuth.</p>
+      <p style={sectionDesc}>Manage your account security and active session.</p>
 
       <div style={{
         display: 'flex',
@@ -362,31 +430,79 @@ function SecurityPanel({ userEmail, onSignOut }: { userEmail: string; onSignOut:
         border: '1px solid #e2e8f0',
         marginBottom: '20px',
       }}>
-        <svg width="20" height="20" viewBox="0 0 24 24">
-          <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-          <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-          <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
-          <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
-        </svg>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: '13px', fontWeight: '600', color: 'var(--text-primary)' }}>
-            Google account
-          </div>
+          <div style={{ fontSize: '13px', fontWeight: '600', color: 'var(--text-primary)' }}>Signed in as</div>
           <div style={{ fontSize: '12px', color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-            {userEmail || 'Connected through Supabase OAuth'}
+            {userEmail || 'Account'}
           </div>
         </div>
         <div style={{ padding: '4px 8px', borderRadius: '999px', background: '#dcfce7', color: '#15803d', fontSize: '11px', fontWeight: '600' }}>
-          Connected
+          Active
         </div>
       </div>
 
       <h3 style={{ margin: '0 0 8px', fontSize: '14px', fontWeight: '600', color: 'var(--text-primary)' }}>
-        Password and email
+        Change password
       </h3>
-      <p style={{ margin: '0 0 20px', fontSize: '12px', color: 'var(--text-muted)', lineHeight: '1.5' }}>
-        Passwords and provider email changes are managed by Google. EVACSIM only stores your Supabase session and app profile details.
-      </p>
+      <form onSubmit={save}>
+        <div style={{ marginBottom: '16px' }}>
+          <label style={labelStyle}>New password</label>
+          <input
+            type="password"
+            value={pw}
+            onChange={e => setPw(e.target.value)}
+            style={inputBase}
+            required
+            placeholder="At least 6 characters"
+            disabled={submitting}
+            onFocus={e => e.currentTarget.style.borderColor = '#2db8b0'}
+            onBlur={e => e.currentTarget.style.borderColor = '#e2e8f0'}
+          />
+          {tooShort && (
+            <span style={{ display: 'block', marginTop: '4px', fontSize: '12px', color: '#ef4444' }}>
+              Too short - needs 6+ characters
+            </span>
+          )}
+        </div>
+
+        <div style={{ marginBottom: '20px' }}>
+          <label style={labelStyle}>Confirm password</label>
+          <input
+            type="password"
+            value={confirm}
+            onChange={e => setConfirm(e.target.value)}
+            style={{ ...inputBase, borderColor: mismatch ? '#fecaca' : '#e2e8f0' }}
+            required
+            placeholder="Re-enter password"
+            disabled={submitting}
+            onFocus={e => e.currentTarget.style.borderColor = mismatch ? '#ef4444' : '#2db8b0'}
+            onBlur={e => e.currentTarget.style.borderColor = mismatch ? '#fecaca' : '#e2e8f0'}
+          />
+          {mismatch && (
+            <span style={{ display: 'block', marginTop: '4px', fontSize: '12px', color: '#ef4444' }}>
+              Does not match
+            </span>
+          )}
+        </div>
+
+        {msg && (
+          <div style={{
+            marginBottom: '16px',
+            padding: '10px 14px',
+            borderRadius: '8px',
+            fontSize: '13px',
+            background: hasError ? '#fef2f2' : '#f0fdf4',
+            border: `1px solid ${hasError ? '#fecaca' : '#bbf7d0'}`,
+            color: hasError ? '#dc2626' : '#16a34a',
+          }}>
+            {msg}
+          </div>
+        )}
+
+        <button type="submit" disabled={mismatch || tooShort || submitting} style={btnPrimary(!mismatch && !tooShort && !submitting)}>
+          {submitting ? 'Updating...' : 'Update password'}
+        </button>
+      </form>
 
       <hr style={divider} />
 
@@ -396,26 +512,6 @@ function SecurityPanel({ userEmail, onSignOut }: { userEmail: string; onSignOut:
       <p style={{ margin: '0 0 12px', fontSize: '12px', color: 'var(--text-muted)' }}>
         Sign out here to end this browser session.
       </p>
-      <div style={{
-        display: 'flex',
-        alignItems: 'center',
-        gap: '12px',
-        padding: '12px 14px',
-        background: '#f8fafc',
-        borderRadius: '8px',
-        border: '1px solid #e2e8f0',
-        marginBottom: '16px',
-      }}>
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2db8b0" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/>
-        </svg>
-        <div style={{ flex: 1 }}>
-          <div style={{ fontSize: '13px', fontWeight: '500', color: 'var(--text-primary)' }}>Current browser</div>
-          <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Active now</div>
-        </div>
-        <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#22c55e' }} />
-      </div>
-
       <button type="button" onClick={handleSignOut} disabled={isSigningOut} style={btnPrimary(!isSigningOut)}>
         {isSigningOut ? 'Signing out...' : 'Sign out'}
       </button>
