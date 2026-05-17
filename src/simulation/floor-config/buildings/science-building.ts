@@ -1,0 +1,391 @@
+import type { FloorConfig } from '../types'
+import { withDenseGraph } from '../dense-graph'
+
+const SCIENCE_1F: FloorConfig = {
+  viewWidth: 1200,
+  viewHeight: 675,
+  floorLabel: '1st Floor',
+  exits: {
+    E1: { x: 410, y: 52, label: 'E1', desc: 'North Exit \u00B7 Main' },
+    E2: { x: 370, y: 490, label: 'E2', desc: 'SW Exit \u00B7 Left' },
+    E3: { x: 610, y: 490, label: 'E3', desc: 'SE Exit \u00B7 Right' },
+  },
+  startPos: { x: 0, y: 0 },
+  primaryPaths: {
+    E1: [{ x: 490, y: 350 }, { x: 490, y: 295 }, { x: 420, y: 270 }, { x: 410, y: 210 }, { x: 410, y: 120 }, { x: 410, y: 52 }],
+    E2: [{ x: 490, y: 350 }, { x: 490, y: 410 }, { x: 490, y: 455 }, { x: 430, y: 470 }, { x: 370, y: 490 }],
+    E3: [{ x: 490, y: 350 }, { x: 490, y: 410 }, { x: 490, y: 455 }, { x: 550, y: 470 }, { x: 610, y: 490 }],
+  },
+  reroutes: {
+    E1: { to: 'E2', path: [{ x: 410, y: 120 }, { x: 410, y: 210 }, { x: 420, y: 270 }, { x: 490, y: 295 }, { x: 490, y: 350 }, { x: 490, y: 410 }, { x: 490, y: 455 }, { x: 430, y: 470 }, { x: 370, y: 490 }] },
+    E2: { to: 'E3', path: [{ x: 430, y: 470 }, { x: 490, y: 455 }, { x: 550, y: 470 }, { x: 610, y: 490 }] },
+    E3: { to: 'E2', path: [{ x: 550, y: 470 }, { x: 490, y: 455 }, { x: 430, y: 470 }, { x: 370, y: 490 }] },
+  },
+  blockT: { E1: 0.5, E2: 0.5, E3: 0.55 },
+  obstacles: {
+    fire: [
+      { id: 'fire-north', x: 375, y: 40, w: 80, h: 70, type: 'fire', label: 'Fire', blocksExits: ['E1'] },
+      { id: 'smoke-corridor', x: 450, y: 300, w: 90, h: 45, type: 'smoke', label: 'Smoke', blocksExits: [] },
+    ],
+    earthquake: [
+      { id: 'debris-sw-exit', x: 340, y: 470, w: 80, h: 40, type: 'debris', label: 'Debris', blocksExits: ['E2'] },
+      { id: 'debris-corridor', x: 450, y: 280, w: 90, h: 30, type: 'debris', label: 'Structural Damage', blocksExits: [] },
+    ],
+  },
+  efficiency: { E1: 0.92, E2: 0.88, E3: 0.85 },
+  rooms: {
+    corridor: { label: 'Corridor', x: 490, y: 350 },
+    r204: { label: 'Room 204', x: 220, y: 250, corridorEntryNode: 'Left Corridor' },
+    r203: { label: 'Room 203', x: 730, y: 330, corridorEntryNode: 'Near Toilet' },
+    r202: { label: 'Room 202', x: 730, y: 250, corridorEntryNode: 'Near Room 202' },
+    r201: { label: 'Room 201', x: 730, y: 400, corridorEntryNode: 'East Corridor' },
+  },
+  corridorNodes: [
+    { label: 'Left Corridor', x: 364, y: 369, neighbors: ['Near Room 204', 'Near Exit 2'] },
+    { label: 'Near Room 204', x: 364, y: 255, neighbors: ['Left Corridor', 'Upper Corridor'] },
+    { label: 'Upper Corridor', x: 364, y: 173, neighbors: ['Near Room 204', 'Near Stairs', 'Near Exit 1'] },
+    { label: 'Near Stairs', x: 485, y: 173, neighbors: ['Upper Corridor', 'Near Toilet'] },
+    { label: 'Near Toilet', x: 613, y: 173, neighbors: ['Near Stairs', 'Near Room 202'] },
+    { label: 'Near Room 202', x: 613, y: 220, neighbors: ['Near Toilet', 'Near Room 201'] },
+    { label: 'Near Room 201', x: 613, y: 310, neighbors: ['Near Room 202', 'East Corridor'] },
+    { label: 'East Corridor', x: 613, y: 412, neighbors: ['Near Room 201', 'Near Exit 3'] },
+    // Exit-adjacent waypoints. Without these, the labeled corridor graph
+    // never reaches an exit and every agent gets trapped at run start.
+    { label: 'Near Exit 1', x: 410, y: 120, neighbors: ['Upper Corridor', 'E1'] },
+    { label: 'Near Exit 2', x: 410, y: 470, neighbors: ['Left Corridor', 'E2'] },
+    { label: 'Near Exit 3', x: 580, y: 470, neighbors: ['East Corridor', 'E3'] },
+  ],
+}
+
+const SCIENCE_2F: FloorConfig = {
+  viewWidth: 1200,
+  viewHeight: 675,
+  floorLabel: '2nd Floor',
+  exits: {
+    S1: { x: 460, y: 55, label: 'S1', desc: '' },
+    S2: { x: 445, y: 550, label: 'S2', desc: '' },
+    S3: { x: 740, y: 550, label: 'S3', desc: '' },
+    S4: { x: 592, y: 260, label: 'S4', desc: '' },
+  },
+  startPos: { x: 0, y: 0 },
+  primaryPaths: {
+    S1: [{ x: 482, y: 173 }, { x: 490, y: 220 }, { x: 490, y: 266.5 }],
+    S2: [{ x: 412, y: 412 }, { x: 445, y: 412 }, { x: 365, y: 490 }],
+    S3: [{ x: 613, y: 420 }, { x: 613, y: 490 }, { x: 608, y: 520 }],
+  },
+  reroutes: {
+    S1: { to: 'S2', path: [{ x: 482, y: 220 }, { x: 482, y: 300 }, { x: 430, y: 360 }, { x: 365, y: 420 }, { x: 365, y: 490 }, { x: 365, y: 520 }] },
+    S2: { to: 'S3', path: [{ x: 365, y: 490 }, { x: 430, y: 490 }, { x: 490, y: 490 }, { x: 550, y: 490 }, { x: 608, y: 520 }] },
+    S3: { to: 'S2', path: [{ x: 608, y: 520 }, { x: 550, y: 490 }, { x: 490, y: 490 }, { x: 430, y: 490 }, { x: 365, y: 490 }, { x: 365, y: 520 }] },
+  },
+  blockT: { S1: 0.55, S2: 0.5, S3: 0.5 },
+  obstacles: {
+    fire: [
+      { id: 'fire-west-wing', x: 165, y: 235, w: 120, h: 95, type: 'fire', label: 'Electrical Fire', blocksExits: ['S2'] },
+      { id: 'smoke-corridor-east', x: 555, y: 280, w: 80, h: 50, type: 'smoke', label: 'Smoke', blocksExits: ['S3'] },
+      { id: 'smoke-spreading', x: 590, y: 165, w: 60, h: 50, type: 'smoke', label: 'Smoke', blocksExits: [] },
+    ],
+    earthquake: [
+      // Main shock (t=0) — debris falls instantly during the tremor.
+      { id: 'debris-center-stair', x: 440, y: 215, w: 100, h: 45, type: 'debris', label: 'Stairwell Debris', blocksExits: ['S1'] },
+      { id: 'debris-corridor', x: 440, y: 330, w: 100, h: 35, type: 'debris', label: 'Debris', blocksExits: [] },
+      // Aftershock (~t=25s) — secondary stairwell collapse during evacuation.
+      { id: 'debris-se-stair', x: 580, y: 470, w: 70, h: 40, type: 'debris', label: 'Aftershock Debris', blocksExits: ['S3'], appearsAt: 25 },
+    ],
+  },
+  efficiency: { S1: 0.92, S2: 0.85, S3: 0.85 },
+  rooms: {
+    corridor: { label: 'Corridor', x: 490, y: 350 },
+    r204: { label: 'Room 204', x: 412, y: 412, corridorEntryNode: 'Left Corridor' },
+    r203: { label: 'Room 203', x: 770, y: 190, corridorEntryNode: 'Near Toilet' },
+    r202: { label: 'Room 202', x: 770, y: 355, corridorEntryNode: 'Near Room 201' },
+    r201: { label: 'Room 201', x: 770, y: 485, corridorEntryNode: 'East Corridor' },
+  },
+  // `fragile` marks edges eligible for earthquake structural-collapse rolls.
+  // Edges touching 'Near Stairs' (a stairs-kind node) are auto-fragile; the
+  // explicit flags below add the three stairwell-exit approaches (S1/S2/S3)
+  // and the long unsupported East Corridor span.
+  corridorNodes: [
+    { label: 'Left Corridor', x: 445, y: 412, neighbors: ['Near Room 204', { label: 'S2', fragile: true }] },
+    { label: 'Near Room 204', x: 445, y: 255, neighbors: ['Left Corridor', 'Upper Corridor'] },
+    { label: 'Upper Corridor', x: 445, y: 190, neighbors: ['Near Room 204', 'Near Stairs'] },
+    { label: 'Near Stairs', x: 592, y: 190, neighbors: ['Upper Corridor', 'Near Toilet', 'S4'] },
+    { label: 'Near Toilet', x: 740, y: 190, neighbors: ['Near Stairs', 'Near Room 202'] },
+    { label: 'Near Room 202', x: 740, y: 220, neighbors: ['Near Toilet', 'Near Room 201'] },
+    { label: 'Near Room 201', x: 740, y: 355, neighbors: ['Near Room 202', { label: 'East Corridor', fragile: true }] },
+    { label: 'East Corridor', x: 740, y: 485, neighbors: ['Near Room 201', { label: 'S3', fragile: true }] },
+    { label: 'Near Exit 1', x: 590, y: 55, neighbors: ['Near Stairs', { label: 'S1', fragile: true }] },
+  ],
+}
+
+const SCIENCE_3F: FloorConfig = {
+  viewWidth: 1200,
+  viewHeight: 675,
+  floorLabel: '3rd Floor',
+  exits: {
+    S1: { x: 480, y: 70, label: 'E1', desc: 'Test' },
+    S2: { x: 462, y: 540, label: 'E2', desc: '' },
+    S3: { x: 728, y: 540, label: 'E3', desc: '' },
+    S4: { x: 593, y: 260, label: 'E4', desc: '' },
+  },
+  startPos: { x: 0, y: 0 },
+  primaryPaths: {
+    S1: [{ x: 590, y: 190 }, { x: 590, y: 70 }, { x: 480, y: 70 }],
+    S2: [{ x: 590, y: 190 }, { x: 460, y: 190 }, { x: 460, y: 305 }, { x: 460, y: 425 }, { x: 460, y: 540 }, { x: 462, y: 540 }],
+    S3: [{ x: 590, y: 190 }, { x: 730, y: 190 }, { x: 730, y: 322 }, { x: 730, y: 460 }, { x: 728, y: 540 }],
+    S4: [{ x: 590, y: 190 }, { x: 593, y: 260 }],  
+  },
+  reroutes: {
+    S1: { to: 'S2', path: [{ x: 482, y: 220 }, { x: 482, y: 300 }, { x: 430, y: 360 }, { x: 365, y: 420 }, { x: 365, y: 490 }, { x: 365, y: 520 }] },
+    S2: { to: 'S3', path: [{ x: 365, y: 490 }, { x: 430, y: 490 }, { x: 490, y: 490 }, { x: 550, y: 490 }, { x: 608, y: 520 }] },
+    S3: { to: 'S2', path: [{ x: 608, y: 520 }, { x: 550, y: 490 }, { x: 490, y: 490 }, { x: 430, y: 490 }, { x: 365, y: 490 }, { x: 365, y: 520 }] },
+  },
+  blockT: { S1: 0.55, S2: 0.5, S3: 0.5 },
+  obstacles: {
+    fire: [
+      { id: 'fire-west-wing', x: 165, y: 235, w: 120, h: 95, type: 'fire', label: 'Electrical Fire', blocksExits: ['S2'] },
+      { id: 'smoke-corridor-east', x: 555, y: 280, w: 80, h: 50, type: 'smoke', label: 'Smoke', blocksExits: ['S3'] },
+      { id: 'smoke-spreading', x: 590, y: 165, w: 60, h: 50, type: 'smoke', label: 'Smoke', blocksExits: [] },
+    ],
+    earthquake: [
+      // Main shock (t=0) — debris falls instantly during the tremor.
+      { id: 'debris-center-stair', x: 440, y: 215, w: 100, h: 45, type: 'debris', label: 'Stairwell Debris', blocksExits: ['S1'] },
+      { id: 'debris-corridor', x: 440, y: 330, w: 100, h: 35, type: 'debris', label: 'Debris', blocksExits: [] },
+      // Aftershock (~t=25s) — secondary stairwell collapse during evacuation.
+      { id: 'debris-se-stair', x: 580, y: 470, w: 70, h: 40, type: 'debris', label: 'Aftershock Debris', blocksExits: ['S3'], appearsAt: 25 },
+    ],
+  },
+  efficiency: { S1: 0.92, S2: 0.85, S3: 0.85 },
+  rooms: {
+    corridor: { label: 'Corridor', x: 490, y: 350 },
+    r301: { label: 'Room 301', x: 797, y: 480, corridorEntryNode: 'Corridor (301)' },
+    r302: { label: 'Room 302', x: 883, y: 480, corridorEntryNode: 'Corridor (302)' },
+    r303: { label: 'Room 303', x: 797, y: 440, corridorEntryNode: 'Corridor (301)' },
+    r304: { label: 'Room 304', x: 883, y: 440, corridorEntryNode: 'Corridor (302)' },
+    r305: { label: 'Room 305', x: 797, y: 210, corridorEntryNode: 'Corridor (305)' },
+    r306: { label: 'Room 306', x: 883, y: 210, corridorEntryNode: 'Corridor (306)' },
+    r307: { label: 'Room 307', x: 797, y: 170, corridorEntryNode: 'Corridor (305)' },
+    r308: { label: 'Room 308', x: 883, y: 170, corridorEntryNode: 'Corridor (306)' },
+    r309: { label: 'Room 309', x: 395, y: 445, corridorEntryNode: 'Near Room 309' },
+    r310: { label: 'Room 310', x: 312, y: 445, corridorEntryNode: 'Near Room 310' },
+    dcschair: { label: 'DCS Chair', x: 312, y: 320, corridorEntryNode: 'Out DCS Chair' },
+    minilib: { label: 'Mini Library', x: 395, y: 320, corridorEntryNode: 'Out Minilib' },
+    dcs: { label: 'DCS Faculty', x: 430, y: 215, corridorEntryNode: 'Out DCS' },
+
+  },
+  corridorNodes: [
+    { label: 'Near Exit 3', x: 730, y: 460, neighbors: ['Near Room 305'] },
+    { label: 'Corridor (302)', x: 883, y: 460, neighbors: ['Corridor (301)'] },
+    { label: 'Corridor (301)', x: 797, y: 460, neighbors: ['Near Exit 3', 'Corridor (302)'] },
+    { label: 'Corridor (305)', x: 797, y: 190, neighbors: ['Near Toilet', 'Corridor (306)'] },
+    { label: 'Corridor (306)', x: 883, y: 190, neighbors: ['Corridor (305)'] },
+    { label: 'Near Room 305', x: 730, y: 322, neighbors: ['Near Toilet', 'Near Exit 3'] },
+    { label: 'Near Toilet', x: 730, y: 190, neighbors: ['Near Stairs', 'Near Room 305'] },
+    { label: 'DCS Corridor', x: 460, y: 190, neighbors: ['Out DCS', 'Near Stairs'] },
+    { label: 'Near Room 309', x: 395, y: 425, neighbors: ['Near Exit 2', 'Near Room 310'] },
+    { label: 'Near Room 310', x: 312, y: 425, neighbors: ['Near Room 309'] },
+    { label: 'Near Exit 2', x: 460, y: 425, neighbors: ['S2', 'Minilib Corridor', 'Near Room 309'] },
+    { label: 'Out DCS Chair', x: 312, y: 305, neighbors: ['Out Minilib'] },
+    { label: 'Out Minilib', x: 395, y: 305, neighbors: ['Out DCS Chair', 'Minilib Corridor'] },
+    { label: 'Minilib Corridor', x: 460, y: 305, neighbors: ['Near Exit 2', 'Out DCS', 'Out Minilib'] },
+    { label: 'Out DCS', x: 460, y: 215, neighbors: ['Minilib Corridor', 'DCS Corridor'] },
+    { label: 'Near Stairs', x: 593, y: 190, neighbors: ['DCS Corridor', 'Near Toilet', 'S4'] },
+    { label: 'Near Exit 1', x: 593, y: 70, neighbors: ['Near Stairs', 'S1'] },
+  ],
+}
+
+export const SCIENCE_4F: FloorConfig = {
+  viewWidth: 1200,
+  viewHeight: 675,
+  floorLabel: '4th Floor',
+  exits: {
+    S1: { x: 500, y: 70, label: 'S1', desc: '' },
+    S2: { x: 453, y: 525, label: 'S2', desc: '' },
+    S3: { x: 722, y: 525, label: 'S3', desc: '' },
+    S4: { x: 587  , y: 260, label: 'S4', desc: '' },
+  },
+  startPos: { x: 0, y: 0 },
+  primaryPaths: {
+    S1: [{ x: 587, y: 200 }, { x: 587, y: 70 }, { x: 480, y: 70}],
+    S2: [{ x: 365, y: 360 }, { x: 365, y: 420 }, { x: 365, y: 490 }, { x: 365, y: 520 }],
+    S3: [{ x: 613, y: 420 }, { x: 613, y: 490 }, { x: 608, y: 520 }],
+    S4: [{ x: 587, y: 70}, ],
+  },
+  reroutes: {
+  S1: { to: 'S2', path: [{ x: 587, y: 170 }, { x: 482, y: 220 }, { x: 482, y: 300 }, { x: 430, y: 360 }, { x: 365, y: 420 }, { x: 365, y: 490 }, { x: 365, y: 520 }] },
+  S2: { to: 'S3', path: [{ x: 365, y: 490 }, { x: 430, y: 490 }, { x: 490, y: 490 }, { x: 550, y: 490 }, { x: 608, y: 520 }] },
+  S3: { to: 'S2', path: [{ x: 608, y: 520 }, { x: 550, y: 490 }, { x: 490, y: 490 }, { x: 430, y: 490 }, { x: 365, y: 490 }, { x: 365, y: 520 }] },
+  S4: { to: 'S1', path: [{ x: 587, y: 70 }, { x: 587, y: 170 }] },
+  },
+  blockT: { S1: 0.55, S2: 0.5, S3: 0.5 },
+  obstacles: {
+    fire: [
+      { id: 'fire-west-wing', x: 165, y: 235, w: 120, h: 95, type: 'fire', label: 'Electrical Fire', blocksExits: ['S2'] },
+      { id: 'smoke-corridor-east', x: 555, y: 280, w: 80, h: 50, type: 'smoke', label: 'Smoke', blocksExits: ['S3'] },
+      { id: 'smoke-spreading', x: 590, y: 165, w: 60, h: 50, type: 'smoke', label: 'Smoke', blocksExits: [] },
+    ],
+    earthquake: [
+      // Main shock (t=0) — debris falls instantly during the tremor.
+      { id: 'debris-center-stair', x: 440, y: 215, w: 100, h: 45, type: 'debris', label: 'Stairwell Debris', blocksExits: ['S1'] },
+      { id: 'debris-corridor', x: 440, y: 330, w: 100, h: 35, type: 'debris', label: 'Debris', blocksExits: [] },
+      // Aftershock (~t=25s) — secondary stairwell collapse during evacuation.
+      { id: 'debris-se-stair', x: 580, y: 470, w: 70, h: 40, type: 'debris', label: 'Aftershock Debris', blocksExits: ['S3'], appearsAt: 25 },
+    ],
+  },
+  efficiency: { S1: 0.92, S2: 0.85, S3: 0.85 },
+  rooms: {
+    corridor: { label: 'Corridor', x: 490, y: 350 },
+    r401: { label: 'Room 401', x: 750, y: 475, corridorEntryNode: 'Near Exit 3' },
+    r402: { label: 'Room 402', x: 750, y: 415, corridorEntryNode: 'Out 402' },
+    r403: { label: 'Room 403', x: 750, y: 225, corridorEntryNode: 'Out 403' },
+    r404: { label: 'Room 404', x: 750, y: 170, corridorEntryNode: 'Near Toilet' },
+    r405: { label: 'Room 405', x: 425, y: 475, corridorEntryNode: 'Near Exit 2' },
+    r406: { label: 'Room 406', x: 425, y: 415, corridorEntryNode: 'Out 406' },
+    r407: { label: 'Room 407', x: 425, y: 285, corridorEntryNode: 'Out 407' },
+    r408: { label: 'Room 408', x: 425, y: 170, corridorEntryNode: 'Out 408' },
+  },
+  corridorNodes: [
+    { label: 'Near Exit 2', x: 453, y: 475, neighbors: ['Out 406'] },
+    { label: 'Out 406', x: 453, y: 415, neighbors: ['Near Exit 2', 'Out 407'] },
+    { label: 'Out 407', x: 453, y: 285, neighbors: ['Out 406', 'Out 408'] },
+    { label: 'Out 408', x: 453, y: 170, neighbors: ['Out 407', 'Near Stairs'] },
+    { label: 'Near Stairs', x: 587, y: 170, neighbors: ['Out 408', 'Near Toilet', 'Near Exit 1'] },
+    { label: 'Near Toilet', x: 723, y: 170, neighbors: ['Near Stairs', 'Out 403'] },
+    { label: 'Out 403', x: 723, y: 225, neighbors: ['Near Toilet', 'Out 402'] },
+    { label: 'Out 402', x: 723, y: 415, neighbors: ['Out 403', 'Near Exit 3'] },
+    { label: 'Near Exit 3', x: 723, y: 475, neighbors: ['Out 402', 'S3'] },
+    { label: 'Near Exit 1', x: 587, y: 70, neighbors: ['S1', 'Near Stairs'] },
+  ],
+}
+
+export const SCIENCE_5F: FloorConfig = {
+  viewWidth: 1200,
+  viewHeight: 675,
+  floorLabel: '5th Floor',
+  exits: {
+    S1: { x: 500, y: 70, label: 'S1', desc: '' },
+    S2: { x: 453, y: 525, label: 'E2', desc: '' },
+    S3: { x: 722, y: 525, label: 'E3', desc: '' },
+    S4: { x: 587  , y: 260, label: 'E4', desc: '' },
+  },
+  startPos: { x: 0, y: 0 },
+  primaryPaths: {
+    S1: [{ x: 482, y: 173 }, { x: 490, y: 220 }, { x: 490, y: 266.5 }],
+    S2: [{ x: 365, y: 360 }, { x: 365, y: 420 }, { x: 365, y: 490 }, { x: 365, y: 520 }],
+    S3: [{ x: 613, y: 420 }, { x: 613, y: 490 }, { x: 608, y: 520 }],
+    S4: [{ x: 587, y: 200}, ],
+  },
+  reroutes: {
+    S1: { to: 'S2', path: [{ x: 482, y: 220 }, { x: 482, y: 300 }, { x: 430, y: 360 }, { x: 365, y: 420 }, { x: 365, y: 490 }, { x: 365, y: 520 }] },
+    S2: { to: 'S3', path: [{ x: 365, y: 490 }, { x: 430, y: 490 }, { x: 490, y: 490 }, { x: 550, y: 490 }, { x: 608, y: 520 }] },
+    S3: { to: 'S2', path: [{ x: 608, y: 520 }, { x: 550, y: 490 }, { x: 490, y: 490 }, { x: 430, y: 490 }, { x: 365, y: 490 }, { x: 365, y: 520 }] },
+  },
+  blockT: { S1: 0.55, S2: 0.5, S3: 0.5 },
+  obstacles: {
+    fire: [
+      { id: 'fire-west-wing', x: 165, y: 235, w: 120, h: 95, type: 'fire', label: 'Electrical Fire', blocksExits: ['S2'] },
+      { id: 'smoke-corridor-east', x: 555, y: 280, w: 80, h: 50, type: 'smoke', label: 'Smoke', blocksExits: ['S3'] },
+      { id: 'smoke-spreading', x: 590, y: 165, w: 60, h: 50, type: 'smoke', label: 'Smoke', blocksExits: [] },
+    ],
+    earthquake: [
+      // Main shock (t=0) — debris falls instantly during the tremor.
+      { id: 'debris-center-stair', x: 440, y: 215, w: 100, h: 45, type: 'debris', label: 'Stairwell Debris', blocksExits: ['S1'] },
+      { id: 'debris-corridor', x: 440, y: 330, w: 100, h: 35, type: 'debris', label: 'Debris', blocksExits: [] },
+      // Aftershock (~t=25s) — secondary stairwell collapse during evacuation.
+      { id: 'debris-se-stair', x: 580, y: 470, w: 70, h: 40, type: 'debris', label: 'Aftershock Debris', blocksExits: ['S3'], appearsAt: 25 },
+    ],
+  },
+  efficiency: { S1: 0.92, S2: 0.85, S3: 0.85 },
+  rooms: {
+    corridor: { label: 'Corridor', x: 490, y: 350 },
+    r501: { label: 'Room 501', x: 750, y: 475, corridorEntryNode: 'Near Exit 3' },
+    r502: { label: 'Room 502', x: 750, y: 415, corridorEntryNode: 'Out 502' },
+    r503: { label: 'Room 503', x: 750, y: 225, corridorEntryNode: 'Out 503' },
+    r504: { label: 'Room 504', x: 750, y: 170, corridorEntryNode: 'Near Toilet' },
+    r505: { label: 'Room 505', x: 425, y: 385, corridorEntryNode: 'Near Exit 2' },
+  },
+  corridorNodes: [
+    { label: 'Near Exit 2', x: 453, y: 385, neighbors: ['Out 505'] },
+    { label: 'Out 505', x: 453, y: 285, neighbors: ['Near Exit 2', 'Out Exit 1'] },
+    { label: 'Out Exit 1', x: 453, y: 170, neighbors: ['Out 505', 'Near Stairs'] },
+    { label: 'Near Stairs', x: 587, y: 170, neighbors: ['Out Exit 1', 'Near Toilet', 'Near Exit 1'] },
+    { label: 'Near Toilet', x: 723, y: 170, neighbors: ['Near Stairs', 'Out 503'] },
+    { label: 'Out 503', x: 723, y: 225, neighbors: ['Near Toilet', 'Out 502'] },
+    { label: 'Out 502', x: 723, y: 415, neighbors: ['Out 503', 'Near Exit 3'] },
+    { label: 'Near Exit 3', x: 723, y: 475, neighbors: ['Out 502', 'S3'] },
+    { label: 'Near Exit 1', x: 587, y: 70, neighbors: ['Near Stairs'] },
+  ],
+}
+
+export const SCIENCE_6F: FloorConfig = {
+  viewWidth: 1200,
+  viewHeight: 675,
+  floorLabel: '6th Floor',
+  exits: {
+    S1: { x: 480, y: 70, label: 'E1', desc: '' },
+    S2: { x: 453, y: 525, label: 'E2', desc: '' },
+    S3: { x: 722, y: 525, label: 'E3', desc: '' },
+    S4: { x: 587  , y: 260, label: 'E4', desc: '' },
+  },
+  startPos: { x: 0, y: 0 },
+  primaryPaths: {
+    S1: [{ x: 587, y: 175 }, { x: 587, y: 70 }, { x: 480, y: 70 }],
+    S2: [{ x: 587, y: 175 }, { x: 453, y: 175 }, { x: 453, y: 260 }, { x: 453, y: 355 }, { x: 453, y: 475 }, { x: 453, y: 525 }],
+    S3: [{ x: 587, y: 175 }, { x: 723, y: 175 }, { x: 723, y: 225 }, { x: 723, y: 415 }, { x: 723, y: 475 }, { x: 722, y: 525 }],
+    S4: [{ x: 587, y: 175 }, { x: 587, y: 260 }],
+  },
+  reroutes: {
+    S1: { to: 'S2', path: [{ x: 587, y: 175 }, { x: 453, y: 175 }, { x: 453, y: 260 }, { x: 453, y: 355 }, { x: 453, y: 475 }] },
+    S2: { to: 'S3', path: [{ x: 453, y: 475 }, { x: 453, y: 355 }, { x: 453, y: 260 }, { x: 453, y: 175 }, { x: 587, y: 175 }, { x: 723, y: 175 }, { x: 723, y: 225 }, { x: 723, y: 415 }, { x: 723, y: 475 }] },
+    S3: { to: 'S2', path: [{ x: 723, y: 475 }, { x: 723, y: 415 }, { x: 723, y: 225 }, { x: 723, y: 175 }, { x: 587, y: 175 }, { x: 453, y: 175 }, { x: 453, y: 260 }, { x: 453, y: 355 }, { x: 453, y: 475 }] },
+    S4: { to: 'S1', path: [{ x: 587, y: 260 }, { x: 587, y: 175 }, { x: 587, y: 70 }] },
+  },
+  blockT: { S1: 0.55, S2: 0.5, S3: 0.5 },
+  obstacles: {
+    fire: [
+      { id: 'fire-west-wing', x: 165, y: 235, w: 120, h: 95, type: 'fire', label: 'Electrical Fire', blocksExits: ['S2'] },
+      { id: 'smoke-corridor-east', x: 555, y: 280, w: 80, h: 50, type: 'smoke', label: 'Smoke', blocksExits: ['S3'] },
+      { id: 'smoke-spreading', x: 590, y: 165, w: 60, h: 50, type: 'smoke', label: 'Smoke', blocksExits: [] },
+    ],
+    earthquake: [
+      // Main shock (t=0) — debris falls instantly during the tremor.
+      { id: 'debris-center-stair', x: 440, y: 215, w: 100, h: 45, type: 'debris', label: 'Stairwell Debris', blocksExits: ['S1'] },
+      { id: 'debris-corridor', x: 440, y: 330, w: 100, h: 35, type: 'debris', label: 'Debris', blocksExits: [] },
+      // Aftershock (~t=25s) — secondary stairwell collapse during evacuation.
+      { id: 'debris-se-stair', x: 580, y: 470, w: 70, h: 40, type: 'debris', label: 'Aftershock Debris', blocksExits: ['S3'], appearsAt: 25 },
+    ],
+  },
+  efficiency: { S1: 0.92, S2: 0.85, S3: 0.85 },
+  rooms: {
+    corridor: { label: 'Corridor', x: 490, y: 350 },
+    r601: { label: 'Room 601', x: 750, y: 475, corridorEntryNode: 'Near Exit 3' },
+    r602: { label: 'Room 602', x: 750, y: 415, corridorEntryNode: 'Out 602' },
+    r603: { label: 'Room 603', x: 750, y: 225, corridorEntryNode: 'Out 603' },
+    r604: { label: 'Room 604', x: 750, y: 170, corridorEntryNode: 'Near Toilet' },
+    r605: { label: 'Room 605', x: 425, y: 175, corridorEntryNode: 'Out 605' },
+    r606: { label: 'Room 606', x: 425, y: 260, corridorEntryNode: 'Out 606' },
+    r607: { label: 'Room 607', x: 425, y: 355, corridorEntryNode: 'Out 607' },
+    r608: { label: 'Room 608', x: 425, y: 475, corridorEntryNode: 'Near Exit 2' },
+  },
+  corridorNodes: [
+    { label: 'Near Exit 2', x: 453, y: 475, neighbors: ['Out 607', 'S2'] },
+    { label: 'Out 603', x: 723, y: 225, neighbors: ['Near Toilet', 'Out 602'] },
+    { label: 'Out 602', x: 723, y: 415, neighbors: ['Out 603', 'Near Exit 3'] },
+    { label: 'Near Exit 3', x: 723, y: 475, neighbors: ['Out 602', 'S3'] },
+    { label: 'Out 605', x: 453, y: 175, neighbors: ['Out 606', 'Near Stairs'] },
+    { label: 'Out 606', x: 453, y: 260, neighbors: ['Out 605', 'Out 607'] },
+    { label: 'Out 607', x: 453, y: 355, neighbors: ['Near Exit 2', 'Out Exit 1'] },
+    { label: 'Near Stairs', x: 587, y: 175, neighbors: ['Out Exit 1', 'Near Toilet', 'Near Exit 1'] },
+    { label: 'Near Toilet', x: 723, y: 175, neighbors: ['Near Stairs', 'Out 603'] },
+    { label: 'Near Exit 1', x: 587, y: 70, neighbors: ['Near Stairs'] },
+  ],
+}
+
+export const SCIENCE_BUILDING_FLOORS: FloorConfig[] = [
+  SCIENCE_1F,
+  SCIENCE_2F,
+  SCIENCE_3F,
+  SCIENCE_4F,
+  SCIENCE_5F,
+  SCIENCE_6F,
+].map(withDenseGraph)
