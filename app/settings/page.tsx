@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useAuth } from '@/src/hooks/useAuth'
+import { useIsMobile } from '@/src/hooks/useIsMobile'
 import { getFriendlyErrorMessage } from '@/src/services/rate-limit.service'
 import { getUserProfile, updateUserProfile } from '@/src/services/user.service'
 
@@ -86,8 +87,78 @@ export default function SettingsPage() {
     { id: 'security', label: 'Security' },
   ]
 
+  if (isMobile) {
+    return (
+      <div data-page-shell style={{ minHeight: '100vh', padding: '20px 14px 32px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '20px' }}>
+          <div style={{
+            width: '38px',
+            height: '38px',
+            borderRadius: '10px',
+            background: 'rgba(45,184,176,0.1)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#2db8b0" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+            </svg>
+          </div>
+          <div>
+            <h1 style={{ margin: 0, fontSize: '18px', fontWeight: '700', color: 'var(--text-primary)' }}>Settings</h1>
+            <p style={{ margin: 0, fontSize: '12px', color: 'var(--text-secondary)' }}>Manage your account</p>
+          </div>
+        </div>
+
+        {/* Pill tab strip */}
+        <div className="scroll-hide-x" style={{
+          display: 'flex',
+          gap: '8px',
+          overflowX: 'auto',
+          marginBottom: '16px',
+          paddingBottom: '2px',
+        }}>
+          {nav.map(item => (
+            <button key={item.id} onClick={() => setSection(item.id)} style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '8px 14px',
+              border: 'none',
+              borderRadius: '999px',
+              background: section === item.id ? '#2db8b0' : '#f1f5f9',
+              color: section === item.id ? '#fff' : 'var(--text-secondary)',
+              fontSize: '13px',
+              fontWeight: '600',
+              cursor: 'pointer',
+              whiteSpace: 'nowrap',
+              flexShrink: 0,
+              transition: 'background 0.15s, color 0.15s',
+            }}>
+              {navIcons[item.id]}
+              {item.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Content card */}
+        <div style={{
+          background: '#fff',
+          border: '1px solid var(--border)',
+          borderRadius: '12px',
+          padding: '20px 16px',
+          boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
+        }}>
+          {section === 'profile' && <ProfilePanel userEmail={email} />}
+          {section === 'security' && <SecurityPanel userEmail={email} onSignOut={handleLogout} />}
+        </div>
+      </div>
+    )
+  }
+
+  // ── Desktop layout ──
   return (
-    <div style={{ minHeight: '100vh', padding: '88px 40px 56px', maxWidth: '860px', margin: '0 auto' }}>
+    <div data-page-shell style={{ minHeight: '100vh', padding: '88px 40px 56px', maxWidth: '860px', margin: '0 auto' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '24px' }}>
         <div style={{
           width: '44px',
@@ -103,12 +174,13 @@ export default function SettingsPage() {
           </svg>
         </div>
         <div style={{ minWidth: 0 }}>
-          <h1 style={{ margin: '0 0 4px', fontSize: isMobile ? '18px' : '22px', fontWeight: '700', color: 'var(--text-primary)' }}>Settings</h1>
-          <p style={{ margin: 0, fontSize: isMobile ? '12px' : '13px', color: 'var(--text-secondary)' }}>Manage your account and preferences</p>
+          <h1 style={{ margin: '0 0 4px', fontSize: '22px', fontWeight: '700', color: 'var(--text-primary)' }}>Settings</h1>
+          <p style={{ margin: 0, fontSize: '13px', color: 'var(--text-secondary)' }}>Manage your account and preferences</p>
         </div>
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '200px 1fr', gap: '20px', alignItems: 'start' }}>
+        {/* Sidebar nav */}
         <div style={{
           background: '#fff',
           border: '1px solid var(--border)',
@@ -139,10 +211,6 @@ export default function SettingsPage() {
               <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Signed in with Google</div>
             </div>
           </div>
-        </>
-      ) : (
-        // ── Desktop: sidebar + content grid ──
-        <div style={{ display: 'grid', gridTemplateColumns: '200px 1fr', gap: '20px', alignItems: 'start' }}>
 
           {nav.map(item => (
             <button key={item.id} onClick={() => setSection(item.id)} style={{
@@ -188,7 +256,9 @@ export default function SettingsPage() {
               Sign out
             </button>
           </div>
+        </div>
 
+        {/* Content panel */}
         <div style={{
           background: '#fff',
           border: '1px solid var(--border)',
@@ -199,7 +269,7 @@ export default function SettingsPage() {
           {section === 'profile' && <ProfilePanel userEmail={email} />}
           {section === 'security' && <SecurityPanel userEmail={email} onSignOut={handleLogout} />}
         </div>
-      )}
+      </div>
     </div>
   )
 }
