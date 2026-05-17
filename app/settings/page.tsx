@@ -67,6 +67,7 @@ const navIcons: Record<Section, React.ReactNode> = {
 export default function SettingsPage() {
   const { isAuthenticated, isLoading, user, handleLogout } = useAuth()
   const [section, setSection] = useState<Section>('profile')
+  const isMobile = useIsMobile()
 
   if (isLoading) {
     return (
@@ -101,9 +102,9 @@ export default function SettingsPage() {
             <circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
           </svg>
         </div>
-        <div>
-          <h1 style={{ margin: '0 0 4px', fontSize: '22px', fontWeight: '700', color: 'var(--text-primary)' }}>Settings</h1>
-          <p style={{ margin: 0, fontSize: '13px', color: 'var(--text-secondary)' }}>Manage your account and preferences</p>
+        <div style={{ minWidth: 0 }}>
+          <h1 style={{ margin: '0 0 4px', fontSize: isMobile ? '18px' : '22px', fontWeight: '700', color: 'var(--text-primary)' }}>Settings</h1>
+          <p style={{ margin: 0, fontSize: isMobile ? '12px' : '13px', color: 'var(--text-secondary)' }}>Manage your account and preferences</p>
         </div>
       </div>
 
@@ -138,6 +139,10 @@ export default function SettingsPage() {
               <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Signed in with Google</div>
             </div>
           </div>
+        </>
+      ) : (
+        // ── Desktop: sidebar + content grid ──
+        <div style={{ display: 'grid', gridTemplateColumns: '200px 1fr', gap: '20px', alignItems: 'start' }}>
 
           {nav.map(item => (
             <button key={item.id} onClick={() => setSection(item.id)} style={{
@@ -183,7 +188,6 @@ export default function SettingsPage() {
               Sign out
             </button>
           </div>
-        </div>
 
         <div style={{
           background: '#fff',
@@ -195,7 +199,7 @@ export default function SettingsPage() {
           {section === 'profile' && <ProfilePanel userEmail={email} />}
           {section === 'security' && <SecurityPanel userEmail={email} onSignOut={handleLogout} />}
         </div>
-      </div>
+      )}
     </div>
   )
 }

@@ -754,7 +754,7 @@ export default function AutonomousScienceBuildingPage() {
   }
 
   return (
-    <div style={{
+    <div className="auto-page-root" style={{
       minHeight: '100vh',
       padding: '88px 24px 56px',
       // Layered darker-white background — slightly cooler than pure off-white
@@ -770,11 +770,44 @@ export default function AutonomousScienceBuildingPage() {
         }
         .auto-layout {
           display: grid;
-          grid-template-columns: minmax(280px, 320px) minmax(0, 1fr) minmax(300px, 360px);
+          /* Symmetric side panels keep the map visually centered no matter
+             how much content each panel renders — fixes the "right panel
+             feels heavier than the left" imbalance in the previous layout. */
+          grid-template-columns: minmax(300px, 340px) minmax(0, 1fr) minmax(300px, 340px);
           gap: 18px;
           max-width: 1600px;
           margin: 0 auto;
           align-items: start;
+        }
+
+        /* Tablet — collapse to two columns: map on top, side panels below. */
+        @media (max-width: 1100px) {
+          .auto-layout {
+            grid-template-columns: 1fr 1fr;
+            grid-template-areas: "map map" "setup metrics";
+            gap: 14px;
+          }
+          .auto-layout > :nth-child(1) { grid-area: setup; }
+          .auto-layout > :nth-child(2) { grid-area: map; }
+          .auto-layout > :nth-child(3) { grid-area: metrics; }
+        }
+
+        /* Phone — single column, no sticky side panels. */
+        @media (max-width: 720px) {
+          .auto-layout {
+            grid-template-columns: 1fr;
+            grid-template-areas: "map" "setup" "metrics";
+            gap: 12px;
+          }
+          .auto-panel--sticky {
+            position: static;
+          }
+          .auto-page-root {
+            padding: 72px 14px 32px !important;
+          }
+          .auto-panel-section {
+            padding: 14px 16px !important;
+          }
         }
 
         .auto-panel {

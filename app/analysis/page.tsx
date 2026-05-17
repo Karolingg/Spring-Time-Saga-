@@ -36,7 +36,7 @@ export default function AnalysisPage() {
   }
 
   return (
-    <div style={{ minHeight: '100vh', padding: '88px 40px 56px', maxWidth: '900px', margin: '0 auto' }}>
+    <div data-page-shell style={{ minHeight: '100vh', padding: '88px 40px 56px', maxWidth: '900px', margin: '0 auto' }}>
       {/* ── Page header ──────────────────────────────────────── */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '16px' }}>
         <div style={{
