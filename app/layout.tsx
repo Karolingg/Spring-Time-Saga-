@@ -3,6 +3,7 @@ import "../styles/globals.css";
 import "../styles/components.css";
 import "mapbox-gl/dist/mapbox-gl.css";
 import { Providers } from "./providers";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 
 export const dynamic = 'force-dynamic';
 
@@ -22,6 +23,7 @@ export default function RootLayout({
         <Providers>
           {children}
         </Providers>
+        <SpeedInsights />
       </body>
     </html>
   );
