@@ -269,7 +269,6 @@ export default function CompareRunsPage() {
                 title="Key Metrics"
                 subtitle="Side-by-side evacuation statistics with directional delta indicators"
                 accent="#2db8b0"
-                badge="Layer 1"
                 icon={
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M3 3v18h18" />
@@ -285,7 +284,6 @@ export default function CompareRunsPage() {
                 title="Floor Heatmaps"
                 subtitle="Side-by-side crowd density comparison between the two runs"
                 accent="#2db8b0"
-                badge="Layer 2"
                 icon={
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <rect x="3" y="3" width="18" height="18" rx="2" />
@@ -306,7 +304,6 @@ export default function CompareRunsPage() {
                 title="Biggest Zone Shifts"
                 subtitle="Top zones ranked by absolute change in intensity between A and B"
                 accent="#2db8b0"
-                badge="Layer 3"
                 icon={
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M3 6h6" /><path d="M3 12h6" /><path d="M3 18h6" />

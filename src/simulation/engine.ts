@@ -164,7 +164,7 @@ const THREAT_REROUTE_COOLDOWN = 3
  *  immediately replan toward a different exit. The multiplier is greater
  *  than 1 so the agent reacts before they're actually inside the flames,
  *  giving them lead time to redirect to a safer route. */
-const FIRE_DANGER_RADIUS_MULTIPLIER = 2.0
+const FIRE_DANGER_RADIUS_MULTIPLIER = 1.4
 
 /** Seconds an agent commits to the new path after a fire-proximity reroute.
  *  Same purpose as THREAT_REROUTE_COOLDOWN but specifically for the
@@ -846,76 +846,25 @@ function findFireProximityDanger(
   floor: FloorModel,
   state: SimulationState,
 ): { triggered: boolean; excludeExits: Set<string>; forbiddenNodes: Set<string> } {
-  if (agent.state === 'evacuated' || agent.state === 'trapped') {
-    return { triggered: false, excludeExits: new Set(), forbiddenNodes: new Set() }
-  }
+  const empty = { triggered: false, excludeExits: new Set<string>(), forbiddenNodes: new Set<string>() }
+  if (agent.state === 'evacuated' || agent.state === 'trapped') return empty
+  if (!agent.targetExitId) return empty
 
-  // Interpolated position — same formula used elsewhere for proximity checks.
-  const node = getNode(floor, agent.currentNodeId)
-  if (!node) return { triggered: false, excludeExits: new Set(), forbiddenNodes: new Set() }
-  let ax = node.x
-  let ay = node.y
-  if (agent.progress > 0 && agent.pathIndex < agent.path.length - 1) {
-    const next = getNode(floor, agent.path[agent.pathIndex + 1])
-    if (next) {
-      ax = node.x + (next.x - node.x) * agent.progress
-      ay = node.y + (next.y - node.y) * agent.progress
-    }
-  }
+  const targetExit = getNode(floor, agent.targetExitId)
+  if (!targetExit) return empty
 
-  const excludeExits = new Set<string>()
-  const forbiddenNodes = new Set<string>()
-  let triggered = false
-
-  // First pass — determine whether ANY active fire is close enough to
-  // trigger a proximity reroute, and compute exits to ban for this agent.
   for (const h of state.hazards) {
-    if (!h.active) continue
-    if (h.zone.type !== 'fire') continue
-
+    if (!h.active || h.zone.type !== 'fire') continue
     const dangerRadius = h.currentRadius * FIRE_DANGER_RADIUS_MULTIPLIER
-    const dist = Math.hypot(ax - h.zone.x, ay - h.zone.y)
-    if (dist >= dangerRadius) continue
-
-    triggered = true
-    if (agent.targetExitId) {
-      excludeExits.add(agent.targetExitId)
-    }
-  }
-
-  if (!triggered) {
-    return { triggered, excludeExits, forbiddenNodes }
-  }
-
-  // Second pass — for EVERY active fire (not just the one triggering this
-  // reroute), mark every floor node inside its danger ring as forbidden.
-  // The new path must NOT route through any of these, so the agent can
-  // never "go backward through the fire" to reach another exit. Combined
-  // with the start-node exemption in Dijkstra, this lets the agent escape
-  // outward from inside a danger ring but never re-enter one.
-  for (const h of state.hazards) {
-    if (!h.active) continue
-    if (h.zone.type !== 'fire') continue
-    const dangerRadius = h.currentRadius * FIRE_DANGER_RADIUS_MULTIPLIER
-    for (const n of floor.nodes) {
-      if (Math.hypot(n.x - h.zone.x, n.y - h.zone.y) < dangerRadius) {
-        forbiddenNodes.add(n.id)
+    if (Math.hypot(targetExit.x - h.zone.x, targetExit.y - h.zone.y) < dangerRadius) {
+      return {
+        triggered: true,
+        excludeExits: new Set([agent.targetExitId]),
+        forbiddenNodes: new Set(),
       }
     }
   }
-
-  // Additionally — forbid the agent's IMMEDIATELY-PREVIOUS node so the new
-  // path doesn't open with a U-turn back the way they just came. If that
-  // node is the only escape we'll release this constraint via the fallback
-  // in replanAgent; otherwise the agent commits to forward progress.
-  if (agent.history.length >= 2) {
-    const prev = agent.history[agent.history.length - 2]
-    if (prev?.nodeId && prev.nodeId !== agent.currentNodeId) {
-      forbiddenNodes.add(prev.nodeId)
-    }
-  }
-
-  return { triggered, excludeExits, forbiddenNodes }
+  return empty
 }
 
 /** Is the agent's current rendered position inside the radius of an active
@@ -1032,21 +981,19 @@ function updateAgent(
     return
   }
 
-  // Agents stuck in rerouting keep searching until a path is found or they time out.
   if (agent.state === 'rerouting') {
     if (replanAgent(agent, state, floor)) {
       agent.state = 'moving'
       agent.rerouteStallTime = 0
+      if (agent.threatRerouteCooldown <= 0) {
+        agent.threatRerouteCooldown = 2
+      }
     } else {
       agent.rerouteStallTime += dt
-      // If the agent is currently sitting inside an active fire (or similar
-      // hard hazard) and replanning failed, fall back to retreating one node
-      // along their history. The previous node was reachable before the
-      // hazard expanded, so it's the safest immediate destination.
-      if (agent.retreatCooldown <= 0 && agentIsInsideHardHazard(agent, floor, state)) {
+      if (agent.retreatCooldown <= 0 && (agentIsInsideHardHazard(agent, floor, state) || agent.rerouteStallTime >= 2)) {
         retreatOneNode(agent, floor)
         agent.retreatCooldown = 1.2
-      } else if (agent.rerouteStallTime >= 6) {
+      } else if (agent.rerouteStallTime >= 10) {
         agent.state = 'trapped'
       }
     }
@@ -1123,24 +1070,19 @@ function updateAgent(
             agent.progress = 0
           }
         }
-        // Pass excluded exits AND forbidden danger-zone nodes only on a
-        // fire-proximity reroute — for other triggers we want the full
-        // exit set & node graph in case the original target is still the
-        // safest option. The forbidden-nodes ban is what prevents the agent
-        // from rerouting backward through the fire to reach another exit.
-        const isProximityOnly = fireProximityTriggered && !nextHardBlocked && !aheadHardBlocked
-        const replanExcludes = isProximityOnly ? proximityDanger.excludeExits : undefined
-        const replanForbidden = isProximityOnly ? proximityDanger.forbiddenNodes : undefined
-        if (replanAgent(agent, state, floor, replanExcludes, replanForbidden)) {
+        const replanExcludes = fireProximityTriggered ? proximityDanger.excludeExits : undefined
+        if (replanAgent(agent, state, floor, replanExcludes)) {
           agent.state = 'moving'
         }
-        // Predictor / proximity reroutes commit to the new path for a window
-        // — hard-block reroutes don't (their path is actually severed and a
-        // fresh block on the new path must be reacted to immediately).
-        if (fireProximityTriggered && !nextHardBlocked && !aheadHardBlocked) {
+        // Always commit to the new path after a reroute. Without this,
+        // overlapping triggers (hard-block + proximity) left the cooldown
+        // at zero, causing frame-by-frame re-triggering and stuck agents.
+        if (fireProximityTriggered) {
           agent.threatRerouteCooldown = FIRE_DANGER_REROUTE_COOLDOWN
-        } else if (threatTriggered && !nextHardBlocked && !aheadHardBlocked) {
+        } else if (threatTriggered) {
           agent.threatRerouteCooldown = THREAT_REROUTE_COOLDOWN
+        } else {
+          agent.threatRerouteCooldown = Math.max(agent.threatRerouteCooldown, 1.5)
         }
         return
       }

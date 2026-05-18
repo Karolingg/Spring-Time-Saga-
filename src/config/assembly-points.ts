@@ -43,6 +43,14 @@ export const ASSEMBLY_POINTS: AssemblyPoint[] = [
     capacity: 600,
     image: '/floorplans/as-parking.png',
   },
+  {
+    id: 'up-high-open',
+    name: 'UP High Open Area',
+    description: 'Open area outside the UP High building.',
+    position: [10.3220, 123.8995],
+    capacity: 600,
+    image: '/floorplans/up-high-open.png',
+  },
 ]
 
 /** Haversine distance in metres between two [lat, lng] points. */

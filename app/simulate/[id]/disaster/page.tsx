@@ -61,7 +61,7 @@ const AUTONOMOUS_BUILDING_IDS = new Set([
   'admin-building',
   //'asx',
   'management',
-  //'social-sciences',
+  'social-sciences',
 ])
 
 function floorLabel(index: number): string {

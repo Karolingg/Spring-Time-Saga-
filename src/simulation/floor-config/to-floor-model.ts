@@ -313,6 +313,16 @@ const FLOORPLAN_SRC_BY_BUILDING: Record<string, Record<string, string>> = {
     '1st Floor': '/floorplans/Library%201st%20floor.svg',
     '2nd Floor': '/floorplans/Library%202nd%20floor.svg',
   },
+  'as-east-wing': {
+    '1st Floor': '/floorplans/AS%20East%20Wing%201st%20floor.svg',
+    '2nd Floor': '/floorplans/AS%20East%20Wing%202nd%20floor.svg',
+    '3rd Floor': '/floorplans/AS%20East%20Wing%203rd%20floor.svg',
+  },
+  'as-west-wing': {
+    '1st Floor': '/floorplans/AS%20West%20Wing%201st%20floor.svg',
+    '2nd Floor': '/floorplans/AS%20West%20Wing%202nd%20floor.svg',
+    '3rd Floor': '/floorplans/AS%20West%20Wing%203rd%20floor.svg',
+  },
 }
 
 function resolveFloorplanSrc(buildingId: string, floorLabel: string): string {
