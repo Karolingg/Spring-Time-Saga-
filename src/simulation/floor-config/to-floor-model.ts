@@ -307,7 +307,7 @@ const FLOORPLAN_SRC_BY_BUILDING: Record<string, Record<string, string>> = {
   },
   'social-sciences': {
     '1st Floor': '/floorplans/UG%201st%20floor.svg',
-    '2nd Floor': '/floorplans/Ug%202nd%20floor.svg',
+    '2nd Floor': '/floorplans/UG%202nd%20floor.svg',
   },
   'up-cebu-library': {
     '1st Floor': '/floorplans/Library%201st%20floor.svg',
