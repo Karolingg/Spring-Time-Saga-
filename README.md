@@ -19,6 +19,17 @@ npm run dev
 
 Open [http://localhost:3000](http://localhost:3000) in your browser.
 
+## Deployment Origins
+
+EVACSIM does not define custom Next.js CORS middleware because the app has no owned API routes or edge functions. Browser data access goes directly through Supabase, so allowed frontend origins and auth callbacks must be configured in Supabase.
+
+For the current Vercel deployment, configure Supabase Auth URL settings with:
+
+- Site URL: `https://evacsim.vercel.app`
+- Redirect URL: `https://evacsim.vercel.app/auth/callback`
+
+Keep local redirect URLs such as `http://localhost:3000/auth/callback` and `http://127.0.0.1:3000/auth/callback` when developing locally. If a custom domain is added later, add that exact domain and callback URL in Supabase as well.
+
 ## Project Structure
 
 ```
