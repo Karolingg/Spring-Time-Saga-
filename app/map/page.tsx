@@ -126,7 +126,7 @@ const CAMPUS_BUILDINGS: CampusBuilding[] = [
     id: 'as-west-wing',
     name: 'AS West Wing',
     type: 'Academic',
-    bounds: { south: 10.3212, north: 10.3257, west: 123.8984, east: 123.9005 },
+    bounds: { south: 10.3212, north: 10.3258, west: 123.8984, east: 123.9005 },
     center: [10.3252, 123.9000],
     capacity: 200,
     floors: 3,
