@@ -2,6 +2,10 @@
 
 This guide explains how to add floors to an existing building or register a new building. It also calls out the exact code segments to edit.
 
+
+Shortcut to add:
+go to simulate\run\page
+then simulation\buildings\to-floor-models.ts
 ## Quick checklist (existing building)
 
 1. Add the new floorplan SVG under public/floorplans.

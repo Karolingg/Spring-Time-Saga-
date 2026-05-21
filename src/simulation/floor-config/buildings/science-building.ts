@@ -41,14 +41,17 @@ const SCIENCE_1F: FloorConfig = {
     r201: { label: 'Room 201', x: 730, y: 400, corridorEntryNode: 'East Corridor' },
   },
   corridorNodes: [
-    { label: 'Left Corridor', x: 364, y: 369, neighbors: ['Near Room 204'] },
+    { label: 'Left Corridor', x: 364, y: 369, neighbors: ['Near Room 204', 'Near Exit 2'] },
     { label: 'Near Room 204', x: 364, y: 255, neighbors: ['Left Corridor', 'Upper Corridor'] },
-    { label: 'Upper Corridor', x: 364, y: 173, neighbors: ['Near Room 204', 'Near Stairs'] },
+    { label: 'Upper Corridor', x: 364, y: 173, neighbors: ['Near Room 204', 'Near Stairs', 'Near Exit 1'] },
     { label: 'Near Stairs', x: 485, y: 173, neighbors: ['Upper Corridor', 'Near Toilet'] },
     { label: 'Near Toilet', x: 613, y: 173, neighbors: ['Near Stairs', 'Near Room 202'] },
     { label: 'Near Room 202', x: 613, y: 220, neighbors: ['Near Toilet', 'Near Room 201'] },
     { label: 'Near Room 201', x: 613, y: 310, neighbors: ['Near Room 202', 'East Corridor'] },
-    { label: 'East Corridor', x: 613, y: 412, neighbors: ['Near Room 201'] },
+    { label: 'East Corridor', x: 613, y: 412, neighbors: ['Near Room 201', 'Near Exit 3'] },
+    { label: 'Near Exit 1', x: 410, y: 120, neighbors: ['Upper Corridor', 'E1'] },
+    { label: 'Near Exit 2', x: 410, y: 470, neighbors: ['Left Corridor', 'E2'] },
+    { label: 'Near Exit 3', x: 580, y: 470, neighbors: ['East Corridor', 'E3'] },
   ],
 }
 
@@ -96,16 +99,17 @@ const SCIENCE_2F: FloorConfig = {
     r202: { label: 'Room 202', x: 770, y: 355, corridorEntryNode: 'Near Room 201' },
     r201: { label: 'Room 201', x: 770, y: 485, corridorEntryNode: 'East Corridor' },
   },
+
   corridorNodes: [
-    { label: 'Left Corridor', x: 445, y: 412, neighbors: ['Near Room 204', 'S2'] },
+    { label: 'Left Corridor', x: 445, y: 412, neighbors: ['Near Room 204', { label: 'S2', fragile: true }] },
     { label: 'Near Room 204', x: 445, y: 255, neighbors: ['Left Corridor', 'Upper Corridor'] },
     { label: 'Upper Corridor', x: 445, y: 190, neighbors: ['Near Room 204', 'Near Stairs'] },
     { label: 'Near Stairs', x: 592, y: 190, neighbors: ['Upper Corridor', 'Near Toilet', 'S4'] },
     { label: 'Near Toilet', x: 740, y: 190, neighbors: ['Near Stairs', 'Near Room 202'] },
     { label: 'Near Room 202', x: 740, y: 220, neighbors: ['Near Toilet', 'Near Room 201'] },
-    { label: 'Near Room 201', x: 740, y: 355, neighbors: ['Near Room 202', 'East Corridor'] },
-    { label: 'East Corridor', x: 740, y: 485, neighbors: ['Near Room 201', 'S3'] },
-    { label: 'Near Exit 1', x: 590, y: 55, neighbors: ['Near Stairs', 'S1'] },
+    { label: 'Near Room 201', x: 740, y: 355, neighbors: ['Near Room 202', { label: 'East Corridor', fragile: true }] },
+    { label: 'East Corridor', x: 740, y: 485, neighbors: ['Near Room 201', { label: 'S3', fragile: true }] },
+    { label: 'Near Exit 1', x: 590, y: 55, neighbors: ['Near Stairs', { label: 'S1', fragile: true }] },
   ],
 }
 
@@ -165,7 +169,7 @@ const SCIENCE_3F: FloorConfig = {
 
   },
   corridorNodes: [
-    { label: 'Near Exit 3', x: 730, y: 460, neighbors: ['Near Room 305'] },
+    { label: 'Near Exit 3', x: 730, y: 460, neighbors: ['Near Room 305', 'Corridor (301)', 'S3'] },
     { label: 'Corridor (302)', x: 883, y: 460, neighbors: ['Corridor (301)'] },
     { label: 'Corridor (301)', x: 797, y: 460, neighbors: ['Near Exit 3', 'Corridor (302)'] },
     { label: 'Corridor (305)', x: 797, y: 190, neighbors: ['Near Toilet', 'Corridor (306)'] },
@@ -236,11 +240,12 @@ export const SCIENCE_4F: FloorConfig = {
     r408: { label: 'Room 408', x: 425, y: 170, corridorEntryNode: 'Out 408' },
   },
   corridorNodes: [
-    { label: 'Near Exit 2', x: 453, y: 475, neighbors: ['Out 406'] },
+  
+    { label: 'Near Exit 2', x: 453, y: 475, neighbors: ['Out 406', 'S2'] },
     { label: 'Out 406', x: 453, y: 415, neighbors: ['Near Exit 2', 'Out 407'] },
     { label: 'Out 407', x: 453, y: 285, neighbors: ['Out 406', 'Out 408'] },
     { label: 'Out 408', x: 453, y: 170, neighbors: ['Out 407', 'Near Stairs'] },
-    { label: 'Near Stairs', x: 587, y: 170, neighbors: ['Out 408', 'Near Toilet', 'Near Exit 1'] },
+    { label: 'Near Stairs', x: 587, y: 170, neighbors: ['Out 408', 'Near Toilet', 'Near Exit 1', 'S4'] },
     { label: 'Near Toilet', x: 723, y: 170, neighbors: ['Near Stairs', 'Out 403'] },
     { label: 'Out 403', x: 723, y: 225, neighbors: ['Near Toilet', 'Out 402'] },
     { label: 'Out 402', x: 723, y: 415, neighbors: ['Out 403', 'Near Exit 3'] },
@@ -296,15 +301,15 @@ export const SCIENCE_5F: FloorConfig = {
     r505: { label: 'Room 505', x: 425, y: 385, corridorEntryNode: 'Near Exit 2' },
   },
   corridorNodes: [
-    { label: 'Near Exit 2', x: 453, y: 385, neighbors: ['Out 505'] },
+    { label: 'Near Exit 2', x: 453, y: 385, neighbors: ['Out 505', 'S2'] },
     { label: 'Out 505', x: 453, y: 285, neighbors: ['Near Exit 2', 'Out Exit 1'] },
     { label: 'Out Exit 1', x: 453, y: 170, neighbors: ['Out 505', 'Near Stairs'] },
-    { label: 'Near Stairs', x: 587, y: 170, neighbors: ['Out Exit 1', 'Near Toilet', 'Near Exit 1'] },
+    { label: 'Near Stairs', x: 587, y: 170, neighbors: ['Out Exit 1', 'Near Toilet', 'Near Exit 1', 'S4'] },
     { label: 'Near Toilet', x: 723, y: 170, neighbors: ['Near Stairs', 'Out 503'] },
     { label: 'Out 503', x: 723, y: 225, neighbors: ['Near Toilet', 'Out 502'] },
     { label: 'Out 502', x: 723, y: 415, neighbors: ['Out 503', 'Near Exit 3'] },
     { label: 'Near Exit 3', x: 723, y: 475, neighbors: ['Out 502', 'S3'] },
-    { label: 'Near Exit 1', x: 587, y: 70, neighbors: ['Near Stairs'] },
+    { label: 'Near Exit 1', x: 587, y: 70, neighbors: ['Near Stairs', 'S1'] },
   ],
 }
 
@@ -365,10 +370,13 @@ export const SCIENCE_6F: FloorConfig = {
     { label: 'Near Exit 3', x: 723, y: 475, neighbors: ['Out 602', 'S3'] },
     { label: 'Out 605', x: 453, y: 175, neighbors: ['Out 606', 'Near Stairs'] },
     { label: 'Out 606', x: 453, y: 260, neighbors: ['Out 605', 'Out 607'] },
-    { label: 'Out 607', x: 453, y: 355, neighbors: ['Near Exit 2', 'Out Exit 1'] },
-    { label: 'Near Stairs', x: 587, y: 175, neighbors: ['Out Exit 1', 'Near Toilet', 'Near Exit 1'] },
+    { label: 'Out 607', x: 453, y: 355, neighbors: ['Near Exit 2', 'Out 606'] },
+    // Same connectivity-fix pattern as 5F — 'Near Stairs' now exposes the
+    // mid-building S4 stairwell exit and 'Near Exit 1' wires up S1 so all
+    // four exits are discoverable from the corridor graph.
+    { label: 'Near Stairs', x: 587, y: 175, neighbors: ['Out 605', 'Near Toilet', 'Near Exit 1', 'S4'] },
     { label: 'Near Toilet', x: 723, y: 175, neighbors: ['Near Stairs', 'Out 603'] },
-    { label: 'Near Exit 1', x: 587, y: 70, neighbors: ['Near Stairs'] },
+    { label: 'Near Exit 1', x: 587, y: 70, neighbors: ['Near Stairs', 'S1'] },
   ],
 }
 

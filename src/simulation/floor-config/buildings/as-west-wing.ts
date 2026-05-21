@@ -1,96 +1,243 @@
 import type { FloorConfig } from '../types'
 import { withDenseGraph } from '../dense-graph'
 
-function createGroundFloorConfig(floorLabel: string): FloorConfig {
-  return {
-    viewWidth: 1200,
-    viewHeight: 675,
-    floorLabel,
-    exits: {
-      E1: { x: 410, y: 52, label: 'E1', desc: 'North Exit - Main' },
-      E2: { x: 365, y: 520, label: 'E2', desc: 'Southwest Exit - Left' },
-      E3: { x: 605, y: 520, label: 'E3', desc: 'Southeast Exit - Right' },
-    },
-    startPos: { x: 490, y: 350 },
-    primaryPaths: {
-      E1: [{ x: 490, y: 350 }, { x: 490, y: 295 }, { x: 420, y: 270 }, { x: 410, y: 210 }, { x: 410, y: 120 }, { x: 410, y: 52 }],
-      E2: [{ x: 490, y: 350 }, { x: 490, y: 410 }, { x: 490, y: 455 }, { x: 430, y: 470 }, { x: 370, y: 490 }],
-      E3: [{ x: 490, y: 350 }, { x: 490, y: 410 }, { x: 490, y: 455 }, { x: 550, y: 470 }, { x: 610, y: 490 }],
-    },
-    reroutes: {
-      E1: { to: 'E2', path: [{ x: 410, y: 120 }, { x: 410, y: 210 }, { x: 420, y: 270 }, { x: 490, y: 295 }, { x: 490, y: 350 }, { x: 490, y: 410 }, { x: 490, y: 455 }, { x: 430, y: 470 }, { x: 370, y: 490 }] },
-      E2: { to: 'E3', path: [{ x: 430, y: 470 }, { x: 490, y: 455 }, { x: 550, y: 470 }, { x: 610, y: 490 }] },
-      E3: { to: 'E2', path: [{ x: 550, y: 470 }, { x: 490, y: 455 }, { x: 430, y: 470 }, { x: 370, y: 490 }] },
-    },
-    blockT: { E1: 0.5, E2: 0.5, E3: 0.55 },
-    obstacles: {
-      fire: [
-        { id: 'fire-north', x: 375, y: 40, w: 80, h: 70, type: 'fire', label: 'Fire', blocksExits: ['E1'] },
-        { id: 'smoke-corridor', x: 450, y: 300, w: 90, h: 45, type: 'smoke', label: 'Smoke', blocksExits: [] },
-      ],
-      earthquake: [
-        { id: 'debris-sw', x: 340, y: 470, w: 80, h: 40, type: 'debris', label: 'Debris', blocksExits: ['E2'] },
-        { id: 'debris-corridor', x: 450, y: 280, w: 90, h: 30, type: 'debris', label: 'Structural Damage', blocksExits: [] },
-      ],
-    },
-    efficiency: { E1: 0.92, E2: 0.88, E3: 0.85 },
-    rooms: {
-      corridor: { label: 'Corridor', x: 490, y: 350 },
-      r204: { label: 'Room 204', x: 220, y: 250 },
-      r203: { label: 'Room 203', x: 730, y: 300 },
-      r202: { label: 'Room 202', x: 720, y: 280 },
-      r201: { label: 'Room 201', x: 730, y: 400 },
-    },
-  }
+const AS_WEST_WING_1F: FloorConfig = {
+  viewWidth: 1200,
+  viewHeight: 675,
+  floorLabel: '1st Floor',
+  exits: {
+    E1: { x: 370, y: 515, label: 'E1', desc: '' },
+  },
+  startPos: { x: 0, y: 0 },
+  primaryPaths: {
+    E1: [{ x: 530, y: 255 }, { x: 530, y: 350 }, { x: 530, y: 440 }, { x: 530, y: 515 }, { x: 370, y: 515 }],
+  },
+  reroutes: {},
+  blockT: { E1: 0.5 },
+  obstacles: {
+    fire: [
+      { id: 'fire-corridor', x: 480, y: 320, w: 90, h: 50, type: 'smoke', label: 'Smoke', blocksExits: [] },
+    ],
+    earthquake: [
+      { id: 'debris-corridor', x: 480, y: 320, w: 90, h: 30, type: 'debris', label: 'Structural Damage', blocksExits: [] },
+    ],
+  },
+  efficiency: { E1: 0.9 },
+  rooms: {
+    corridor: { label: 'Corridor', x: 530, y: 350 },
+    as150: { label: 'AS 150', x: 895, y: 320, corridorEntryNode: '' },
+    as151: { label: 'AS 151', x: 1030, y: 320, corridorEntryNode: '' },
+    as152: { label: 'AS 152', x: 1030, y: 200, corridorEntryNode: '' },
+    as160: { label: 'AS 160', x: 373, y: 280, corridorEntryNode: '' },
+    as161: { label: 'AS 161', x: 430, y: 235, corridorEntryNode: '' },
+    as162: { label: 'AS 162', x: 245, y: 200, corridorEntryNode: '' },
+    as164: { label: 'AS 164', x: 295, y: 310, corridorEntryNode: '' },
+    as165: { label: 'AS 165', x: 160, y: 310, corridorEntryNode: '' },
+    ugnayan: { label: 'Ugnayan sa Pahinungod Office', x: 895, y: 220, corridorEntryNode: '' },
+    scr: { label: 'Student Council Room', x: 765, y: 220, corridorEntryNode: '' },
+    tugani: { label: 'Tug-Ani', x: 620, y: 350, corridorEntryNode: '' },
+  },
+  corridorNodes: [
+    { label: '150 Entry',     x: 895, y: 320, neighbors: ['150 Exit', '150 Entrance'] },
+    { label: '150 Exit',     x: 855, y: 280, neighbors: ['Out Ugnayan'] },
+    { label: '150 Entrance',     x: 937, y: 280, neighbors: ['Out AS 150'] },
+    { label: '151 Entry',     x: 1030, y: 320, neighbors: ['151 Exit', '151 Entrance'] },
+    { label: '151 Exit',     x: 985, y: 280, neighbors: ['151 Entry', 'Out AS 152'] },
+    { label: '151 Entrance',     x: 1070, y: 280, neighbors: ['Out AS 151'] },
+    { label: '152 Entry',     x: 1030, y: 200, neighbors: ['152 Exit', '152 Entrance'] }, 
+    { label: '152 Exit',     x: 985, y: 235, neighbors: ['152 Entry', 'Out AS 152'] },
+    { label: '152 Entrance',     x: 1070, y: 235, neighbors: ['152 Entry', 'Out AS 160'] },
+    { label: 'Ugnayan Entry', x: 895, y: 220, neighbors: ['Out AS 150'] },
+    { label: 'SCR Entry',     x: 765, y: 220, neighbors: ['Out Student Council Room'] },
+
+    
+    { label: 'Out Ugnayan',            x: 855, y: 255, neighbors: ['Out AS 150', 'Out AS 163'] },
+    { label: 'Out AS 150',             x: 895, y: 255, neighbors: [ 'Out Ugnayan', 'Out AS 163'] },
+    { label: 'Out AS 152',             x: 980, y: 255, neighbors: ['Out AS 151', 'Out AS 150'] },
+    { label: 'Out AS 151',             x: 1030, y: 255, neighbors: [ '152 Entrance'] },
+    { label: 'Out Student Council Room', x: 765, y: 255, neighbors: ['SCR Entry', 'Out Ugnayan', 'Central Corridor'] },
+
+    { label: '162 Entry', x: 245, y: 200, neighbors: ['162 Exit', '162 Entrance'] },
+    { label: '162 Exit',  x: 162, y: 235, neighbors: ['162 Entry', 'Out AS 165'] },
+    { label: '162 Entrance', x: 317, y: 235, neighbors: ['162 Entry', 'Out AS 160'] },
+    { label: '165 Entry', x: 160, y: 310, neighbors: ['165 Exit', '165 Entrance'] },
+    { label: '165 Exit',  x: 120, y: 280, neighbors: ['165 Entry', 'Out AS 165'] },
+    { label: '165 Entrance', x: 205, y: 280, neighbors: ['165 Entry', 'Out AS 162'] },
+    { label: '164 Entry', x: 295, y: 310, neighbors: ['164 Exit', '164 Entrance'] },
+    { label: '164 Exit',  x: 255, y: 280, neighbors: ['164 Entry', 'Out AS 164'] },
+    { label: '164 Entrance', x: 337, y: 280, neighbors: ['164 Entry', 'Out AS 160'] },
+    { label: '160 Entry', x: 373, y: 280, neighbors: ['160 Exit', 'Out AS 160'] },
+    { label: '161 Entry', x: 430, y: 235, neighbors: ['161 Exit', 'Out AS 161'] },
+
+    { label: 'Out AS 165', x: 160, y: 255, neighbors: ['Out AS 162'] },
+    { label: 'Out AS 162', x: 245, y: 255, neighbors: ['Out AS 165', 'Out AS 164'] },
+    { label: 'Out AS 164', x: 295, y: 255, neighbors: ['Out AS 162', 'Out AS 160'] },
+    { label: 'Out AS 160', x: 373, y: 255, neighbors: ['Out AS 164', 'Out AS 161'] },
+    { label: 'Out AS 161', x: 430, y: 255, neighbors: ['Out AS 160', 'Central Corridor'] },
+
+    { label: 'Central Corridor',  x: 530, y: 255, neighbors: ['Out AS 161', 'Out Student Council Room', 'Out Tug-Ani'] },
+    { label: 'Tug-Ani Entry',     x: 620, y: 350, neighbors: ['Out Tug-Ani'] },
+    { label: 'Out Tug-Ani',       x: 530, y: 350, neighbors: ['Central Corridor', 'Tug-Ani Entry', 'Out AS West Wing'] },
+    { label: 'Out AS West Wing',  x: 530, y: 440, neighbors: ['Out Tug-Ani', 'Near Exit 1'] },
+    { label: 'Near Exit 1',       x: 530, y: 515, neighbors: ['Out AS West Wing', 'E1'] },
+  ],
 }
 
-function createUpperFloorConfig(floorLabel: string): FloorConfig {
-  return {
-    viewWidth: 1200,
-    viewHeight: 675,
-    floorLabel,
-    exits: {
-      S1: { x: 490, y: 230, label: 'S1', desc: 'Center Stairs - Down' },
-      S2: { x: 370, y: 490, label: 'S2', desc: 'Southwest Stairs - Down' },
-      S3: { x: 610, y: 490, label: 'S3', desc: 'Southeast Stairs - Down' },
-    },
-    startPos: { x: 490, y: 350 },
-    primaryPaths: {
-      S1: [{ x: 490, y: 350 }, { x: 490, y: 295 }, { x: 420, y: 270 }, { x: 420, y: 240 }, { x: 490, y: 230 }],
-      S2: [{ x: 490, y: 350 }, { x: 490, y: 410 }, { x: 490, y: 455 }, { x: 430, y: 470 }, { x: 370, y: 490 }],
-      S3: [{ x: 490, y: 350 }, { x: 490, y: 410 }, { x: 490, y: 455 }, { x: 550, y: 470 }, { x: 610, y: 490 }],
-    },
-    reroutes: {
-      S1: { to: 'S2', path: [{ x: 420, y: 240 }, { x: 420, y: 270 }, { x: 490, y: 295 }, { x: 490, y: 350 }, { x: 490, y: 410 }, { x: 490, y: 455 }, { x: 430, y: 470 }, { x: 370, y: 490 }] },
-      S2: { to: 'S3', path: [{ x: 430, y: 470 }, { x: 490, y: 455 }, { x: 550, y: 470 }, { x: 610, y: 490 }] },
-      S3: { to: 'S2', path: [{ x: 550, y: 470 }, { x: 490, y: 455 }, { x: 430, y: 470 }, { x: 370, y: 490 }] },
-    },
-    blockT: { S1: 0.55, S2: 0.5, S3: 0.5 },
-    obstacles: {
-      fire: [
-        { id: 'fire-west-wing', x: 165, y: 235, w: 120, h: 95, type: 'fire', label: 'Electrical Fire', blocksExits: ['S2'] },
-        { id: 'smoke-corridor', x: 555, y: 280, w: 80, h: 50, type: 'smoke', label: 'Smoke', blocksExits: ['S3'] },
-      ],
-      earthquake: [
-        { id: 'debris-center', x: 440, y: 215, w: 100, h: 45, type: 'debris', label: 'Stairwell Debris', blocksExits: ['S1'] },
-        { id: 'debris-se', x: 580, y: 470, w: 70, h: 40, type: 'debris', label: 'Debris', blocksExits: ['S3'] },
-      ],
-    },
-    efficiency: { S1: 0.92, S2: 0.85, S3: 0.85 },
-    rooms: {
-      corridor: { label: 'Corridor', x: 490, y: 350 },
-      r204: { label: 'Room 204', x: 220, y: 250 },
-      r203: { label: 'Room 203', x: 730, y: 300 },
-      r202: { label: 'Room 202', x: 720, y: 280 },
-      r201: { label: 'Room 201', x: 730, y: 400 },
-    },
-  }
+const AS_WEST_WING_2F: FloorConfig = {
+  viewWidth: 1200,
+  viewHeight: 675,
+  floorLabel: '2nd Floor',
+  exits: {
+    E1: { x: 523, y: 205, label: 'E1', desc: '' },
+    E2: { x: 68, y: 300, label: 'E2', desc: '' },
+    E3: { x: 68, y: 375, label: 'E3', desc: '' },
+    E4: { x: 1132, y: 300, label: 'E4', desc: '' },
+    E5: { x: 1132, y: 375, label: 'E5', desc: '' },
+  },
+  startPos: { x: 0, y: 0 },
+  primaryPaths: {
+    E1: [{ x: 523, y: 335 }, { x: 523, y: 300 }, { x: 523, y: 205 }],
+    E2: [{ x: 523, y: 335 }, { x: 68, y: 335 }, { x: 68, y: 300 }],
+    E3: [{ x: 523, y: 335 }, { x: 68, y: 335 }, { x: 68, y: 375 }],
+    E4: [{ x: 523, y: 335 }, { x: 1132, y: 335 }, { x: 1132, y: 300 }],
+    E5: [{ x: 523, y: 335 }, { x: 1132, y: 335 }, { x: 1132, y: 375 }],
+  },
+  reroutes: {},
+  blockT: { E1: 0.5, E2: 0.5, E3: 0.55, E4: 0.5, E5: 0.55 },
+  obstacles: {
+    fire: [
+      { id: 'smoke-corridor', x: 450, y: 320, w: 90, h: 30, type: 'smoke', label: 'Smoke', blocksExits: [] },
+    ],
+    earthquake: [
+      { id: 'debris-corridor', x: 450, y: 320, w: 90, h: 30, type: 'debris', label: 'Structural Damage', blocksExits: [] },
+    ],
+  },
+  efficiency: { E1: 0.92, E2: 0.88, E3: 0.85, E4: 0.88, E5: 0.85 },
+  rooms: {
+    corridor: { label: 'Corridor', x: 523, y: 335 },
+    as245: { label: 'AS 245', x: 470, y: 300, corridorEntryNode: '' },
+    as246: { label: 'AS 246', x: 633, y: 300, corridorEntryNode: '' },
+    as247: { label: 'AS 247', x: 744, y: 360, corridorEntryNode: '' },
+    as248: { label: 'AS 248', x: 830, y: 360, corridorEntryNode: '' },
+    as249: { label: 'AS 249', x: 943, y: 360, corridorEntryNode: '' },
+    as250: { label: 'AS 250', x: 1038, y: 360, corridorEntryNode: '' },
+    as259: { label: 'AS 259', x: 155, y: 390, corridorEntryNode: '' },
+    as260: { label: 'AS 260', x: 581, y: 350, corridorEntryNode: '' },
+    as261: { label: 'AS 261', x: 523, y: 360, corridorEntryNode: '' },
+    gdo: { label: 'Gender & Development Office', x: 735, y: 300, corridorEntryNode: '' },
+    oar: { label: 'Office of Alumni Relations', x: 427, y: 310, corridorEntryNode: '' },
+    clco: { label: 'Cebuano Language & Culture Office', x: 225, y: 280, corridorEntryNode: '' },
+    nstp: { label: 'NSTP Office', x: 290, y: 380, corridorEntryNode: '' },
+    research: { label: 'Research Ethics Committee Room', x: 970, y: 280, corridorEntryNode: '' },
+    iskultura: { label: 'Iskultura Office', x: 370, y: 355, corridorEntryNode: '' },
+  },
+  corridorNodes: [
+    { label: 'Central Corridor', x: 523, y: 300, neighbors: ['Out OAR', 'Out 261', 'E1'] },
+
+    { label: 'Out OAR',         x: 427, y: 335, neighbors: ['Out 261', 'Out Iskultura Office', 'Central Corridor'] },
+    { label: 'Out 261',         x: 523, y: 335, neighbors: ['Central Corridor', 'Out OAR', 'Out 247'] },
+    { label: 'Out 247',         x: 744, y: 335, neighbors: ['Out 261', 'Out 248'] },
+    { label: 'Out 248',         x: 830, y: 335, neighbors: ['Out 247', 'Out 249', 'Research Entrance'] },
+    { label: 'Out 249',         x: 943, y: 335, neighbors: ['Out 248', 'Out 250'] },
+    { label: 'Out 250',         x: 1038, y: 335, neighbors: ['Out 249', 'Research Exit', 'Near E4 & E5'] },
+
+    { label: 'Out Iskultura Office', x: 370, y: 335, neighbors: ['Out OAR', 'Out NSTP Office'] },
+    { label: 'Out NSTP Office',      x: 295, y: 335, neighbors: ['Out Iskultura Office', '259 Entrance', 'CLCO Entrance', 'Out 259'] },
+    { label: 'CLCO Entry',           x: 225, y: 280, neighbors: ['CLCO Exit', 'CLCO Entrance'] },
+    { label: 'CLCO Exit',            x: 155, y: 310, neighbors: ['CLCO Entry', 'Out 259'] },
+    { label: 'CLCO Entrance',        x: 293, y: 310, neighbors: ['CLCO Entry', 'Out NSTP Office'] },
+    { label: '259 Entry',            x: 155, y: 390, neighbors: ['259 Exit', '259 Entrance'] },
+    { label: '259 Exit',             x: 112, y: 355, neighbors: ['259 Entry', 'Out 259', 'Near E2 & E3'] },
+    { label: '259 Entrance',         x: 200, y: 355, neighbors: ['259 Entry', 'Out 259', 'Out NSTP Office'] },
+    { label: 'NSTP Office Entry',    x: 290, y: 380, neighbors: ['NTSP Office Exit', 'NSTP Office Entrance'] },
+    { label: 'NSTP Office Exit',     x: 250, y: 355, neighbors: ['NSTP Office Entry', 'Out 259', 'Out NSTP Office'] },
+    { label: 'NSTP Office Entrance', x: 333, y: 355, neighbors: ['NSTP Office Entry', 'Out Iskultura Office', 'Out NSTP Office'] },
+    { label: 'Out 259',              x: 155, y: 335, neighbors: ['259 Exit', '259 Entrance', 'CLCO Exit', 'Near E2 & E3'] },
+
+    { label: 'Research Entry',    x: 970, y: 280, neighbors: ['Research Exit', 'Research Entrance'] },
+    { label: 'Research Exit',     x: 1042, y: 310, neighbors: ['Research Entry', 'Out 250'] },
+    { label: 'Research Entrance', x: 903, y: 310, neighbors: ['Research Entry', 'Out 248'] },
+ 
+    { label: 'Near E2 & E3', x: 68, y: 335, neighbors: ['Out 259', '259 Exit', 'E2', 'E3'] },
+    { label: 'Near E4 & E5', x: 1132, y: 335, neighbors: ['Out 250', 'E4', 'E5'] },
+  ],
 }
 
-const AS_WEST_WING_1F: FloorConfig = createGroundFloorConfig('1st Floor')
-const AS_WEST_WING_2F: FloorConfig = createUpperFloorConfig('2nd Floor')
+const AS_WEST_WING_3F: FloorConfig = {
+  viewWidth: 1200,
+  viewHeight: 675,
+  floorLabel: '3rd Floor',
+  exits: {
+    E1: { x: 523, y: 205, label: 'E1', desc: '' },
+    E2: { x: 68, y: 300, label: 'E2', desc: '' },
+    E3: { x: 68, y: 375, label: 'E3', desc: '' },
+    E4: { x: 1132, y: 300, label: 'E4', desc: '' },
+    E5: { x: 1132, y: 375, label: 'E5', desc: '' },
+  },
+  startPos: { x: 0, y: 0 },
+  primaryPaths: {
+    E1: [{ x: 523, y: 335 }, { x: 523, y: 300 }, { x: 523, y: 205 }],
+    E2: [{ x: 523, y: 335 }, { x: 68, y: 335 }, { x: 68, y: 300 }],
+    E3: [{ x: 523, y: 335 }, { x: 68, y: 335 }, { x: 68, y: 375 }],
+    E4: [{ x: 523, y: 335 }, { x: 1132, y: 335 }, { x: 1132, y: 300 }],
+    E5: [{ x: 523, y: 335 }, { x: 1132, y: 335 }, { x: 1132, y: 375 }],
+  },
+  reroutes: {},
+  blockT: { E1: 0.5, E2: 0.5, E3: 0.55, E4: 0.5, E5: 0.55 },
+  obstacles: {
+    fire: [
+      { id: 'smoke-corridor', x: 450, y: 320, w: 90, h: 30, type: 'smoke', label: 'Smoke', blocksExits: [] },
+    ],
+    earthquake: [
+      { id: 'debris-corridor', x: 450, y: 320, w: 90, h: 30, type: 'debris', label: 'Structural Damage', blocksExits: [] },
+    ],
+  },
+  efficiency: { E1: 0.92, E2: 0.88, E3: 0.85, E4: 0.88, E5: 0.85 },
+  rooms: {
+    corridor: { label: 'Corridor', x: 523, y: 335 },
+    r01_02: { label: 'R01 & R02', x: 155, y: 390, corridorEntryNode: '' },
+    r03: { label: 'R03', x: 155, y: 280, corridorEntryNode: '' },
+    r04: { label: 'R04', x: 744, y: 360, corridorEntryNode: '' },
+    r05: { label: 'R05', x: 293, y: 280, corridorEntryNode: '' },
+    r06: { label: 'R06', x: 427, y: 280, corridorEntryNode: '' },
+    r07: { label: 'R07', x: 360, y: 360, corridorEntryNode: '' },
+    r08: { label: 'R08', x: 265, y: 360, corridorEntryNode: '' },
+    lo8: { label: 'LO8', x: 744, y: 355, corridorEntryNode: '' },
+    lo7: { label: 'LO7', x: 830, y: 355, corridorEntryNode: '' },
+    lo3: { label: 'LO3', x: 943, y: 355, corridorEntryNode: '' },
+    lo1: { label: 'LO1', x: 1090, y: 310, corridorEntryNode: '' },
+    lo2: { label: 'LO2', x: 1090, y: 355, corridorEntryNode: '' },
+    lo4: { label: 'LO4', x: 943, y: 300, corridorEntryNode: '' },
+    lo6: { label: 'LO6', x: 770, y: 310, corridorEntryNode: '' },
+  },
+  corridorNodes: [
+    { label: 'Near Stairs',      x: 523, y: 300, neighbors: ['Central Corridor', 'E1'] },
+    { label: 'Central Corridor', x: 523, y: 335, neighbors: ['Near Stairs', 'Out R06', 'Out LO8'] },
+
+    { label: 'R01 & R02 Entry',    x: 155, y: 390, neighbors: ['R01 & R02 Exit', 'R01 & R02 Entrance'] },
+    { label: 'R01 & R02 Exit',     x: 112, y: 355, neighbors: ['R01 & R02 Entry', 'Out R03', 'Near E2 & E3'] },
+    { label: 'R01 & R02 Entrance', x: 200, y: 355, neighbors: ['R01 & R02 Entry', 'Out R03', 'Out R08'] },
+    { label: 'R03 Entry',          x: 155, y: 280, neighbors: ['Out R03'] },
+    { label: 'R05 Entry',          x: 293, y: 280, neighbors: ['Out R05'] },
+    { label: 'R06 Entry',          x: 427, y: 280, neighbors: ['Out R06'] },
+    { label: 'Out R03',            x: 155, y: 335, neighbors: ['R03 Entry', 'R01 & R02 Exit', 'R01 & R02 Entrance', 'Out R08', 'Near E2 & E3'] },
+    { label: 'Out R08',            x: 265, y: 335, neighbors: ['R01 & R02 Entrance', 'Out R03', 'Out R05'] },
+    { label: 'Out R05',            x: 295, y: 335, neighbors: ['R05 Entry', 'Out R08', 'Out R07'] },
+    { label: 'Out R07',            x: 360, y: 335, neighbors: ['Out R05', 'Out R06'] },
+    { label: 'Out R06',            x: 427, y: 335, neighbors: ['R06 Entry', 'Out R07', 'Central Corridor'] },
+
+    { label: 'Out LO8',         x: 744, y: 335, neighbors: ['Central Corridor', 'Out LO7'] },
+    { label: 'Out LO7',         x: 830, y: 335, neighbors: ['Out LO8', 'Out LO3 & LO4'] },
+    { label: 'Out LO3 & LO4',   x: 943, y: 335, neighbors: ['Out LO7', 'Out LO1 & LO2'] },
+    { label: 'Out LO1 & LO2',   x: 1090, y: 335, neighbors: ['Out LO3 & LO4', 'Near E4 & E5'] },
+
+    { label: 'Near E2 & E3', x: 68, y: 335, neighbors: ['Out R03', 'R01 & R02 Exit', 'E2', 'E3'] },
+    { label: 'Near E4 & E5', x: 1132, y: 335, neighbors: ['Out LO1 & LO2', 'E4', 'E5'] },
+  ],
+}
 
 export const AS_WEST_WING_FLOORS: FloorConfig[] = [
   AS_WEST_WING_1F,
   AS_WEST_WING_2F,
+  AS_WEST_WING_3F,
 ].map(withDenseGraph)

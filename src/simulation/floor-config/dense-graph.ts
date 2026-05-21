@@ -68,7 +68,8 @@ function normalizeCorridorNode(node: CorridorNode): CorridorNode {
       const label = typeof neighbor === 'string' ? neighbor : neighbor.label
       const width = defaultEdgeWidth(kind, neighbor)
       const blockable = typeof neighbor === 'string' ? true : neighbor.blockable ?? true
-      return { label, width, blockable }
+      const fragile = typeof neighbor === 'string' ? false : neighbor.fragile ?? false
+      return { label, width, blockable, fragile }
     }),
   }
 }

@@ -43,6 +43,11 @@ export interface CorridorNeighborDef {
   label: string
   width?: number
   blockable?: boolean
+  /** Structurally fragile edge — eligible for earthquake collapse rolls.
+   *  Stairwell approaches and long unsupported spans are typical candidates.
+   *  Edges touching a `stairs` node are treated as fragile automatically;
+   *  set this explicitly to mark additional spans. */
+  fragile?: boolean
 }
 
 export interface CorridorNode {

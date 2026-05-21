@@ -62,63 +62,35 @@ Option B — via the app (if sign-up is wired):
 
 ---
 
-## Step 6: Wire Up the Login Page
+## Step 6: Verified Login Flow
 
-The login page at `app/auth/page.tsx` currently has placeholder logic. To make it functional:
+The login page at `app/auth/page.tsx` is already fully implemented and wired to the Supabase authentication services. It supports:
+1. **Email & Password login** (via `loginWithEmail(email, password)`)
+2. **Email & Password registration** (via `signUpWithEmail(email, password)`)
+3. **Google OAuth sign-in** (via `loginWithGoogle()`)
 
-1. Replace the placeholder timeout in the `handleFormSubmit` function with the real auth call.
-2. The function should look like this:
-
-```tsx
-import { loginWithEmail } from '../../src/services/auth-service';
-
-async function handleFormSubmit(event: React.FormEvent) {
-  event.preventDefault();
-  setIsLoading(true);
-  setErrorMessage('');
-  try {
-    await loginWithEmail(email, password);
-    window.location.href = '/';
-  } catch (err) {
-    setErrorMessage((err as Error).message);
-  } finally {
-    setIsLoading(false);
-  }
-}
-```
+No boilerplate or manual wiring is required! The page automatically handles input, shows loading indicators, handles cooldown timers, and displays descriptive error and success messages.
 
 ---
 
-## Step 7: Add the Auth Provider to Your Layout
+## Step 7: Auth Provider and Page Gating
 
-To enable the auth bar (login/logout buttons) on all pages, wrap children in the `Providers` component.
-
-In `app/layout.tsx`, import and wrap:
-
-```tsx
-import { Providers } from './providers';
-
-// Inside the <body> tag:
-<body>
-  <Providers>
-    {children}
-  </Providers>
-</body>
-```
-
-This adds the `AuthProvider` (session tracking) and `AuthBar` (login/logout UI) without modifying any other existing code.
+The application is structured to automatically gate protected pages at the layout level:
+1. `app/layout.tsx` imports the global `Providers` component.
+2. `app/providers.tsx` wraps children with `AuthProvider` (`src/context/AuthContext.tsx`) and renders the modern sidebar `Navbar` (`components/Navbar.tsx`) for authenticated sessions.
+3. Individual protected pages use the custom `useAuth()` hook to check session validity and seamlessly redirect unauthenticated users back to `/auth` on the client side.
 
 ---
 
 ## Step 8: Verify the Connection
 
-1. Run the dev server:
+1. Restart your development server if environment variables were changed:
    ```bash
    npm run dev
    ```
-2. Open `http://localhost:3000` — you should be redirected to `/auth`.
-3. Log in with the test user you created in Step 5.
-4. On success, you should be redirected to the main dashboard.
+2. Open `http://localhost:3000` — you will be automatically redirected to `/auth`.
+3. Create a test account or use Google sign-in.
+4. On success, you will be redirected to the main dashboard (`/`).
 
 ---
 
@@ -126,20 +98,20 @@ This adds the `AuthProvider` (session tracking) and `AuthBar` (login/logout UI) 
 
 | File | Purpose |
 |---|---|
-| `.env.local` | Supabase URL and anon key |
-| `src/lib/supabase-client.ts` | Creates and exports the Supabase client |
-| `src/services/auth-service.ts` | Auth functions: login, sign-up, logout, session |
-| `src/context/auth-context.tsx` | React context for auth state across the app |
-| `app/auth/page.tsx` | Login page (matching existing UI) |
-| `app/providers.tsx` | Wraps app with AuthProvider and AuthBar |
-| `components/auth/auth-bar.tsx` | Top-right login/logout buttons |
-| `middleware.ts` | Redirects unauthenticated users to /auth |
+| `.env.local` | Custom environment variables (Supabase URL, anon key, Mapbox token) |
+| `src/config/supabase.ts` | Creates and exports the Supabase JS client with standard TypeScript schemas |
+| `src/services/auth.service.ts` | Auth API service functions (Google sign-in, Email signup/login, signOut, getSession) |
+| `src/context/AuthContext.tsx` | React Context and hooks (`useAuth`) that manage user session state and auto-gate routes |
+| `app/auth/page.tsx` | Complete responsive login/register page with built-in Google OAuth trigger |
+| `app/providers.tsx` | App wrapper setting up auth contexts, sidebar offset margins, and responsive layouts |
+| `components/Navbar.tsx` | Sidebar navigation, account profiles panel, and sign-out UI control |
 
 ---
 
 ## Troubleshooting
 
-- **"Missing Supabase environment variables"** — make sure `.env.local` has real values and restart the dev server.
-- **Redirect loop on /auth** — make sure the middleware excludes `/auth` paths (it does by default).
-- **"Invalid login credentials"** — verify the user exists in Supabase dashboard under Authentication > Users.
-- **Cookie not set after login** — Supabase JS client stores the session in localStorage by default. The middleware cookie check is a secondary gate; for full SSR cookie-based auth, consider `@supabase/ssr`.
+- **"Missing Supabase environment variables"** — Ensure `.env.local` has your credentials and restart the Next.js development server.
+- **"Google sign-in redirect fails"** — Ensure your production site URL (e.g. `https://your-app.vercel.app`) or local development URL is whitelisted in your **Supabase Dashboard → Auth → URL Configuration**.
+- **"Invalid login credentials"** — Confirm the user exists in your Supabase project under **Authentication → Users**.
+- **"TypeScript Schema lag"** — If you add database columns, you can regenerate types using the Supabase CLI: `npx supabase gen types typescript --project-id your-project-id > src/schema/database.types.ts`.
+

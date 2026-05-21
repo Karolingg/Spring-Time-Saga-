@@ -1,6 +1,8 @@
 'use client'
 
+import { useEffect, useState } from 'react'
 import { useAuth } from '@/src/hooks/useAuth'
+import { useIsMobile } from '@/src/hooks/useIsMobile'
 import { usePathname } from 'next/navigation'
 import Link from 'next/link'
 
@@ -26,18 +28,9 @@ const NAV_SECTIONS: { label: string; items: NavItem[] }[] = [
         ),
       },
       {
-        href: '/simulate',
-        matchPath: '/simulate',
-        title: 'Simulation',
-        icon: (
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <polygon points="5 3 19 12 5 21 5 3"/>
-          </svg>
-        ),
-      },
-      {
         href: '/map',
-        title: 'Campus Map',
+        matchPath: '/map',
+        title: 'Simulation',
         icon: (
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/>
@@ -73,6 +66,17 @@ const NAV_SECTIONS: { label: string; items: NavItem[] }[] = [
           </svg>
         ),
       },
+      {
+        href: '/about',
+        title: 'About',
+        icon: (
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="12" r="10"/>
+            <line x1="12" y1="16" x2="12" y2="12"/>
+            <line x1="12" y1="8" x2="12.01" y2="8"/>
+          </svg>
+        ),
+      },
     ],
   },
 ]
@@ -81,9 +85,30 @@ const NAV_SECTIONS: { label: string; items: NavItem[] }[] = [
  *  layout wrapper in `providers.tsx` so content never sits underneath it. */
 export const SIDEBAR_WIDTH = 244
 
+/** Height of the mobile top bar — used by providers.tsx so pages can leave
+ *  space for it via `paddingTop`. */
+export const MOBILE_TOPBAR_HEIGHT = 56
+
 export function Navbar() {
   const { user, isAuthenticated, isLoading, handleLogout } = useAuth()
   const pathname = usePathname()
+  const isMobile = useIsMobile()
+  const [drawerOpen, setDrawerOpen] = useState(false)
+
+  // Close the drawer on every route change so navigating away dismisses it.
+  useEffect(() => {
+    const timeoutId = window.setTimeout(() => setDrawerOpen(false), 0)
+    return () => window.clearTimeout(timeoutId)
+  }, [pathname])
+
+  // Lock body scroll while the mobile drawer is open so background pages
+  // don't scroll under the overlay.
+  useEffect(() => {
+    if (!drawerOpen) return
+    const prev = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => { document.body.style.overflow = prev }
+  }, [drawerOpen])
 
   if (isLoading || !isAuthenticated) return null
 
@@ -95,6 +120,100 @@ export function Navbar() {
   const initials = user?.email ? user.email.charAt(0).toUpperCase() : 'U'
   const username = user?.email?.split('@')[0] ?? 'Account'
 
+  // ── Mobile: top bar with hamburger trigger + slide-in drawer ───────────
+  if (isMobile) {
+    return (
+      <>
+        <header style={{
+          position: 'fixed',
+          top: 0, left: 0, right: 0,
+          height: `${MOBILE_TOPBAR_HEIGHT}px`,
+          background:
+            'radial-gradient(circle at 20% 0%, rgba(45, 184, 176, 0.10) 0%, transparent 38%),' +
+            'linear-gradient(180deg, #f7fafc 0%, #eef2f7 100%)',
+          borderBottom: '1px solid #dbe2ea',
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          padding: '0 14px',
+          zIndex: 100,
+          boxShadow: '0 2px 12px -6px rgba(15, 23, 42, 0.12)',
+        }}>
+          <button
+            onClick={() => setDrawerOpen(true)}
+            aria-label="Open menu"
+            style={{
+              width: '40px', height: '40px', borderRadius: '10px',
+              background: 'rgba(255,255,255,0.8)', border: '1px solid rgba(15,23,42,0.06)',
+              cursor: 'pointer', color: '#0f172a',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
+              <line x1="3" y1="6" x2="21" y2="6"/>
+              <line x1="3" y1="12" x2="21" y2="12"/>
+              <line x1="3" y1="18" x2="21" y2="18"/>
+            </svg>
+          </button>
+
+          <Link href="/" style={{ display: 'flex', alignItems: 'center', gap: '8px', textDecoration: 'none' }}>
+            <div style={{
+              width: '30px', height: '30px', borderRadius: '9px',
+              background: 'linear-gradient(135deg, #2db8b0 0%, #1f9189 100%)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              boxShadow: '0 3px 8px -3px rgba(45, 184, 176, 0.4)',
+            }}>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+              </svg>
+            </div>
+            <span style={{ fontSize: '15px', fontWeight: 800, color: '#0f172a', letterSpacing: '-0.03em' }}>
+              EVAC<span style={{ color: '#2db8b0' }}>SIM</span>
+            </span>
+          </Link>
+
+          <div style={{
+            width: '32px', height: '32px', borderRadius: '50%',
+            background: 'linear-gradient(135deg, #2db8b0 0%, #1f9189 100%)',
+            color: '#ffffff',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontSize: '12px', fontWeight: 800,
+            boxShadow: '0 2px 6px -1px rgba(45, 184, 176, 0.4)',
+          }}>
+            {initials}
+          </div>
+        </header>
+
+        {drawerOpen && (
+          <div
+            onClick={() => setDrawerOpen(false)}
+            style={{
+              position: 'fixed', inset: 0, background: 'rgba(15, 23, 42, 0.5)',
+              backdropFilter: 'blur(2px)', zIndex: 200,
+              animation: 'fadeIn 0.18s ease-out',
+            }}
+          />
+        )}
+
+        <nav style={{
+          position: 'fixed',
+          top: 0, left: 0, bottom: 0,
+          width: '260px',
+          background:
+            'radial-gradient(circle at 20% 0%, rgba(45, 184, 176, 0.10) 0%, transparent 38%),' +
+            'linear-gradient(180deg, #f7fafc 0%, #eef2f7 100%)',
+          borderRight: '1px solid #dbe2ea',
+          display: 'flex', flexDirection: 'column',
+          zIndex: 201,
+          boxShadow: '2px 0 16px -8px rgba(15, 23, 42, 0.18)',
+          transform: drawerOpen ? 'translateX(0)' : 'translateX(-100%)',
+          transition: 'transform 220ms cubic-bezier(0.22, 1, 0.36, 1)',
+        }}>
+          {renderNavContent({ drawerOpen, setDrawerOpen, initials, username, isActive, handleLogout, showCloseButton: true })}
+        </nav>
+      </>
+    )
+  }
+
+  // ── Desktop: fixed sidebar ─────────────────────────────────────────────
   return (
     <nav style={{
       position: 'fixed',
@@ -114,16 +233,44 @@ export function Navbar() {
       zIndex: 100,
       boxShadow: '2px 0 16px -8px rgba(15, 23, 42, 0.10)',
     }}>
+      {renderNavContent({ drawerOpen: false, setDrawerOpen, initials, username, isActive, handleLogout, showCloseButton: false })}
+    </nav>
+  )
+}
+
+/** Shared inner content for both the mobile drawer and the desktop
+ *  sidebar — keeps the sections, account card, and active-link logic
+ *  in one place so the two layouts can't drift apart. */
+function renderNavContent({
+  setDrawerOpen,
+  initials,
+  username,
+  isActive,
+  handleLogout,
+  showCloseButton,
+}: {
+  drawerOpen: boolean
+  setDrawerOpen: (open: boolean) => void
+  initials: string
+  username: string
+  isActive: (item: NavItem) => boolean
+  handleLogout: () => void
+  showCloseButton: boolean
+}) {
+  return (
+    <>
       {/* Brand header */}
       <div style={{
         padding: '20px 18px 16px',
         borderBottom: '1px solid rgba(15, 23, 42, 0.06)',
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px',
       }}>
         <Link href="/" style={{
           display: 'flex',
           alignItems: 'center',
           gap: '11px',
           textDecoration: 'none',
+          flex: 1, minWidth: 0,
         }}>
           <div style={{
             width: '38px',
@@ -149,6 +296,23 @@ export function Navbar() {
             </div>
           </div>
         </Link>
+        {showCloseButton && (
+          <button
+            onClick={() => setDrawerOpen(false)}
+            aria-label="Close menu"
+            style={{
+              width: '32px', height: '32px', borderRadius: '8px',
+              background: 'rgba(255,255,255,0.7)', border: '1px solid rgba(15,23,42,0.06)',
+              cursor: 'pointer', color: '#475569', flexShrink: 0,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+              <line x1="18" y1="6" x2="6" y2="18"/>
+              <line x1="6" y1="6" x2="18" y2="18"/>
+            </svg>
+          </button>
+        )}
       </div>
 
       {/* Nav sections */}
@@ -330,6 +494,6 @@ export function Navbar() {
           </button>
         </div>
       </div>
-    </nav>
+    </>
   )
 }

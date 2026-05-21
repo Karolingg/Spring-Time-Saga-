@@ -59,7 +59,11 @@ const AUTONOMOUS_BUILDING_IDS = new Set([
   'science-building',
   'up-cebu-library',
   'admin-building',
-  'asx',
+  //'asx',
+  //'management',
+  //'social-sciences',
+  'as-west-wing',
+  // 'as-east-wing',
 ])
 
 function floorLabel(index: number): string {
@@ -110,7 +114,7 @@ export default function DisasterPickerPage() {
   const step = selectedDisaster ? 2 : 1
 
   return (
-    <div style={{
+    <div data-page-shell style={{
       minHeight: '100vh',
       padding: '64px 24px 56px',
       background:

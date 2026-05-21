@@ -1,94 +1,207 @@
 import type { FloorConfig } from '../types'
 import { withDenseGraph } from '../dense-graph'
 
-function createGroundFloorConfig(floorLabel: string): FloorConfig {
-  return {
-    viewWidth: 1200,
-    viewHeight: 675,
-    floorLabel,
-    exits: {
-      E1: { x: 410, y: 52, label: 'E1', desc: 'North Exit - Main' },
-      E2: { x: 365, y: 520, label: 'E2', desc: 'Southwest Exit - Left' },
-      E3: { x: 605, y: 520, label: 'E3', desc: 'Southeast Exit - Right' },
-    },
-    startPos: { x: 490, y: 350 },
-    primaryPaths: {
-      E1: [{ x: 490, y: 350 }, { x: 490, y: 295 }, { x: 420, y: 270 }, { x: 410, y: 210 }, { x: 410, y: 120 }, { x: 410, y: 52 }],
-      E2: [{ x: 490, y: 350 }, { x: 490, y: 410 }, { x: 490, y: 455 }, { x: 430, y: 470 }, { x: 370, y: 490 }],
-      E3: [{ x: 490, y: 350 }, { x: 490, y: 410 }, { x: 490, y: 455 }, { x: 550, y: 470 }, { x: 610, y: 490 }],
-    },
-    reroutes: {
-      E1: { to: 'E2', path: [{ x: 410, y: 120 }, { x: 410, y: 210 }, { x: 420, y: 270 }, { x: 490, y: 295 }, { x: 490, y: 350 }, { x: 490, y: 410 }, { x: 490, y: 455 }, { x: 430, y: 470 }, { x: 370, y: 490 }] },
-      E2: { to: 'E3', path: [{ x: 430, y: 470 }, { x: 490, y: 455 }, { x: 550, y: 470 }, { x: 610, y: 490 }] },
-      E3: { to: 'E2', path: [{ x: 550, y: 470 }, { x: 490, y: 455 }, { x: 430, y: 470 }, { x: 370, y: 490 }] },
-    },
-    blockT: { E1: 0.5, E2: 0.5, E3: 0.55 },
-    obstacles: {
-      fire: [
-        { id: 'fire-north', x: 375, y: 40, w: 80, h: 70, type: 'fire', label: 'Fire', blocksExits: ['E1'] },
-        { id: 'smoke-corridor', x: 450, y: 300, w: 90, h: 45, type: 'smoke', label: 'Smoke', blocksExits: [] },
-      ],
-      earthquake: [
-        { id: 'debris-sw', x: 340, y: 470, w: 80, h: 40, type: 'debris', label: 'Debris', blocksExits: ['E2'] },
-        { id: 'debris-corridor', x: 450, y: 280, w: 90, h: 30, type: 'debris', label: 'Structural Damage', blocksExits: [] },
-      ],
-    },
-    efficiency: { E1: 0.92, E2: 0.88, E3: 0.85 },
-    rooms: {
-      corridor: { label: 'Corridor', x: 490, y: 350 },
-      r204: { label: 'Room 204', x: 220, y: 250 },
-      r203: { label: 'Room 203', x: 730, y: 300 },
-      r202: { label: 'Room 202', x: 720, y: 280 },
-      r201: { label: 'Room 201', x: 730, y: 400 },
-    },
-  }
+const SOCIAL_SCIENCES_1F: FloorConfig = {
+  viewWidth: 1200,
+  viewHeight: 675,
+  floorLabel: '1st Floor',
+  exits: {
+    E1: { x: 180, y: 245, label: 'E1', desc: '' },
+    E2: { x: 660, y: 335, label: 'E2', desc: '' },
+    E3: { x: 668, y: 125, label: 'E3', desc: '' },
+  },
+  startPos: { x: 0, y: 0 },
+  primaryPaths: {
+    E1: [{ x: 400, y: 240 }, { x: 300, y: 240 }, { x: 215, y: 240 }, { x: 180, y: 245 }],
+    E2: [{ x: 400, y: 240 }, { x: 500, y: 240 }, { x: 580, y: 270 }, { x: 620, y: 300 }, { x: 660, y: 335 }],
+    E3: [{ x: 400, y: 240 }, { x: 500, y: 240 }, { x: 600, y: 200 }, { x: 700, y: 160 }, { x: 800, y: 125 }],
+  },
+  reroutes: {
+    E1: { to: 'E2', path: [{ x: 215, y: 240 }, { x: 300, y: 240 }, { x: 400, y: 240 }, { x: 500, y: 240 }, { x: 580, y: 270 }, { x: 620, y: 300 }, { x: 660, y: 335 }] },
+    E2: { to: 'E1', path: [{ x: 620, y: 300 }, { x: 580, y: 270 }, { x: 500, y: 240 }, { x: 400, y: 240 }, { x: 300, y: 240 }, { x: 215, y: 240 }, { x: 180, y: 245 }] },
+    E3: { to: 'E2', path: [{ x: 700, y: 160 }, { x: 600, y: 200 }, { x: 580, y: 270 }, { x: 620, y: 300 }, { x: 660, y: 335 }] },
+  },
+  blockT: { E1: 0.5, E2: 0.5, E3: 0.55 },
+  obstacles: {
+    fire: [
+      { id: 'fire-north', x: 375, y: 40, w: 80, h: 70, type: 'fire', label: 'Fire', blocksExits: ['E1'] },
+      { id: 'smoke-corridor', x: 450, y: 300, w: 90, h: 45, type: 'smoke', label: 'Smoke', blocksExits: [] },
+    ],
+    earthquake: [
+      { id: 'debris-sw-exit', x: 340, y: 470, w: 80, h: 40, type: 'debris', label: 'Debris', blocksExits: ['E2'] },
+      { id: 'debris-corridor', x: 450, y: 280, w: 90, h: 30, type: 'debris', label: 'Structural Damage', blocksExits: [] },
+    ],
+  },
+  efficiency: { E1: 0.92, E2: 0.88, E3: 0.85 },
+  rooms: {
+    corridor: { label: 'Corridor', x: 490, y: 350 },
+    tlrc: { label: 'TLRC', x: 245, y: 200, corridorEntryNodes: [''] },
+    ug114: { label: 'UG 114', x: 337, y: 200, corridorEntryNodes: [''] },
+    ug115: { label: 'UG 115', x: 215, y: 265, corridorEntryNodes: [''] },
+    ug115a: { label: 'UG 115A', x: 275, y: 265, corridorEntryNodes: [''] },
+    ug116b: { label: 'UG 116B', x: 305, y: 265, corridorEntryNodes: [''] },
+    ug116a: { label: 'UG 116A', x: 367, y: 265, corridorEntryNodes: [''] },
+    ug117: { label: 'UG 117', x: 430, y: 290, corridorEntryNodes: [''] },
+    ug118: { label: 'UG 118', x: 430, y: 200, corridorEntryNodes: [''] },
+    lawak: { label: 'Lawak Sinehan', x: 520, y: 200, corridorEntryNodes: [''] },
+    ug122b: { label: 'UG 122B', x: 915, y: 102, corridorEntryNodes: [''] },
+    ug122a: { label: 'UG 122A', x: 915, y: 151, corridorEntryNodes: [''] },
+    ug123b: { label: 'UG 123B', x: 915, y: 180, corridorEntryNodes: [''] },
+    ug123a: { label: 'UG 123A', x: 915, y: 237, corridorEntryNodes: [''] },
+    ug124: { label: 'UG 124', x: 915, y: 332, corridorEntryNodes: [''] },
+    ug125a: { label: 'UG 125A', x: 915, y: 395, corridorEntryNodes: [''] },
+    ug125b: { label: 'UG 125B', x: 915, y: 450, corridorEntryNodes: [''] },
+    ug126a: { label: 'UG 126A', x: 915, y: 496, corridorEntryNodes: [''] },
+    ug126b: { label: 'UG 126B', x: 915, y: 569, corridorEntryNodes: [''] },
+    ug126c: { label: 'UG 126C', x: 915, y: 605, corridorEntryNodes: [''] },
+    ug126d: { label: 'UG 126D', x: 850, y: 530, corridorEntryNodes: [''] },
+    ug126e: { label: 'UG 126E', x: 882, y: 599, corridorEntryNodes: [''] },
+    ug127: { label: 'UG 127', x: 879, y: 437, corridorEntryNodes: [''] },
+    dbes: { label: 'DBES', x: 813, y: 235, corridorEntryNodes: [''] },
+
+  },
+  corridorNodes: [
+    { label: 'TLRC Exit', x: 214, y: 223, neighbors: ['Near Exit 1'] },
+    { label: 'TLRC Entrance', x: 280, y: 223, neighbors: ['Near Exit 1', 'Out TLRC'] },
+    { label: 'TLRC Entry', x: 245, y: 200, neighbors: ['TLRC Exit', 'TLRC Entrance'] },
+    { label: 'UG 114 Exit', x: 302, y: 223, neighbors: ['Out TLRC'] },
+    { label: 'UG 114 Entrance', x: 373, y: 223, neighbors: ['Corridor 1'] },
+    { label: 'UG 114 Entry', x: 337, y: 200, neighbors: ['UG 114 Exit', 'UG 114 Entrance'] },
+    { label: 'UG 118 Exit', x: 395, y: 223, neighbors: ['Corridor 1'] },
+    { label: 'UG 118 Entrance', x: 461, y: 223, neighbors: ['Out Lawak Sinehan'] },
+    { label: 'UG 118 Entry', x: 430, y: 200, neighbors: ['UG 118 Exit', 'UG 118 Entrance'] },
+    { label: 'Lawak Exit', x: 491, y: 223, neighbors: ['Out Lawak Sinehan'] },
+    { label: 'Lawak Entrance', x: 549, y: 223, neighbors: ['Near Toilet'] },
+    { label: 'Lawak Entry', x: 520, y: 200, neighbors: ['Lawak Exit', 'Lawak Entrance'] },
+    { label: 'UG 117 Entry', x: 430, y: 290, neighbors: ['UG 117 Exit', 'UG 117 Entrance'] },
+    { label: 'UG 117 Exit', x: 398, y: 265, neighbors: ['Corridor 1'] },
+    { label: 'UG 117 Entrance', x: 460, y: 265, neighbors: ['Out Lawak Sinehan'] },
+    { label: 'DBES Entry', x: 813, y: 235, neighbors: ['DBES Exit', 'DBES Entrance'] },
+    { label: 'DBES Exit', x: 756, y: 264, neighbors: ['Out DBES', 'Near E2'] },
+    { label: 'DBES Entrance', x: 867, y: 264, neighbors: ['Out DBES', 'Near ASX Stairs'] },
+    { label: 'UG126D Entry', x: 850, y: 530, neighbors: ['UG126D Exit', 'UG126D Entrance'] },
+    { label: 'UG126D Exit', x: 879, y: 496, neighbors: ['Out 126A'] },
+    { label: 'UG126D Entrance', x: 879, y: 570, neighbors: ['Out 126'] },
+
+
+    { label: 'Near Exit 1', x: 214, y: 245, neighbors: ['TLRC Exit', 'E1', 'UG 115'] },
+    { label: 'Out TLRC', x: 292, y: 245, neighbors: ['Near Exit 1', 'TLRC Entrance', 'UG 116B', 'UG 115A'] },
+    { label: 'Corridor 1', x: 385, y: 245, neighbors: ['Out TLRC', 'UG 114 Entrance', 'UG 116A', 'UG 117 Exit', 'UG 118 Exit'] },
+    { label: 'Out Lawak Sinehan', x: 480, y: 245, neighbors: ['Corridor 1', 'Near Toilet'] },
+    { label: 'Near Toilet', x: 600, y: 245, neighbors: ['Out Lawak Sinehan', 'E1', 'UG 115'] },
+    { label: 'Central Corridor', x: 660, y: 245, neighbors: ['Near E2', 'Near E3', 'Near Toilet'] },
+    { label: 'Out DBES', x: 800, y: 290, neighbors: ['Near E2'] },
+    { label: 'Out 126', x: 897, y: 570, neighbors: ['Out 126A'] },
+    { label: 'Out 126A', x: 897, y: 496, neighbors: ['Out 126', 'Out 127'] },
+    { label: 'Out 127', x: 897, y: 437, neighbors: ['Out 126A', 'Out 125A'] },
+    { label: 'Out 124', x: 897, y: 330, neighbors: ['Out 125A'] },
+    { label: 'Out 125A', x: 897, y: 395, neighbors: ['Out 124'] },
+    { label: 'Out 122B', x: 897, y: 101, neighbors: ['Out 122A'] },
+    { label: 'Out 122A', x: 897, y: 151, neighbors: ['Out 122B', 'Out 123B'] },
+    { label: 'Out 123B', x: 897, y: 180, neighbors: ['Out 122A', 'Out 123A'] },
+    { label: 'Out 123A', x: 897, y: 237, neighbors: ['Out 123B', 'Near ASX Stairs'] },
+    { label: 'Near ASX Stairs', x: 897, y: 290, neighbors: ['Out 123A', 'Out 124', 'Out DBES'] },
+
+
+    { label: 'Near E2', x: 660, y: 290, neighbors: ['E2', 'Central Corridor', 'Out DBES'] },
+    { label: 'Near E3', x: 660, y: 190, neighbors: ['E3', 'Central Corridor'] },
+  ],
 }
 
-function createUpperFloorConfig(floorLabel: string): FloorConfig {
-  return {
-    viewWidth: 1200,
-    viewHeight: 675,
-    floorLabel,
-    exits: {
-      S1: { x: 490, y: 230, label: 'S1', desc: 'Center Stairs - Down' },
-      S2: { x: 370, y: 490, label: 'S2', desc: 'Southwest Stairs - Down' },
-      S3: { x: 610, y: 490, label: 'S3', desc: 'Southeast Stairs - Down' },
-    },
-    startPos: { x: 490, y: 350 },
-    primaryPaths: {
-      S1: [{ x: 490, y: 350 }, { x: 490, y: 295 }, { x: 420, y: 270 }, { x: 420, y: 240 }, { x: 490, y: 230 }],
-      S2: [{ x: 490, y: 350 }, { x: 490, y: 410 }, { x: 490, y: 455 }, { x: 430, y: 470 }, { x: 370, y: 490 }],
-      S3: [{ x: 490, y: 350 }, { x: 490, y: 410 }, { x: 490, y: 455 }, { x: 550, y: 470 }, { x: 610, y: 490 }],
-    },
-    reroutes: {
-      S1: { to: 'S2', path: [{ x: 420, y: 240 }, { x: 420, y: 270 }, { x: 490, y: 295 }, { x: 490, y: 350 }, { x: 490, y: 410 }, { x: 490, y: 455 }, { x: 430, y: 470 }, { x: 370, y: 490 }] },
-      S2: { to: 'S3', path: [{ x: 430, y: 470 }, { x: 490, y: 455 }, { x: 550, y: 470 }, { x: 610, y: 490 }] },
-      S3: { to: 'S2', path: [{ x: 550, y: 470 }, { x: 490, y: 455 }, { x: 430, y: 470 }, { x: 370, y: 490 }] },
-    },
-    blockT: { S1: 0.55, S2: 0.5, S3: 0.5 },
-    obstacles: {
-      fire: [
-        { id: 'fire-west-wing', x: 165, y: 235, w: 120, h: 95, type: 'fire', label: 'Electrical Fire', blocksExits: ['S2'] },
-        { id: 'smoke-corridor', x: 555, y: 280, w: 80, h: 50, type: 'smoke', label: 'Smoke', blocksExits: ['S3'] },
-      ],
-      earthquake: [
-        { id: 'debris-center', x: 440, y: 215, w: 100, h: 45, type: 'debris', label: 'Stairwell Debris', blocksExits: ['S1'] },
-        { id: 'debris-se', x: 580, y: 470, w: 70, h: 40, type: 'debris', label: 'Debris', blocksExits: ['S3'] },
-      ],
-    },
-    efficiency: { S1: 0.92, S2: 0.85, S3: 0.85 },
-    rooms: {
-      corridor: { label: 'Corridor', x: 490, y: 350 },
-      r204: { label: 'Room 204', x: 220, y: 250 },
-      r203: { label: 'Room 203', x: 730, y: 300 },
-      r202: { label: 'Room 202', x: 720, y: 280 },
-      r201: { label: 'Room 201', x: 730, y: 400 },
-    },
-  }
+const SOCIAL_SCIENCES_2F: FloorConfig = {
+  viewWidth: 1200,
+  viewHeight: 675,
+  floorLabel: '2nd Floor',
+  exits: {
+    E1: { x: 600, y: 285, label: 'E1', desc: '' },
+    E2: { x: 950, y: 285, label: 'E2', desc: '' },
+  },
+  startPos: { x: 0, y: 0 },
+  primaryPaths: {
+    E1: [{ x: 525, y: 250 }, { x: 600, y: 260 }, { x: 640, y: 275 }, { x: 600, y: 285 }],
+    E2: [{ x: 700, y: 285 }, { x: 800, y: 285 }, { x: 897, y: 285 }, { x: 950, y: 285 }],
+  },
+  reroutes: {
+    E1: { to: 'E2', path: [{ x: 640, y: 275 }, { x: 700, y: 285 }, { x: 800, y: 285 }, { x: 897, y: 285 }, { x: 950, y: 285 }] },
+    E2: { to: 'E1', path: [{ x: 897, y: 285 }, { x: 800, y: 285 }, { x: 700, y: 285 }, { x: 640, y: 275 }, { x: 600, y: 285 }] },
+  },
+  blockT: { E1: 0.5, E2: 0.5, E3: 0.55 },
+  obstacles: {
+    fire: [
+      { id: 'fire-north', x: 375, y: 40, w: 80, h: 70, type: 'fire', label: 'Fire', blocksExits: ['E1'] },
+      { id: 'smoke-corridor', x: 450, y: 300, w: 90, h: 45, type: 'smoke', label: 'Smoke', blocksExits: [] },
+    ],
+    earthquake: [
+      { id: 'debris-sw-exit', x: 340, y: 470, w: 80, h: 40, type: 'debris', label: 'Debris', blocksExits: ['E3'] },
+      { id: 'debris-corridor', x: 450, y: 280, w: 90, h: 30, type: 'debris', label: 'Structural Damage', blocksExits: [] },
+    ],
+  },
+  efficiency: { E1: 0.92, E2: 0.88, E3: 0.85 },
+  rooms: {
+    corridor: { label: 'Corridor', x: 490, y: 350 },
+    ug214: { label: 'UG 214', x: 250, y: 295, corridorEntryNodes: [''] },
+    ug215: { label: 'UG 215', x: 250, y: 210, corridorEntryNodes: [''] },
+    ug216: { label: 'UG 216', x: 342, y: 295, corridorEntryNodes: [''] },
+    ug217: { label: 'UG 217', x: 340, y: 210, corridorEntryNodes: [''] },
+    ug218: { label: 'UG 218', x: 432, y: 295, corridorEntryNodes: [''] },
+    ug219: { label: 'UG 219', x: 435, y: 210, corridorEntryNodes: [''] },
+    ug220: { label: 'UG 220', x: 520, y: 210, corridorEntryNodes: [''] },
+    mmr: { label: 'MMR', x: 915, y: 105, corridorEntryNodes: [''] },
+    newsroom: { label: 'News Room', x: 915, y: 170, corridorEntryNodes: [''] },
+    mmf: { label: 'MMF', x: 915, y: 205, corridorEntryNodes: [''] },
+    joyaoffice: { label: 'JOYA Office', x: 915, y: 255, corridorEntryNodes: [''] },
+    cme: { label: 'CME', x: 915, y: 365, corridorEntryNodes: [''] },
+    matrix: { label: 'Matrix Library', x: 880, y: 502, corridorEntryNodes: [''] },
+    des: { label: 'DesComm Room', x: 925, y: 502, corridorEntryNodes: [''] },
+    laser: { label: 'Laser Room', x: 935, y: 532, corridorEntryNodes: [''] },
+    print: { label: '3D Printing Room', x: 880, y: 535, corridorEntryNodes: [''] },
+    idea: { label: 'Idea Room', x: 880, y: 591, corridorEntryNodes: [''] },
+    cnc: { label: 'CNC', x: 940, y: 582, corridorEntryNodes: [''] },
+    photo: { label: 'Photography Room', x: 910, y: 615, corridorEntryNodes: [''] },
+    ccad: { label: 'CCAD Office', x: 720, y: 262, corridorEntryNodes: [''] },
+  },
+  corridorNodes: [
+    // Classroom wing — room entry complexes
+    { label: 'UG 214 Entry', x: 250, y: 295, neighbors: ['UG 214 Entrance', 'UG 214 Exit'] },
+    { label: 'UG 214 Entrance', x: 280, y: 273, neighbors: ['Out 216 & 217'] },
+    { label: 'UG 214 Exit', x: 218, y: 273, neighbors: ['Out 214 & 215'] },
+    { label: 'UG 216 Entry', x: 342, y: 295, neighbors: ['UG 216 Entrance', 'UG 216 Exit'] },
+    { label: 'UG 216 Entrance', x: 371, y: 273, neighbors: ['Out 218 & 219'] },
+    { label: 'UG 216 Exit', x: 310, y: 273, neighbors: ['Out 216 & 217'] },
+    { label: 'UG 218 Entry', x: 432, y: 295, neighbors: ['UG 218 Entrance', 'UG 218 Exit'] },
+    { label: 'UG 218 Entrance', x: 463, y: 273, neighbors: ['Out 220'] },
+    { label: 'UG 218 Exit', x: 402, y: 273, neighbors: ['Out 218 & 219'] },
+    { label: 'UG 215 Entry', x: 250, y: 210, neighbors: ['UG 215 Entrance', 'UG 215 Exit'] },
+    { label: 'UG 215 Entrance', x: 285, y: 230, neighbors: ['Out 216 & 217'] },
+    { label: 'UG 215 Exit', x: 218, y: 230, neighbors: ['Out 214 & 215'] },
+    { label: 'UG 217 Entry', x: 340, y: 210, neighbors: ['UG 217 Entrance', 'UG 217 Exit'] },
+    { label: 'UG 217 Entrance', x: 375, y: 230, neighbors: ['Out 218 & 219'] },
+    { label: 'UG 217 Exit', x: 305, y: 230, neighbors: ['Out 216 & 217'] },
+    { label: 'UG 219 Entry', x: 435, y: 210, neighbors: ['UG 219 Entrance', 'UG 219 Exit'] },
+    { label: 'UG 219 Entrance', x: 463, y: 230, neighbors: ['Out 220'] },
+    { label: 'UG 219 Exit', x: 397, y: 230, neighbors: ['Out 218 & 219'] },
+    { label: 'UG 220 Entry', x: 520, y: 210, neighbors: ['UG 220 Entrance', 'UG 220 Exit'] },
+    { label: 'UG 220 Entrance', x: 552, y: 230, neighbors: ['JOYA Gallery'] },
+    { label: 'UG 220 Exit', x: 493, y: 230, neighbors: ['Out 220'] },
+    { label: 'Out 214 & 215', x: 250, y: 250, neighbors: ['Out 216 & 217'] },
+    { label: 'Out 216 & 217', x: 340, y: 250, neighbors: ['Out 214 & 215', 'Out 218 & 219'] },
+    { label: 'Out 218 & 219', x: 435, y: 250, neighbors: ['Out 216 & 217', 'Out 220'] },
+    { label: 'Out 220', x: 525, y: 250, neighbors: ['Out 218 & 219', 'JOYA Gallery'] },
+    { label: 'JOYA Gallery', x: 660, y: 250, neighbors: ['Out 220', 'Near Exit 1'] },
+    { label: 'Near Exit 1', x: 660, y: 285, neighbors: ['JOYA Gallery', 'Out CCAD Office', 'E1'] },
+    { label: 'Out CCAD Office', x: 720, y: 285, neighbors: ['Near Exit 1', 'Near Exit 2'] },
+    { label: 'Near Exit 2', x: 897, y: 285, neighbors: ['Out CCAD Office', 'Out JOYA Office', 'Out CME', 'E2'] },
+    { label: 'Out JOYA Office', x: 897, y: 255, neighbors: ['Near Exit 2', 'Out MMF'] },
+    { label: 'Out MMF', x: 897, y: 205, neighbors: ['Out JOYA Office', 'Out News Room'] },
+    { label: 'Out News Room', x: 897, y: 170, neighbors: ['Out MMF', 'Out MMR'] },
+    { label: 'Out MMR', x: 897, y: 105, neighbors: ['Out News Room'] },
+    { label: 'Out CME', x: 897, y: 365, neighbors: ['Near Exit 2', 'Out 228'] },
+    // Fablab wing
+    { label: 'Out 228', x: 897, y: 420, neighbors: ['Out CME', 'Fablab Corridor'] },
+    { label: 'Fablab Corridor', x: 897, y: 520, neighbors: ['Out 228'] },
+  
+  ],
 }
-
-const SOCIAL_SCIENCES_1F: FloorConfig = createGroundFloorConfig('1st Floor')
-const SOCIAL_SCIENCES_2F: FloorConfig = createUpperFloorConfig('2nd Floor')
 
 export const SOCIAL_SCIENCES_FLOORS: FloorConfig[] = [
   SOCIAL_SCIENCES_1F,

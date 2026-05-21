@@ -19,6 +19,17 @@ npm run dev
 
 Open [http://localhost:3000](http://localhost:3000) in your browser.
 
+## Deployment Origins
+
+EVACSIM does not define custom Next.js CORS middleware because the app has no owned API routes or edge functions. Browser data access goes directly through Supabase, so allowed frontend origins and auth callbacks must be configured in Supabase.
+
+For the current Vercel deployment, configure Supabase Auth URL settings with:
+
+- Site URL: `https://evacsim.vercel.app`
+- Redirect URL: `https://evacsim.vercel.app/auth/callback`
+
+Keep local redirect URLs such as `http://localhost:3000/auth/callback` and `http://127.0.0.1:3000/auth/callback` when developing locally. If a custom domain is added later, add that exact domain and callback URL in Supabase as well.
+
 ## Project Structure
 
 ```
@@ -41,13 +52,27 @@ docs/             → Guidelines and documentation
 - **Language:** TypeScript 5
 - **Database:** Supabase (PostgreSQL + Auth + RLS)
 - **Styling:** Tailwind CSS 4 + CSS modules
-- **Maps:** Leaflet + react-leaflet
+- **Maps:** Mapbox GL via `react-map-gl`
 
 ## Database Setup
 
-The SQL migration lives in `supabase/migrations/`. To apply it:
+The SQL migrations live in `supabase/migrations/`. To set up your Supabase database:
 
-1. Go to your Supabase Dashboard → SQL Editor
-2. Paste and run the contents of `supabase/migrations/20260312142037_create_normalized_schema.sql`
+### Option A: Via Supabase SQL Editor (Hosted Supabase)
+If you are using a hosted Supabase project, go to your **Supabase Dashboard → SQL Editor** and paste and run the contents of the migration files in `supabase/migrations/` in chronological order:
 
-This creates 7 normalized tables with row-level security.
+1. `20260312142037_create_normalized_schema.sql` (Creates core tables: runs, configs, results, bottlenecks, density)
+2. `20260410_add_buildings_audit_tags.sql` (Adds buildings list and audit logs)
+3. `20260512_add_run_floor_index.sql` (Adds index for floor runs)
+4. `20260513_add_run_replay_inputs.sql` (Adds input properties for run replay)
+5. `20260515_fix_oauth_profile_trigger_and_rls.sql` (Fixes OAuth profile creation triggers and RLS policies)
+6. `20260516_add_scenario_severity.sql` (Adds drill severity variables for readiness metrics)
+7. `20260517_add_rate_limiting.sql` (Creates rate limiter table and procedures)
+8. `20260518_add_rate_limit_rules.sql` (Seeds rate-limiting policies for public endpoints)
+9. `20260519_update_rate_limit_messages.sql` (Updates rate-limiting feedback responses)
+
+### Option B: Via Supabase CLI (Local Development)
+If you are developing locally with the Supabase CLI:
+1. Ensure your local Supabase instance is running: `npx supabase start`
+2. Apply migrations automatically: `npx supabase db push`
+

@@ -213,25 +213,43 @@ export type Database = {
       }
       simulation_runs: {
         Row: {
+          agents_per_room: Json | null
+          building_id: string | null
           created_at: string
           disaster_type: string
+          floor_index: number | null
+          hazards: Json | null
           id: string
+          notes: string | null
+          seed: number | null
           status: string
           updated_at: string
           user_id: string
         }
         Insert: {
+          agents_per_room?: Json | null
+          building_id?: string | null
           created_at?: string
           disaster_type: string
+          floor_index?: number | null
+          hazards?: Json | null
           id?: string
+          notes?: string | null
+          seed?: number | null
           status?: string
           updated_at?: string
           user_id: string
         }
         Update: {
+          agents_per_room?: Json | null
+          building_id?: string | null
           created_at?: string
           disaster_type?: string
+          floor_index?: number | null
+          hazards?: Json | null
           id?: string
+          notes?: string | null
+          seed?: number | null
           status?: string
           updated_at?: string
           user_id?: string
