@@ -1,4 +1,5 @@
 import { supabase } from '@/src/config/supabase'
+import { getCurrentUserCacheKey, ReadThroughCache } from '@/src/services/read-cache'
 import type { ScenarioSeverity } from '@/src/services/simulation.service'
 
 export type BuildingGrade = 'A' | 'B' | 'C' | 'D' | 'F'
@@ -200,7 +201,7 @@ async function fetchRunRows(buildingId: string): Promise<RunRow[] | null> {
   throw new Error(primary.error.message)
 }
 
-export async function getBuildingScore(
+async function loadBuildingScore(
   buildingId: string,
   buildingCapacity: number,
 ): Promise<BuildingScore | null> {
@@ -359,4 +360,14 @@ export async function getBuildingScore(
     coverage,
     cap:      capped.cap,
   }
+}
+
+export async function getBuildingScore(
+  buildingId: string,
+  buildingCapacity: number,
+): Promise<BuildingScore | null> {
+  const userKey = await getCurrentUserCacheKey('building-score')
+  return buildingScoreCache.get(`${userKey}:${buildingId}:${buildingCapacity}`, () => (
+    loadBuildingScore(buildingId, buildingCapacity)
+  ))
 }

@@ -3,11 +3,14 @@
 import { useEffect, useState } from 'react'
 import { useAuth } from '@/src/hooks/useAuth'
 import { useIsMobile } from '@/src/hooks/useIsMobile'
+import { useOnboarding } from '@/src/hooks/useOnboarding'
 import {
   getSimulationHistory,
   getAggregateSimulationStats,
 } from '@/src/services/simulation.service'
 import { getUserProfile } from '@/src/services/user.service'
+import { OnboardingOverlay } from '@/components/Onboarding/OnboardingOverlay'
+import { InfoTooltip } from '@/components/InfoTooltip'
 import type { SimulationRun } from '@/src/schema/simulation.types'
 
 const SECTION_CARD: React.CSSProperties = {
@@ -82,6 +85,7 @@ function userName(displayName: string | null, metadata: Record<string, unknown> 
 export default function DashboardPage() {
   const isMobile = useIsMobile()
   const { user, isAuthenticated, isLoading: isAuthLoading } = useAuth()
+  const { resetOnboarding } = useOnboarding()
   const [stats, setStats] = useState<AggregateStats | null>(null)
   const [recentRuns, setRecentRuns] = useState<SimulationRun[]>([])
   const [profileName, setProfileName] = useState<{ userId: string; displayName: string | null } | null>(null)
@@ -160,16 +164,49 @@ export default function DashboardPage() {
             Campus evacuation overview &amp; drill analytics
           </p>
         </div>
-        <a href="/map" style={{
-          display: 'flex', alignItems: 'center', gap: '8px',
-          padding: '10px 20px', background: '#2db8b0', color: '#fff',
-          borderRadius: '8px', textDecoration: 'none', fontSize: '14px', fontWeight: '600', flexShrink: 0,
-        }}>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="#ffffff" stroke="none">
-            <polygon points="8 5 19 12 8 19 8 5" />
-          </svg>
-          Run Simulation
-        </a>
+        <div style={{ display: 'flex', gap: '12px', flexShrink: 0, flexWrap: 'wrap' }}>
+          <button
+            onClick={() => resetOnboarding()}
+            style={{
+              display: 'flex', alignItems: 'center', gap: '8px',
+              padding: '10px 20px', background: '#f0f4f8', color: '#2db8b0',
+              border: '1px solid #e0e8f0', borderRadius: '8px', cursor: 'pointer',
+              fontSize: '14px', fontWeight: '600', transition: 'all 0.2s ease-in-out',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = '#e8f1f0'
+              e.currentTarget.style.borderColor = '#2db8b0'
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = '#f0f4f8'
+              e.currentTarget.style.borderColor = '#e0e8f0'
+            }}
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="10"/>
+              <line x1="12" y1="16" x2="12" y2="12"/>
+              <line x1="12" y1="8" x2="12.01" y2="8"/>
+            </svg>
+            Tutorial
+          </button>
+          <a href="/map" style={{
+            display: 'flex', alignItems: 'center', gap: '8px',
+            padding: '10px 20px', background: '#2db8b0', color: '#fff',
+            borderRadius: '8px', textDecoration: 'none', fontSize: '14px', fontWeight: '600', flexShrink: 0,
+            transition: 'all 0.2s ease-in-out',
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.background = '#1f9189'
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = '#2db8b0'
+          }}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="#ffffff" stroke="none">
+              <polygon points="8 5 19 12 8 19 8 5" />
+            </svg>
+            Run Simulation
+          </a>
+        </div>
       </div>
 
       {/* ── Readiness + Coverage row ── */}
@@ -197,8 +234,14 @@ export default function DashboardPage() {
             </div>
           </div>
           <div>
-            <div style={{ fontSize: '11px', fontWeight: '600', letterSpacing: '0.08em', color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '6px' }}>
-              Campus Readiness
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+              <span style={{ fontSize: '11px', fontWeight: '600', letterSpacing: '0.08em', color: 'var(--text-muted)', textTransform: 'uppercase' }}>
+                Campus Readiness
+              </span>
+              <InfoTooltip
+                title="Campus Readiness Score"
+                description="A composite 0-100 score measuring evacuation preparedness. Based on evacuation rate (40%), bottleneck frequency (30%), and response time (30%)."
+              />
             </div>
             <div style={{ fontSize: '20px', fontWeight: '700', color: rl.color, marginBottom: '4px' }}>
               {rl.text}
@@ -281,6 +324,9 @@ export default function DashboardPage() {
       <div style={SECTION_CARD}>
         <QuickActions isMobile={isMobile} />
       </div>
+
+      {/* Onboarding */}
+      <OnboardingOverlay currentPage="dashboard" />
     </div>
   )
 }

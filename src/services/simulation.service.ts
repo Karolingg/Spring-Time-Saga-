@@ -12,6 +12,8 @@ import type { RiskLevel, SeverityLevel, SimulationStatus } from '@/src/schema/en
 import type { PlacedHazard } from '@/src/simulation/hazard-placement'
 import { GRID_COLS, GRID_ROWS } from '@/src/simulation/spatial-grid'
 import { logAction } from '@/src/services/audit.service'
+import { clearBuildingScoreCache } from '@/src/services/building-analytics.service'
+import { getCurrentUserCacheKey, ReadThroughCache } from '@/src/services/read-cache'
 
 export interface ReplayInputs {
   hazards: PlacedHazard[]
@@ -27,6 +29,7 @@ const AGGREGATE_CACHE_MS = 60_000
 const MAX_DENSITY_CELLS_PER_RUN = GRID_COLS * GRID_ROWS
 
 const aggregateCache = new Map<string, { expiresAt: number; value?: unknown; promise?: Promise<unknown> }>()
+const readCache = new ReadThroughCache()
 
 async function getCachedAggregate<T>(key: string, loader: () => Promise<T>): Promise<T> {
   const now = Date.now()
@@ -148,6 +151,7 @@ export async function createSimulationRun(
   if (cfgError) throw new Error(cfgError.message)
 
   await logAction('create', 'run', run.id, { buildingId, disasterType: config.disasterType })
+  clearSimulationReadCache()
 
   return run.id
 }
@@ -231,7 +235,7 @@ export async function saveSimulationResults(
     evacuatedCount: results.evacuatedCount,
     evacuationTime: results.evacuationTime,
   })
-  clearAggregateCache()
+  clearAnalysisCaches()
 }
 
 function toConfig(row: Row): SimulationRunConfig {
@@ -332,44 +336,103 @@ async function fetchFullRun(runRow: Row): Promise<SimulationRun> {
   )
 }
 
-export async function getSimulationRun(runId: string): Promise<SimulationRun> {
-  const { data, error } = await supabase
-    .from('simulation_runs')
-    .select('*')
-    .eq('id', runId)
-    .single()
+async function fetchFullRuns(runRows: Row[]): Promise<SimulationRun[]> {
+  if (runRows.length === 0) return []
 
-  if (error) throw new Error(error.message)
-  return fetchFullRun(data)
+  const runIds = runRows.map(row => row.id as string)
+
+  const [cfgRes, resRes, zoneRes, bnRes] = await Promise.all([
+    supabase.from('simulation_configs').select('*').in('run_id', runIds),
+    supabase.from('simulation_results').select('*').in('run_id', runIds),
+    supabase.from('simulation_zones').select('*').in('run_id', runIds),
+    supabase.from('simulation_bottlenecks').select('*').in('run_id', runIds),
+  ])
+
+  if (cfgRes.error) throw new Error(cfgRes.error.message)
+  if (resRes.error) throw new Error(resRes.error.message)
+  if (zoneRes.error) throw new Error(zoneRes.error.message)
+  if (bnRes.error) throw new Error(bnRes.error.message)
+
+  const configsByRun = new Map<string, Row>()
+  for (const row of (cfgRes.data ?? []) as Row[]) {
+    configsByRun.set(row.run_id as string, row)
+  }
+
+  const resultsByRun = new Map<string, Row>()
+  for (const row of (resRes.data ?? []) as Row[]) {
+    resultsByRun.set(row.run_id as string, row)
+  }
+
+  const zonesByRun = new Map<string, Row[]>()
+  for (const row of (zoneRes.data ?? []) as Row[]) {
+    const runId = row.run_id as string
+    zonesByRun.set(runId, [...(zonesByRun.get(runId) ?? []), row])
+  }
+
+  const bottlenecksByRun = new Map<string, Row[]>()
+  for (const row of (bnRes.data ?? []) as Row[]) {
+    const runId = row.run_id as string
+    bottlenecksByRun.set(runId, [...(bottlenecksByRun.get(runId) ?? []), row])
+  }
+
+  return runRows.map(row => {
+    const runId = row.id as string
+    return toSimulationRun(
+      row,
+      configsByRun.get(runId) ?? null,
+      resultsByRun.get(runId) ?? null,
+      zonesByRun.get(runId) ?? [],
+      bottlenecksByRun.get(runId) ?? [],
+    )
+  })
+}
+
+export async function getSimulationRun(runId: string): Promise<SimulationRun> {
+  const userKey = await getCurrentUserCacheKey('simulation')
+  return readCache.get(`${userKey}:run:${runId}`, async () => {
+    const { data, error } = await supabase
+      .from('simulation_runs')
+      .select('*')
+      .eq('id', runId)
+      .single()
+
+    if (error) throw new Error(error.message)
+    return fetchFullRun(data)
+  })
 }
 
 export async function getLatestSimulationRun(): Promise<SimulationRun | null> {
-  const { data, error } = await supabase
-    .from('simulation_runs')
-    .select('*')
-    .eq('status', 'completed')
-    .order('created_at', { ascending: false })
-    .limit(1)
-    .maybeSingle()
+  const userKey = await getCurrentUserCacheKey('simulation')
+  return readCache.get(`${userKey}:latest`, async () => {
+    const { data, error } = await supabase
+      .from('simulation_runs')
+      .select('*')
+      .eq('status', 'completed')
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle()
 
-  if (error) throw new Error(error.message)
-  if (!data) return null
-  return fetchFullRun(data)
+    if (error) throw new Error(error.message)
+    if (!data) return null
+    return fetchFullRun(data)
+  })
 }
 
 export async function getSimulationHistory(limit: number = 5): Promise<SimulationRun[]> {
-  const { data, error } = await supabase
-    .from('simulation_runs')
-    .select('*')
-    .eq('status', 'completed')
-    .order('created_at', { ascending: false })
-    .limit(limit)
+  const userKey = await getCurrentUserCacheKey('simulation')
+  return readCache.get(`${userKey}:history:${limit}`, async () => {
+    const { data, error } = await supabase
+      .from('simulation_runs')
+      .select('*')
+      .eq('status', 'completed')
+      .order('created_at', { ascending: false })
+      .limit(limit)
 
-  if (error) throw new Error(error.message)
-  if (!data || data.length === 0) return []
+    if (error) throw new Error(error.message)
+    if (!data || data.length === 0) return []
 
-  const runs = await Promise.all(data.map(row => fetchFullRun(row)))
-  return runs
+    return fetchFullRuns(data)
+  })
 }
 
 export async function deleteSimulationRun(runId: string): Promise<void> {
@@ -381,7 +444,7 @@ export async function deleteSimulationRun(runId: string): Promise<void> {
   if (error) throw new Error(error.message)
 
   await logAction('delete', 'run', runId)
-  clearAggregateCache()
+  clearAnalysisCaches()
 }
 
 export async function resetAllSimulationData(): Promise<void> {
@@ -394,7 +457,7 @@ export async function resetAllSimulationData(): Promise<void> {
   if (error) throw new Error(error.message)
 
   await logAction('reset', 'run', 'all')
-  clearAggregateCache()
+  clearAnalysisCaches()
 }
 
 export interface AggregateFloorHeatmap {
@@ -747,6 +810,7 @@ export async function updateRunNotes(runId: string, notes: string): Promise<void
   if (error) throw new Error(error.message)
 
   await logAction('update', 'run', runId, { notes })
+  clearSimulationReadCache()
 }
 
 export async function saveDensityCells(runId: string, cells: Omit<DensityCell, 'id' | 'runId'>[]): Promise<void> {
@@ -772,7 +836,11 @@ export async function saveDensityCells(runId: string, cells: Omit<DensityCell, '
     const { error: deleteError } = await (supabase as any).from('density_cells').delete().eq('run_id', runId)
     if (deleteError) throw new Error(`Failed to clear density cells: ${deleteError.message}`)
 
-    if (cells.length === 0) return
+    if (cells.length === 0) {
+      clearAggregateCache()
+      clearSimulationReadCache()
+      return
+    }
 
     const cellRows = cells.map(c => ({
       run_id: runId,
@@ -786,30 +854,35 @@ export async function saveDensityCells(runId: string, cells: Omit<DensityCell, '
     const { error } = await (supabase as any).from('density_cells').insert(cellRows)
 
     if (error) throw new Error(`Failed to save density cells: ${error.message}`)
+    clearAggregateCache()
+    clearSimulationReadCache()
   } catch (err) {
     console.error(`Failed to save density cells: ${err}`)
   }
 }
 
 export async function getDensityCells(runId: string): Promise<DensityCell[]> {
+  const userKey = await getCurrentUserCacheKey('simulation')
   try {
-    const { data, error } = await supabase
-      .from('density_cells')
-      .select('*')
-      .eq('run_id', runId)
-      .order('step', { ascending: true })
+    return await readCache.get(`${userKey}:density:${runId}`, async () => {
+      const { data, error } = await supabase
+        .from('density_cells')
+        .select('*')
+        .eq('run_id', runId)
+        .order('step', { ascending: true })
 
-    if (error) throw new Error(`Failed to fetch density cells: ${error.message}`)
-    if (!data) return []
+      if (error) throw new Error(`Failed to fetch density cells: ${error.message}`)
+      if (!data) return []
 
-    return (data as Row[]).map(row => ({
-      id: row.id as string,
-      runId: row.run_id as string,
-      cellX: row.cell_x as number,
-      cellY: row.cell_y as number,
-      peakDensity: row.peak_density as number,
-      step: row.step as number,
-    }))
+      return (data as Row[]).map(row => ({
+        id: row.id as string,
+        runId: row.run_id as string,
+        cellX: row.cell_x as number,
+        cellY: row.cell_y as number,
+        peakDensity: row.peak_density as number,
+        step: row.step as number,
+      }))
+    })
   } catch (err) {
     console.error(`Failed to get density cells: ${err}`)
     return []
