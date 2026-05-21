@@ -3,6 +3,7 @@
 import { ReactNode } from 'react';
 import { usePathname } from 'next/navigation';
 import { AuthProvider } from '@/src/context/AuthContext';
+import { OnboardingProvider } from '@/src/context/OnboardingContext';
 import { useAuth } from '@/src/hooks/useAuth';
 import { useIsMobile } from '@/src/hooks/useIsMobile';
 import { Navbar, SIDEBAR_WIDTH, MOBILE_TOPBAR_HEIGHT } from '@/components/Navbar';
@@ -43,7 +44,9 @@ function AppShell({ children }: { children: ReactNode }) {
 export function Providers({ children }: { children: ReactNode }) {
   return (
     <AuthProvider>
-      <AppShell>{children}</AppShell>
+      <OnboardingProvider>
+        <AppShell>{children}</AppShell>
+      </OnboardingProvider>
     </AuthProvider>
   );
 }
