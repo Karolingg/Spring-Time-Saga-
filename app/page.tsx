@@ -13,7 +13,6 @@ import { OnboardingOverlay } from '@/components/Onboarding/OnboardingOverlay'
 import { InfoTooltip } from '@/components/InfoTooltip'
 import type { SimulationRun } from '@/src/schema/simulation.types'
 
-// ─── Constants ────────────────────────────────────────────────────────────────
 const SECTION_CARD: React.CSSProperties = {
   background: '#ffffff',
   border: '1px solid var(--border)',
@@ -34,7 +33,6 @@ interface AggregateStats {
   avgEvacuationTime: number
 }
 
-// ─── Utilities ────────────────────────────────────────────────────────────────
 function timeAgo(dateStr: string): string {
   const now = Date.now()
   const then = new Date(dateStr).getTime()
@@ -84,7 +82,6 @@ function userName(displayName: string | null, metadata: Record<string, unknown> 
   return nameFromEmail(email)
 }
 
-// ─── Page ─────────────────────────────────────────────────────────────────────
 export default function DashboardPage() {
   const isMobile = useIsMobile()
   const { user, isAuthenticated, isLoading: isAuthLoading } = useAuth()
@@ -334,7 +331,6 @@ export default function DashboardPage() {
   )
 }
 
-// ─── Greeting based on time of day ───────────────────────────────────────────
 function getGreeting(): string {
   const h = new Date().getHours()
   if (h < 12) return 'Good morning'
@@ -342,7 +338,6 @@ function getGreeting(): string {
   return 'Good evening'
 }
 
-// ─── Stat Card ────────────────────────────────────────────────────────────────
 interface StatCardData {
   icon: React.ReactNode
   label: string
@@ -432,7 +427,6 @@ function buildStatCards(stats: AggregateStats | null): StatCardData[] {
   ]
 }
 
-// ─── Drill Activity Timeline ─────────────────────────────────────────────────
 const DISASTER_ICON: Record<string, { color: string; bg: string; label: string }> = {
   fire:       { color: '#ff6b35', bg: 'rgba(255,107,53,0.1)',  label: 'Fire Drill' },
   earthquake: { color: '#f59e0b', bg: 'rgba(245,158,11,0.1)', label: 'Earthquake Drill' },
@@ -551,7 +545,6 @@ function MetricChip({ label, value }: { label: string; value: string }) {
   )
 }
 
-// ─── Drill Comparison ────────────────────────────────────────────────────────
 function evacRate(run: SimulationRun): number {
   const agents = run.config?.agentCount ?? 0
   const evacuated = run.results?.evacuatedCount ?? 0
@@ -742,7 +735,6 @@ function DeltaPill({ label, delta, format, betterWhenHigher }: {
   )
 }
 
-// ─── Quick Actions ────────────────────────────────────────────────────────────
 const QUICK_ACTIONS = [
   {
     href: '/map',

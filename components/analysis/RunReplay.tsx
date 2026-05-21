@@ -18,21 +18,11 @@ interface RunReplayProps {
   buildingId: string | null
   simulatedFloorIndex: number | null
   zones: SimulationZone[]
-  /** Per-run total agent count from the saved config. Used as a fallback
-   *  when the exact `agentsPerRoom` distribution wasn't recorded. */
   agentCount?: number | null
-  /** Disaster type the run was launched with. Drives reaction delay + hazard
-   *  template choice. */
   disasterType?: 'fire' | 'earthquake' | null
-  /** Exact hazards the user placed on the map for this run. */
   hazards?: PlacedHazard[] | null
-  /** Exact per-room agent allocation used at launch. */
   agentsPerRoom?: Record<string, number> | null
-  /** RNG seed captured at launch; lets us reproduce per-agent reaction
-   *  delays, speeds, and routing jitter. */
   seed?: number | null
-  /** When true, the component's internal title row is suppressed because the
-   *  parent (e.g. the tab wrapper) renders a unified header. */
   hideHeader?: boolean
 }
 
@@ -46,16 +36,13 @@ const ACCENT = '#2db8b0'
 const ACCENT_DARK = '#1f9189'
 
 function getHeatColor(intensity: number) {
-  if (intensity >= 0.78) return '#e11d48'   // rose-600 — strong, readable
-  if (intensity >= 0.55) return '#ea580c'   // orange-600
-  if (intensity >= 0.32) return '#f59e0b'   // amber-500
-  if (intensity >= 0.12) return '#15803d'   // green-700 (darker for contrast)
-  return '#16a34a'                            // green-600 (darker minimum)
+  if (intensity >= 0.78) return '#e11d48'
+  if (intensity >= 0.55) return '#ea580c'
+  if (intensity >= 0.32) return '#f59e0b'
+  if (intensity >= 0.12) return '#15803d'
+  return '#16a34a'
 }
 
-/** Legend entries — ordered from most to least intense. The thresholds and
- *  colors must stay in lockstep with `getHeatColor` so what the user sees on
- *  the map matches the swatch they're reading. */
 const HEATMAP_LEGEND: { label: string; color: string; rangeLabel: string }[] = [
   { label: 'Critical', color: '#e11d48', rangeLabel: '≥ 78%' },
   { label: 'High',     color: '#ea580c', rangeLabel: '55–78%' },
@@ -64,7 +51,6 @@ const HEATMAP_LEGEND: { label: string; color: string; rangeLabel: string }[] = [
   { label: 'Minimal',  color: '#16a34a', rangeLabel: '< 12%' },
 ]
 
-/** Distribute a total agent count proportionally across rooms by capacity. */
 function allocateAgentsToRooms(rooms: NavNode[], totalAgents: number): Record<string, number> {
   const totalCap = rooms.reduce((sum, r) => sum + r.capacity, 0)
   if (rooms.length === 0 || totalCap === 0 || totalAgents <= 0) return {}
@@ -93,10 +79,6 @@ function allocateAgentsToRooms(rooms: NavNode[], totalAgents: number): Record<st
 export function RunReplay({
   buildingId,
   simulatedFloorIndex,
-  // `zones` is no longer consumed for room-marker rendering — kept on the
-  // prop surface for backward compatibility with parents that still spread
-  // it in. Renamed to `_zones` so eslint's no-unused-vars rule is satisfied
-  // without breaking the props contract.
   zones: _zones,
   agentCount,
   disasterType,
@@ -119,9 +101,6 @@ export function RunReplay({
 
   const disaster = (disasterType ?? 'fire') as 'fire' | 'earthquake'
 
-  /** Build a SimulationState that reproduces the original run as faithfully
-   *  as possible. Uses the saved seed + hazards + per-room allocation when
-   *  available; otherwise falls back to a fresh allocation from agentCount. */
   const buildFreshState = useCallback((): SimulationState | null => {
     if (!floor) return null
     const rooms = floor.nodes.filter((n) => n.type === 'room')
@@ -130,8 +109,6 @@ export function RunReplay({
       ? agentsPerRoom
       : allocateAgentsToRooms(rooms, agentCount ?? 0)
 
-    // Hazards: an empty array means "user placed no hazards" — preserve that
-    // distinction so we don't accidentally fall back to floor defaults.
     const hazardOverrides = hazards != null
       ? hazards.map((h) => placedHazardToZone(h, `replay-${buildingId}-${simulatedFloorIndex ?? 0}`))
       : undefined
@@ -148,9 +125,6 @@ export function RunReplay({
   }, [floor, agentCount, agentsPerRoom, hazards, disaster, seed, buildingId, simulatedFloorIndex])
 
   const [simState, setSimState] = useState<SimulationState | null>(() => buildFreshState())
-  /** Live spatial-grid trace mirrors what the autonomous live page builds:
-   *  per-cell peak density accumulated as agents move. Drives the grid-type
-   *  heatmap overlay. Reset together with simState. */
   const [gridTrace, setGridTrace] = useState<SpatialGridTrace>(() => createSpatialGridTrace())
   const [isPlaying, setIsPlaying] = useState(false)
   const [speed, setSpeed] = useState<(typeof PLAYBACK_SPEEDS)[number]>(1)
@@ -168,7 +142,6 @@ export function RunReplay({
     gridTraceRef.current = gridTrace
   }, [gridTrace])
 
-  // When the run/floor or any replay input changes, rebuild from scratch.
   const [runSync, setRunSync] = useState({ buildingId, simulatedFloorIndex, agentCount, disaster, seed, hazards, agentsPerRoom })
   if (
     runSync.buildingId !== buildingId
@@ -185,9 +158,6 @@ export function RunReplay({
     setIsPlaying(false)
   }
 
-  // Animation loop — mirrors the autonomous page's stepping cadence so the
-  // motion feels identical to the live simulation, and keeps a spatial grid
-  // trace updating in lockstep so the heatmap overlay builds up live.
   useEffect(() => {
     if (!isPlaying || !floor) return
 
@@ -268,7 +238,6 @@ export function RunReplay({
 
   const handlePlayPause = () => {
     if (!hasReplayData) return
-    // If finished, restart fresh.
     if (simState?.finished) {
       setSimState(buildFreshState())
       setGridTrace(createSpatialGridTrace())
@@ -285,7 +254,6 @@ export function RunReplay({
 
   return (
     <div>
-      {/* ── Header ────────────────────────────────────────── */}
       {!hideHeader && (
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '16px', marginBottom: '16px', flexWrap: 'wrap' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
@@ -311,7 +279,6 @@ export function RunReplay({
         </div>
       )}
 
-      {/* ── Layer toggles + status pills ──────────────────── */}
       <div style={{
         display: 'flex', alignItems: 'center', gap: '8px',
         marginBottom: '12px', flexWrap: 'wrap',
@@ -349,7 +316,6 @@ export function RunReplay({
         </div>
       </div>
 
-      {/* ── Stage ─────────────────────────────────────────── */}
       <div style={{
         position: 'relative',
         aspectRatio: `${VIEW_WIDTH}/${VIEW_HEIGHT}`,
@@ -369,9 +335,6 @@ export function RunReplay({
               width: '100%', height: '100%',
               objectFit: 'contain', objectPosition: 'center',
               opacity: 0.95,
-              // Light-pastel treatment — keeps original room colours so the
-              // floor plan stays identifiable while the heatmap stays the
-              // visual focus.
               filter: 'saturate(0.75) contrast(0.85) brightness(1.18)',
             }}
           />
@@ -388,7 +351,6 @@ export function RunReplay({
             </filter>
           </defs>
 
-          {/* ── Heatmap overlay (live grid trace from re-simulation) ─── */}
           {showHeatmap && (
             <g filter="url(#replay-soft-blur)">
               {getRenderableGridCells(gridTrace).map((cell) => {
@@ -411,7 +373,6 @@ export function RunReplay({
             </g>
           )}
 
-          {/* ── Hazards (live) ──────────────────────────── */}
           {simState?.hazards.filter((h) => h.active).map((hazard) => (
             <g key={hazard.zone.id}>
               <circle
@@ -426,7 +387,6 @@ export function RunReplay({
             </g>
           ))}
 
-          {/* ── Agents (live, from simulation) ─────────── */}
           {showAgents && simState?.agents.filter((a) => a.state !== 'evacuated').map((agent) => {
             const pos = getAgentRenderPosition(agent, floor)
             const fill = agent.state === 'trapped' ? '#ef4444' : ACCENT
@@ -444,7 +404,6 @@ export function RunReplay({
             )
           })}
 
-          {/* ── Exits ──────────────────────────────────── */}
           {floor.nodes.filter((n) => n.type === 'exit').map((node) => (
             <g key={node.id}>
               <circle cx={node.x} cy={node.y} r="11" fill="#ffffff" stroke={ACCENT} strokeWidth="2.5" />
@@ -454,13 +413,6 @@ export function RunReplay({
             </g>
           ))}
 
-          {/* Room nodes are deliberately NOT rendered during simulation
-              playback. The heatmap colors already convey per-area
-              intensity; overlaying explicit room markers (text or dots)
-              clutters the floorplan and visually conflates with agent
-              positions. Building authors and analytical views can still
-              reference room nodes through the data model — they just
-              don't get a visual marker on the live simulation stage. */}
         </svg>
 
         {!hasReplayData && (

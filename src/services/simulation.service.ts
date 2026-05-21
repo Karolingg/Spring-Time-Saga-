@@ -21,8 +21,6 @@ export interface ReplayInputs {
   seed: number
 }
 
-/** Severity bucket a saved run falls into. Drives the building's
- *  difficulty-weighted score and the mandatory-coverage grade cap. */
 export type ScenarioSeverity = 'minor' | 'moderate' | 'severe'
 
 type Row = Record<string, unknown>
@@ -59,25 +57,6 @@ function clearAggregateCache() {
   aggregateCache.clear()
 }
 
-function clearSimulationReadCache() {
-  readCache.clearPrefix('simulation:')
-}
-
-function clearAnalysisCaches() {
-  clearAggregateCache()
-  clearSimulationReadCache()
-  clearBuildingScoreCache()
-}
-
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
-/**
- * Ensures the authenticated user has a profiles row (handles pre-migration
- * users and the OAuth-trigger race condition). Mirrors the handle_new_user
- * trigger by deriving a display name from auth metadata when present.
- */
 async function ensureProfile(
   userId: string,
   email: string | undefined,
@@ -99,21 +78,6 @@ async function ensureProfile(
   if (error) throw new Error(`Failed to ensure profile: ${error.message}`)
 }
 
-// ---------------------------------------------------------------------------
-// Write
-// ---------------------------------------------------------------------------
-
-/**
- * Optional columns that depend on later migrations. If a column is missing
- * (because that migration hasn't run against the connected Supabase project
- * yet), we strip it from the insert payload and retry. This lets the app
- * survive a partially-migrated database — important during the ship-to-
- * stakeholders window where prod might lag the codebase.
- *
- * Each entry maps a payload key → matcher for the error message Postgres
- * returns when that column is missing. Order matters: rarer/newer columns
- * first so we retry minimally.
- */
 const OPTIONAL_RUN_COLUMNS: { key: string; matcher: RegExp }[] = [
   { key: 'scenario_severity', matcher: /scenario_severity/i }, // migration 20260516
   { key: 'hazards',           matcher: /hazards/i           }, // migration 20260513
@@ -127,7 +91,6 @@ async function insertRunWithFallback(
   payload: Record<string, unknown>,
 ): Promise<{ id: string }> {
   let current = { ...payload }
-  // Try up to N+1 times — each retry strips one missing column
   for (let attempt = 0; attempt <= OPTIONAL_RUN_COLUMNS.length; attempt++) {
     const { data, error } = await supabase
       .from('simulation_runs')
@@ -137,13 +100,11 @@ async function insertRunWithFallback(
 
     if (!error) return data as { id: string }
 
-    // Try to identify which optional column caused the failure
     const missing = OPTIONAL_RUN_COLUMNS.find(c =>
       c.matcher.test(error.message) && c.key in current,
     )
     if (!missing) throw new Error(error.message)
 
-    // Strip the offending column and try again
     const next = { ...current }
     delete next[missing.key]
     current = next
@@ -189,7 +150,6 @@ export async function createSimulationRun(
     })
   if (cfgError) throw new Error(cfgError.message)
 
-  // Log the action
   await logAction('create', 'run', run.id, { buildingId, disasterType: config.disasterType })
   clearSimulationReadCache()
 
@@ -210,11 +170,6 @@ export async function saveSimulationResults(
   zones: Omit<SimulationZone, 'id' | 'runId'>[],
   bottlenecks: Omit<SimulationBottleneck, 'id' | 'runId'>[],
 ): Promise<void> {
-  // Make this operation idempotent:
-  // - upsert the single-row simulation_results by run_id
-  // - replace child rows (zones, bottlenecks) by deleting existing ones and inserting fresh
-
-  // 1) Upsert results (on conflict run_id -> update)
   const { error: resErr } = await supabase
     .from('simulation_results')
     .upsert(
@@ -232,7 +187,6 @@ export async function saveSimulationResults(
 
   if (resErr) throw new Error(resErr.message)
 
-  // 2) Replace zones: delete existing then insert new
   const { error: delZonesErr } = await supabase.from('simulation_zones').delete().eq('run_id', runId)
   if (delZonesErr) throw new Error(delZonesErr.message)
 
@@ -252,7 +206,6 @@ export async function saveSimulationResults(
     if (zonesInsertErr) throw new Error(zonesInsertErr.message)
   }
 
-  // 3) Replace bottlenecks: delete existing then insert new
   const { error: delBnErr } = await supabase.from('simulation_bottlenecks').delete().eq('run_id', runId)
   if (delBnErr) throw new Error(delBnErr.message)
 
@@ -270,7 +223,6 @@ export async function saveSimulationResults(
     if (bnInsertErr) throw new Error(bnInsertErr.message)
   }
 
-  // 4) Update the run status and timestamps
   const { error: statusErr } = await supabase
     .from('simulation_runs')
     .update({ status: results.status, updated_at: new Date().toISOString() })
@@ -278,7 +230,6 @@ export async function saveSimulationResults(
 
   if (statusErr) throw new Error(statusErr.message)
 
-  // Log the action
   await logAction('complete', 'run', runId, {
     status: results.status,
     evacuatedCount: results.evacuatedCount,
@@ -286,10 +237,6 @@ export async function saveSimulationResults(
   })
   clearAnalysisCaches()
 }
-
-// ---------------------------------------------------------------------------
-// Read
-// ---------------------------------------------------------------------------
 
 function toConfig(row: Row): SimulationRunConfig {
   return {
@@ -489,7 +436,6 @@ export async function getSimulationHistory(limit: number = 5): Promise<Simulatio
 }
 
 export async function deleteSimulationRun(runId: string): Promise<void> {
-  // Generated Supabase types may lag migrations, so keep this RPC call loose.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { error } = await (supabase as any).rpc('delete_simulation_run_rate_limited', {
     p_run_id: runId,
@@ -497,7 +443,6 @@ export async function deleteSimulationRun(runId: string): Promise<void> {
 
   if (error) throw new Error(error.message)
 
-  // Log the action
   await logAction('delete', 'run', runId)
   clearAnalysisCaches()
 }
@@ -506,13 +451,11 @@ export async function resetAllSimulationData(): Promise<void> {
   const { data: session, error: authError } = await supabase.auth.getUser()
   if (authError || !session.user) throw new Error('Not authenticated')
 
-  // Generated Supabase types may lag migrations, so keep this RPC call loose.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { error } = await (supabase as any).rpc('reset_simulation_data_rate_limited')
 
   if (error) throw new Error(error.message)
 
-  // Log the action
   await logAction('reset', 'run', 'all')
   clearAnalysisCaches()
 }
@@ -521,17 +464,9 @@ export interface AggregateFloorHeatmap {
   buildingId: string
   floorIndex: number
   runCount: number
-  /** Aggregated grid cells — peakDensity is the average peak across the runs
-   *  that contributed (so a few outlier runs don't dominate the picture). */
   cells: { cellX: number; cellY: number; peakDensity: number }[]
 }
 
-/**
- * Aggregates density cells across every completed run, grouped by
- * `(buildingId, floorIndex)`. For each cell we keep the average peak density
- * across the runs that touched that cell — effectively "this is where crowds
- * tend to build up on this floor."
- */
 export async function getAggregateFloorHeatmaps(): Promise<AggregateFloorHeatmap[]> {
   return getCachedAggregate('aggregate-floor-heatmaps', async () => {
   const { data: runs, error: runsError } = await supabase
@@ -550,7 +485,6 @@ export async function getAggregateFloorHeatmaps(): Promise<AggregateFloorHeatmap
   const runIds = runsWithFloor.map((r) => r.id)
   const runMeta = new Map(runsWithFloor.map((r) => [r.id, { buildingId: r.building_id as string, floorIndex: r.floor_index as number }]))
 
-  // Pull density cells for all completed runs in a single round-trip.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: cellRows, error: cellsError } = await (supabase as any)
     .from('density_cells')
@@ -560,7 +494,6 @@ export async function getAggregateFloorHeatmaps(): Promise<AggregateFloorHeatmap
   if (cellsError) throw new Error(cellsError.message)
   if (!cellRows || cellRows.length === 0) return []
 
-  // Group by (buildingId, floorIndex) → cell key → { sum, count, runs }.
   const groups = new Map<string, {
     buildingId: string
     floorIndex: number
@@ -715,32 +648,22 @@ export async function getAggregateZoneStats(): Promise<{
   })
 }
 
-/** One run's headline metrics, used to plot a per-floor drill trend. */
 export interface RunTrendPoint {
   runId: string
   createdAt: string
   disasterType: string
-  /** Seconds to clear the floor. */
   evacuationTime: number
   evacuatedCount: number
   agentCount: number
   maxCongestion: number
 }
 
-/** Chronological run history for one building floor. */
 export interface BuildingFloorTrend {
   buildingId: string
   floorIndex: number
-  /** Oldest-first. */
   runs: RunTrendPoint[]
 }
 
-/**
- * Groups every completed run by `(buildingId, floorIndex)` and returns each
- * group's runs in chronological order with their headline metrics. Feeds the
- * drill-trend view: direction arrows need run-over-run history, and the
- * "needs a baseline" gate needs the per-floor run count.
- */
 export async function getRunTrends(): Promise<BuildingFloorTrend[]> {
   return getCachedAggregate('run-trends', async () => {
     const { data: runs, error: runsError } = await supabase
@@ -800,10 +723,6 @@ export async function getRunTrends(): Promise<BuildingFloorTrend[]> {
   })
 }
 
-// ---------------------------------------------------------------------------
-// Run Tags
-// ---------------------------------------------------------------------------
-
 export async function addRunTag(runId: string, tag: string): Promise<void> {
   try {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -812,7 +731,6 @@ export async function addRunTag(runId: string, tag: string): Promise<void> {
       .insert({ run_id: runId, tag })
 
     if (error) {
-      // Ignore unique constraint violations (tag already exists on this run)
       if (!error.message.includes('duplicate')) throw new Error(error.message)
     }
   } catch (err) {
@@ -883,10 +801,6 @@ export async function getRunsByTag(tag: string): Promise<SimulationRun[]> {
   }
 }
 
-// ---------------------------------------------------------------------------
-// Run Notes
-// ---------------------------------------------------------------------------
-
 export async function updateRunNotes(runId: string, notes: string): Promise<void> {
   const { error } = await supabase
     .from('simulation_runs')
@@ -898,10 +812,6 @@ export async function updateRunNotes(runId: string, notes: string): Promise<void
   await logAction('update', 'run', runId, { notes })
   clearSimulationReadCache()
 }
-
-// ---------------------------------------------------------------------------
-// Density Cells (fine-grained spatial data from simulation)
-// ---------------------------------------------------------------------------
 
 export async function saveDensityCells(runId: string, cells: Omit<DensityCell, 'id' | 'runId'>[]): Promise<void> {
   try {

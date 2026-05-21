@@ -1,18 +1,3 @@
-/**
- * Adapter: FloorConfig (hand-authored per-floor config) → FloorModel (nav graph).
- *
- * Produces the NavNode/NavEdge/HazardZone structures that the autonomous engine
- * consumes, so every floor authored in `floor-config/buildings/` can be
- * simulated without hand-maintaining a parallel model.
- *
- * Strategy for keeping agents inside legal corridors:
- *  1. Use explicit `corridorNodes` + `neighbors` when the floor provides them.
- *  2. Otherwise synthesize corridor nodes from consecutive `primaryPaths` /
- *     `reroutes` waypoints — those polylines already trace the legal paths.
- *  3. Rooms attach to their declared `corridorEntryNode(s)` when present; if not,
- *     they fall back to the nearest corridor/junction node.
- */
-
 import type { FloorModel, HazardZone, NavEdge, NavNode } from '../building-model'
 import type { BuildingModel } from '../building-model'
 import { hazardGrowthRate, hazardMaxRadius } from '../hazard-physics'
@@ -86,9 +71,6 @@ export function floorConfigToFloorModel(
     const to = nodes.find(n => n.id === toId)
     if (!from || !to) return
     edgeSeen.add(key)
-    // Auto-derive fragility: any edge touching a stairwell node is structurally
-    // fragile by default, so earthquake collapse rolls get sensible coverage
-    // without per-floor authoring. An explicit `fragile` flag adds to this.
     const isFragile = fragile || from.type === 'stairs' || to.type === 'stairs'
     edges.push({
       from: fromId,
@@ -100,7 +82,6 @@ export function floorConfigToFloorModel(
     })
   }
 
-  // 1. Exits
   const exitIdByKey = new Map<string, string>()
   for (const [key, exit] of Object.entries(config.exits)) {
     const id = `${prefix}-exit-${slugify(key)}`
@@ -116,11 +97,9 @@ export function floorConfigToFloorModel(
     exitIdByKey.set(key, id)
   }
 
-  // 2. Corridor nodes — explicit if available
   const corridorIdByLabel = new Map<string, string>()
   const corridorNodes: CorridorNode[] = config.corridorNodes ?? []
   for (const cn of corridorNodes) {
-    // If an exit sits at this exact position, reuse it instead of duplicating.
     const existingExit = nodes.find(n => n.type === 'exit' && samePoint(n, cn))
     if (existingExit) {
       corridorIdByLabel.set(cn.label, existingExit.id)
@@ -138,7 +117,6 @@ export function floorConfigToFloorModel(
     })
     corridorIdByLabel.set(cn.label, id)
   }
-  // Edges from explicit neighbors
   for (const cn of corridorNodes) {
     const fromId = corridorIdByLabel.get(cn.label)
     if (!fromId) continue
@@ -153,23 +131,12 @@ export function floorConfigToFloorModel(
     }
   }
 
-  // 3. Synthesize waypoints from primary paths + reroutes — FALLBACK ONLY.
-  //
-  // When the building's FloorConfig provides explicit `corridorNodes`, those
-  // are treated as the *authoritative* navigation graph: both manual drill mode
-  // and autonomous mode pathfind through exactly the nodes the author placed,
-  // with no extra geometry synthesized behind their back. This was an explicit
-  // user request — "only the nodes set up in manual drill mode should be used
-  // in autonomous." Buildings still in placeholder state (no corridorNodes
-  // authored yet) fall back to synthesizing waypoints from the primary path
-  // polylines so they remain navigable until they get a proper graph.
   const hasAuthoredGraph = corridorNodes.length > 0
   const waypointIdByPos = new Map<string, string>()
   const posKey = (p: Point) => `${Math.round(p.x)}|${Math.round(p.y)}`
 
   if (!hasAuthoredGraph) {
     const resolvePoint = (p: Point): string => {
-      // Reuse any node already at this position (exit or declared corridor).
       const existing = nodes.find(n => samePoint(n, p))
       if (existing) {
         waypointIdByPos.set(posKey(p), existing.id)
@@ -212,13 +179,11 @@ export function floorConfigToFloorModel(
       walkPolyline(reroute.path, reroute.to)
     }
 
-    // Ensure startPos is a reachable node (hub) even if no path uses it.
     if (config.startPos && (config.startPos.x !== 0 || config.startPos.y !== 0)) {
       resolvePoint(config.startPos)
     }
   }
 
-  // 4. Rooms
   for (const [roomKey, room] of Object.entries(config.rooms)) {
     if (roomKey === 'corridor') continue
     const id = `${prefix}-room-${slugify(roomKey)}`
@@ -232,7 +197,6 @@ export function floorConfigToFloorModel(
       capacity: ROOM_CAPACITY_DEFAULT,
     })
 
-    // Prefer explicit corridor entry node(s) (by label).
     const entryLabels = room.corridorEntryNodes?.length
       ? room.corridorEntryNodes
       : room.corridorEntryNode
@@ -247,7 +211,6 @@ export function floorConfigToFloorModel(
         addEdge(id, entryId, 1.5, true)
       }
     } else {
-      // Fallback: nearest corridor/junction/exit node.
       const candidates = nodes.filter(
         n => n.id !== id && (n.type === 'corridor' || n.type === 'junction' || n.type === 'exit'),
       )
@@ -264,7 +227,6 @@ export function floorConfigToFloorModel(
     }
   }
 
-  // 5. Hazards
   const hazards: Record<string, HazardZone[]> = { fire: [], earthquake: [] }
   for (const disasterType of ['fire', 'earthquake'] as const) {
     const list = config.obstacles[disasterType] ?? []
@@ -295,7 +257,6 @@ export function floorConfigToFloorModel(
   }
 }
 
-/** Floorplan resolution per building — maps floor labels to served SVG assets. */
 const FLOORPLAN_SRC_BY_BUILDING: Record<string, Record<string, string>> = {
   'admin-building': {
     '1st Floor': '/floorplans/Admin%201st%20floor.svg',
@@ -356,10 +317,6 @@ const BUILDING_NAMES: Record<string, string> = {
   'up-high-school': 'UP High School',
 }
 
-/**
- * Build a BuildingModel for the given buildingId using the adapter.
- * Returns null if the building has no registered FloorConfigs.
- */
 export function buildBuildingModel(buildingId: string): BuildingModel | null {
   const floorConfigs = BUILDING_FLOORS[buildingId]
   if (!floorConfigs || floorConfigs.length === 0) return null

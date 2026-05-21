@@ -8,7 +8,6 @@ import { makePlaceholderFloor } from '@/src/simulation/floor-config/placeholder'
 import { BUILDING_FLOORS } from '@/src/simulation/floor-config/buildings'
 import { getHazardStorageKey, loadHazardPlan, type PlacedHazard } from '@/src/simulation/hazard-placement'
 
-// ─── Types ────────────────────────────────────────────────────────────────────
 type SimPhase = 'planning' | 'running' | 'rerouting' | 'completed'
 type DisasterType = 'fire' | 'earthquake'
 
@@ -162,14 +161,10 @@ interface RoomDef {
   label: string
   x: number
   y: number
-  // Optional explicit room->corridor entry node(s) to avoid invalid shortcuts.
   corridorEntryNode?: string
   corridorEntryNodes?: string[]
 }
 
-/** A neighbor reference can be a bare label or an enriched object with edge
- *  metadata. Manual drill only needs the label, so `neighborLabel()` below
- *  normalizes both forms. */
 type CorridorNeighbor = string | { label: string; width?: number; blockable?: boolean }
 
 interface CorridorNode {
@@ -225,7 +220,6 @@ function resolveRoomEntryNode(room: RoomDef | null | undefined, nodes: CorridorN
     if (best) return best.node
   }
 
-  // Fallback: nearest corridor node.
   let nearest = nodes[0]
   let bestDist = Infinity
   for (const node of nodes) {
@@ -258,7 +252,6 @@ interface SimMetrics {
   congestionLevel: 'Low' | 'Medium' | 'High'
 }
 
-// Building floor configurations are provided by per-building modules.
 
 function validateFloorConfig(config: FloorConfig, buildingId: string, floorIndex: number) {
   const issues: string[] = []
@@ -345,11 +338,9 @@ function getFloorConfigs(buildingId: string): FloorConfig[] {
     return validateFloorConfigs(buildingId, Array.from({ length: declaredCount }, (_, i) => makePlaceholderFloor(i)))
   }
 
-  // Fallback: 2-floor placeholder
   return validateFloorConfigs(buildingId, [makePlaceholderFloor(0), makePlaceholderFloor(1)])
 }
 
-// ─── Path Math ───────────────────────────────────────────────────────────────
 function pathLength(path?: Point[] | null): number {
   if (!path || path.length === 0) return 0
   let len = 0
@@ -362,7 +353,6 @@ function pathLength(path?: Point[] | null): number {
 }
 
 function interpolatePath(path?: Point[] | null, t?: number): Point {
-  // Defensive: if path missing or empty, return origin
   if (!path || path.length === 0) return { x: 0, y: 0 }
   const tt = typeof t === 'number' ? t : 0
   if (tt <= 0) return path[0]
@@ -389,7 +379,6 @@ function interpolatePath(path?: Point[] | null, t?: number): Point {
   return path[path.length - 1]
 }
 
-// ─── Route Analysis ─────────────────────────────────────────────────────────
 interface RouteAnalysis {
   exitKey: string
   totalLength: number
@@ -453,7 +442,6 @@ function getRecommendedExit(routes: RouteAnalysis[], mode: 'fastest' | 'safest')
     return sorted[0].exitKey
   }
 
-  // Safest: risk-first scoring, then efficiency/time tie-breakers.
   const ranked = [...routes].sort((a, b) => {
     const riskScore = (r: RouteAnalysis) => {
       let score = 0
@@ -496,11 +484,9 @@ function buildFullPath(
   const exitPath = config.primaryPaths[exitKey] || []
   const explicitExit = config.exits[exitKey]
   const finalExitPoint = explicitExit ? { x: explicitExit.x, y: explicitExit.y } : (exitPath[exitPath.length - 1] || null)
-  // Strip forbidden anchor points so the agent never routes through them.
   const exitPathFiltered = exitPath.filter(p => !isForbiddenAnchor(p))
   if (exitPath.length === 0) return [...roomPrefix]
 
-  // Helper to dedupe consecutive identical points
   const pushIfDifferent = (arr: Point[], p: Point) => { const last = arr[arr.length - 1]; if (!last || last.x !== p.x || last.y !== p.y) arr.push(p) }
 
   const nodeIndex = new Map(nodes.map((n, i) => [n.label, i]))
@@ -546,7 +532,6 @@ function buildFullPath(
       return explicit.filter(v => !!nodes[v])
     }
 
-    // Fallback for configs without explicit graph links.
     const raw = Array.from({ length: nodes.length }, (_, i) => i).filter(i => i !== u)
     return raw.filter(v => {
       const target = nodes[v]
@@ -591,7 +576,6 @@ function buildFullPath(
     return true
   }
 
-  // If explicit via labels provided, route through graph edges between each via.
   if (viaLabels && viaLabels.length > 0 && nodes.length > 0) {
     const parts: Point[] = []
     roomPrefix.forEach(p => pushIfDifferent(parts, p))
@@ -624,7 +608,6 @@ function buildFullPath(
     return avoidForbiddenZones(parts, config)
   }
 
-  // Otherwise, connect via corridor nodes: nearest node to room -> shortest chain -> nearest node to exit
   if (nodes.length > 0) {
     if (!roomPoint || !exitPoint) {
       const parts: Point[] = []
@@ -644,7 +627,6 @@ function buildFullPath(
     return avoidForbiddenZones(parts, config)
   }
 
-  // Fallback: direct room center -> exit path
   const parts: Point[] = []
   roomPrefix.forEach(p => pushIfDifferent(parts, p))
     if (finalExitPoint) pushIfDifferent(parts, finalExitPoint)
@@ -799,7 +781,6 @@ function buildNodeOnlyReroutePath(
   return out
 }
 
-// --- Forbidden-zone helpers: avoid simple rectangular "railing/stairs" areas derived from corridorNodes
 function buildForbiddenRects(config: FloorConfig) {
   const rects: { x: number; y: number; w: number; h: number }[] = []
   if (!config.corridorNodes) return rects
@@ -839,7 +820,6 @@ function segmentIntersectsRect(a: Point, b: Point, r: { x: number; y: number; w:
 }
 
 function isNodeConnectionAllowed(a: Point, b: Point, config: FloorConfig): boolean {
-  // Prevent long "teleport" links that cut through interior/stair boundaries.
   const edgeLength = Math.hypot(a.x - b.x, a.y - b.y)
   if (edgeLength > 200) return false
   const rects = buildForbiddenRects(config)
@@ -848,7 +828,6 @@ function isNodeConnectionAllowed(a: Point, b: Point, config: FloorConfig): boole
 
 function avoidForbiddenZones(path: Point[], config: FloorConfig): Point[] {
   if (!path || path.length < 2) return path
-  // filter out accidental origin points first
   const filtered = path.filter(p => !(p.x === 0 && p.y === 0) && !isForbiddenAnchor(p))
   const rects = buildForbiddenRects(config)
   if (rects.length === 0) return filtered
@@ -886,7 +865,6 @@ function avoidForbiddenZones(path: Point[], config: FloorConfig): Point[] {
   return out
 }
 
-// ─── Shared SVG Sub-components ───────────────────────────────────────────────
 
 interface FloorPlanProps {
   config: FloorConfig
@@ -1173,7 +1151,6 @@ function SimOverlay({ config, obstacles, selectedExit, selectedRoom, agentPos, p
   )
 }
 
-// ─── Admin Building Floor Plan ───────────────────────────────────────────────
 function AdminFloorPlan(props: FloorPlanProps) {
 const { config } = props
   const floorPlanSrcByLabel: Record<string, string> = {
@@ -1202,9 +1179,6 @@ const { config } = props
   )
 }
 
-// ─── UP Cebu Library Floor Plan ──────────────────────────────────────────────
-// Mirrors CSBFloorPlan: renders the actual SVG floorplan as a background image,
-// then overlays the simulation elements via <SimOverlay />.
 function LibraryFloorPlan(props: FloorPlanProps) {
   const { config } = props
   const floorPlanSrcByLabel: Record<string, string> = {
@@ -1436,8 +1410,6 @@ function ASEastFloorPlan(props: FloorPlanProps) {
 }
 
 
-// Generic fallback floor plan for buildings without a custom layout — overlays
-// the simulation on a blank canvas so the page still renders.
 function GenericFloorPlan(props: FloorPlanProps) {
   const { config } = props
   return (
@@ -1452,7 +1424,6 @@ function GenericFloorPlan(props: FloorPlanProps) {
   )
 }
 
-// ── Floor plan selector ──
 function FloorPlanView(props: FloorPlanProps & { buildingId: string }) {
   const { buildingId, ...rest } = props
   if (buildingId === 'admin-building') return <AdminFloorPlan {...rest} />
@@ -1467,7 +1438,6 @@ function FloorPlanView(props: FloorPlanProps & { buildingId: string }) {
   return <GenericFloorPlan {...rest} />
 }
 
-// ─── Main Page ────────────────────────────────────────────────────────────────
 const DISASTER_META: Record<string, { label: string; color: string }> = {
   fire:       { label: 'Fire Simulation',       color: '#ff6b35' },
   earthquake: { label: 'Earthquake Simulation', color: '#f59e0b' },
@@ -1506,8 +1476,6 @@ export default function SimulationRunPage() {
     () => loadHazardPlan(getHazardStorageKey(regionId, clampFloorIdx(initialFloor), disaster))?.hazards ?? [],
   )
 
-  // Sync floorIdx + placedHazards to URL/region/floor changes via render-time
-  // state correction (avoids the react-hooks/set-state-in-effect lint error).
   const [floorSync, setFloorSync] = useState({ regionId, initialFloor, floorsLen: floors.length })
   if (floorSync.regionId !== regionId || floorSync.initialFloor !== initialFloor || floorSync.floorsLen !== floors.length) {
     setFloorSync({ regionId, initialFloor, floorsLen: floors.length })
@@ -1548,14 +1516,12 @@ export default function SimulationRunPage() {
       .sort(([, a], [, b]) => a.label.localeCompare(b.label, undefined, { numeric: true, sensitivity: 'base' }))
   }, [config])
 
-  // Reload hazards from storage when the active key changes (render-time pattern).
   const [hazardKeySync, setHazardKeySync] = useState(hazardStorageKey)
   if (hazardKeySync !== hazardStorageKey) {
     setHazardKeySync(hazardStorageKey)
     setPlacedHazards(loadHazardPlan(hazardStorageKey)?.hazards ?? [])
   }
 
-  // Drop the room selection if it no longer belongs to the current floor.
   if (selectedRoom && !currentFloorRooms.some(([key]) => key === selectedRoom)) {
     setSelectedRoom(null)
     setSelectedExit(null)
@@ -1565,8 +1531,6 @@ export default function SimulationRunPage() {
 
   const planningAgentPos = useMemo<Point>(() => {
     if (!config || !selectedRoom || !config.rooms[selectedRoom]) {
-      // Do not default to corridor/startPos — require user to select a room.
-      // Reset position to origin (off-map) so no implicit starting point is used.
       return { x: 0, y: 0 }
     }
     const room = config.rooms[selectedRoom]
@@ -1663,7 +1627,6 @@ export default function SimulationRunPage() {
     let options = Array.from(new Set([...direct, ...reverse]))
 
     if (options.length === 0) {
-      // Fallback for configs without explicit graph links.
       const others = corridorNodes
         .filter(n => n.label !== label)
         .filter(n => isNodeConnectionAllowed(node, n, config))
@@ -1757,7 +1720,6 @@ export default function SimulationRunPage() {
     if (!anchorLabel) return
 
     if (entryNodeLabel && label === entryNodeLabel) {
-      // Clicking start node returns planning state to room entry.
       setRouteMode(null)
       setSelectedExit(null)
       setSelectedVias([])
@@ -1924,7 +1886,6 @@ export default function SimulationRunPage() {
     setActiveBlockedExits(new Set())
   }
 
-  // Undo last planning action: removes last via, or clears manual exit/routeMode if none
   const undoLast = () => {
     if (selectedVias.length > 0) {
       setSelectedVias(prev => prev.slice(0, -1))
@@ -1943,7 +1904,6 @@ export default function SimulationRunPage() {
     }
   }
 
-  // Reset planning selections but keep chosen room (helps iterate on routes quickly)
   const resetPlan = () => {
     setSelectedVias([])
     setSelectedExit(null)
@@ -1999,7 +1959,6 @@ export default function SimulationRunPage() {
     </div>
   )
 
-  // Feedback
   const feedbackLines: string[] = []
   if (metrics) {
     if (metrics.rerouted) {

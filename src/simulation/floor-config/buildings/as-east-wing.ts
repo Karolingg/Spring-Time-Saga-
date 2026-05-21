@@ -68,8 +68,8 @@ const AS_EAST_WING_1F: FloorConfig = {
     { label: 'AS 147 Entrance', x: 1075, y: 395, neighbors: ['AS 147 Entry'] },
 
     { label: 'AS 149 Entry', x: 897, y: 375, neighbors: ['AS 149 Exit', 'AS 149 Entrance'] },
-    { label: 'AS 149 Exit', x: 857, y: 395, neighbors: ['AS 149 Entry'] },
-    { label: 'AS 149 Entrance', x: 940, y: 395, neighbors: ['AS 149 Entry'] },
+    { label: 'AS 149 Exit', x: 857, y: 395, neighbors: ['AS 149 Entry', 'Out 145'] },
+    { label: 'AS 149 Entrance', x: 940, y: 395, neighbors: ['AS 149 Entry', 'Out 148'] },
 
     { label: 'Out 145', x: 812, y: 420, neighbors: ['Out Office of the Dean', 'Out 148'] },
     { label: 'Out Office of the Dean', x: 767, y: 420, neighbors: ['Out 145'] },
@@ -211,6 +211,8 @@ const AS_EAST_WING_3F: FloorConfig = {
     E1: [{ x: 490, y: 350 }, { x: 490, y: 295 }, { x: 420, y: 270 }, { x: 410, y: 210 }, { x: 410, y: 120 }, { x: 410, y: 52 }],
     E2: [{ x: 490, y: 350 }, { x: 490, y: 410 }, { x: 490, y: 455 }, { x: 430, y: 470 }, { x: 370, y: 490 }],
     E3: [{ x: 490, y: 350 }, { x: 490, y: 410 }, { x: 490, y: 455 }, { x: 550, y: 470 }, { x: 610, y: 490 }],
+    E4: [{ x: 490, y: 350 }, { x: 490, y: 410 }, { x: 490, y: 455 }, { x: 550, y: 470 }, { x: 610, y: 490 }],
+    E5: [{ x: 490, y: 350 }, { x: 490, y: 410 }, { x: 490, y: 455 }, { x: 550, y: 470 }, { x: 610, y: 490 }],
   },
   reroutes: {
     E1: { to: 'E2', path: [{ x: 410, y: 120 }, { x: 410, y: 210 }, { x: 420, y: 270 }, { x: 490, y: 295 }, { x: 490, y: 350 }, { x: 490, y: 410 }, { x: 490, y: 455 }, { x: 430, y: 470 }, { x: 370, y: 490 }] },
@@ -233,7 +235,8 @@ const AS_EAST_WING_3F: FloorConfig = {
     corridor: { label: 'Corridor', x: 490, y: 350 },
     as301: { label: 'AS 301', x: 1032, y: 315, corridorEntryNode: '' },
     as302to306: { label: 'AS 302-306', x: 923, y: 400, corridorEntryNode: '' },
-    as310: { label: 'AS 310', x: 1030, y: 390, corridorEntryNode: '' },
+    as308: { label: 'AS 308', x: 637, y: 375, corridorEntryNode: '' },
+    as310: { label: 'AS 310', x: 475, y: 375, corridorEntryNode: '' },
     as312: { label: 'AS 312', x: 355, y: 400, corridorEntryNode: '' },
     as313: { label: 'AS 313', x: 385, y: 315, corridorEntryNode: '' },
     as314: { label: 'AS 314', x: 155, y: 400, corridorEntryNode: '' },
@@ -245,16 +248,21 @@ const AS_EAST_WING_3F: FloorConfig = {
   corridorNodes: [
     { label: '302-306 Entry', x: 923, y: 400, neighbors: ['Near Room 204', 'Near Exit 2'] },
     { label: 'Out 301', x: 1032, y: 340, neighbors: ['Out DCS', 'Near E4 & E5'] },
-    { label: 'Out 313', x: 385, y: 340, neighbors: ['Near E2 & E3', 'AS 314 Entrance'] },
-    { label: 'Out 312', x: 295, y: 340, neighbors: ['AS 312 Exit'] },
-    { label: 'Out 307', x: 160, y: 340, neighbors: ['Near E2 & E3', 'AS 314 Entrance'] },
-    { label: 'Out 315', x: 250, y: 340, neighbors: ['Near E2 & E3', 'AS 314 Entrance'] },
-    { label: 'Near Room 202', x: 613, y: 220, neighbors: ['Near Toilet', 'Near Room 201'] },
-    { label: 'Near Room 201', x: 613, y: 310, neighbors: ['Near Room 202', 'East Corridor'] },
+    { label: 'Out 313', x: 385, y: 340, neighbors: ['Central Corridor', 'AS 314 Entrance'] },
+    { label: 'Out 312', x: 295, y: 340, neighbors: ['AS 312 Exit', 'Out 313'] },
+    { label: 'Out 307', x: 160, y: 340, neighbors: ['Near E2 & E3', 'AS 314 Entrance', 'Out 315'] },
+    { label: 'Out 315', x: 250, y: 340, neighbors: ['Out 307', 'Out 312'] },
+
+    { label: 'DCS Entry', x: 860, y: 280, neighbors: ['DCS Exit', 'DCS Entrance'] },
+    { label: 'DCS Exit', x: 788, y: 320, neighbors: ['DCS Entry', 'Out 306'] },
+    { label: 'DCS Entrance', x: 923, y: 320, neighbors: ['DCS Entry', 'Out DCS'] },
+
+    { label: 'AS 310 Entry', x: 475, y: 375, neighbors: ['Near Exit 1'] },
+    { label: 'AS 308 Entry', x: 475, y: 375, neighbors: ['Near Exit 1'] },
 
     { label: 'AS 312 Entry', x: 355, y: 400, neighbors: ['AS 312 Exit', 'AS 312 Entrance'] },
     { label: 'AS 312 Exit', x: 295, y: 360, neighbors: ['AS 312 Entry', 'Near E2 & E3'] },
-    { label: 'AS 312 Entrance', x: 427, y: 360, neighbors: ['AS 312 Entry', 'Out 307'] },
+    { label: 'AS 312 Entrance', x: 427, y: 360, neighbors: ['AS 312 Entry', 'Out 307', 'Central Corridor'] },
 
     { label: 'AS 314 Entry', x: 155, y: 400, neighbors: ['AS 314 Exit', 'AS 314 Entrance'] },
     { label: 'AS 314 Exit', x: 115, y: 360, neighbors: ['AS 314 Entry', 'Out 312'] },
@@ -265,8 +273,10 @@ const AS_EAST_WING_3F: FloorConfig = {
     { label: 'AS 315 Entrance', x: 335, y: 315, neighbors: ['AS 315 Entry', 'Out 307'] },
 
 
-    { label: 'Out DCS', x: 923, y: 340, neighbors: [''] },
-    { label: 'Central Corridor', x: 580, y: 340, neighbors: ['Near Room 201', 'Near Exit 3', 'E1'] },
+    { label: 'Out DCS', x: 923, y: 340, neighbors: ['Out 301', 'Out 306'] },
+    { label: 'Out 306', x: 788, y: 340, neighbors: ['Out DCS', 'Central Corridor'] },
+    { label: 'Central Corridor', x: 580, y: 340, neighbors: ['Near Room 201', 'Near Exit 1', 'E1'] },
+    { label: 'Near Exit 1', x: 580, y: 360, neighbors: ['Central Corridor'] },
     { label: 'Near E2 & E3', x: 71, y: 340, neighbors: ['E2', 'E3', 'Out 317', 'AS 314 Exit'] },
     { label: 'Near E4 & E5', x: 1127, y: 340, neighbors: ['Out 301', 'E4', 'E5'] },
 

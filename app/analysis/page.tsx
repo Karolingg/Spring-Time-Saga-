@@ -42,9 +42,6 @@ export default function AnalysisPage() {
     }
   }, [isAuthLoading, isAuthenticated])
 
-  // Load a compact live-stats strip — purely additive. If it errors or there
-  // are no runs yet, the strip simply stays unrendered (no flicker, no empty
-  // state) so the hub still reads cleanly.
   useEffect(() => {
     if (!isAuthenticated) return
     let cancelled = false

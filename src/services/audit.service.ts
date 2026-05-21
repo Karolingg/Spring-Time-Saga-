@@ -28,7 +28,6 @@ export async function logAction(
   const userId = session?.user?.id ?? null
 
   try {
-    // Use RPC call to bypass type generation lag after migration
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { error } = await (supabase as any).from('audit_logs').insert({
       user_id: userId,
@@ -44,7 +43,6 @@ export async function logAction(
     }
   } catch (err) {
     console.error(`Audit logging error: ${err}`)
-    // Don't throw — audit logging should not break main flow
   }
 }
 
