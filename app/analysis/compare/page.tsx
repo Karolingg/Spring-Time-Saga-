@@ -160,7 +160,6 @@ export default function CompareRunsPage() {
         const paramA = searchParams.get('a')
         const paramB = searchParams.get('b')
 
-        // Prefer URL params, fall back to the two most recent completed runs.
         const initialA = paramA
           ? await getSimulationRun(paramA).catch(() => null)
           : runs[0] ?? null
@@ -524,7 +523,6 @@ function buildComparisonWarnings(runA: SimulationRun, runB: SimulationRun): Comp
     })
   }
 
-  // Occupancy gap within an otherwise-matched pair (same building + floor).
   if (sameBuilding && runA.floorIndex === runB.floorIndex) {
     const a = runA.config?.agentCount ?? 0
     const b = runB.config?.agentCount ?? 0
@@ -624,8 +622,6 @@ function KpiDeltaCard({ metric, runA, runB }: { metric: MetricDef; runA: Simulat
   const deltaColor = delta == null || delta === 0 ? '#64748b' : improved ? '#22c55e' : '#ef4444'
   const deltaPrefix = delta == null ? '' : delta > 0 ? '+' : ''
 
-  // Differential highlight: a >20% relative move gets a coloured card so the
-  // metrics that actually changed stand out from the ones that barely moved.
   const relGap = delta == null || delta === 0
     ? 0
     : valueA != null && valueA !== 0

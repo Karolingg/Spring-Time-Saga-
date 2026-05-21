@@ -184,7 +184,7 @@ Notable service behavior:
 - No automated test suite is present in `package.json`; only lint/build scripts exist.
 - `README.md` says to copy `.env.example`, but no `.env.example` is present in the repo.
 - `README.md` lists Leaflet/react-leaflet, but current map implementation uses Mapbox/react-map-gl. Leaflet packages remain installed.
-- Several docs are stale or internally inconsistent. For example, `docs/CODEBASE_AUDIT.md` references files/routes that no longer exist or changed, while `docs/deployment-readiness.md` notes some docs drift.
+- Some docs may be stale or internally inconsistent; `docs/deployment-readiness.md` itself notes some docs drift. Trust the source code over the docs where they disagree.
 - Several docs may drift on auth details. Trust the source of truth in `app/auth/page.tsx` and `src/services/auth.service.ts`.
 - `app/map/page.tsx` intentionally hardcodes campus buildings. The migration-created `buildings` table is currently not used by the map.
 - `src/schema/building.types.ts` defines `RunTag`, `AuditLog`, and `DensityCell`, but no active `Building` type/service is present.

@@ -89,6 +89,7 @@ const ASX_2F: FloorConfig = {
     asx206: { label: 'ASX 206', x: 960, y: 220, corridorEntryNodes: [''] },
     asx207: { label: 'ASX 207', x: 885, y: 410, corridorEntryNodes: [''] },
     asx208: { label: 'ASX 208', x: 575, y: 410, corridorEntryNodes: [''] },
+    faculty: { label: 'Faculty Lounge', x: 225, y: 297, corridorEntryNodes: [''] },
   },
   corridorNodes: [
     { label: 'ASX 205 Exit', x: 493, y: 270, neighbors: ['Corridor 1'] },

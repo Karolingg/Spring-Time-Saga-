@@ -18,8 +18,8 @@ function getHeatColor(intensity: number) {
   if (intensity >= 0.78) return '#e11d48'
   if (intensity >= 0.55) return '#ea580c'
   if (intensity >= 0.32) return '#f59e0b'
-  if (intensity >= 0.12) return '#15803d'   // green-700 (darker for contrast)
-  return '#16a34a'                            // green-600 (darker minimum)
+  if (intensity >= 0.12) return '#15803d'
+  return '#16a34a'
 }
 
 interface ResolvedFloorHeatmap extends AggregateFloorHeatmap {
@@ -62,7 +62,6 @@ export function AggregateFloorHeatmaps({ hideHeader = false }: AggregateFloorHea
     return () => { cancelled = true }
   }, [])
 
-  /** Resolve building/floor models once per dataset. */
   const resolved: ResolvedFloorHeatmap[] = useMemo(() => {
     return heatmaps.map((entry) => {
       const building = entry.buildingId ? getBuildingById(entry.buildingId) ?? null : null
@@ -71,7 +70,6 @@ export function AggregateFloorHeatmaps({ hideHeader = false }: AggregateFloorHea
     })
   }, [heatmaps])
 
-  /** Group by building, then sort buildings by total run count desc, then by name. */
   const buildingGroups: BuildingGroup[] = useMemo(() => {
     const map = new Map<string, BuildingGroup>()
     for (const entry of resolved) {
@@ -102,9 +100,6 @@ export function AggregateFloorHeatmaps({ hideHeader = false }: AggregateFloorHea
   const [selectedBuildingId, setSelectedBuildingId] = useState<string | null>(null)
   const [selectedFloorIndex, setSelectedFloorIndex] = useState<number | null>(null)
 
-  /** Keep the selection valid: default to the first available building/floor
-   *  whenever the dataset changes, and snap back if the current selection
-   *  no longer exists in the data. Render-time correction pattern. */
   const [syncToken, setSyncToken] = useState(0)
   const datasetToken = buildingGroups.length === 0
     ? 0
@@ -138,7 +133,6 @@ export function AggregateFloorHeatmaps({ hideHeader = false }: AggregateFloorHea
       boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
       marginBottom: '20px',
     }}>
-      {/* ── Header ──────────────────────────────────────────── */}
       {!hideHeader && (
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '16px', marginBottom: '20px', flexWrap: 'wrap' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
@@ -192,7 +186,6 @@ export function AggregateFloorHeatmaps({ hideHeader = false }: AggregateFloorHea
 
       {!isLoading && !error && buildingGroups.length > 0 && (
         <>
-          {/* ── Step 1: Building picker ───────────────────── */}
           <StepHeader step={1} title="Pick a building" />
           <div style={{
             display: 'grid',
@@ -258,7 +251,6 @@ export function AggregateFloorHeatmaps({ hideHeader = false }: AggregateFloorHea
             })}
           </div>
 
-          {/* ── Step 2: Floor picker (only floors with data) ───── */}
           {selectedGroup && (
             <>
               <StepHeader step={2} title={`Pick a floor of ${selectedGroup.building?.name ?? selectedGroup.buildingId}`} />
@@ -304,7 +296,6 @@ export function AggregateFloorHeatmaps({ hideHeader = false }: AggregateFloorHea
             </>
           )}
 
-          {/* ── Step 3: Heatmap for the selection ───────────── */}
           {selectedHeatmap && <FloorHeatmapView entry={selectedHeatmap} />}
         </>
       )}
@@ -359,7 +350,6 @@ function FloorHeatmapView({ entry }: { entry: ResolvedFloorHeatmap }) {
       overflow: 'hidden',
       boxShadow: '0 1px 2px rgba(15,23,42,0.04)',
     }}>
-      {/* Title bar */}
       <div style={{
         padding: '12px 16px',
         background: '#ffffff',
@@ -385,7 +375,6 @@ function FloorHeatmapView({ entry }: { entry: ResolvedFloorHeatmap }) {
         </div>
       </div>
 
-      {/* Map */}
       <div style={{
         position: 'relative',
         aspectRatio: `${VIEW_WIDTH}/${VIEW_HEIGHT}`,
@@ -402,9 +391,6 @@ function FloorHeatmapView({ entry }: { entry: ResolvedFloorHeatmap }) {
               width: '100%', height: '100%',
               objectFit: 'contain', objectPosition: 'center',
               opacity: 0.95,
-              // Light-pastel treatment — keeps original room colours so the
-              // floor plan stays identifiable while the heatmap stays the
-              // visual focus.
               filter: 'saturate(0.75) contrast(0.85) brightness(1.18)',
             }}
           />

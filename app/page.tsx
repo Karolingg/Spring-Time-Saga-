@@ -3,14 +3,16 @@
 import { useEffect, useState } from 'react'
 import { useAuth } from '@/src/hooks/useAuth'
 import { useIsMobile } from '@/src/hooks/useIsMobile'
+import { useOnboarding } from '@/src/hooks/useOnboarding'
 import {
   getSimulationHistory,
   getAggregateSimulationStats,
 } from '@/src/services/simulation.service'
 import { getUserProfile } from '@/src/services/user.service'
+import { OnboardingOverlay } from '@/components/Onboarding/OnboardingOverlay'
+import { InfoTooltip } from '@/components/InfoTooltip'
 import type { SimulationRun } from '@/src/schema/simulation.types'
 
-// ─── Constants ────────────────────────────────────────────────────────────────
 const SECTION_CARD: React.CSSProperties = {
   background: '#ffffff',
   border: '1px solid var(--border)',
@@ -31,7 +33,6 @@ interface AggregateStats {
   avgEvacuationTime: number
 }
 
-// ─── Utilities ────────────────────────────────────────────────────────────────
 function timeAgo(dateStr: string): string {
   const now = Date.now()
   const then = new Date(dateStr).getTime()
@@ -81,10 +82,10 @@ function userName(displayName: string | null, metadata: Record<string, unknown> 
   return nameFromEmail(email)
 }
 
-// ─── Page ─────────────────────────────────────────────────────────────────────
 export default function DashboardPage() {
   const isMobile = useIsMobile()
   const { user, isAuthenticated, isLoading: isAuthLoading } = useAuth()
+  const { resetOnboarding } = useOnboarding()
   const [stats, setStats] = useState<AggregateStats | null>(null)
   const [recentRuns, setRecentRuns] = useState<SimulationRun[]>([])
   const [profileName, setProfileName] = useState<{ userId: string; displayName: string | null } | null>(null)
@@ -163,16 +164,49 @@ export default function DashboardPage() {
             Campus evacuation overview &amp; drill analytics
           </p>
         </div>
-        <a href="/map" style={{
-          display: 'flex', alignItems: 'center', gap: '8px',
-          padding: '10px 20px', background: '#2db8b0', color: '#fff',
-          borderRadius: '8px', textDecoration: 'none', fontSize: '14px', fontWeight: '600', flexShrink: 0,
-        }}>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="#ffffff" stroke="none">
-            <polygon points="8 5 19 12 8 19 8 5" />
-          </svg>
-          Run Simulation
-        </a>
+        <div style={{ display: 'flex', gap: '12px', flexShrink: 0, flexWrap: 'wrap' }}>
+          <button
+            onClick={() => resetOnboarding()}
+            style={{
+              display: 'flex', alignItems: 'center', gap: '8px',
+              padding: '10px 20px', background: '#f0f4f8', color: '#2db8b0',
+              border: '1px solid #e0e8f0', borderRadius: '8px', cursor: 'pointer',
+              fontSize: '14px', fontWeight: '600', transition: 'all 0.2s ease-in-out',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = '#e8f1f0'
+              e.currentTarget.style.borderColor = '#2db8b0'
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = '#f0f4f8'
+              e.currentTarget.style.borderColor = '#e0e8f0'
+            }}
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="10"/>
+              <line x1="12" y1="16" x2="12" y2="12"/>
+              <line x1="12" y1="8" x2="12.01" y2="8"/>
+            </svg>
+            Tutorial
+          </button>
+          <a href="/map" style={{
+            display: 'flex', alignItems: 'center', gap: '8px',
+            padding: '10px 20px', background: '#2db8b0', color: '#fff',
+            borderRadius: '8px', textDecoration: 'none', fontSize: '14px', fontWeight: '600', flexShrink: 0,
+            transition: 'all 0.2s ease-in-out',
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.background = '#1f9189'
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = '#2db8b0'
+          }}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="#ffffff" stroke="none">
+              <polygon points="8 5 19 12 8 19 8 5" />
+            </svg>
+            Run Simulation
+          </a>
+        </div>
       </div>
 
       {/* ── Readiness + Coverage row ── */}
@@ -200,8 +234,14 @@ export default function DashboardPage() {
             </div>
           </div>
           <div>
-            <div style={{ fontSize: '11px', fontWeight: '600', letterSpacing: '0.08em', color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '6px' }}>
-              Campus Readiness
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+              <span style={{ fontSize: '11px', fontWeight: '600', letterSpacing: '0.08em', color: 'var(--text-muted)', textTransform: 'uppercase' }}>
+                Campus Readiness
+              </span>
+              <InfoTooltip
+                title="Campus Readiness Score"
+                description="A composite 0-100 score measuring evacuation preparedness. Based on evacuation rate (40%), bottleneck frequency (30%), and response time (30%)."
+              />
             </div>
             <div style={{ fontSize: '20px', fontWeight: '700', color: rl.color, marginBottom: '4px' }}>
               {rl.text}
@@ -277,18 +317,20 @@ export default function DashboardPage() {
 
       {/* ── Drill Comparison ── */}
       <div style={SECTION_CARD}>
-        <DrillComparison runs={recentRuns} />
+        <DrillComparison runs={recentRuns} isMobile={isMobile} />
       </div>
 
       {/* ── Quick Actions ── */}
       <div style={SECTION_CARD}>
-        <QuickActions />
+        <QuickActions isMobile={isMobile} />
       </div>
+
+      {/* Onboarding */}
+      <OnboardingOverlay currentPage="dashboard" />
     </div>
   )
 }
 
-// ─── Greeting based on time of day ───────────────────────────────────────────
 function getGreeting(): string {
   const h = new Date().getHours()
   if (h < 12) return 'Good morning'
@@ -296,7 +338,6 @@ function getGreeting(): string {
   return 'Good evening'
 }
 
-// ─── Stat Card ────────────────────────────────────────────────────────────────
 interface StatCardData {
   icon: React.ReactNode
   label: string
@@ -386,7 +427,6 @@ function buildStatCards(stats: AggregateStats | null): StatCardData[] {
   ]
 }
 
-// ─── Drill Activity Timeline ─────────────────────────────────────────────────
 const DISASTER_ICON: Record<string, { color: string; bg: string; label: string }> = {
   fire:       { color: '#ff6b35', bg: 'rgba(255,107,53,0.1)',  label: 'Fire Drill' },
   earthquake: { color: '#f59e0b', bg: 'rgba(245,158,11,0.1)', label: 'Earthquake Drill' },
@@ -505,7 +545,6 @@ function MetricChip({ label, value }: { label: string; value: string }) {
   )
 }
 
-// ─── Drill Comparison ────────────────────────────────────────────────────────
 function evacRate(run: SimulationRun): number {
   const agents = run.config?.agentCount ?? 0
   const evacuated = run.results?.evacuatedCount ?? 0
@@ -520,7 +559,7 @@ function compareDelta(a: SimulationRun, b: SimulationRun): { evacDelta: number; 
   return { evacDelta: rateB - rateA, timeDelta: timeB - timeA }
 }
 
-function DrillComparison({ runs }: { runs: SimulationRun[] }) {
+function DrillComparison({ runs, isMobile }: { runs: SimulationRun[]; isMobile: boolean }) {
   const hasPair = runs.length >= 2
   const a = hasPair ? runs[1] : null
   const b = hasPair ? runs[0] : null
@@ -543,7 +582,7 @@ function DrillComparison({ runs }: { runs: SimulationRun[] }) {
       </p>
 
       {hasPair && a && b ? (
-        <ComparisonPreview a={a} b={b} compareUrl={compareUrl} />
+        <ComparisonPreview a={a} b={b} compareUrl={compareUrl} isMobile={isMobile} />
       ) : (
         <div style={{
           padding: '24px 20px', textAlign: 'center',
@@ -567,18 +606,26 @@ function DrillComparison({ runs }: { runs: SimulationRun[] }) {
   )
 }
 
-function ComparisonPreview({ a, b, compareUrl }: { a: SimulationRun; b: SimulationRun; compareUrl: string }) {
+function ComparisonPreview({ a, b, compareUrl, isMobile }: { a: SimulationRun; b: SimulationRun; compareUrl: string; isMobile: boolean }) {
   const { evacDelta, timeDelta } = compareDelta(a, b)
   const dtA = DISASTER_ICON[a.disasterType] ?? DISASTER_ICON.fire
   const dtB = DISASTER_ICON[b.disasterType] ?? DISASTER_ICON.fire
 
   return (
     <div style={{
-      display: 'grid', gridTemplateColumns: '1fr auto 1fr auto', gap: '16px', alignItems: 'stretch',
+      display: isMobile ? 'flex' : 'grid',
+      flexDirection: isMobile ? 'column' : undefined,
+      gridTemplateColumns: isMobile ? undefined : '1fr auto 1fr auto',
+      gap: isMobile ? '12px' : '16px',
+      alignItems: 'stretch',
     }}>
       <RunCard label="Baseline (A)" badgeColor="#64748b" run={a} dt={dtA} />
 
-      <div style={{ display: 'flex', alignItems: 'center', color: '#94a3b8' }}>
+      <div style={{
+        display: 'flex', alignItems: 'center', color: '#94a3b8',
+        justifyContent: 'center',
+        transform: isMobile ? 'rotate(90deg)' : 'none',
+      }}>
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <line x1="5" y1="12" x2="19" y2="12" />
           <polyline points="12 5 19 12 12 19" />
@@ -587,7 +634,11 @@ function ComparisonPreview({ a, b, compareUrl }: { a: SimulationRun; b: Simulati
 
       <RunCard label="Latest (B)" badgeColor="#2db8b0" run={b} dt={dtB} />
 
-      <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between', gap: '8px', minWidth: '180px' }}>
+      <div style={{
+        display: 'flex', flexDirection: 'column',
+        justifyContent: 'space-between', gap: isMobile ? '10px' : '8px',
+        minWidth: isMobile ? 'auto' : '180px',
+      }}>
         <DeltaPill
           label="Evacuation rate"
           delta={evacDelta}
@@ -604,6 +655,7 @@ function ComparisonPreview({ a, b, compareUrl }: { a: SimulationRun; b: Simulati
           display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
           padding: '9px 14px', background: '#2db8b0', color: '#ffffff',
           borderRadius: '6px', textDecoration: 'none', fontSize: '13px', fontWeight: '600',
+          width: isMobile ? '100%' : undefined,
         }}>
           Open comparison
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -646,7 +698,7 @@ function RunCard({ label, badgeColor, run, dt }: {
           {dt.label}
         </span>
       </div>
-      <div style={{ display: 'flex', gap: '14px' }}>
+      <div style={{ display: 'flex', gap: '14px', flexWrap: 'wrap' }}>
         <MetricChip label="Evacuated" value={`${evacuated}/${agents}`} />
         <MetricChip label="Rate" value={`${rate}%`} />
         <MetricChip label="Time" value={time != null ? `${time.toFixed(1)}s` : '—'} />
@@ -683,7 +735,6 @@ function DeltaPill({ label, delta, format, betterWhenHigher }: {
   )
 }
 
-// ─── Quick Actions ────────────────────────────────────────────────────────────
 const QUICK_ACTIONS = [
   {
     href: '/map',
@@ -726,11 +777,11 @@ const QUICK_ACTIONS = [
   },
 ]
 
-function QuickActions() {
+function QuickActions({ isMobile }: { isMobile: boolean }) {
   return (
     <>
       <h2 style={{ margin: '0 0 14px', fontSize: '14px', fontWeight: '600', color: 'var(--text-primary)' }}>Quick Actions</h2>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, 1fr)', gap: '12px' }}>
         {QUICK_ACTIONS.map(item => (
           <a key={item.label} href={item.href} style={{
             display: 'flex', alignItems: 'center', gap: '14px',

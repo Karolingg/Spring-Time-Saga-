@@ -6,14 +6,6 @@ import { createSimulation, stepSimulation } from '@/src/simulation/engine'
 import { distributeAgentsByCapacity } from '@/src/simulation/autonomous-analytics'
 import { placedHazardToZone, type PlacedHazard } from '@/src/simulation/hazard-placement'
 
-/**
- * Exit Utilization Breakdown.
- *
- * Re-simulates the saved run (seed + hazards + per-room allocation) and counts
- * which exit each occupant evacuated through. A run can report "all reachable
- * exits" yet still funnel 90% of people through one door — that imbalance is
- * the real bottleneck story, and it isn't visible in the headline KPIs.
- */
 interface ExitUtilizationBreakdownProps {
   buildingId: string | null
   simulatedFloorIndex: number | null
@@ -25,13 +17,10 @@ interface ExitUtilizationBreakdownProps {
 }
 
 const HAZARD_GROWTH_MULTIPLIER = 0.45
-// Matches the heatmap replay's timestep so this breakdown and the heatmap on
-// the same report agree with each other.
 const STEP_DT = 0.1
 const BATCH_BUDGET_MS = 14
 const MAX_STEPS = 12000
 
-/** Distinct, print-safe colours assigned to exits in evacuee-count order. */
 const EXIT_COLORS = ['#2db8b0', '#3b82f6', '#8b5cf6', '#f59e0b', '#ec4899', '#0ea5e9']
 
 interface ExitRow {
@@ -41,7 +30,6 @@ interface ExitRow {
 
 interface UtilResult {
   exits: ExitRow[]
-  /** Occupants that never reached an exit (trapped + still-moving stragglers). */
   notEvacuated: number
   total: number
 }
@@ -96,8 +84,6 @@ export function ExitUtilizationBreakdown({
     state.running = true
     let steps = 0
 
-    // When an agent evacuates, the engine sets `currentNodeId` to the exit
-    // node it walked into — so the final state tells us which door it used.
     const exitLabelById = new Map(
       floor.nodes.filter((n) => n.type === 'exit').map((n) => [n.id, n.label]),
     )
@@ -121,7 +107,6 @@ export function ExitUtilizationBreakdown({
             const label = exitLabelById.get(agent.currentNodeId) ?? 'Unknown exit'
             counts.set(label, (counts.get(label) ?? 0) + 1)
           } else {
-            // Trapped agents and any stragglers still moving at MAX_STEPS.
             notEvacuated++
           }
         }

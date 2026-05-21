@@ -45,7 +45,7 @@ export interface SpatialHazard {
   active: boolean
 }
 
-export function clampGridCell(value: number, maxExclusive: number): number {
+function clampGridCell(value: number, maxExclusive: number): number {
   return Math.min(Math.max(Math.floor(value), 0), maxExclusive - 1)
 }
 
@@ -56,7 +56,7 @@ export function pointToGridCell(point: SpatialPoint): GridCellCoord {
   }
 }
 
-export function gridCellKey(cellX: number, cellY: number): string {
+function gridCellKey(cellX: number, cellY: number): string {
   return `${cellX}:${cellY}`
 }
 

@@ -64,7 +64,6 @@ export default function LoginPage() {
     setSuccessMessage('')
     try {
       await loginWithGoogle()
-      // Supabase redirects away from this page.
     } catch (err) {
       setErrorMessage((err as Error).message)
       setIsGoogleLoading(false)
