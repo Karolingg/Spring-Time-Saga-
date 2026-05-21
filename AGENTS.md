@@ -251,4 +251,4 @@ Notable service behavior:
 - Decide whether settings notification/default preferences should be persisted or clearly marked as local-only.
 - Audit floorplan mappings in `src/simulation/floor-config/to-floor-model.ts` against `public/floorplans/`.
 - Continue replacing placeholder floor configs with authored floor graphs where needed.
-- Consider moving very large page-local simulation logic into smaller hooks/components/services once behavior is stable.
+- Consider moving very large page-local simulation logic into smaller hooks/components/services once behavior is  stable.
