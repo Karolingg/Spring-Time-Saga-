@@ -26,6 +26,12 @@ const PD_ZERO_CREDIT     = 1.0
 const CAP_NO_SEVERE_SCORE   = 89
 const CAP_NO_MODERATE_SCORE = 79
 
+const buildingScoreCache = new ReadThroughCache()
+
+export function clearBuildingScoreCache() {
+  buildingScoreCache.clear()
+}
+
 export interface FloorScore {
   floorIndex: number
   runCount: number
