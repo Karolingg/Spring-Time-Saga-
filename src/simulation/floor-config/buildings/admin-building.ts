@@ -94,7 +94,7 @@ const ADMIN_2F: FloorConfig = {
   corridorNodes: [
     { label: 'Out Board Room', x: 387, y: 350, neighbors: ['Near Stairs', 'Left Corridor'] },
     { label: 'Out OCA', x: 995, y: 350, neighbors: ['Out ILC'] },
-    { label: 'Left Corridor', x: 270, y: 350, neighbors: [''] },
+    { label: 'Left Corridor', x: 270, y: 350, neighbors: ['Out Board Room'] },
     { label: 'Near Stairs', x: 657, y: 350,  neighbors: ['E1', 'Out Board Room', 'Out ILC' ] },
     { label: 'Out ILC', x: 810, y: 350, neighbors: ['Near Stairs' , 'Out ILC'] },
   ],

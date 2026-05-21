@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { getBuildingById, type FloorModel, type NavNode } from '@/src/simulation/building-model'
 import type { DensityCell, SimulationZone } from '@/src/schema/simulation.types'
 import {
@@ -100,6 +100,38 @@ function getHeatColor(intensity: number) {
   return '#16a34a'                            // green-600 (darker than the old #4ade80)
 }
 
+/**
+ * A node is "named" (eligible for the heatmap's hotspot list, marker overlay
+ * and click tooltips) when it's part of the navigable corridor backbone or an
+ * exit. Room nodes, the synthesized per-room "Door …" nodes, and the room→
+ * corridor entry triad ("… Entry" / "… Entrance" / "… Exit") are deliberately
+ * excluded: those are interior plumbing of the graph, not areas a facility
+ * manager reasons about. "Out …" junction nodes ARE kept — they're the
+ * corridor waypoints just outside rooms and are exactly what the user wants to
+ * identify when clicking the map.
+ */
+function isNamedHeatmapNode(node: NavNode): boolean {
+  if (node.type === 'room') return false
+  if (node.type === 'exit') return true
+  const label = node.label ?? ''
+  if (/^door\s/i.test(label)) return false
+  if (/\s(entry|entrance|exit)$/i.test(label)) return false
+  return true
+}
+
+/** Human-readable label for a node's structural role. */
+function nodeKindLabel(node: NavNode): string {
+  if (node.type === 'exit') return 'Exit'
+  switch (node.kind) {
+    case 'junction': return 'Junction'
+    case 'corridor': return 'Corridor'
+    case 'stairs':   return 'Stairwell'
+    case 'corner':   return 'Corner'
+    case 'door':     return 'Passage'
+    default:         return 'Waypoint'
+  }
+}
+
 export function SpatialBottleneckHeatmap({
   buildingId,
   zones,
@@ -142,6 +174,24 @@ export function SpatialBottleneckHeatmap({
   const [replayDensityCells, setReplayDensityCells] = useState<DensityCell[]>([])
   const [isReplayComputing, setIsReplayComputing] = useState(false)
 
+  /** Disaster the run was actually launched with. The heatmap can be toggled
+   *  to preview the OTHER disaster's congestion pattern — when toggled away
+   *  from the run's disaster we re-simulate against that disaster's built-in
+   *  floor obstacles (the user-placed hazards no longer apply). */
+  const runDisaster = (disasterType ?? 'fire') as 'fire' | 'earthquake'
+  const [viewDisaster, setViewDisaster] = useState<'fire' | 'earthquake'>(runDisaster)
+  // Snap the toggle back to the run's disaster whenever a different run is
+  // loaded into the same component instance (render-time correction).
+  const [syncedRunDisaster, setSyncedRunDisaster] = useState(runDisaster)
+  if (syncedRunDisaster !== runDisaster) {
+    setSyncedRunDisaster(runDisaster)
+    setViewDisaster(runDisaster)
+  }
+  /** Node currently hovered on the map, with its on-screen position for the
+   *  floating identification popup (null = nothing hovered). */
+  const [hoveredNode, setHoveredNode] = useState<{ node: NavNode; x: number; y: number } | null>(null)
+  const nodeLayerRef = useRef<SVGSVGElement | null>(null)
+
   const replayFloor = simulatedFloor
   const replayAllocations = useMemo(() => {
     if (agentsPerRoom && Object.keys(agentsPerRoom).length > 0) return agentsPerRoom
@@ -181,15 +231,31 @@ export function SpatialBottleneckHeatmap({
       return
     }
 
+    // The heatmap only reflects the disaster the run actually used. Toggling
+    // to the other scenario shows a blank state — not a speculative re-run —
+    // so there is nothing to compute here.
+    if (viewDisaster !== runDisaster) {
+      setReplayDensityCells([])
+      setIsReplayComputing(false)
+      return
+    }
+
     let cancelled = false
     setIsReplayComputing(true)
+    // Drop the previous scenario's grid so a disaster-toggle shows a spinner
+    // rather than briefly leaving the old heat on screen under the new label.
+    setReplayDensityCells([])
 
+    // The exact hazards the user placed only describe the run's own disaster.
+    // When previewing the other disaster we fall back to the floor's built-in
+    // obstacle template for that disaster instead.
+    const useRunHazards = viewDisaster === runDisaster && hazards != null
     let state = createSimulation(replayFloor, {
-      disasterType: (disasterType ?? 'fire') as 'fire' | 'earthquake',
+      disasterType: viewDisaster,
       agentsPerRoom: replayAllocations,
       hazardGrowthMultiplier: HAZARD_GROWTH_MULTIPLIER,
-      hazardOverrides: hazards != null
-        ? hazards.map((h) => placedHazardToZone(h, `heatmap-${buildingId}-${simulatedFloorIndex ?? 0}`))
+      hazardOverrides: useRunHazards
+        ? hazards!.map((h) => placedHazardToZone(h, `heatmap-${buildingId}-${simulatedFloorIndex ?? 0}`))
         : undefined,
       seed: seed ?? undefined,
     })
@@ -229,15 +295,17 @@ export function SpatialBottleneckHeatmap({
 
     runBatch()
     return () => { cancelled = true }
-  }, [replayFloor, replayAllocations, hazards, seed, disasterType, buildingId, simulatedFloorIndex])
+  }, [replayFloor, replayAllocations, hazards, seed, viewDisaster, runDisaster, buildingId, simulatedFloorIndex])
 
-  /** Prefer the freshly computed grid (always reflects the seeded run);
-   *  fall back to whatever density cells were saved alongside the run. */
-  const effectiveDensityCells = replayDensityCells.length > 0 ? replayDensityCells : densityCells
-  const densityHeatCells = useMemo(
-    () => renderableCellsFromDensityCells(effectiveDensityCells),
-    [effectiveDensityCells],
-  )
+  /** Prefer the freshly computed grid (always reflects the seeded run); fall
+   *  back to the saved density cells — but only while the toggle still shows
+   *  the run's own disaster, since the saved cells don't describe the other. */
+  const densityHeatCells = useMemo(() => {
+    const effective = replayDensityCells.length > 0
+      ? replayDensityCells
+      : viewDisaster === runDisaster ? densityCells : []
+    return renderableCellsFromDensityCells(effective)
+  }, [replayDensityCells, densityCells, viewDisaster, runDisaster])
 
   if (!building || !initialFloor) {
     return (
@@ -261,11 +329,19 @@ export function SpatialBottleneckHeatmap({
   const matchesSimulatedFloor = simulatedFloor ? activeFloor.id === simulatedFloor.id : true
   const showHeat = matchesSimulatedFloor
   const hasDensityData = showHeat && densityHeatCells.length > 0
+  // Saved zone stats describe the run's own disaster — only meaningful while
+  // the toggle hasn't switched to the other scenario.
+  const zonesApply = viewDisaster === runDisaster
+  // True when the toggle is on the disaster the run did NOT simulate. The
+  // heatmap has no data for it, so the map area shows a blank state instead.
+  const previewingOtherDisaster = !zonesApply
   const intensityByLabel = new Map(zones.map((z) => [z.zoneName, z.intensity]))
   const peakAgentsByLabel = new Map(zones.map((z) => [z.zoneName, z.agentCount]))
+  const bottleneckByLabel = new Map(zones.map((z) => [z.zoneName, z.bottleneckCount]))
 
-  const heatNodes: HotNode[] = showHeat
+  const heatNodes: HotNode[] = showHeat && zonesApply
     ? activeFloor.nodes
+        .filter(isNamedHeatmapNode)
         .map((node) => {
           const intensity = intensityByLabel.get(node.label) ?? 0
           const peak = peakAgentsByLabel.get(node.label) ?? 0
@@ -274,6 +350,11 @@ export function SpatialBottleneckHeatmap({
         .filter((entry) => entry.intensity > 0 || entry.peak > 0)
         .sort((a, b) => b.intensity - a.intensity)
     : []
+
+  // Named corridor / junction / exit nodes — the backbone waypoints a facility
+  // manager reasons about. Hoverable so a hot patch can be tied to a place;
+  // no marker is drawn at rest, keeping the heat itself the visual focus.
+  const interactiveNodes = showHeat ? activeFloor.nodes.filter(isNamedHeatmapNode) : []
 
   const hasData = hasDensityData || heatNodes.length > 0
   const criticalCount = hasDensityData
@@ -378,13 +459,74 @@ export function SpatialBottleneckHeatmap({
         </div>
       )}
 
-      {/* ── Stats strip ──────────────────────────────────────────────── */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '8px', marginBottom: '16px' }}>
-        <StatPill label={hasDensityData ? 'Active Cells' : 'Hotspots'} value={hasDensityData ? densityHeatCells.length : heatNodes.length} accent="#2db8b0" />
-        <StatPill label="Critical" value={criticalCount} accent="#f43f5e" emphasized={criticalCount > 0} />
-        <StatPill label="High Risk" value={highCount} accent="#f97316" />
-        <StatPill label="Peak Agents" value={peakAgents} accent="#3b82f6" suffix={peakAgents > 0 ? ' max' : ''} />
+      {/* ── Disaster scenario toggle ─────────────────────────────────── */}
+      <div style={{
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        gap: '10px', marginBottom: '12px', flexWrap: 'wrap',
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+          <span style={{
+            fontSize: '10px', fontWeight: 700, color: '#475569',
+            letterSpacing: '0.1em', textTransform: 'uppercase',
+          }}>
+            Scenario
+          </span>
+          {previewingOtherDisaster && (
+            <span style={{
+              fontSize: '10.5px', fontWeight: 600, color: '#64748b',
+              background: '#f1f5f9', border: '1px solid var(--border)',
+              borderRadius: '999px', padding: '3px 9px',
+            }}>
+              No data · this run simulated {runDisaster} only
+            </span>
+          )}
+        </div>
+        <div style={{
+          display: 'flex', gap: '2px', padding: '3px',
+          background: '#f1f5f9', borderRadius: '10px', border: '1px solid var(--border)',
+        }}>
+          {(['fire', 'earthquake'] as const).map((d) => {
+            const selected = viewDisaster === d
+            return (
+              <button
+                key={d}
+                type="button"
+                onClick={() => { setViewDisaster(d); setHoveredNode(null) }}
+                style={{
+                  display: 'inline-flex', alignItems: 'center', gap: '6px',
+                  padding: '6px 12px', fontSize: '11px', fontWeight: 700,
+                  borderRadius: '7px', border: 'none', cursor: 'pointer',
+                  background: selected ? '#ffffff' : 'transparent',
+                  color: selected ? (d === 'fire' ? '#dc2626' : '#b45309') : '#64748b',
+                  boxShadow: selected ? '0 1px 3px rgba(15,23,42,0.10)' : 'none',
+                  transition: 'all 0.15s',
+                }}
+              >
+                {d === 'fire' ? (
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M12 2c1 3-1 5-2 7-1 2 0 4 2 4s3-1 3-3c2 2 3 4 3 6a6 6 0 1 1-12 0c0-4 3-7 4-9 1-2 2-3 2-5z" />
+                  </svg>
+                ) : (
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M2 12h4l3-8 4 16 3-8h6" />
+                  </svg>
+                )}
+                {d === 'fire' ? 'Fire' : 'Earthquake'}
+              </button>
+            )
+          })}
+        </div>
       </div>
+
+      {/* ── Stats strip (hidden for the non-simulated disaster) ──────── */}
+      {!previewingOtherDisaster && (
+        <div data-grid-2col-mobile style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '8px', marginBottom: '16px' }}>
+          <StatPill label={hasDensityData ? 'Active Cells' : 'Hotspots'} value={hasDensityData ? densityHeatCells.length : heatNodes.length} accent="#2db8b0" />
+          <StatPill label="Critical" value={criticalCount} accent="#f43f5e" emphasized={criticalCount > 0} />
+          <StatPill label="High Risk" value={highCount} accent="#f97316" />
+          <StatPill label="Peak Agents" value={peakAgents} accent="#3b82f6" suffix={peakAgents > 0 ? ' max' : ''} />
+        </div>
+      )}
 
       {/* ── Map + scale legend ───────────────────────────────────────── */}
       <div style={{ display: 'flex', gap: '14px', alignItems: 'stretch' }}>
@@ -523,7 +665,89 @@ export function SpatialBottleneckHeatmap({
             </svg>
           </div>
 
-          {!hasData && !isReplayComputing && (
+          {/* Interactive node layer — hover a corridor waypoint or exit to
+              identify which area a hot patch corresponds to. Nothing is drawn
+              at rest so the heat stays the visual focus; a highlight ring
+              appears only under the pointer. */}
+          {showHeat && !previewingOtherDisaster && interactiveNodes.length > 0 && (
+            <svg
+              ref={nodeLayerRef}
+              viewBox={`0 0 ${VIEW_WIDTH} ${VIEW_HEIGHT}`}
+              preserveAspectRatio="xMidYMid meet"
+              style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }}
+            >
+              {interactiveNodes.map((node) => {
+                const isHovered = hoveredNode?.node.id === node.id
+                const isExit = node.type === 'exit'
+                return (
+                  <g
+                    key={node.id}
+                    style={{ cursor: 'pointer' }}
+                    onMouseEnter={() => {
+                      const rect = nodeLayerRef.current?.getBoundingClientRect()
+                      if (!rect) return
+                      setHoveredNode({
+                        node,
+                        x: rect.left + (node.x / VIEW_WIDTH) * rect.width,
+                        y: rect.top + (node.y / VIEW_HEIGHT) * rect.height,
+                      })
+                    }}
+                    onMouseLeave={() => setHoveredNode((cur) => (cur?.node.id === node.id ? null : cur))}
+                  >
+                    {/* Invisible hit target — generous radius for easy hover */}
+                    <circle cx={node.x} cy={node.y} r={18} fill="transparent" />
+                    {/* Highlight ring — only while hovered */}
+                    {isHovered && (
+                      <>
+                        <circle cx={node.x} cy={node.y} r={11} fill="none" stroke="#ffffff" strokeWidth={4.5} />
+                        <circle cx={node.x} cy={node.y} r={11} fill="none" stroke="#0f172a" strokeWidth={2.4} />
+                        <circle cx={node.x} cy={node.y} r={4.4} fill={isExit ? '#ffffff' : '#2db8b0'} stroke="#0f172a" strokeWidth={2} />
+                      </>
+                    )}
+                  </g>
+                )
+              })}
+            </svg>
+          )}
+
+          {/* Blank state for the disaster the run did not simulate */}
+          {previewingOtherDisaster && (
+            <div style={{
+              position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
+              background: 'linear-gradient(180deg, rgba(248,250,252,0.95) 0%, rgba(241,245,249,0.97) 100%)',
+            }}>
+              <div style={{ textAlign: 'center', padding: '24px', maxWidth: '320px' }}>
+                <div style={{
+                  width: '54px', height: '54px', margin: '0 auto 14px',
+                  borderRadius: '15px', background: '#ffffff',
+                  border: '1px solid var(--border)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  boxShadow: '0 4px 14px rgba(15,23,42,0.06)',
+                }}>
+                  {viewDisaster === 'fire' ? (
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="#cbd5e1">
+                      <path d="M12 2c1 3-1 5-2 7-1 2 0 4 2 4s3-1 3-3c2 2 3 4 3 6a6 6 0 1 1-12 0c0-4 3-7 4-9 1-2 2-3 2-5z" />
+                    </svg>
+                  ) : (
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M2 12h4l3-8 4 16 3-8h6" />
+                    </svg>
+                  )}
+                </div>
+                <div style={{ fontSize: '14px', fontWeight: 700, color: '#334155', marginBottom: '6px' }}>
+                  No {viewDisaster === 'fire' ? 'Fire' : 'Earthquake'} heatmap for this run
+                </div>
+                <div style={{ fontSize: '12px', color: '#64748b', lineHeight: 1.55 }}>
+                  This drill simulated a {runDisaster === 'fire' ? 'Fire' : 'Earthquake'} scenario.
+                  Switch back to {runDisaster === 'fire' ? 'Fire' : 'Earthquake'} to view its
+                  heatmap, or run a {viewDisaster === 'fire' ? 'Fire' : 'Earthquake'} drill on
+                  this floor.
+                </div>
+              </div>
+            </div>
+          )}
+
+          {!previewingOtherDisaster && !hasData && !isReplayComputing && (
             <div style={{
               position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
               background: 'rgba(248,250,252,0.85)',
@@ -536,7 +760,7 @@ export function SpatialBottleneckHeatmap({
             </div>
           )}
 
-          {isReplayComputing && !hasData && (
+          {!previewingOtherDisaster && isReplayComputing && !hasData && (
             <div style={{
               position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
               background: 'rgba(248,250,252,0.7)',
@@ -599,6 +823,20 @@ export function SpatialBottleneckHeatmap({
         </div>
       </div>
 
+      {/* ── Interaction hint ─────────────────────────────────────────── */}
+      {interactiveNodes.length > 0 && !previewingOtherDisaster && (
+        <p style={{
+          margin: '10px 0 0', fontSize: '11px', color: '#94a3b8',
+          display: 'flex', alignItems: 'center', gap: '6px',
+        }}>
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+            <path d="M3 3l7.07 16.97 2.51-7.39 7.39-2.51L3 3z" />
+            <path d="M13 13l6 6" />
+          </svg>
+          Hover over the floor plan to identify a corridor or exit and its crowd stats.
+        </p>
+      )}
+
       {/* ── Top hotspots strip ───────────────────────────────────────── */}
       {heatNodes.length > 0 && (
         <div style={{ marginTop: '20px' }}>
@@ -651,6 +889,19 @@ export function SpatialBottleneckHeatmap({
         </div>
       )}
 
+      {/* ── Hover identification popup (assembly-point speech-bubble style) ── */}
+      {hoveredNode && (
+        <NodeHoverPopup
+          node={hoveredNode.node}
+          screenX={hoveredNode.x}
+          screenY={hoveredNode.y}
+          kindLabel={nodeKindLabel(hoveredNode.node)}
+          peakAgents={zonesApply ? (peakAgentsByLabel.get(hoveredNode.node.label) ?? null) : null}
+          intensity={zonesApply ? (intensityByLabel.get(hoveredNode.node.label) ?? null) : null}
+          bottlenecks={zonesApply ? (bottleneckByLabel.get(hoveredNode.node.label) ?? null) : null}
+        />
+      )}
+
     </div>
   )
 }
@@ -683,6 +934,148 @@ function StatPill({ label, value, accent, suffix, emphasized }: StatPillProps) {
         {suffix && (
           <span style={{ fontSize: '11px', fontWeight: 600, color: '#64748b' }}>{suffix}</span>
         )}
+      </div>
+    </div>
+  )
+}
+
+interface NodeHoverPopupProps {
+  node: NavNode
+  /** Viewport coordinates of the node, from getBoundingClientRect. */
+  screenX: number
+  screenY: number
+  kindLabel: string
+  peakAgents: number | null
+  intensity: number | null
+  bottlenecks: number | null
+}
+
+/**
+ * Floating identification popup shown while a node is hovered. Styled as a
+ * white speech bubble with a downward triangle tail — matching the campus
+ * map's assembly-point popup. Positioned `fixed` (computed from the node's
+ * on-screen coords) so it's never clipped by the map canvas's `overflow:
+ * hidden`, and `pointer-events: none` so it can't break the hover itself.
+ */
+function NodeHoverPopup({ node, screenX, screenY, kindLabel, peakAgents, intensity, bottlenecks }: NodeHoverPopupProps) {
+  // Flip below the node when it sits too close to the top of the viewport.
+  const placeBelow = screenY < 200
+  const isExit = node.type === 'exit'
+  const hasStats = peakAgents != null || intensity != null
+
+  return (
+    <div
+      style={{
+        position: 'fixed',
+        left: `${screenX}px`,
+        top: `${screenY}px`,
+        transform: placeBelow
+          ? 'translate(-50%, 20px)'
+          : 'translate(-50%, -100%) translateY(-20px)',
+        zIndex: 2000,
+        width: '210px',
+        background: '#ffffff',
+        borderRadius: '16px',
+        boxShadow: '0 8px 32px rgba(0,0,0,0.18), 0 2px 8px rgba(0,0,0,0.08)',
+        pointerEvents: 'none',
+      }}
+    >
+      <div style={{ padding: '12px 14px' }}>
+        {/* Header — icon chip + name + kind */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '9px' }}>
+          <span style={{
+            width: '28px', height: '28px', borderRadius: '8px',
+            background: isExit ? '#16a34a' : '#2db8b0',
+            display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+            flexShrink: 0,
+          }}>
+            {isExit ? (
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#ffffff" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                <polyline points="16 17 21 12 16 7" />
+                <line x1="21" y1="12" x2="9" y2="12" />
+              </svg>
+            ) : (
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#ffffff" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 21c4-3 8-7 8-12a8 8 0 0 0-16 0c0 5 4 9 8 12z" />
+                <circle cx="12" cy="9" r="2.6" />
+              </svg>
+            )}
+          </span>
+          <div style={{ minWidth: 0 }}>
+            <div style={{ fontSize: '13px', fontWeight: 700, color: '#1a2332', lineHeight: 1.2 }}>
+              {node.label}
+            </div>
+            <div style={{
+              fontSize: '10px', fontWeight: 600, marginTop: '1px',
+              color: isExit ? '#16a34a' : '#64748b',
+              letterSpacing: '0.04em', textTransform: 'uppercase',
+            }}>
+              {kindLabel}
+            </div>
+          </div>
+        </div>
+
+        {/* Stats */}
+        <div style={{ marginTop: '10px', display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+          <PopupStat label="Capacity" value={String(node.capacity)} />
+          {hasStats && peakAgents != null && <PopupStat label="Peak" value={String(peakAgents)} />}
+          {hasStats && intensity != null && <PopupStat label="Intensity" value={`${Math.round(intensity)}%`} />}
+          {hasStats && bottlenecks != null && (
+            <PopupStat
+              label="Bottleneck"
+              value={bottlenecks > 0 ? String(bottlenecks) : 'None'}
+              tone={bottlenecks > 0 ? 'warn' : 'ok'}
+            />
+          )}
+        </div>
+
+        {!hasStats && (
+          <div style={{ marginTop: '8px', fontSize: '10px', color: '#94a3b8', lineHeight: 1.45 }}>
+            Crowd stats are shown for the run&apos;s own scenario.
+          </div>
+        )}
+      </div>
+
+      {/* Triangle tail */}
+      <div style={{
+        position: 'absolute', left: '50%', transform: 'translateX(-50%)',
+        width: 0, height: 0,
+        ...(placeBelow
+          ? {
+              top: '-9px',
+              borderLeft: '10px solid transparent',
+              borderRight: '10px solid transparent',
+              borderBottom: '10px solid #ffffff',
+              filter: 'drop-shadow(0 -2px 2px rgba(0,0,0,0.05))',
+            }
+          : {
+              bottom: '-9px',
+              borderLeft: '10px solid transparent',
+              borderRight: '10px solid transparent',
+              borderTop: '10px solid #ffffff',
+              filter: 'drop-shadow(0 2px 2px rgba(0,0,0,0.06))',
+            }),
+      }} />
+    </div>
+  )
+}
+
+function PopupStat({ label, value, tone }: { label: string; value: string; tone?: 'warn' | 'ok' }) {
+  const valueColor = tone === 'warn' ? '#dc2626' : tone === 'ok' ? '#16a34a' : '#0f172a'
+  return (
+    <div style={{
+      background: '#f8fafc', border: '1px solid #eef2f6', borderRadius: '8px',
+      padding: '5px 9px', flex: '1 0 auto', minWidth: '54px',
+    }}>
+      <div style={{
+        fontSize: '8px', fontWeight: 700, color: '#94a3b8',
+        letterSpacing: '0.06em', textTransform: 'uppercase',
+      }}>
+        {label}
+      </div>
+      <div style={{ fontSize: '12.5px', fontWeight: 800, color: valueColor, marginTop: '1px' }}>
+        {value}
       </div>
     </div>
   )

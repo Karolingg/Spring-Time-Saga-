@@ -85,6 +85,19 @@ body {
     flex-direction: column !important;
   }
 
+  /* 3–4 cell stat grids: collapse to a 2-up layout rather than stacking
+     into a tall single column (keeps small KPI pills compact). */
+  body [data-grid-2col-mobile] {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+
+  /* Feature containers: trim inner padding so the body isn't squeezed
+     between the page gutter and the card gutter on phones. */
+  body [data-feature-card] > div {
+    padding-left: 16px !important;
+    padding-right: 16px !important;
+  }
+
   /* Headings that lock big sizes via inline styles still scale down on
      phones (28–32px → 22px), keeping single-line titles readable. */
   body [data-page-shell] h1 {
