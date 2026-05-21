@@ -19,7 +19,7 @@ import {
   type AutonomousTrace,
 } from '@/src/simulation/autonomous-analytics'
 import { createSimulation, evaluateSimulation, getTremorTimeRemaining, isInTremorPhase, stepSimulation, type QuakeScenario, type SimulationResults, type SimulationState } from '@/src/simulation/engine'
-import { edgeKey, getBuildingById, getNode, type FloorModel } from '@/src/simulation/building-model'
+import { getBuildingById, getNode, type FloorModel } from '@/src/simulation/building-model'
 import { createSimulationRun, saveDensityCells, saveSimulationResults } from '@/src/services/simulation.service'
 import { getFriendlyErrorMessage, isRateLimitError } from '@/src/services/rate-limit.service'
 import { computeFireSeverity, getHazardStorageKey, isHazardStorageAvailable, loadHazardPlan, placedHazardToZone, saveHazardPlan, type PlacedHazard } from '@/src/simulation/hazard-placement'
@@ -36,7 +36,6 @@ import {
   updateSpatialGridTrace,
   type SpatialGridTrace,
 } from '@/src/simulation/spatial-grid'
-
 type DisasterType = 'fire' | 'earthquake'
 
 const SIMULATION_SECONDS_PER_MS = 0.35 / 120
@@ -617,6 +616,7 @@ export default function AutonomousScienceBuildingPage() {
   ), [activeTrace, floor])
   const exitUsage = useMemo(() => describeExitUsage(results), [results])
   const peakCongestion = useMemo(() => (activeTrace ? getPeakCongestion(activeTrace) : 0), [activeTrace])
+
 
   const setPreset = useCallback((ratio: number) => {
     if (!maxAgents) return
@@ -1696,13 +1696,21 @@ export default function AutonomousScienceBuildingPage() {
               <img src={floor.floorplanSrc} alt={`${building?.name ?? regionId} ${floor.label} floor plan`} />
             ) : null}
             <svg viewBox="0 0 1200 675" preserveAspectRatio="xMidYMid meet" aria-hidden="true">
-              {SHOW_DEBUG_GRAPH && floor.edges.map((edge) => {
+              {/* Navigation-graph overlay (edges + waypoint nodes) is a
+                  setup/debug aid only. Once a simulation is running it is
+                  hidden entirely so room nodes, room-door entry nodes, and
+                  corridor-entry nodes never clutter the live evacuation
+                  view — only agents, hazards, and exits remain on screen. */}
+              {SHOW_DEBUG_GRAPH && !simState && floor.edges.map((edge) => {
                 const fromNode = getNode(floor, edge.from)
                 const toNode = getNode(floor, edge.to)
                 if (!fromNode || !toNode) return null
 
                 const intensity = activeTrace ? getEdgeIntensity(edge, activeTrace) : 0
-                const blocked = simState?.blockedEdges.has(edgeKey(edge.from, edge.to)) ?? false
+                // This block only renders while `!simState` (setup/debug),
+                // so no hazard has blocked any edge yet — `blocked` is
+                // always false here.
+                const blocked = false
                 const stroke = blocked ? '#ef4444' : getHeatColor(intensity)
                 const opacity = blocked ? 0.95 : 0.25 + intensity * 0.6
 
@@ -1728,7 +1736,16 @@ export default function AutonomousScienceBuildingPage() {
                 )
               })}
 
-              {SHOW_DEBUG_GRAPH && floor.nodes.filter((node) => node.type !== 'room').map((node) => {
+              {SHOW_DEBUG_GRAPH && !simState && floor.nodes.filter((node) => (
+                // Exclude room nodes, room-door entry nodes (kind 'door'),
+                // and the room→corridor entry triad ('… Entry' / '… Entrance'
+                // / '… Exit'). Only true corridor / junction / stairs
+                // backbone waypoints remain — and even those vanish the
+                // moment a simulation starts (the !simState guard above).
+                node.type !== 'room'
+                && node.kind !== 'door'
+                && !/(entry|entrance|exit)$/i.test(node.label)
+              )).map((node) => {
                 const intensity = activeTrace ? getNodeIntensity(node, activeTrace) : 0
                 const fill = getHeatColor(intensity)
                 const liveCount = liveCongestion.nodeCounts[node.id] || 0

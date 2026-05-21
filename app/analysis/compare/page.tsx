@@ -267,12 +267,13 @@ export default function CompareRunsPage() {
 
           {canCompare && (
             <>
+              <ComparisonWarnings runA={runA!} runB={runB!} />
+
               {/* ── Layer 1: Key Metrics ─────────────────────────── */}
               <FeatureContainer
                 title="Key Metrics"
                 subtitle="Side-by-side evacuation statistics with directional delta indicators"
                 accent="#2db8b0"
-                badge="Layer 1"
                 icon={
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M3 3v18h18" />
@@ -288,7 +289,6 @@ export default function CompareRunsPage() {
                 title="Floor Heatmaps"
                 subtitle="Side-by-side crowd density comparison between the two runs"
                 accent="#2db8b0"
-                badge="Layer 2"
                 icon={
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <rect x="3" y="3" width="18" height="18" rx="2" />
@@ -309,7 +309,6 @@ export default function CompareRunsPage() {
                 title="Biggest Zone Shifts"
                 subtitle="Top zones ranked by absolute change in intensity between A and B"
                 accent="#2db8b0"
-                badge="Layer 3"
                 icon={
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M3 6h6" /><path d="M3 12h6" /><path d="M3 18h6" />
@@ -383,7 +382,7 @@ interface RunPickersProps {
 
 function RunPickers({ history, runA, runB, onSelect, onSwap }: RunPickersProps) {
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', gap: '16px', alignItems: 'end' }}>
+    <div data-stack-mobile style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', gap: '16px', alignItems: 'end' }}>
       <RunSlot
         slotLabel="A · Baseline"
         slotColor="#64748b"
@@ -406,6 +405,7 @@ function RunPickers({ history, runA, runB, onSelect, onSwap }: RunPickersProps) 
           border: '1px solid var(--border)', borderRadius: '8px',
           cursor: runA && runB ? 'pointer' : 'not-allowed',
           marginBottom: '4px',
+          justifySelf: 'center',
         }}
       >
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -468,15 +468,149 @@ function RunSlot({ slotLabel, slotColor, history, currentId, currentRun, onChang
   )
 }
 
+/* ── Comparison validity warnings ─────────────────────────────────────
+ * A side-by-side is only as honest as the two runs are comparable. We don't
+ * block any pairing, but we surface the caveats: a hard (red) warning when the
+ * disaster scenarios differ — incompatible baselines — and soft (amber) notes
+ * when buildings, floors, or occupancy differ enough to distort raw numbers. */
+interface CompareWarning {
+  tone: 'hard' | 'soft'
+  text: React.ReactNode
+}
+
+function buildComparisonWarnings(runA: SimulationRun, runB: SimulationRun): CompareWarning[] {
+  const warnings: CompareWarning[] = []
+  const disasterName = (r: SimulationRun) => (r.disasterType === 'fire' ? 'Fire' : 'Earthquake')
+
+  if (runA.disasterType !== runB.disasterType) {
+    warnings.push({
+      tone: 'hard',
+      text: (
+        <>
+          These runs used <strong>different disaster scenarios</strong>{' '}
+          ({disasterName(runA)} vs {disasterName(runB)}). Hazard placement and
+          growth differ between scenarios, so the baselines are not equivalent —
+          treat this comparison as indicative only.
+        </>
+      ),
+    })
+  }
+
+  const sameBuilding = runA.buildingId != null && runA.buildingId === runB.buildingId
+  if (!sameBuilding && runA.buildingId && runB.buildingId) {
+    const a = runA.config?.agentCount ?? 0
+    const b = runB.config?.agentCount ?? 0
+    warnings.push({
+      tone: 'soft',
+      text: (
+        <>
+          You&apos;re comparing <strong>different buildings</strong>
+          {a > 0 && b > 0 && a !== b ? ` with different occupancy (${a} vs ${b} occupants)` : ''}.
+          {' '}Raw evacuation time scales with crowd size and layout — lean on{' '}
+          <strong>evacuated %</strong> and <strong>peak congestion</strong> for a fair read.
+        </>
+      ),
+    })
+  } else if (sameBuilding && runA.floorIndex !== runB.floorIndex) {
+    warnings.push({
+      tone: 'soft',
+      text: (
+        <>
+          These runs are on <strong>different floors</strong> of the same
+          building. Floor layouts and exit counts differ — compare the shape of
+          the result, not the absolute numbers.
+        </>
+      ),
+    })
+  }
+
+  // Occupancy gap within an otherwise-matched pair (same building + floor).
+  if (sameBuilding && runA.floorIndex === runB.floorIndex) {
+    const a = runA.config?.agentCount ?? 0
+    const b = runB.config?.agentCount ?? 0
+    const ref = Math.max(a, b)
+    if (ref > 0 && Math.abs(a - b) / ref >= 0.25) {
+      warnings.push({
+        tone: 'soft',
+        text: (
+          <>
+            Occupancy differs notably ({a} vs {b} occupants). Heavier crowds
+            evacuate slower by nature — read evacuation time per-capita rather
+            than head-to-head.
+          </>
+        ),
+      })
+    }
+  }
+
+  return warnings
+}
+
+function ComparisonWarnings({ runA, runB }: { runA: SimulationRun; runB: SimulationRun }) {
+  const warnings = buildComparisonWarnings(runA, runB)
+  if (warnings.length === 0) return null
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '20px' }}>
+      {warnings.map((warning, i) => {
+        const hard = warning.tone === 'hard'
+        return (
+          <div
+            key={i}
+            style={{
+              display: 'flex', alignItems: 'flex-start', gap: '10px',
+              padding: '12px 16px', borderRadius: '12px',
+              background: hard ? '#fef2f2' : '#fffbeb',
+              border: `1px solid ${hard ? '#fca5a5' : '#fde68a'}`,
+              color: hard ? '#991b1b' : '#92400e',
+              fontSize: '13px', lineHeight: 1.55,
+            }}
+          >
+            <svg
+              width="16" height="16" viewBox="0 0 24 24" fill="none"
+              stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"
+              style={{ flexShrink: 0, marginTop: '1px' }}
+            >
+              {hard ? (
+                <>
+                  <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+                  <line x1="12" y1="9" x2="12" y2="13" />
+                  <line x1="12" y1="17" x2="12.01" y2="17" />
+                </>
+              ) : (
+                <>
+                  <circle cx="12" cy="12" r="10" />
+                  <line x1="12" y1="16" x2="12" y2="12" />
+                  <line x1="12" y1="8" x2="12.01" y2="8" />
+                </>
+              )}
+            </svg>
+            <div>
+              <strong style={{ display: 'block', marginBottom: '2px' }}>
+                {hard ? 'Scenario mismatch' : 'Read with context'}
+              </strong>
+              {warning.text}
+            </div>
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
 function KpiGrid({ runA, runB }: { runA: SimulationRun; runB: SimulationRun }) {
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '12px' }}>
+    <div data-grid-2col-mobile style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '12px' }}>
       {METRICS.map((metric) => (
         <KpiDeltaCard key={metric.key} metric={metric} runA={runA} runB={runB} />
       ))}
     </div>
   )
 }
+
+/** Relative change that counts as a "significant" run-to-run shift, used to
+ *  highlight the KPI card so big swings jump out of the grid. */
+const SIGNIFICANT_GAP = 0.20
 
 function KpiDeltaCard({ metric, runA, runB }: { metric: MetricDef; runA: SimulationRun; runB: SimulationRun }) {
   const valueA = metric.read(runA)
@@ -490,15 +624,41 @@ function KpiDeltaCard({ metric, runA, runB }: { metric: MetricDef; runA: Simulat
   const deltaColor = delta == null || delta === 0 ? '#64748b' : improved ? '#22c55e' : '#ef4444'
   const deltaPrefix = delta == null ? '' : delta > 0 ? '+' : ''
 
+  // Differential highlight: a >20% relative move gets a coloured card so the
+  // metrics that actually changed stand out from the ones that barely moved.
+  const relGap = delta == null || delta === 0
+    ? 0
+    : valueA != null && valueA !== 0
+      ? Math.abs(delta) / Math.abs(valueA)
+      : 1
+  const significant = relGap >= SIGNIFICANT_GAP
+
   return (
     <div style={{
-      border: '1px solid var(--border)', borderRadius: '12px', padding: '14px 16px',
-      background: '#f8fafc',
+      border: significant ? `2px solid ${deltaColor}` : '1px solid var(--border)',
+      borderRadius: '12px',
+      padding: significant ? '13px 15px' : '14px 16px',
+      background: significant
+        ? (improved ? 'rgba(34,197,94,0.07)' : 'rgba(239,68,68,0.07)')
+        : '#f8fafc',
     }}>
-      <div style={{ fontSize: '11px', fontWeight: 600, letterSpacing: '0.08em', color: '#64748b', textTransform: 'uppercase', marginBottom: '10px' }}>
-        {metric.label}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '6px', marginBottom: '10px' }}>
+        <span style={{ fontSize: '11px', fontWeight: 600, letterSpacing: '0.08em', color: '#64748b', textTransform: 'uppercase' }}>
+          {metric.label}
+        </span>
+        {significant && (
+          <span style={{
+            fontSize: '9px', fontWeight: 700, letterSpacing: '0.04em',
+            color: deltaColor,
+            background: improved ? 'rgba(34,197,94,0.16)' : 'rgba(239,68,68,0.16)',
+            borderRadius: '999px', padding: '2px 7px', textTransform: 'uppercase',
+            whiteSpace: 'nowrap',
+          }}>
+            {Math.round(relGap * 100)}% {improved ? '↓' : '↑'}
+          </span>
+        )}
       </div>
-      <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px', marginBottom: '4px' }}>
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px', marginBottom: '4px', flexWrap: 'wrap' }}>
         <span style={{ fontSize: '22px', fontWeight: 700, color: '#0f172a', letterSpacing: '-0.02em' }}>
           {valueB != null ? metric.format(valueB) : '—'}
         </span>
@@ -532,8 +692,8 @@ function ZoneDeltaTable({ rows }: { rows: ZoneDelta[] }) {
   }
 
   return (
-    <>
-      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
+    <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+      <table style={{ width: '100%', minWidth: '360px', borderCollapse: 'collapse', fontSize: '13px' }}>
         <thead>
           <tr>
             <Th>Zone</Th>
@@ -565,7 +725,7 @@ function ZoneDeltaTable({ rows }: { rows: ZoneDelta[] }) {
           })}
         </tbody>
       </table>
-    </>
+    </div>
   )
 }
 
@@ -625,7 +785,7 @@ function CompareHeatmaps({
 
   return (
     <div>
-      <div style={{
+      <div data-stack-mobile style={{
         display: 'grid',
         gridTemplateColumns: '1fr 1fr',
         gap: '20px',

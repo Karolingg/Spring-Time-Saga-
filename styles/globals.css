@@ -30,6 +30,7 @@ html, body {
   overflow-x: hidden;
   margin: 0;
   padding: 0;
+  width: 100%;
 }
 
 body {
@@ -44,6 +45,8 @@ body {
   color: var(--text-primary);
   font-family: var(--font-geist-sans), 'Inter', system-ui, -apple-system, sans-serif;
   -webkit-font-smoothing: antialiased;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
 }
 
 /* Assembly marker speech-bubble pop-in */
@@ -80,6 +83,19 @@ body {
   body [data-stack-mobile] {
     grid-template-columns: 1fr !important;
     flex-direction: column !important;
+  }
+
+  /* 3–4 cell stat grids: collapse to a 2-up layout rather than stacking
+     into a tall single column (keeps small KPI pills compact). */
+  body [data-grid-2col-mobile] {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+
+  /* Feature containers: trim inner padding so the body isn't squeezed
+     between the page gutter and the card gutter on phones. */
+  body [data-feature-card] > div {
+    padding-left: 16px !important;
+    padding-right: 16px !important;
   }
 
   /* Headings that lock big sizes via inline styles still scale down on

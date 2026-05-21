@@ -60,8 +60,10 @@ const AUTONOMOUS_BUILDING_IDS = new Set([
   'up-cebu-library',
   'admin-building',
   //'asx',
-  'management',
+  //'management',
   //'social-sciences',
+  'as-west-wing',
+  // 'as-east-wing',
 ])
 
 function floorLabel(index: number): string {

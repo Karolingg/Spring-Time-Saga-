@@ -74,6 +74,7 @@
  */
 
 import { supabase } from '@/src/config/supabase'
+import { getCurrentUserCacheKey, ReadThroughCache } from '@/src/services/read-cache'
 import type { ScenarioSeverity } from '@/src/services/simulation.service'
 
 export type BuildingGrade = 'A' | 'B' | 'C' | 'D' | 'F'
@@ -188,6 +189,12 @@ interface RunRow    { id: string; floor_index: number | null; scenario_severity:
 interface ResultRow { run_id: string; evacuated_count: number; evacuation_time: number; global_peak_density: number }
 interface ConfigRow { run_id: string; agent_count: number }
 interface BnRow     { run_id: string }
+
+const buildingScoreCache = new ReadThroughCache()
+
+export function clearBuildingScoreCache() {
+  buildingScoreCache.clear()
+}
 
 /* ── Helpers ─────────────────────────────────────────────────────────────*/
 function clamp01(v: number): number {
@@ -342,7 +349,7 @@ async function fetchRunRows(buildingId: string): Promise<RunRow[] | null> {
   throw new Error(primary.error.message)
 }
 
-export async function getBuildingScore(
+async function loadBuildingScore(
   buildingId: string,
   buildingCapacity: number,
 ): Promise<BuildingScore | null> {
@@ -520,4 +527,14 @@ export async function getBuildingScore(
     coverage,
     cap:      capped.cap,
   }
+}
+
+export async function getBuildingScore(
+  buildingId: string,
+  buildingCapacity: number,
+): Promise<BuildingScore | null> {
+  const userKey = await getCurrentUserCacheKey('building-score')
+  return buildingScoreCache.get(`${userKey}:${buildingId}:${buildingCapacity}`, () => (
+    loadBuildingScore(buildingId, buildingCapacity)
+  ))
 }

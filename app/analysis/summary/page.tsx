@@ -4,6 +4,7 @@ import { useEffect } from 'react'
 import { useAuth } from '@/src/hooks/useAuth'
 import { AggregateAnalysis } from '@/components/analysis/AggregateAnalysis'
 import { AggregateFloorHeatmaps } from '@/components/analysis/AggregateFloorHeatmaps'
+import { BuildingTrends } from '@/components/analysis/BuildingTrends'
 import { FeatureContainer } from '@/components/analysis/FeatureContainer'
 
 export default function AnalysisSummaryPage() {
@@ -75,7 +76,6 @@ export default function AnalysisSummaryPage() {
         title="Aggregate Floor Heatmaps"
         subtitle="Combined density patterns across every completed run, per floor"
         accent="#2db8b0"
-        badge="Layer 1"
         icon={
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <rect x="3" y="3" width="18" height="18" rx="2" />
@@ -86,12 +86,27 @@ export default function AnalysisSummaryPage() {
         <AggregateFloorHeatmaps />
       </FeatureContainer>
 
-      {/* ── Layer 2: Aggregate Zone Trends ──────────────────── */}
+      {/* ── Layer 2: Drill Trends ───────────────────────────── */}
+      <FeatureContainer
+        title="Drill Trends"
+        subtitle="Run-over-run evacuation performance per building floor"
+        accent="#2db8b0"
+        icon={
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M3 3v18h18" />
+            <polyline points="7 13 11 9 14 12 19 6" />
+            <polyline points="15 6 19 6 19 10" />
+          </svg>
+        }
+      >
+        <BuildingTrends />
+      </FeatureContainer>
+
+      {/* ── Layer 3: Aggregate Zone Trends ──────────────────── */}
       <FeatureContainer
         title="Aggregate Zone Trends"
         subtitle="Cross-run zone intensity, peak congestion, and bottleneck patterns"
         accent="#2db8b0"
-        badge="Layer 2"
         icon={
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M3 3v18h18" />

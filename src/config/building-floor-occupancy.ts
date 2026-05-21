@@ -1,5 +1,5 @@
 export const BUILDING_FLOOR_OCCUPANCY: Record<string, number[]> = {
-  'admin-building':  [75, 50],
+  'admin-building':  [50, 50],
   'asx':             [60, 60],
   'as-west-wing':    [70, 70, 60],
   'as-east-wing':    [75, 75, 70],

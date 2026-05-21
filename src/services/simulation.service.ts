@@ -12,6 +12,8 @@ import type { RiskLevel, SeverityLevel, SimulationStatus } from '@/src/schema/en
 import type { PlacedHazard } from '@/src/simulation/hazard-placement'
 import { GRID_COLS, GRID_ROWS } from '@/src/simulation/spatial-grid'
 import { logAction } from '@/src/services/audit.service'
+import { clearBuildingScoreCache } from '@/src/services/building-analytics.service'
+import { getCurrentUserCacheKey, ReadThroughCache } from '@/src/services/read-cache'
 
 export interface ReplayInputs {
   hazards: PlacedHazard[]
@@ -29,6 +31,7 @@ const AGGREGATE_CACHE_MS = 60_000
 const MAX_DENSITY_CELLS_PER_RUN = GRID_COLS * GRID_ROWS
 
 const aggregateCache = new Map<string, { expiresAt: number; value?: unknown; promise?: Promise<unknown> }>()
+const readCache = new ReadThroughCache()
 
 async function getCachedAggregate<T>(key: string, loader: () => Promise<T>): Promise<T> {
   const now = Date.now()
@@ -54,6 +57,16 @@ async function getCachedAggregate<T>(key: string, loader: () => Promise<T>): Pro
 
 function clearAggregateCache() {
   aggregateCache.clear()
+}
+
+function clearSimulationReadCache() {
+  readCache.clearPrefix('simulation:')
+}
+
+function clearAnalysisCaches() {
+  clearAggregateCache()
+  clearSimulationReadCache()
+  clearBuildingScoreCache()
 }
 
 // ---------------------------------------------------------------------------
@@ -178,6 +191,7 @@ export async function createSimulationRun(
 
   // Log the action
   await logAction('create', 'run', run.id, { buildingId, disasterType: config.disasterType })
+  clearSimulationReadCache()
 
   return run.id
 }
@@ -270,7 +284,7 @@ export async function saveSimulationResults(
     evacuatedCount: results.evacuatedCount,
     evacuationTime: results.evacuationTime,
   })
-  clearAggregateCache()
+  clearAnalysisCaches()
 }
 
 // ---------------------------------------------------------------------------
@@ -375,44 +389,103 @@ async function fetchFullRun(runRow: Row): Promise<SimulationRun> {
   )
 }
 
-export async function getSimulationRun(runId: string): Promise<SimulationRun> {
-  const { data, error } = await supabase
-    .from('simulation_runs')
-    .select('*')
-    .eq('id', runId)
-    .single()
+async function fetchFullRuns(runRows: Row[]): Promise<SimulationRun[]> {
+  if (runRows.length === 0) return []
 
-  if (error) throw new Error(error.message)
-  return fetchFullRun(data)
+  const runIds = runRows.map(row => row.id as string)
+
+  const [cfgRes, resRes, zoneRes, bnRes] = await Promise.all([
+    supabase.from('simulation_configs').select('*').in('run_id', runIds),
+    supabase.from('simulation_results').select('*').in('run_id', runIds),
+    supabase.from('simulation_zones').select('*').in('run_id', runIds),
+    supabase.from('simulation_bottlenecks').select('*').in('run_id', runIds),
+  ])
+
+  if (cfgRes.error) throw new Error(cfgRes.error.message)
+  if (resRes.error) throw new Error(resRes.error.message)
+  if (zoneRes.error) throw new Error(zoneRes.error.message)
+  if (bnRes.error) throw new Error(bnRes.error.message)
+
+  const configsByRun = new Map<string, Row>()
+  for (const row of (cfgRes.data ?? []) as Row[]) {
+    configsByRun.set(row.run_id as string, row)
+  }
+
+  const resultsByRun = new Map<string, Row>()
+  for (const row of (resRes.data ?? []) as Row[]) {
+    resultsByRun.set(row.run_id as string, row)
+  }
+
+  const zonesByRun = new Map<string, Row[]>()
+  for (const row of (zoneRes.data ?? []) as Row[]) {
+    const runId = row.run_id as string
+    zonesByRun.set(runId, [...(zonesByRun.get(runId) ?? []), row])
+  }
+
+  const bottlenecksByRun = new Map<string, Row[]>()
+  for (const row of (bnRes.data ?? []) as Row[]) {
+    const runId = row.run_id as string
+    bottlenecksByRun.set(runId, [...(bottlenecksByRun.get(runId) ?? []), row])
+  }
+
+  return runRows.map(row => {
+    const runId = row.id as string
+    return toSimulationRun(
+      row,
+      configsByRun.get(runId) ?? null,
+      resultsByRun.get(runId) ?? null,
+      zonesByRun.get(runId) ?? [],
+      bottlenecksByRun.get(runId) ?? [],
+    )
+  })
+}
+
+export async function getSimulationRun(runId: string): Promise<SimulationRun> {
+  const userKey = await getCurrentUserCacheKey('simulation')
+  return readCache.get(`${userKey}:run:${runId}`, async () => {
+    const { data, error } = await supabase
+      .from('simulation_runs')
+      .select('*')
+      .eq('id', runId)
+      .single()
+
+    if (error) throw new Error(error.message)
+    return fetchFullRun(data)
+  })
 }
 
 export async function getLatestSimulationRun(): Promise<SimulationRun | null> {
-  const { data, error } = await supabase
-    .from('simulation_runs')
-    .select('*')
-    .eq('status', 'completed')
-    .order('created_at', { ascending: false })
-    .limit(1)
-    .maybeSingle()
+  const userKey = await getCurrentUserCacheKey('simulation')
+  return readCache.get(`${userKey}:latest`, async () => {
+    const { data, error } = await supabase
+      .from('simulation_runs')
+      .select('*')
+      .eq('status', 'completed')
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle()
 
-  if (error) throw new Error(error.message)
-  if (!data) return null
-  return fetchFullRun(data)
+    if (error) throw new Error(error.message)
+    if (!data) return null
+    return fetchFullRun(data)
+  })
 }
 
 export async function getSimulationHistory(limit: number = 5): Promise<SimulationRun[]> {
-  const { data, error } = await supabase
-    .from('simulation_runs')
-    .select('*')
-    .eq('status', 'completed')
-    .order('created_at', { ascending: false })
-    .limit(limit)
+  const userKey = await getCurrentUserCacheKey('simulation')
+  return readCache.get(`${userKey}:history:${limit}`, async () => {
+    const { data, error } = await supabase
+      .from('simulation_runs')
+      .select('*')
+      .eq('status', 'completed')
+      .order('created_at', { ascending: false })
+      .limit(limit)
 
-  if (error) throw new Error(error.message)
-  if (!data || data.length === 0) return []
+    if (error) throw new Error(error.message)
+    if (!data || data.length === 0) return []
 
-  const runs = await Promise.all(data.map(row => fetchFullRun(row)))
-  return runs
+    return fetchFullRuns(data)
+  })
 }
 
 export async function deleteSimulationRun(runId: string): Promise<void> {
@@ -426,7 +499,7 @@ export async function deleteSimulationRun(runId: string): Promise<void> {
 
   // Log the action
   await logAction('delete', 'run', runId)
-  clearAggregateCache()
+  clearAnalysisCaches()
 }
 
 export async function resetAllSimulationData(): Promise<void> {
@@ -441,7 +514,7 @@ export async function resetAllSimulationData(): Promise<void> {
 
   // Log the action
   await logAction('reset', 'run', 'all')
-  clearAggregateCache()
+  clearAnalysisCaches()
 }
 
 export interface AggregateFloorHeatmap {
@@ -642,6 +715,91 @@ export async function getAggregateZoneStats(): Promise<{
   })
 }
 
+/** One run's headline metrics, used to plot a per-floor drill trend. */
+export interface RunTrendPoint {
+  runId: string
+  createdAt: string
+  disasterType: string
+  /** Seconds to clear the floor. */
+  evacuationTime: number
+  evacuatedCount: number
+  agentCount: number
+  maxCongestion: number
+}
+
+/** Chronological run history for one building floor. */
+export interface BuildingFloorTrend {
+  buildingId: string
+  floorIndex: number
+  /** Oldest-first. */
+  runs: RunTrendPoint[]
+}
+
+/**
+ * Groups every completed run by `(buildingId, floorIndex)` and returns each
+ * group's runs in chronological order with their headline metrics. Feeds the
+ * drill-trend view: direction arrows need run-over-run history, and the
+ * "needs a baseline" gate needs the per-floor run count.
+ */
+export async function getRunTrends(): Promise<BuildingFloorTrend[]> {
+  return getCachedAggregate('run-trends', async () => {
+    const { data: runs, error: runsError } = await supabase
+      .from('simulation_runs')
+      .select('id, building_id, floor_index, disaster_type, created_at')
+      .eq('status', 'completed')
+      .order('created_at', { ascending: true })
+
+    if (runsError) throw new Error(runsError.message)
+    if (!runs || runs.length === 0) return []
+
+    const runsWithFloor = (runs as {
+      id: string; building_id: string | null; floor_index: number | null
+      disaster_type: string | null; created_at: string
+    }[]).filter((r) => r.building_id != null && r.floor_index != null)
+
+    if (runsWithFloor.length === 0) return []
+
+    const runIds = runsWithFloor.map((r) => r.id)
+    const [cfgRes, resRes] = await Promise.all([
+      supabase.from('simulation_configs').select('run_id, agent_count').in('run_id', runIds),
+      supabase.from('simulation_results').select('run_id, evacuation_time, evacuated_count, max_congestion').in('run_id', runIds),
+    ])
+    if (cfgRes.error) throw new Error(cfgRes.error.message)
+    if (resRes.error) throw new Error(resRes.error.message)
+
+    const cfgByRun = new Map(
+      (cfgRes.data as { run_id: string; agent_count: number }[] ?? []).map((c) => [c.run_id, c]),
+    )
+    const resByRun = new Map(
+      (resRes.data as { run_id: string; evacuation_time: number; evacuated_count: number; max_congestion: number }[] ?? [])
+        .map((r) => [r.run_id, r]),
+    )
+
+    const groups = new Map<string, BuildingFloorTrend>()
+    for (const run of runsWithFloor) {
+      const res = resByRun.get(run.id)
+      if (!res) continue // skip runs that never recorded results
+      const cfg = cfgByRun.get(run.id)
+      const key = `${run.building_id}:${run.floor_index}`
+      let group = groups.get(key)
+      if (!group) {
+        group = { buildingId: run.building_id as string, floorIndex: run.floor_index as number, runs: [] }
+        groups.set(key, group)
+      }
+      group.runs.push({
+        runId: run.id,
+        createdAt: run.created_at,
+        disasterType: run.disaster_type ?? 'fire',
+        evacuationTime: res.evacuation_time ?? 0,
+        evacuatedCount: res.evacuated_count ?? 0,
+        agentCount: cfg?.agent_count ?? 0,
+        maxCongestion: res.max_congestion ?? 0,
+      })
+    }
+    return Array.from(groups.values())
+  })
+}
+
 // ---------------------------------------------------------------------------
 // Run Tags
 // ---------------------------------------------------------------------------
@@ -738,6 +896,7 @@ export async function updateRunNotes(runId: string, notes: string): Promise<void
   if (error) throw new Error(error.message)
 
   await logAction('update', 'run', runId, { notes })
+  clearSimulationReadCache()
 }
 
 // ---------------------------------------------------------------------------
@@ -767,7 +926,11 @@ export async function saveDensityCells(runId: string, cells: Omit<DensityCell, '
     const { error: deleteError } = await (supabase as any).from('density_cells').delete().eq('run_id', runId)
     if (deleteError) throw new Error(`Failed to clear density cells: ${deleteError.message}`)
 
-    if (cells.length === 0) return
+    if (cells.length === 0) {
+      clearAggregateCache()
+      clearSimulationReadCache()
+      return
+    }
 
     const cellRows = cells.map(c => ({
       run_id: runId,
@@ -781,30 +944,35 @@ export async function saveDensityCells(runId: string, cells: Omit<DensityCell, '
     const { error } = await (supabase as any).from('density_cells').insert(cellRows)
 
     if (error) throw new Error(`Failed to save density cells: ${error.message}`)
+    clearAggregateCache()
+    clearSimulationReadCache()
   } catch (err) {
     console.error(`Failed to save density cells: ${err}`)
   }
 }
 
 export async function getDensityCells(runId: string): Promise<DensityCell[]> {
+  const userKey = await getCurrentUserCacheKey('simulation')
   try {
-    const { data, error } = await supabase
-      .from('density_cells')
-      .select('*')
-      .eq('run_id', runId)
-      .order('step', { ascending: true })
+    return await readCache.get(`${userKey}:density:${runId}`, async () => {
+      const { data, error } = await supabase
+        .from('density_cells')
+        .select('*')
+        .eq('run_id', runId)
+        .order('step', { ascending: true })
 
-    if (error) throw new Error(`Failed to fetch density cells: ${error.message}`)
-    if (!data) return []
+      if (error) throw new Error(`Failed to fetch density cells: ${error.message}`)
+      if (!data) return []
 
-    return (data as Row[]).map(row => ({
-      id: row.id as string,
-      runId: row.run_id as string,
-      cellX: row.cell_x as number,
-      cellY: row.cell_y as number,
-      peakDensity: row.peak_density as number,
-      step: row.step as number,
-    }))
+      return (data as Row[]).map(row => ({
+        id: row.id as string,
+        runId: row.run_id as string,
+        cellX: row.cell_x as number,
+        cellY: row.cell_y as number,
+        peakDensity: row.peak_density as number,
+        step: row.step as number,
+      }))
+    })
   } catch (err) {
     console.error(`Failed to get density cells: ${err}`)
     return []

@@ -12,12 +12,12 @@ export interface AssemblyPoint {
 
 export const ASSEMBLY_POINTS: AssemblyPoint[] = [
   {
-    id: 'central-quadrangle',
+    id: 'admin-field',
     name: 'Admin Field ',
     description: 'Open lawn between the academic buildings — primary muster point for the west campus.',
     position: [10.3215, 123.8985  ],
     capacity: 800,
-    image: '/assembly-areas/central-quadrangle.jpg',
+    image: '/floorplans/admin-field.jpg',
   },
   {
     id: 'east-plaza',
@@ -28,20 +28,28 @@ export const ASSEMBLY_POINTS: AssemblyPoint[] = [
     image: '/assembly-areas/east-plaza.jpg',
   },
   {
-    id: 'high-school-field',
-    name: 'High School Field',
-    description: 'Open field east of the High School building.',
-    position: [10.3215, 123.9030],
-    capacity: 600,
-    image: '/assembly-areas/high-school-field.jpg',
-  },
-  {
     id: 'as-parking',
     name: 'AS Parking Area',
     description: 'Open area parking outside the AS building.',
     position: [10.3231, 123.8990],
     capacity: 600,
     image: '/floorplans/as-parking.png',
+  },
+  {
+    id: 'up-high-open',
+    name: 'UP High Open Area',
+    description: 'Open area outside the UP High building.',
+    position: [10.3220, 123.8995],
+    capacity: 600,
+    image: '/floorplans/up-high-open.png',
+  },
+  {
+    id: 'volleyball-court',
+    name: 'Volleyball Court',
+    description: 'Open area outside the UP High building.',
+    position: [10.3232, 123.8983],
+    capacity: 600,
+    image: '/floorplans/volleyball-court.png',
   },
 ]
 

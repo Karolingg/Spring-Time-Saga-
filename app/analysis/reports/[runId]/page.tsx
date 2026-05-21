@@ -5,6 +5,7 @@ import { useParams } from 'next/navigation'
 import { getSimulationRun, getDensityCells } from '@/src/services/simulation.service'
 import { getBuildingById } from '@/src/simulation/building-model'
 import { SpatialBottleneckHeatmap } from '@/components/analysis/SpatialBottleneckHeatmap'
+import { ExitUtilizationBreakdown } from '@/components/analysis/ExitUtilizationBreakdown'
 import type { DensityCell, SimulationRun, SimulationZone } from '@/src/schema/simulation.types'
 
 const REPORT_MAX_ZONES = 6
@@ -185,6 +186,26 @@ export default function EvacuationReportPage() {
         </section>
       )}
 
+      {run.buildingId && run.floorIndex != null && (
+        <section className="report-exits">
+          <h2>Exit Utilization</h2>
+          <p className="report-exits-caption">
+            How evacuees were distributed across the floor&apos;s exits. A heavy
+            skew toward one door signals a routing imbalance worth addressing
+            with signage or staged release — even when every exit was reachable.
+          </p>
+          <ExitUtilizationBreakdown
+            buildingId={run.buildingId}
+            simulatedFloorIndex={run.floorIndex}
+            disasterType={run.disasterType}
+            hazards={run.hazards}
+            agentsPerRoom={run.agentsPerRoom}
+            seed={run.seed}
+            agentCount={run.config?.agentCount ?? null}
+          />
+        </section>
+      )}
+
       {featuredZones.length > 0 && (
         <section className="report-zones">
           <h2>Top zones by intensity</h2>
@@ -252,6 +273,15 @@ function ReportShell({ children }: { children: React.ReactNode }) {
         @media (max-width: 768px) {
           .report-page {
             padding: 24px 14px 40px;
+          }
+          .report-kpis {
+            grid-template-columns: repeat(2, 1fr);
+          }
+          .report-header h1 {
+            font-size: 21px;
+          }
+          .report-meta {
+            gap: 8px 14px;
           }
         }
         .report-toolbar {
@@ -422,6 +452,22 @@ function ReportShell({ children }: { children: React.ReactNode }) {
           padding: 12px;
           background: #ffffff;
         }
+        .report-exits {
+          margin-bottom: 24px;
+        }
+        .report-exits h2 {
+          font-size: 15px;
+          letter-spacing: 0.04em;
+          text-transform: uppercase;
+          color: #0f172a;
+          margin: 0 0 8px;
+        }
+        .report-exits-caption {
+          font-size: 12px;
+          color: #475569;
+          margin: 0 0 14px;
+          line-height: 1.55;
+        }
         @media print {
           .report-page {
             padding: 24px 28px;
@@ -430,6 +476,10 @@ function ReportShell({ children }: { children: React.ReactNode }) {
           .report-toolbar { display: none; }
           .report-print-btn { display: none; }
           .report-heatmap-shell {
+            page-break-inside: avoid;
+            break-inside: avoid;
+          }
+          .report-exits {
             page-break-inside: avoid;
             break-inside: avoid;
           }

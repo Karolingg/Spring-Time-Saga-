@@ -115,7 +115,7 @@ const CAMPUS_BUILDINGS: CampusBuilding[] = [
     bounds: { south: 10.3211, north: 10.3234, west: 123.8971, east: 123.8988 },
     center: [10.3226, 123.8961],
     capacity: 320,
-    floors: 3,
+    floors: 6,
     exits: 3,
     riskLevel: 'HIGH',
     lastDrillDate: '2025-10-12',
@@ -126,7 +126,7 @@ const CAMPUS_BUILDINGS: CampusBuilding[] = [
     id: 'as-west-wing',
     name: 'AS West Wing',
     type: 'Academic',
-    bounds: { south: 10.3212, north: 10.3257, west: 123.8984, east: 123.9005 },
+    bounds: { south: 10.3212, north: 10.3258, west: 123.8984, east: 123.9005 },
     center: [10.3252, 123.9000],
     capacity: 200,
     floors: 3,
@@ -199,7 +199,7 @@ const CAMPUS_BUILDINGS: CampusBuilding[] = [
     bounds: { south: 10.3197, north: 10.3238, west: 123.8930, east: 123.9063 },
     center: [10.3218, 123.9020],
     capacity: 350,
-    floors: 3,
+    floors: 2,
     exits: 5,
     riskLevel: 'HIGH',
     lastDrillDate: '2025-11-15',
@@ -450,8 +450,8 @@ export default function MapPage() {
             onClick={handleRecenterDefault}
             style={{
               position: 'absolute',
-              right: '12px',
-              bottom: '104px',
+              right: '6px',
+              bottom: '130px',
               zIndex: 1001,
               display: 'flex',
               alignItems: 'center',
@@ -585,9 +585,9 @@ export default function MapPage() {
                 style={{
                   width: '100%',
                   height: '180px',
-                  background: 'rgba(148,163,184,0.1)',
+                  background: 'linear-gradient(180deg, rgba(248,250,252,0.95) 0%, rgba(226,232,240,0.75) 100%)',
                   borderRadius: '12px',
-                  border: '1px dashed rgba(148,163,184,0.3)',
+                  border: '1px solid rgba(148,163,184,0.2)',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
@@ -596,10 +596,18 @@ export default function MapPage() {
                   overflow: 'hidden',
                   position: 'relative',
                   cursor: 'pointer',
-                  transition: 'opacity 0.2s',
+                  transition: 'transform 0.2s, box-shadow 0.2s',
+                  boxShadow: '0 12px 26px rgba(15,23,42,0.08)',
+                  willChange: 'transform',
                 }}
-                onMouseEnter={(e) => e.currentTarget.style.opacity = '0.8'}
-                onMouseLeave={(e) => e.currentTarget.style.opacity = '1'}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = 'translateY(-1px)'
+                  e.currentTarget.style.boxShadow = '0 16px 32px rgba(15,23,42,0.12)'
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = 'translateY(0)'
+                  e.currentTarget.style.boxShadow = '0 12px 26px rgba(15,23,42,0.08)'
+                }}
               >
                 <Image
                   src={`/floorplans/${building.id}.png`}
@@ -608,14 +616,50 @@ export default function MapPage() {
                   style={{ objectFit: 'cover' }}
                   onError={() => {}}
                 />
+                <div style={{
+                  position: 'absolute',
+                  inset: 0,
+                  background: 'linear-gradient(180deg, rgba(15,23,42,0) 45%, rgba(15,23,42,0.55) 100%)',
+                  pointerEvents: 'none',
+                }} />
+                <div style={{
+                  position: 'absolute',
+                  right: '12px',
+                  bottom: '12px',
+                  padding: '4px 10px',
+                  background: 'rgba(15,23,42,0.72)',
+                  color: '#f8fafc',
+                  borderRadius: '999px',
+                  fontSize: '10px',
+                  fontWeight: 700,
+                  letterSpacing: '0.4px',
+                  textTransform: 'uppercase',
+                  pointerEvents: 'none',
+                }}>
+                  +
+                </div>
               </div>
             </div>
 
             {/* Description */}
             <div style={{ padding: '0 22px 16px' }}>
-              <p style={{ margin: 0, fontSize: '13px', color: '#475569', lineHeight: 1.7 }}>
-                {building.notes}
-              </p>
+              <div style={{
+                padding: '14px 16px',
+                background: 'linear-gradient(180deg, rgba(255,255,255,0.86) 0%, rgba(248,250,252,0.72) 100%)',
+                borderRadius: '12px',
+                border: '1px solid rgba(148,163,184,0.18)',
+                boxShadow: '0 10px 22px rgba(15,23,42,0.06)',
+              }}>
+                <div style={{
+                  fontSize: '10px', color: '#64748b', fontWeight: 700,
+                  letterSpacing: '0.6px', textTransform: 'uppercase', marginBottom: '6px',
+                }}>
+                  Overview
+                </div>
+                <p style={{ margin: 0, fontSize: '13px', color: '#475569', lineHeight: 1.7 }}>
+                  {building.notes}
+                </p>
+              </div>
             </div>
 
             {/* Per-floor capacity breakdown — replaces the previous single
@@ -627,10 +671,10 @@ export default function MapPage() {
               return (
                 <div style={{
                   margin: '0 22px 16px', padding: '16px 18px',
-                  background: 'rgba(255,255,255,0.58)',
-                  border: '1px solid rgba(148,163,184,0.18)',
+                  background: 'linear-gradient(180deg, rgba(255,255,255,0.86) 0%, rgba(248,250,252,0.72) 100%)',
+                  border: '1px solid rgba(148,163,184,0.2)',
                   borderRadius: '12px',
-                  boxShadow: '0 10px 24px rgba(15,23,42,0.06)',
+                  boxShadow: '0 12px 26px rgba(15,23,42,0.06)',
                 }}>
                   <div style={{
                     fontSize: '11px', fontWeight: '700', color: '#2db8b0',
@@ -646,7 +690,7 @@ export default function MapPage() {
                         <div key={floorNum} style={{
                           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                           padding: '8px 12px', borderRadius: '8px',
-                          background: 'rgba(255,255,255,0.7)',
+                          background: 'rgba(255,255,255,0.85)',
                           border: '1px solid rgba(148,163,184,0.14)',
                         }}>
                           <span style={{ fontSize: '12px', color: '#475569', fontWeight: 600 }}>
@@ -682,10 +726,10 @@ export default function MapPage() {
             <div style={{ padding: '0 22px 16px' }}>
               <div style={{
                 padding: '16px',
-                background: 'rgba(255,255,255,0.62)',
-                border: '1px solid rgba(45,184,176,0.16)',
+                background: 'linear-gradient(180deg, rgba(255,255,255,0.9) 0%, rgba(248,250,252,0.74) 100%)',
+                border: '1px solid rgba(45,184,176,0.18)',
                 borderRadius: '12px',
-                boxShadow: '0 10px 24px rgba(15,23,42,0.05)',
+                boxShadow: '0 12px 26px rgba(15,23,42,0.06)',
               }}>
                 <div style={{
                   display: 'flex', alignItems: 'center', justifyContent: 'space-between',
@@ -904,10 +948,10 @@ export default function MapPage() {
               <div style={{ padding: '0 22px 16px' }}>
                 <div style={{
                   padding: '14px 16px',
-                  background: 'rgba(255,255,255,0.62)',
+                  background: 'linear-gradient(180deg, rgba(255,255,255,0.9) 0%, rgba(236,253,245,0.75) 100%)',
                   border: '1px solid rgba(34,197,94,0.22)',
                   borderRadius: '12px',
-                  boxShadow: '0 10px 24px rgba(15,23,42,0.05)',
+                  boxShadow: '0 12px 26px rgba(15,23,42,0.06)',
                 }}>
                   <div style={{ fontSize: '11px', color: '#16a34a', fontWeight: '700', letterSpacing: '0.7px', marginBottom: '10px' }}>
                     NEAREST ASSEMBLY POINT
@@ -945,29 +989,48 @@ export default function MapPage() {
 
             {/* Stats grid */}
             <div style={{ padding: '0 22px' }}>
+              <div style={{
+                fontSize: '10px', color: '#64748b', fontWeight: 700,
+                letterSpacing: '0.6px', textTransform: 'uppercase', marginBottom: '8px',
+              }}>
+                Building Snapshot
+              </div>
               {building.status === 'available' ? (
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '16px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '10px', marginBottom: '12px' }}>
                   {/* Floors */}
                   <div style={{
-                    padding: '16px', background: 'rgba(255,255,255,0.58)', borderRadius: '12px',
-                    border: '1px solid rgba(148,163,184,0.16)',
-                    display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px',
-                    boxShadow: '0 10px 24px rgba(15,23,42,0.05)',
+                    padding: '14px 16px',
+                    background: 'linear-gradient(180deg, rgba(255,255,255,0.86) 0%, rgba(248,250,252,0.7) 100%)',
+                    borderRadius: '12px',
+                    border: '1px solid rgba(148,163,184,0.18)',
+                    display: 'grid', gridTemplateColumns: '36px 1fr auto', alignItems: 'center', gap: '12px',
+                    boxShadow: '0 10px 22px rgba(15,23,42,0.06)',
                   }}>
-                    <span style={{ fontSize: '12px', color: '#64748b', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.5px', paddingTop: '18px' }}>Floors</span>
-                    <span style={{ fontSize: '16px', fontWeight: '700', color: '#0f172a', paddingTop: '12px' }}>{BUILDING_FLOOR_COUNT[building.id]}</span>
+                    <div style={{
+                      width: '36px', height: '36px', borderRadius: '10px',
+                      background: 'rgba(45,184,176,0.14)',
+                      border: '1px solid rgba(45,184,176,0.28)',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      color: '#0f766e',
+                    }}>
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                        <rect x="3" y="4" width="18" height="6" rx="2" />
+                        <rect x="3" y="14" width="18" height="6" rx="2" />
+                      </svg>
+                    </div>
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ fontSize: '11px', color: '#64748b', fontWeight: 700, letterSpacing: '0.5px', textTransform: 'uppercase' }}>
+                        Floors
+                      </div>
+                      <div style={{ fontSize: '12px', color: '#94a3b8', marginTop: '2px' }}>
+                        Total building levels
+                      </div>
+                    </div>
+                    <div style={{ fontSize: '22px', fontWeight: 800, color: '#0f172a' }}>
+                      {BUILDING_FLOOR_COUNT[building.id]}
+                    </div>
                   </div>
 
-                  {/* Exits */}
-                  <div style={{
-                    padding: '16px', background: 'rgba(255,255,255,0.58)', borderRadius: '12px',
-                    border: '1px solid rgba(148,163,184,0.16)',
-                    display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px',
-                    boxShadow: '0 10px 24px rgba(15,23,42,0.05)',
-                  }}>
-                    <span style={{ fontSize: '12px', color: '#64748b', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.5px', paddingTop: '18px' }}>Exit Points</span>
-                    <span style={{ fontSize: '16px', fontWeight: '700', color: '#0f172a', paddingTop: '12px' }}>{building.exits}</span>
-                  </div>
                 </div>
               ) : (
                 <div style={{
@@ -983,21 +1046,6 @@ export default function MapPage() {
                   </div>
                 </div>
               )}
-              {/* Last drill */}
-              <div style={{
-                padding: '14px 16px', background: 'rgba(255,255,255,0.58)', borderRadius: '12px',
-                border: '1px solid rgba(148,163,184,0.16)',
-                display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '18px',
-                boxShadow: '0 10px 24px rgba(15,23,42,0.05)',
-              }}>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#64748b" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-                <div>
-                  <div style={{ fontSize: '10px', color: '#64748b', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '2px' }}>Last Evacuation Drill</div>
-                  <div style={{ fontSize: '14px', fontWeight: '700', color: '#0f172a' }}>
-                    {new Date(building.lastDrillDate).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
-                  </div>
-                </div>
-              </div>
             </div>
 
             
