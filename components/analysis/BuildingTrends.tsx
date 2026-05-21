@@ -14,6 +14,7 @@ import { getBuildingById } from '@/src/simulation/building-model'
  */
 const MIN_RUNS_FOR_TREND = 3
 const ACCENT = '#2db8b0'
+const RATE_ACCENT = '#6366f1'
 
 interface ResolvedTrend extends BuildingFloorTrend {
   buildingName: string
@@ -197,9 +198,12 @@ function TrendCard({ trend }: { trend: ResolvedTrend }) {
           fontSize: '10px', fontWeight: 700, color: '#94a3b8',
           letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: '4px',
         }}>
-          <span>Evacuation time · oldest → latest</span>
+          <span>Trend · oldest → latest</span>
         </div>
-        <Sparkline values={runs.map((r) => r.evacuationTime)} />
+        <Sparkline
+          values={runs.map((r) => r.evacuationTime)}
+          rates={runs.map((r) => evacRate(r))}
+        />
       </div>
     </div>
   )
@@ -244,37 +248,88 @@ function MetricDelta({ label, latest, delta, better, formatDelta }: MetricDeltaP
   )
 }
 
-/** Minimal evacuation-time sparkline — communicates trend shape at a glance. */
-function Sparkline({ values }: { values: number[] }) {
+/**
+ * Dual-metric sparkline. The solid teal line is evacuation time; the dashed
+ * indigo line is evacuation rate. The two series sit on different scales
+ * (seconds vs. percent) so each is normalized independently — the chart
+ * communicates trend *shape*, not absolute values. A legend names them.
+ */
+function Sparkline({ values, rates }: { values: number[]; rates?: number[] }) {
   const W = 280
   const H = 38
   const PAD = 4
   if (values.length < 2) return null
-  const min = Math.min(...values)
-  const max = Math.max(...values)
-  const span = max - min || 1
-  const points = values.map((v, i) => {
-    const x = PAD + (i / (values.length - 1)) * (W - PAD * 2)
-    const y = PAD + (1 - (v - min) / span) * (H - PAD * 2)
-    return { x, y }
-  })
-  const path = points.map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(' ')
+
+  const toPoints = (series: number[]) => {
+    const min = Math.min(...series)
+    const max = Math.max(...series)
+    const span = max - min || 1
+    return series.map((v, i) => ({
+      x: PAD + (i / (series.length - 1)) * (W - PAD * 2),
+      y: PAD + (1 - (v - min) / span) * (H - PAD * 2),
+    }))
+  }
+  const toPath = (pts: { x: number; y: number }[]) =>
+    pts.map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(' ')
+
+  const timePoints = toPoints(values)
+  const ratePoints = rates && rates.length === values.length ? toPoints(rates) : null
 
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" style={{ width: '100%', height: '38px', display: 'block' }}>
-      <path d={path} fill="none" stroke={ACCENT} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-      {points.map((p, i) => (
-        <circle
-          key={i}
-          cx={p.x}
-          cy={p.y}
-          r={i === points.length - 1 ? 3.4 : 2}
-          fill={i === points.length - 1 ? ACCENT : '#ffffff'}
-          stroke={ACCENT}
-          strokeWidth="1.5"
+    <>
+      <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" style={{ width: '100%', height: '38px', display: 'block' }}>
+        {ratePoints && (
+          <path
+            d={toPath(ratePoints)}
+            fill="none"
+            stroke={RATE_ACCENT}
+            strokeWidth="1.8"
+            strokeDasharray="3 3"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        )}
+        <path d={toPath(timePoints)} fill="none" stroke={ACCENT} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+        {timePoints.map((p, i) => (
+          <circle
+            key={i}
+            cx={p.x}
+            cy={p.y}
+            r={i === timePoints.length - 1 ? 3.4 : 2}
+            fill={i === timePoints.length - 1 ? ACCENT : '#ffffff'}
+            stroke={ACCENT}
+            strokeWidth="1.5"
+          />
+        ))}
+      </svg>
+      {ratePoints && (
+        <div style={{ display: 'flex', gap: '16px', marginTop: '6px' }}>
+          <LegendItem dashed={false} color={ACCENT} label="Evac time" />
+          <LegendItem dashed color={RATE_ACCENT} label="Evac rate" />
+        </div>
+      )}
+    </>
+  )
+}
+
+/** A single line-swatch + label for the sparkline legend. */
+function LegendItem({ dashed, color, label }: { dashed: boolean; color: string; label: string }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+      <svg width="18" height="6" viewBox="0 0 18 6">
+        <line
+          x1="0" y1="3" x2="18" y2="3"
+          stroke={color} strokeWidth="2" strokeLinecap="round"
+          strokeDasharray={dashed ? '3 3' : undefined}
         />
-      ))}
-    </svg>
+      </svg>
+      <span style={{
+        fontSize: '10px', fontWeight: 700, color: '#64748b',
+        letterSpacing: '0.04em', textTransform: 'uppercase',
+      }}>
+        {label}
+      </span>
+    </div>
   )
 }
 

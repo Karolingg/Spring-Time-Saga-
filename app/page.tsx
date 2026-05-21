@@ -277,12 +277,12 @@ export default function DashboardPage() {
 
       {/* ── Drill Comparison ── */}
       <div style={SECTION_CARD}>
-        <DrillComparison runs={recentRuns} />
+        <DrillComparison runs={recentRuns} isMobile={isMobile} />
       </div>
 
       {/* ── Quick Actions ── */}
       <div style={SECTION_CARD}>
-        <QuickActions />
+        <QuickActions isMobile={isMobile} />
       </div>
     </div>
   )
@@ -520,7 +520,7 @@ function compareDelta(a: SimulationRun, b: SimulationRun): { evacDelta: number; 
   return { evacDelta: rateB - rateA, timeDelta: timeB - timeA }
 }
 
-function DrillComparison({ runs }: { runs: SimulationRun[] }) {
+function DrillComparison({ runs, isMobile }: { runs: SimulationRun[]; isMobile: boolean }) {
   const hasPair = runs.length >= 2
   const a = hasPair ? runs[1] : null
   const b = hasPair ? runs[0] : null
@@ -543,7 +543,7 @@ function DrillComparison({ runs }: { runs: SimulationRun[] }) {
       </p>
 
       {hasPair && a && b ? (
-        <ComparisonPreview a={a} b={b} compareUrl={compareUrl} />
+        <ComparisonPreview a={a} b={b} compareUrl={compareUrl} isMobile={isMobile} />
       ) : (
         <div style={{
           padding: '24px 20px', textAlign: 'center',
@@ -567,18 +567,26 @@ function DrillComparison({ runs }: { runs: SimulationRun[] }) {
   )
 }
 
-function ComparisonPreview({ a, b, compareUrl }: { a: SimulationRun; b: SimulationRun; compareUrl: string }) {
+function ComparisonPreview({ a, b, compareUrl, isMobile }: { a: SimulationRun; b: SimulationRun; compareUrl: string; isMobile: boolean }) {
   const { evacDelta, timeDelta } = compareDelta(a, b)
   const dtA = DISASTER_ICON[a.disasterType] ?? DISASTER_ICON.fire
   const dtB = DISASTER_ICON[b.disasterType] ?? DISASTER_ICON.fire
 
   return (
     <div style={{
-      display: 'grid', gridTemplateColumns: '1fr auto 1fr auto', gap: '16px', alignItems: 'stretch',
+      display: isMobile ? 'flex' : 'grid',
+      flexDirection: isMobile ? 'column' : undefined,
+      gridTemplateColumns: isMobile ? undefined : '1fr auto 1fr auto',
+      gap: isMobile ? '12px' : '16px',
+      alignItems: 'stretch',
     }}>
       <RunCard label="Baseline (A)" badgeColor="#64748b" run={a} dt={dtA} />
 
-      <div style={{ display: 'flex', alignItems: 'center', color: '#94a3b8' }}>
+      <div style={{
+        display: 'flex', alignItems: 'center', color: '#94a3b8',
+        justifyContent: 'center',
+        transform: isMobile ? 'rotate(90deg)' : 'none',
+      }}>
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <line x1="5" y1="12" x2="19" y2="12" />
           <polyline points="12 5 19 12 12 19" />
@@ -587,7 +595,11 @@ function ComparisonPreview({ a, b, compareUrl }: { a: SimulationRun; b: Simulati
 
       <RunCard label="Latest (B)" badgeColor="#2db8b0" run={b} dt={dtB} />
 
-      <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between', gap: '8px', minWidth: '180px' }}>
+      <div style={{
+        display: 'flex', flexDirection: 'column',
+        justifyContent: 'space-between', gap: isMobile ? '10px' : '8px',
+        minWidth: isMobile ? 'auto' : '180px',
+      }}>
         <DeltaPill
           label="Evacuation rate"
           delta={evacDelta}
@@ -604,6 +616,7 @@ function ComparisonPreview({ a, b, compareUrl }: { a: SimulationRun; b: Simulati
           display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
           padding: '9px 14px', background: '#2db8b0', color: '#ffffff',
           borderRadius: '6px', textDecoration: 'none', fontSize: '13px', fontWeight: '600',
+          width: isMobile ? '100%' : undefined,
         }}>
           Open comparison
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -646,7 +659,7 @@ function RunCard({ label, badgeColor, run, dt }: {
           {dt.label}
         </span>
       </div>
-      <div style={{ display: 'flex', gap: '14px' }}>
+      <div style={{ display: 'flex', gap: '14px', flexWrap: 'wrap' }}>
         <MetricChip label="Evacuated" value={`${evacuated}/${agents}`} />
         <MetricChip label="Rate" value={`${rate}%`} />
         <MetricChip label="Time" value={time != null ? `${time.toFixed(1)}s` : '—'} />
@@ -726,11 +739,11 @@ const QUICK_ACTIONS = [
   },
 ]
 
-function QuickActions() {
+function QuickActions({ isMobile }: { isMobile: boolean }) {
   return (
     <>
       <h2 style={{ margin: '0 0 14px', fontSize: '14px', fontWeight: '600', color: 'var(--text-primary)' }}>Quick Actions</h2>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, 1fr)', gap: '12px' }}>
         {QUICK_ACTIONS.map(item => (
           <a key={item.label} href={item.href} style={{
             display: 'flex', alignItems: 'center', gap: '14px',
