@@ -30,6 +30,7 @@ html, body {
   overflow-x: hidden;
   margin: 0;
   padding: 0;
+  width: 100%;
 }
 
 body {
@@ -44,6 +45,8 @@ body {
   color: var(--text-primary);
   font-family: var(--font-geist-sans), 'Inter', system-ui, -apple-system, sans-serif;
   -webkit-font-smoothing: antialiased;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
 }
 
 /* Assembly marker speech-bubble pop-in */

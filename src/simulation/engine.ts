@@ -5,9 +5,52 @@
  * hazard progression, congestion modeling, and evaluation.
  */
 
-import type { FloorModel, HazardZone } from './building-model'
+import type { FloorModel, HazardForecast, HazardZone } from './building-model'
 import { getNode, findShortestPathToExitWeighted, edgeKey } from './building-model'
 import { hazardGrowthRate } from './hazard-physics'
+
+/* ── Behavioral agent types ──
+ *
+ * Real evacuees are not uniform. Some respond to the alarm immediately and
+ * move quickly; most move at average pace with a normal reaction delay; a
+ * minority freeze, follow others, or move slowly due to mobility limits.
+ * Modeling these three populations meaningfully changes flow dynamics —
+ * a queue forms behind slow agents, fast agents thin out the crowd, and the
+ * tail of evacuation time is driven by the slow class.
+ *
+ * Distribution defaults: 20% fast / 60% average / 20% slow. The seeded RNG
+ * picks the type so replays reconstruct the same population.
+ */
+export type AgentType = 'fast' | 'average' | 'slow'
+
+/** Per-type tuning. Speed range narrows around realistic walking speeds
+ *  (~0.8–1.5 m/s flat-ground human walk; fast responders sprint). Reaction
+ *  delay is a multiplier on the disaster's base reaction window. Panic cap
+ *  bounds the in-fire panic speed multiplier so slow agents can't suddenly
+ *  sprint past the average class — fatigue, age, mobility all factor in. */
+const AGENT_TYPE_CONFIG: Record<AgentType, {
+  speedRange: [number, number]
+  reactionMultiplier: number
+  panicCap: number
+}> = {
+  fast:    { speedRange: [1.6, 2.2], reactionMultiplier: 0.5, panicCap: 2.4 },
+  average: { speedRange: [1.1, 1.7], reactionMultiplier: 1.0, panicCap: 2.0 },
+  slow:    { speedRange: [0.7, 1.1], reactionMultiplier: 1.7, panicCap: 1.4 },
+}
+
+const AGENT_TYPE_DISTRIBUTION: { type: AgentType; cumulative: number }[] = [
+  { type: 'fast',    cumulative: 0.20 },
+  { type: 'average', cumulative: 0.80 },
+  { type: 'slow',    cumulative: 1.00 },
+]
+
+function rollAgentType(rand: () => number): AgentType {
+  const r = rand()
+  for (const entry of AGENT_TYPE_DISTRIBUTION) {
+    if (r < entry.cumulative) return entry.type
+  }
+  return 'average'
+}
 
 /* ── Agent model ── */
 export interface Agent {
@@ -19,6 +62,9 @@ export interface Agent {
   /** 0–1 progress between current node and next */
   progress: number
   speed: number // m/s — normal 1.4, panic 2.2
+  /** Behavioral class — drives speed range, reaction-delay scaling, and
+   *  the upper bound on panic-mode speed boost. */
+  type: AgentType
   state: 'waiting' | 'moving' | 'rerouting' | 'evacuated' | 'trapped'
   reactionDelay: number // seconds before starting to move
   elapsedWait: number
@@ -28,10 +74,12 @@ export interface Agent {
   reroutes: number
   /** History of visited nodes with timestamps */
   history: { nodeId: string; time: number }[]
-  /** Cumulative seconds the agent has spent inside the radius of an active
-   *  hard hazard (fire / debris). Used to gate a short grace period before
-   *  the agent is marked as trapped. */
-  timeInsideFire: number
+  /** Cumulative dose-units of fire exposure. Each second inside a hard hazard
+   *  adds 1.0; each second inside smoke adds 0.3. Decays VERY slowly when the
+   *  agent is clear of hazards (5% per second) so a brush with fire that
+   *  didn't trap the agent still degrades their next re-entry. Trapped when
+   *  dose ≥ INCAPACITATION_DOSE; speed reduces gradually past 60% threshold. */
+  fireDose: number
   /** Cumulative seconds since the last attempt to retreat out of a fire so
    *  we don't oscillate retreating every tick. */
   retreatCooldown: number
@@ -87,6 +135,15 @@ export interface SimulationState {
    *  these and reroute proactively when their committed path passes through
    *  one, rather than waiting for the hazard to actually swallow the edge. */
   threatenedEdges: Set<string>
+  /** Nodes from which SOME exit is reachable through the residual graph
+   *  (i.e. ignoring hard-blocked edges only). Recomputed once per tick by a
+   *  single BFS from every exit. This is the canonical "can this agent still
+   *  evacuate?" test used by every trap-decision site — an agent is only
+   *  declared `trapped` when their `currentNodeId` is NOT in this set, i.e.
+   *  the fire / debris graph has structurally severed them from every exit.
+   *  Smoke, congestion, threat penalties, and high fire dose do NOT remove a
+   *  node from this set — those are slowdowns, not severs. */
+  reachableFromExit: Set<string>
   /** Is the simulation running */
   running: boolean
   /** Is the simulation finished */
@@ -173,6 +230,55 @@ const FIRE_DANGER_RADIUS_MULTIPLIER = 1.4
  *  path also takes them near another fire. */
 const FIRE_DANGER_REROUTE_COOLDOWN = 4
 
+/* ── Queue model + capacity enforcement ──
+ *
+ * Without a real queue, the old congestion model just slowed every agent on
+ * a busy edge to ~30% — N agents all squeezed through a 1-meter doorway
+ * simultaneously. Realistic bottleneck analysis needs ordered access: the
+ * first few agents (by edge width) get to move at normal speed, and
+ * everyone behind them physically waits at the source node until a slot
+ * opens up. EDGE_SLOTS_PER_METER controls how many agents a 1-meter-wide
+ * edge can hold at once — 2 is a typical doorway throughput.
+ *
+ * Node capacity (authored per-node, or defaulted from kind) acts as the
+ * destination cap: when a node is full, agents finishing the edge into it
+ * stall at the very end of the edge instead of teleporting through. */
+const EDGE_SLOTS_PER_METER = 2
+/** Minimum slot count for any edge, even narrow ones. Without this, a
+ *  1.2m doorway would only fit 2 agents — fine — but a 0.5m squeeze would
+ *  fit just 1, gridlocking floors with mixed-width edges. */
+const MIN_EDGE_SLOTS = 2
+/** Multiplier on each node's authored capacity for the destination-cap
+ *  check. A multiplier > 1 lets the simulation accept brief overcrowding
+ *  (agents passing through), reserving the hard cap for true bottlenecks. */
+const NODE_CAPACITY_HEADROOM = 1.25
+/** Progress value an agent holds at when their destination node is full
+ *  but the edge ahead is open. They wait at 95% of the edge, ready to
+ *  step through as soon as the next node frees up. */
+const NODE_QUEUE_HOLD_PROGRESS = 0.95
+
+/* ── Cumulative exposure (dose-response trap model) ──
+ *
+ * Previously, an agent inside fire accumulated `timeInsideFire` which decayed
+ * at 0.5 per second outside the hazard — so a 2.9s exposure reset to 0 in
+ * under 6 seconds. Re-entering the same fire gave a fresh 3s grace period.
+ * That ignored the central physiological fact about fire injury: damage is
+ * cumulative. Heat, CO, and smoke inhalation add up. A previously-exposed
+ * occupant collapses sooner on a second exposure.
+ *
+ * The replacement: `fireDose` accumulates per second in hazard, decays at a
+ * much slower rate when clear (5%/s), and the trap threshold is higher
+ * (5 dose-units instead of 3 seconds) to compensate. Past 60% of threshold
+ * the agent's speed is degraded — modeling fatigue, disorientation, and
+ * impaired vision — making subsequent re-entries even more dangerous. */
+const INCAPACITATION_DOSE = 5.0
+const DOSE_PER_SEC_INSIDE_FIRE = 1.0
+const DOSE_PER_SEC_INSIDE_SMOKE_EDGE = 0.3
+const DOSE_DECAY_RATE = 0.05 // 5%/s linear decay when fully clear of hazards
+/** Dose threshold past which the agent's effective speed is degraded.
+ *  Linear ramp from 1.0x at 60% threshold down to 0.55x at 100%. */
+const DOSE_SPEED_DEGRADATION_START = 0.6
+
 /* ── Simulation config ── */
 export interface SimConfig {
   disasterType: 'fire' | 'earthquake'
@@ -196,9 +302,6 @@ export interface SimConfig {
    *  collapse model (authored hazards only). */
   quakeScenario?: QuakeScenario
 }
-
-const MIN_AGENT_SPEED = 1.0
-const MAX_AGENT_SPEED = 2.0
 
 /** Mulberry32 — 32-bit seedable PRNG. Cheap, good distribution, returns
  *  values in [0, 1). Wrapped in a closure that captures the running state. */
@@ -374,7 +477,12 @@ export function createSimulation(
   let agentIdx = 0
 
   const rand = config.seed != null ? createSeededRng(config.seed) : Math.random
-  const randomAgentSpeed = () => MIN_AGENT_SPEED + rand() * (MAX_AGENT_SPEED - MIN_AGENT_SPEED)
+  /** Roll a speed inside the agent type's range. Each call advances RNG so
+   *  the spawning order has to stay stable for replay determinism. */
+  const randomAgentSpeed = (type: AgentType) => {
+    const [lo, hi] = AGENT_TYPE_CONFIG[type].speedRange
+    return lo + rand() * (hi - lo)
+  }
 
   const doorIdsByRoom = new Map<string, string[]>()
   for (const edge of floor.edges) {
@@ -417,9 +525,12 @@ export function createSimulation(
     const useDoorSplit = doorIds.length > 1
 
     for (let i = 0; i < count; i++) {
-      const reactionDelay = reactionMin + rand() * reactionRange
-      // Vary speeds: 1.0–2.0 m/s
-      const speed = randomAgentSpeed()
+      // Roll behavioral type first — every other per-agent property depends
+      // on it. RNG order is fixed: type → reaction → speed → jitter.
+      const type = rollAgentType(rand)
+      const typeConfig = AGENT_TYPE_CONFIG[type]
+      const reactionDelay = (reactionMin + rand() * reactionRange) * typeConfig.reactionMultiplier
+      const speed = randomAgentSpeed(type)
       const preferredDoorId = useDoorSplit ? doorIds[i % doorIds.length] : undefined
 
       agents.push({
@@ -430,6 +541,7 @@ export function createSimulation(
         pathIndex: 0,
         progress: 0,
         speed,
+        type,
         state: 'waiting',
         reactionDelay,
         elapsedWait: 0,
@@ -442,7 +554,7 @@ export function createSimulation(
         routingJitter: 0.85 + rand() * 0.30,
         rerouteStallTime: 0,
         rerouteAnchor: undefined,
-        timeInsideFire: 0,
+        fireDose: 0,
         retreatCooldown: 0,
         threatRerouteCooldown: 0,
       })
@@ -453,6 +565,9 @@ export function createSimulation(
   if (config.userPath && config.userPath.length >= 2) {
     const startRoomId = config.userPath[0]
     const exitId = config.userPath[config.userPath.length - 1]
+    // The user agent is always treated as 'average' for class metadata; their
+    // path is fixed by the drawn route, so the type only matters for speed
+    // banding (kept slightly above avg since the user is actively engaged).
     agents.unshift({
       id: 'user-agent',
       currentNodeId: startRoomId,
@@ -460,7 +575,8 @@ export function createSimulation(
       path: config.userPath,
       pathIndex: 0,
       progress: 0,
-      speed: randomAgentSpeed(),
+      speed: randomAgentSpeed('average'),
+      type: 'average',
       state: 'waiting',
       reactionDelay: 0.5,
       elapsedWait: 0,
@@ -471,7 +587,7 @@ export function createSimulation(
       routingJitter: 1,
       rerouteStallTime: 0,
       rerouteAnchor: undefined,
-      timeInsideFire: 0,
+      fireDose: 0,
       retreatCooldown: 0,
       threatRerouteCooldown: 0,
     })
@@ -507,6 +623,10 @@ export function createSimulation(
     blockedEdges: new Set(),
     softBlockedEdges: new Set(),
     threatenedEdges: new Set(),
+    // Seeded permissive — no hazards have spawned yet, so every node is
+    // reachable. updateExitReachability will tighten this each tick once
+    // hard-blocks start severing the graph.
+    reachableFromExit: new Set(floor.nodes.map(n => n.id)),
     running: false,
     finished: false,
     disasterType: config.disasterType,
@@ -527,12 +647,38 @@ export function stepSimulation(
   // 2. Update blocked edges based on hazards
   updateBlockedEdges(newState, floor)
 
-  // 3. Update congestion counts
+  // 2a. Refresh the structural exit-reachability cache. Every trap site
+  //     downstream gates on this set so an agent is only declared trapped
+  //     when no exit remains reachable through unblocked edges — never
+  //     because a hazard is nearby, because their dose is high, or because
+  //     their preferred route is severed while alternatives still exist.
+  updateExitReachability(newState, floor)
+
+  // 3. Update congestion counts (snapshot from previous tick's positions)
   updateCongestion(newState)
 
+  // 3a. Build live counters seeded from the tick's snapshot. Agents that
+  //     ENTER an edge during this tick increment the live edge count
+  //     immediately; agents that ARRIVE at a node increment the live
+  //     node count. Subsequent agents in the iteration order use these
+  //     mutated values for queue / capacity checks, which is what stops
+  //     a swarm of agents from all stepping onto the same doorway in
+  //     the same tick.
+  const liveEdgeCounts: Record<string, number> = { ...newState.congestion.edgeCounts }
+  const liveNodeCounts: Record<string, number> = { ...newState.congestion.nodeCounts }
+
+  // Iteration order: by current node, then by progress descending. Agents
+  // already further along an edge get to commit their movement first —
+  // they're "ahead in line" and shouldn't lose their slot to a later-
+  // iterated agent at the source.
+  const agentsByPriority = [...newState.agents].sort((a, b) => {
+    if (a.currentNodeId !== b.currentNodeId) return a.currentNodeId < b.currentNodeId ? -1 : 1
+    return b.progress - a.progress
+  })
+
   // 4. Update each agent
-  for (const agent of newState.agents) {
-    updateAgent(agent, newState, floor, dt)
+  for (const agent of agentsByPriority) {
+    updateAgent(agent, newState, floor, dt, liveEdgeCounts, liveNodeCounts)
   }
 
   // 5. Check if simulation is done
@@ -543,6 +689,27 @@ export function stepSimulation(
   }
 
   return newState
+}
+
+/** Convert the runtime ActiveHazard list into the lightweight HazardForecast
+ *  shape expected by the pathfinder. Used by replanAgent so hazard-aware
+ *  routing knows how each zone will grow in the seconds to come. */
+function buildHazardForecasts(state: SimulationState): HazardForecast[] {
+  const forecasts: HazardForecast[] = []
+  for (const h of state.hazards) {
+    forecasts.push({
+      type: h.zone.type,
+      x: h.zone.x,
+      y: h.zone.y,
+      radius: h.zone.radius,
+      growthRate: h.zone.growthRate * state.hazardGrowthMultiplier,
+      maxRadius: h.zone.maxRadius,
+      appearsAt: h.zone.appearsAt,
+      currentRadius: h.currentRadius,
+      active: h.active,
+    })
+  }
+  return forecasts
 }
 
 /* ── Hazard progression ──
@@ -624,6 +791,60 @@ function updateBlockedEdges(state: SimulationState, floor: FloorModel) {
   }
 }
 
+/* ── Exit reachability (last-resort trap gate) ──
+ *
+ * BFS from every exit backwards through the residual graph (all edges minus
+ * hard-blocks). A node is "reachable" if there exists SOME unblocked path
+ * from it to SOME exit. Smoke, congestion, and threat penalties are ignored
+ * — those are routing costs, not severs. This Set is the single source of
+ * truth for the "is the agent truly out of options?" check that every trap
+ * site now consults before marking an agent unevacuable.
+ *
+ * Hazards only grow over the course of a run, never shrink — so once a node
+ * drops out of this set, it stays out. That property makes the BFS safe to
+ * cache for the tick.
+ */
+function updateExitReachability(state: SimulationState, floor: FloorModel) {
+  const reachable = new Set<string>()
+  const queue: string[] = []
+  for (const node of floor.nodes) {
+    if (node.type === 'exit') {
+      reachable.add(node.id)
+      queue.push(node.id)
+    }
+  }
+  // Build a one-shot adjacency map keyed by node id so the BFS doesn't
+  // re-scan `floor.edges` for every node it pops.
+  const adjacency: Record<string, { neighbor: string; key: string }[]> = {}
+  for (const edge of floor.edges) {
+    const key = edgeKey(edge.from, edge.to)
+    ;(adjacency[edge.from] ||= []).push({ neighbor: edge.to, key })
+    ;(adjacency[edge.to]   ||= []).push({ neighbor: edge.from, key })
+  }
+  while (queue.length > 0) {
+    const current = queue.shift() as string
+    const adj = adjacency[current]
+    if (!adj) continue
+    for (const { neighbor, key } of adj) {
+      if (reachable.has(neighbor)) continue
+      if (state.blockedEdges.has(key)) continue
+      reachable.add(neighbor)
+      queue.push(neighbor)
+    }
+  }
+  state.reachableFromExit = reachable
+}
+
+/** Last-resort test: does the agent's current node still have ANY path to
+ *  ANY exit through the residual (hard-block-only) graph? If yes, the agent
+ *  is NOT trapped — they may be in distress, dosed, blocked from their
+ *  preferred route, or stuck behind congestion, but a way out exists and
+ *  the engine should keep them on their feet. Trap state is reserved for
+ *  agents whose `currentNodeId` is structurally severed from every exit. */
+function agentHasEscapeRoute(agent: Agent, state: SimulationState): boolean {
+  return state.reachableFromExit.has(agent.currentNodeId)
+}
+
 /* ── Congestion tracking ── */
 function updateCongestion(state: SimulationState) {
   const nodeCounts: Record<string, number> = {}
@@ -633,7 +854,12 @@ function updateCongestion(state: SimulationState) {
     if (agent.state === 'evacuated' || agent.state === 'trapped') continue
     nodeCounts[agent.currentNodeId] = (nodeCounts[agent.currentNodeId] || 0) + 1
 
-    if (agent.pathIndex < agent.path.length - 1) {
+    // Only count an agent on their next edge if they have actually stepped
+    // onto it (progress > 0). At progress == 0 the agent is still standing
+    // at the source node, not occupying the edge yet — counting them here
+    // double-charged the queue model and caused two agents at the same
+    // source to gridlock against each other's "future" presence.
+    if (agent.progress > 0 && agent.pathIndex < agent.path.length - 1) {
       const ek = edgeKey(agent.path[agent.pathIndex], agent.path[agent.pathIndex + 1])
       edgeCounts[ek] = (edgeCounts[ek] || 0) + 1
     }
@@ -756,6 +982,10 @@ function replanAgent(
     }
   }
 
+  // Build hazard forecasts once per replan — passing them in lets Dijkstra
+  // predict each hazard's radius at the agent's arrival time at every edge
+  // it considers. The agent's own speed is used as the lookahead clock.
+  const hazardForecasts = buildHazardForecasts(state)
   const planFrom = (
     startId: string,
     forbidden?: Set<string>,
@@ -775,6 +1005,10 @@ function replanAgent(
       threatPenalty: THREATENED_EDGE_COST_MULTIPLIER,
       excludeExitIds: excludeOverride !== undefined ? excludeOverride : effectiveExcludeExits,
       forbiddenNodeIds: forbidden,
+      hazards: hazardForecasts,
+      agentSpeed: agent.speed,
+      elapsedTime: state.elapsedTime,
+      futureHazardPenalty: 6,
     },
   )
 
@@ -909,12 +1143,32 @@ function retreatOneNode(agent: Agent, floor: FloorModel): boolean {
   return true
 }
 
+/** Capacity in agents for an edge, derived from its physical width.
+ *  Anything narrower than MIN_EDGE_SLOTS is clamped up so degenerate
+ *  geometries don't gridlock the building. */
+function edgeSlotCapacity(width: number): number {
+  return Math.max(MIN_EDGE_SLOTS, Math.floor(width * EDGE_SLOTS_PER_METER))
+}
+
+/** Effective speed multiplier from cumulative hazard dose. Below 60% of the
+ *  trap threshold the agent is unaffected. Past 60% they degrade linearly
+ *  down to 55% of base speed at 100% threshold — fatigue, disorientation,
+ *  impaired vision from heat / smoke. */
+function doseSpeedFactor(dose: number): number {
+  const ratio = dose / INCAPACITATION_DOSE
+  if (ratio < DOSE_SPEED_DEGRADATION_START) return 1
+  const t = Math.min(1, (ratio - DOSE_SPEED_DEGRADATION_START) / (1 - DOSE_SPEED_DEGRADATION_START))
+  return 1 - t * 0.45
+}
+
 /* ── Agent update ── */
 function updateAgent(
   agent: Agent,
   state: SimulationState,
   floor: FloorModel,
   dt: number,
+  liveEdgeCounts: Record<string, number>,
+  liveNodeCounts: Record<string, number>,
 ) {
   if (agent.state === 'evacuated' || agent.state === 'trapped') return
 
@@ -973,8 +1227,15 @@ function updateAgent(
     // Auto agents use weighted pathfinding so a smoke-filled corridor is
     // preferred over being trapped, but avoided when a cleaner detour exists.
     if (!replanAgent(agent, state, floor)) {
-      // No path even with smoke allowed → truly unreachable (hard blocks only).
-      agent.state = 'trapped'
+      // The weighted planner couldn't find a path right now. Promote to
+      // 'rerouting' rather than trapping outright: the rerouting branch
+      // retries every tick and only declares the agent trapped when the
+      // structural escape-route test fails. Avoids the bug where a
+      // transient routing failure (e.g. all preferred-door alternatives
+      // momentarily threatened) instantly trapped a freshly-woken agent
+      // who actually had a viable path.
+      agent.state = 'rerouting'
+      agent.rerouteStallTime = 0
       return
     }
     agent.state = 'moving'
@@ -991,10 +1252,26 @@ function updateAgent(
     } else {
       agent.rerouteStallTime += dt
       if (agent.retreatCooldown <= 0 && (agentIsInsideHardHazard(agent, floor, state) || agent.rerouteStallTime >= 2)) {
-        retreatOneNode(agent, floor)
-        agent.retreatCooldown = 1.2
+        if (retreatOneNode(agent, floor)) {
+          // Retreating moved the agent to a new node, so the stall window
+          // resets — they just made progress, even if it's backward. Without
+          // this reset, a sequence of valid retreats still tripped the 10s
+          // stall trap because the timer accumulated across retreats.
+          agent.retreatCooldown = 1.2
+          agent.rerouteStallTime = 0
+        }
       } else if (agent.rerouteStallTime >= 10) {
-        agent.state = 'trapped'
+        // Last-resort trap gate. The stall trap only fires when there is
+        // genuinely no path from the agent's node to any exit. If a path
+        // exists, our routing logic is just temporarily failing — drop
+        // the cooldowns so the next replan can try with a clean slate.
+        if (!agentHasEscapeRoute(agent, state)) {
+          agent.state = 'trapped'
+        } else {
+          agent.rerouteStallTime = 0
+          agent.threatRerouteCooldown = 0
+          agent.retreatCooldown = 0
+        }
       }
     }
     return
@@ -1037,8 +1314,13 @@ function updateAgent(
 
     if (nextHardBlocked || aheadHardBlocked || threatTriggered || fireProximityTriggered) {
       if (agent.isUserAgent) {
-        // User-drawn path is fixed — they get trapped at the blockage.
-        if (nextHardBlocked) {
+        // User-drawn path is fixed — but only declare them trapped when no
+        // exit is reachable at all. If a path exists through the residual
+        // graph, the user agent stays in 'moving' state and walks until
+        // they physically reach the blockage; the evaluator reports their
+        // chosen route failed without flat-out removing them from the run
+        // the instant a remote edge gets blocked.
+        if (nextHardBlocked && !agentHasEscapeRoute(agent, state)) {
           agent.state = 'trapped'
           return
         }
@@ -1112,18 +1394,43 @@ function updateAgent(
     )
     const edgeDist = edge?.distance || 10
 
-    // Congestion slowdown: more people on edge → slower
     const ek = edgeKey(fromId, toId)
-    const edgeCount = state.congestion.edgeCounts[ek] || 0
     const edgeWidth = edge?.width || 2
-    const congestionFactor = Math.max(0.3, 1 - (edgeCount / (edgeWidth * 5)))
+
+    // ── Queue model: enforce edge slot capacity ──────────────────────────
+    // An edge fits a finite number of agents simultaneously (proportional to
+    // its width). The first cohort gets to move at normal pace; overflow
+    // agents wait at the source node until somebody ahead vacates a slot.
+    // This replaces the old "everyone slows down to 30%" model with real
+    // ordered access, so bottlenecks at narrow doorways form a visible
+    // queue rather than a uniform crowd-jelly.
+    const slotCap = edgeSlotCapacity(edgeWidth)
+    const isAlreadyOnEdge = agent.progress > 0
+    if (!isAlreadyOnEdge) {
+      const currentLiveLoad = liveEdgeCounts[ek] || 0
+      if (currentLiveLoad >= slotCap) {
+        // Edge is full — agent waits at source. They'll retry next tick when
+        // somebody ahead reaches the next node and frees a slot.
+        return
+      }
+      // Claim a slot for this tick so subsequent agents queued at the same
+      // source node see the correct occupancy.
+      liveEdgeCounts[ek] = currentLiveLoad + 1
+    }
+
+    // Soft congestion factor — kept as a residual slowdown for agents who
+    // ARE on the edge (so a near-full edge still feels slower than empty).
+    // No longer used as the only crowd model; the slot cap above is the
+    // primary mechanism.
+    const edgeCount = liveEdgeCounts[ek] || 0
+    const congestionFactor = Math.max(0.4, 1 - (edgeCount / Math.max(slotCap * 1.5, 1)))
 
     // Hazard proximity behavior:
     //   • Soft hazards (smoke):   slow down — discourage walking through.
     //   • Hard hazards (fire / debris / blocked): predictor + panic boost.
     //       Within 1.5x radius: speed up so the agent can clear the proximity.
-    //       Inside the radius:  speed up MORE (panic) and tick `timeInsideFire`
-    //                            so a grace period can elapse before trapping.
+    //       Inside the radius:  speed up MORE (panic, capped per agent type)
+    //                            and tick `fireDose` toward incapacitation.
     // The agent's current rendered position is interpolated along the edge so
     // proximity checks reflect where the agent actually is, not just the
     // edge midpoint.
@@ -1133,6 +1440,7 @@ function updateAgent(
     let smokeFactor = 1.0
     let panicFactor = 1.0
     let insideHardHazard = false
+    const panicCap = AGENT_TYPE_CONFIG[agent.type].panicCap
 
     for (const h of state.hazards) {
       if (!h.active) continue
@@ -1141,25 +1449,17 @@ function updateAgent(
 
       if (isHardHazard) {
         if (dist < h.currentRadius) {
-          // Touched by a hard hazard — full panic sprint to clear it.
-          // The agent has a `timeInsideFire` grace window (handled below)
-          // before they're declared trapped, so going faster directly
-          // improves their chance of escape.
+          // Touched by a hard hazard — full panic sprint to clear it. Speed
+          // boost is capped by the agent type (slow/elderly can't sprint as
+          // fast as fast responders).
           insideHardHazard = true
-          panicFactor = Math.max(panicFactor, 2.4)
+          panicFactor = Math.max(panicFactor, Math.min(panicCap, 2.4))
           agent.hazardExposure += dt * 2
         } else if (dist < h.currentRadius * 1.8) {
-          // Near a hard hazard — stronger adrenaline kick (was 1.35x).
-          // Widened proximity ring (1.5x → 1.8x) so the speed-up engages
-          // earlier as the agent approaches the danger.
-          panicFactor = Math.max(panicFactor, 1.75)
+          panicFactor = Math.max(panicFactor, Math.min(panicCap, 1.75))
         }
       } else if (dist < h.currentRadius * 1.5) {
-        // Smoke proximity now also accelerates the agent rather than
-        // making them cautious — the demo brief is "speed up near
-        // hazards." Exposure still ticks so the analytics layer can
-        // surface the contact.
-        panicFactor = Math.max(panicFactor, 1.25)
+        panicFactor = Math.max(panicFactor, Math.min(panicCap, 1.25))
         agent.hazardExposure += dt
       }
     }
@@ -1179,24 +1479,80 @@ function updateAgent(
     // floor moving under them, not the agent's willingness to run.
     const tremorFactor = isInTremorPhase(state) ? EARTHQUAKE_TREMOR_SPEED_MULTIPLIER : 1
 
-    // Grace period inside fire. The agent gets a few seconds with a boosted
-    // panic speed to escape on their own. Past that, they're overcome.
+    // ── Cumulative dose-response exposure ───────────────────────────────
+    // Fire dose accumulates per second inside a hard hazard (1.0/s), plus a
+    // smaller per-second contribution while on a smoke edge (0.3/s). Outside
+    // any hazard the dose decays slowly (5%/s) — far slower than the old 0.5
+    // rate, so an agent who survived a brush with fire is still impaired on
+    // their next exposure.
+    //
+    // Trap policy (LAST RESORT): high dose alone does NOT trap an agent.
+    // Even at threshold, if the residual graph still offers a path to an
+    // exit the agent keeps moving — they just suffer the maximum speed
+    // degradation from `doseSpeedFactor`, and if they're currently inside
+    // a fire they're nudged into a retreat to give them a chance to
+    // disengage. An agent is only marked `trapped` here when BOTH the
+    // dose is at threshold AND there's no longer any exit reachable from
+    // their node — i.e. fire has structurally severed them and they're
+    // also too saturated to push through.
     if (insideHardHazard) {
-      agent.timeInsideFire += dt
-      if (agent.timeInsideFire >= 3) {
+      agent.fireDose += DOSE_PER_SEC_INSIDE_FIRE * dt
+    } else if (state.softBlockedEdges.has(ek)) {
+      agent.fireDose += DOSE_PER_SEC_INSIDE_SMOKE_EDGE * dt
+    } else {
+      agent.fireDose = Math.max(0, agent.fireDose - DOSE_DECAY_RATE * dt)
+    }
+    if (agent.fireDose >= INCAPACITATION_DOSE) {
+      if (!agentHasEscapeRoute(agent, state)) {
         agent.state = 'trapped'
         return
       }
-    } else {
-      // Outside hazard — decay the in-fire counter so re-entries don't carry
-      // over from a previous exposure that the agent successfully escaped.
-      agent.timeInsideFire = Math.max(0, agent.timeInsideFire - dt * 0.5)
+      // Has an escape route — clamp so the dose doesn't run away every
+      // tick, and force a single retreat attempt out of the current fire
+      // if one is available. The retreat puts the agent on a different
+      // node where dose can start decaying and a fresh replan can find
+      // the survivable path the residual graph still contains.
+      agent.fireDose = INCAPACITATION_DOSE
+      if (insideHardHazard && agent.retreatCooldown <= 0) {
+        if (retreatOneNode(agent, floor)) {
+          agent.retreatCooldown = 1.5
+          agent.state = 'rerouting'
+          agent.rerouteStallTime = 0
+          return
+        }
+      }
     }
+    const doseFactor = doseSpeedFactor(agent.fireDose)
 
-    const effectiveSpeed = agent.speed * congestionFactor * hazardFactor * tremorFactor
+    const effectiveSpeed = agent.speed * congestionFactor * hazardFactor * tremorFactor * doseFactor
     agent.progress += (effectiveSpeed * dt) / edgeDist
 
     if (agent.progress >= 1) {
+      // ── Node capacity gate: hold at end-of-edge if destination is full ──
+      // If the next node is already over capacity (other agents have piled
+      // up on it this tick), the arriving agent stalls just short of the
+      // node. They'll cross the rest of the way next tick, when the node
+      // has drained as those agents step onto their next edges. This
+      // produces a visible queue tail just before bottleneck doorways and
+      // stairwells.
+      // Floor the authored capacity at 1 — a node missing a sensible
+      // capacity (some legacy floor configs default to 0) would otherwise
+      // produce `destCap = 0` and gridlock every agent at its doorstep.
+      // The headroom multiplier above is still applied on top.
+      const destCap = Math.max(1, toNode.capacity) * NODE_CAPACITY_HEADROOM
+      const destLoad = liveNodeCounts[toId] || 0
+      if (toNode.type !== 'exit' && destLoad >= destCap) {
+        agent.progress = NODE_QUEUE_HOLD_PROGRESS
+        return
+      }
+
+      // Release the edge slot we claimed at entry — the agent is leaving
+      // the edge now. Decrement clamped at 0 to defend against the rare
+      // mid-tick state-edit cases.
+      liveEdgeCounts[ek] = Math.max(0, (liveEdgeCounts[ek] || 1) - 1)
+      liveNodeCounts[toId] = (liveNodeCounts[toId] || 0) + 1
+      liveNodeCounts[fromId] = Math.max(0, (liveNodeCounts[fromId] || 1) - 1)
+
       agent.progress = 0
       agent.pathIndex++
       agent.currentNodeId = toId

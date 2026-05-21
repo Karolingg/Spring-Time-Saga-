@@ -153,57 +153,69 @@ export function floorConfigToFloorModel(
     }
   }
 
-  // 3. Synthesize waypoints from primary paths + reroutes
+  // 3. Synthesize waypoints from primary paths + reroutes — FALLBACK ONLY.
+  //
+  // When the building's FloorConfig provides explicit `corridorNodes`, those
+  // are treated as the *authoritative* navigation graph: both manual drill mode
+  // and autonomous mode pathfind through exactly the nodes the author placed,
+  // with no extra geometry synthesized behind their back. This was an explicit
+  // user request — "only the nodes set up in manual drill mode should be used
+  // in autonomous." Buildings still in placeholder state (no corridorNodes
+  // authored yet) fall back to synthesizing waypoints from the primary path
+  // polylines so they remain navigable until they get a proper graph.
+  const hasAuthoredGraph = corridorNodes.length > 0
   const waypointIdByPos = new Map<string, string>()
   const posKey = (p: Point) => `${Math.round(p.x)}|${Math.round(p.y)}`
 
-  const resolvePoint = (p: Point): string => {
-    // Reuse any node already at this position (exit or declared corridor).
-    const existing = nodes.find(n => samePoint(n, p))
-    if (existing) {
-      waypointIdByPos.set(posKey(p), existing.id)
-      return existing.id
+  if (!hasAuthoredGraph) {
+    const resolvePoint = (p: Point): string => {
+      // Reuse any node already at this position (exit or declared corridor).
+      const existing = nodes.find(n => samePoint(n, p))
+      if (existing) {
+        waypointIdByPos.set(posKey(p), existing.id)
+        return existing.id
+      }
+      const cached = waypointIdByPos.get(posKey(p))
+      if (cached) return cached
+      const id = `${prefix}-wp-${waypointIdByPos.size + 1}`
+      nodes.push({
+        id,
+        label: `Waypoint ${waypointIdByPos.size + 1}`,
+        x: p.x,
+        y: p.y,
+        type: 'corridor',
+        kind: 'corridor',
+        capacity: CORRIDOR_CAPACITY,
+      })
+      waypointIdByPos.set(posKey(p), id)
+      return id
     }
-    const cached = waypointIdByPos.get(posKey(p))
-    if (cached) return cached
-    const id = `${prefix}-wp-${waypointIdByPos.size + 1}`
-    nodes.push({
-      id,
-      label: `Waypoint ${waypointIdByPos.size + 1}`,
-      x: p.x,
-      y: p.y,
-      type: 'corridor',
-      kind: 'corridor',
-      capacity: CORRIDOR_CAPACITY,
-    })
-    waypointIdByPos.set(posKey(p), id)
-    return id
-  }
 
-  const walkPolyline = (polyline: Point[], terminalExitKey?: string) => {
-    if (!polyline || polyline.length === 0) return
-    const ids = polyline.map(resolvePoint)
-    for (let i = 0; i < ids.length - 1; i++) {
-      addEdge(ids[i], ids[i + 1])
-    }
-    if (terminalExitKey) {
-      const exitId = exitIdByKey.get(terminalExitKey)
-      if (exitId && ids.length > 0) {
-        addEdge(ids[ids.length - 1], exitId)
+    const walkPolyline = (polyline: Point[], terminalExitKey?: string) => {
+      if (!polyline || polyline.length === 0) return
+      const ids = polyline.map(resolvePoint)
+      for (let i = 0; i < ids.length - 1; i++) {
+        addEdge(ids[i], ids[i + 1])
+      }
+      if (terminalExitKey) {
+        const exitId = exitIdByKey.get(terminalExitKey)
+        if (exitId && ids.length > 0) {
+          addEdge(ids[ids.length - 1], exitId)
+        }
       }
     }
-  }
 
-  for (const [exitKey, path] of Object.entries(config.primaryPaths)) {
-    walkPolyline(path, exitKey)
-  }
-  for (const [, reroute] of Object.entries(config.reroutes)) {
-    walkPolyline(reroute.path, reroute.to)
-  }
+    for (const [exitKey, path] of Object.entries(config.primaryPaths)) {
+      walkPolyline(path, exitKey)
+    }
+    for (const [, reroute] of Object.entries(config.reroutes)) {
+      walkPolyline(reroute.path, reroute.to)
+    }
 
-  // Ensure startPos is a reachable node (hub) even if no path uses it.
-  if (config.startPos && (config.startPos.x !== 0 || config.startPos.y !== 0)) {
-    resolvePoint(config.startPos)
+    // Ensure startPos is a reachable node (hub) even if no path uses it.
+    if (config.startPos && (config.startPos.x !== 0 || config.startPos.y !== 0)) {
+      resolvePoint(config.startPos)
+    }
   }
 
   // 4. Rooms
