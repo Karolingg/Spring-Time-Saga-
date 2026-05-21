@@ -269,13 +269,6 @@ export default function MapPage() {
     [selected],
   )
 
-  // Real building drill metrics, pulled from completed simulation runs.
-  // Replaces the previous fake placeholder analytics — when no runs exist
-  // for a building we render an explicit "no data" state rather than fabricating.
-  // `loadedScoreId` is the buildingId whose score is currently held in state;
-  // we render `buildingScore` only when that id matches the selected building
-  // (otherwise we show the loading state) — avoids a synchronous setState
-  // reset inside the effect.
   const [buildingScore, setBuildingScore] = useState<BuildingScore | null>(null)
   const [loadedScoreId, setLoadedScoreId] = useState<string | null>(null)
   useEffect(() => {
@@ -298,7 +291,6 @@ export default function MapPage() {
   const activeScore = building && loadedScoreId === building.id ? buildingScore : null
   const scoreLoading = Boolean(building) && loadedScoreId !== building?.id
 
-  // Nearest evacuation assembly area for the currently selected building.
   const nearestAssembly = useMemo(() => {
     if (!building) return null
     const [lng, lat] = boundsCenter(building.bounds)
@@ -306,12 +298,8 @@ export default function MapPage() {
   }, [building])
 
   const riskColor = building ? RISK_COLORS[building.riskLevel] : '#22c55e'
-  // On mobile the detail panel covers the full map, so map UI buttons don't
-  // need to slide left out of its way.
   const panelOffset = building && !isMobile ? 416 : 0
 
-  // When a building is selected, focus on its center so the map zooms/tilts to it.
-  // Otherwise, use a forced recenter target or the campus center for the top view.
   const focusCenter: [number, number] | null = useMemo(() => {
     if (building) {
       return boundsCenter(building.bounds)
@@ -325,7 +313,6 @@ export default function MapPage() {
     setSelected((current) => (current === id ? null : id))
   }, [])
 
-  // Compact, label-less button marker anchored on each building's actual footprint.
   const markers: MapMarker[] = useMemo(
     () =>
       CAMPUS_BUILDINGS.map((b) => {
@@ -345,8 +332,6 @@ export default function MapPage() {
 
   const handleAssemblyClick = useCallback((id: string) => {
     setSelectedAssembly(id)
-    // Locate the marker by its stable data-assembly-id (more robust than
-    // matching on `title`, since some assembly names are empty / duplicates).
     const mapContainer = document.querySelector('.map-view-shell')
     const marker = mapContainer?.querySelector(`[data-assembly-id="${id}"]`)
     if (marker) {
@@ -357,13 +342,9 @@ export default function MapPage() {
       })
       return
     }
-    // Fallback if the marker isn't in the DOM yet (race on first render)
     setAssemblyPopupPos({ x: window.innerWidth / 2, y: 100 })
   }, [])
 
-  // Distinct green markers for designated muster points. The marker for the
-  // currently selected building's nearest assembly is highlighted so the
-  // user sees at a glance where occupants of that building should gather.
   const assemblyMarkers: AssemblyMarker[] = useMemo(
     () =>
       ASSEMBLY_POINTS.map((p) => ({
@@ -381,7 +362,6 @@ export default function MapPage() {
     ? ASSEMBLY_POINTS.find(p => p.id === selectedAssembly)
     : null
 
-  // When a building is selected, tell MapView where to outline the Mapbox building footprint.
   const highlightAt: [number, number] | null = useMemo(() => {
     if (!building) return null
     const [lng, lat] = boundsCenter(building.bounds)

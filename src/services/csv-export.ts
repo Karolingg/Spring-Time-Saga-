@@ -1,16 +1,5 @@
 import type { SimulationRun } from '@/src/schema/simulation.types'
 
-/**
- * CSV builder for stakeholder run exports.
- *
- * The output is two sections separated by a blank line:
- *   A. Single-row run summary.
- *   B. Zero or more zone rows (one per SimulationZone).
- *
- * Spec: docs/feature-specs.md §2 — column names and order are stable so
- * stakeholders can pivot the file in Excel/Sheets without remapping headers.
- */
-
 const RUN_HEADERS = [
   'run_id',
   'created_at',
@@ -35,8 +24,6 @@ const ZONE_HEADERS = [
   'lng',
 ] as const
 
-/** Wrap a value for safe CSV inclusion. Commas, quotes, and newlines force
- *  quoting; empty / nullish stays empty so missing fields stay blank (per spec). */
 function csvCell(value: unknown): string {
   if (value === null || value === undefined) return ''
   const raw = typeof value === 'string' ? value : String(value)

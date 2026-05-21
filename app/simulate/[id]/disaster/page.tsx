@@ -59,11 +59,11 @@ const AUTONOMOUS_BUILDING_IDS = new Set([
   'science-building',
   'up-cebu-library',
   'admin-building',
-  //'asx',
-  //'management',
-  //'social-sciences',
+  'asx',
+  'management',
+  'social-sciences',
   'as-west-wing',
-  // 'as-east-wing',
+  'as-east-wing',
 ])
 
 function floorLabel(index: number): string {
@@ -503,7 +503,6 @@ export default function DisasterPickerPage() {
  * grey so the user can see where in the building they're picking.
  */
 function FloorStackIcon({ floorIndex, totalFloors, active }: { floorIndex: number; totalFloors: number; active: boolean }) {
-  // Render top-down (highest floor at top of stack visually)
   const floors = Array.from({ length: totalFloors }, (_, i) => totalFloors - 1 - i)
   return (
     <div style={{
