@@ -3,9 +3,10 @@
 :root {
   --font-geist-sans: "Segoe UI";
   --font-geist-mono: "Consolas";
-  --bg: #eef0f2;
-  --bg-center-highlight: rgba(255, 255, 255, 0.35);
-  --grid-line: rgba(0, 0, 0, 0.04);
+  --bg: #eef2f5;
+  --bg-center-highlight: rgba(45, 184, 176, 0.10);
+  --bg-warm-highlight: rgba(99, 102, 241, 0.04);
+  --grid-dot: rgba(45, 184, 176, 0.12);
   --bg-card: #ffffff;
   --teal: #2db8b0;
   --teal-dark: #1f9991;
@@ -29,28 +30,93 @@ html, body {
   overflow-x: hidden;
   margin: 0;
   padding: 0;
+  width: 100%;
 }
 
 body {
   background-color: var(--bg);
   background-image:
-    linear-gradient(90deg, transparent 0%, var(--bg-center-highlight) 42%, var(--bg-center-highlight) 58%, transparent 100%),
-    linear-gradient(var(--grid-line) 1px, transparent 1px),
-    linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
-  background-size: 100% 100%, 32px 32px, 32px 32px;
+    radial-gradient(ellipse 70% 50% at 50% 0%, var(--bg-center-highlight), transparent 70%),
+    radial-gradient(ellipse 60% 50% at 80% 90%, var(--bg-warm-highlight), transparent 70%),
+    radial-gradient(circle 1.2px at center, var(--grid-dot) 1px, transparent 1px);
+  background-size: 100% 100%, 100% 100%, 28px 28px;
   background-position: center, center, center;
+  background-attachment: fixed;
   color: var(--text-primary);
   font-family: var(--font-geist-sans), 'Inter', system-ui, -apple-system, sans-serif;
   -webkit-font-smoothing: antialiased;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+/* Assembly marker speech-bubble pop-in */
+@keyframes assemblyBubbleIn {
+  from { opacity: 0; transform: translate(-50%, -100%) translateY(-8px) scale(0.92); }
+  to   { opacity: 1; transform: translate(-50%, -100%) translateY(-18px) scale(1); }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* ─── Mobile safety net ────────────────────────────────────────────────
+ * Most pages use inline styles for layout, which we can't override from
+ * here without `!important`. The `data-page-shell` attribute is added to
+ * each page's outer container so this CSS can shrink wide horizontal
+ * padding into something usable on phones without each page having to
+ * thread its own `useIsMobile` hook in. */
+/* Hide native scrollbars on horizontal scroller rows (mobile tab strips,
+ * carousel-style pill bars). Looks like a tab bar, scrolls via swipe. */
+.scroll-hide-x::-webkit-scrollbar { display: none; }
+.scroll-hide-x { scrollbar-width: none; -ms-overflow-style: none; }
+
+@media (max-width: 768px) {
+  /* Generic page wrappers: cap horizontal padding regardless of inline px. */
+  body [data-page-shell] {
+    padding-left: 14px !important;
+    padding-right: 14px !important;
+  }
+
+  /* Make Tailwind/CSS-grid blocks stack rather than overflow horizontally
+     when an explicit multi-column template was supplied inline. */
+  body [data-stack-mobile] {
+    grid-template-columns: 1fr !important;
+    flex-direction: column !important;
+  }
+
+  /* 3–4 cell stat grids: collapse to a 2-up layout rather than stacking
+     into a tall single column (keeps small KPI pills compact). */
+  body [data-grid-2col-mobile] {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+
+  /* Feature containers: trim inner padding so the body isn't squeezed
+     between the page gutter and the card gutter on phones. */
+  body [data-feature-card] > div {
+    padding-left: 16px !important;
+    padding-right: 16px !important;
+  }
+
+  /* Headings that lock big sizes via inline styles still scale down on
+     phones (28–32px → 22px), keeping single-line titles readable. */
+  body [data-page-shell] h1 {
+    font-size: clamp(20px, 5.4vw, 24px) !important;
+    letter-spacing: -0.02em;
+  }
+
+  body [data-page-shell] h2 {
+    font-size: clamp(16px, 4.6vw, 19px) !important;
+  }
 }
 
 /* Grid background utility */
 .grid-bg {
   background-color: var(--bg);
   background-image:
-    linear-gradient(90deg, transparent 0%, var(--bg-center-highlight) 42%, var(--bg-center-highlight) 58%, transparent 100%),
-    linear-gradient(var(--grid-line) 1px, transparent 1px),
-    linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
-  background-size: 100% 100%, 32px 32px, 32px 32px;
+    radial-gradient(ellipse 70% 50% at 50% 0%, var(--bg-center-highlight), transparent 70%),
+    radial-gradient(ellipse 60% 50% at 80% 90%, var(--bg-warm-highlight), transparent 70%),
+    radial-gradient(circle 1.2px at center, var(--grid-dot) 1px, transparent 1px);
+  background-size: 100% 100%, 100% 100%, 28px 28px;
   background-position: center, center, center;
 }

@@ -1,4 +1,5 @@
 import type { DisasterType, RiskLevel, SeverityLevel, SimulationStatus } from './enums'
+import type { PlacedHazard } from '@/src/simulation/hazard-placement'
 
 export interface SimulationConfig {
   disasterType: DisasterType
@@ -26,6 +27,16 @@ export interface SimulationRun {
   disasterType: DisasterType
   status: SimulationStatus
   buildingId: string | null
+  floorIndex: number | null
+  /** Hazards the user placed on the map before running. Used by the replay
+   *  view to reproduce fire/smoke/debris in the same spots. */
+  hazards: PlacedHazard[] | null
+  /** Per-room agent allocation used by the run; lets replay reproduce the
+   *  exact population distribution across rooms. */
+  agentsPerRoom: Record<string, number> | null
+  /** RNG seed captured at run launch so reaction delays, speeds, and
+   *  routing jitter can be replayed agent-for-agent. */
+  seed: number | null
   notes: string | null
   createdAt: string
   updatedAt: string

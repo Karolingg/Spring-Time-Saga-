@@ -1237,6 +1237,7 @@ function ASXFloorPlan(props: FloorPlanProps) {
   const { config } = props
   const floorPlanSrcByLabel: Record<string, string> = {
     '1st Floor': '/floorplans/ASX%201st%20floor.svg',
+    '2nd Floor': '/floorplans/ASX%202nd%20floor.svg',
   }
   const floorPlanSrc = floorPlanSrcByLabel[config.floorLabel] ?? ''
 
@@ -1247,6 +1248,90 @@ function ASXFloorPlan(props: FloorPlanProps) {
         <img
           src={floorPlanSrc}
           alt="UP Cebu ASX Floor Plan"
+          style={{ width: '100%', height: '100%', display: 'block', position: 'absolute', top: 0, left: 0, objectFit: 'contain', objectPosition: 'center' }}
+        />
+      )}
+      <svg
+        viewBox={`0 0 ${config.viewWidth} ${config.viewHeight}`} preserveAspectRatio="xMidYMid meet"
+        style={{ width: '100%', height: '100%', display: 'block', position: 'absolute', top: 0, left: 0 }}
+      >
+        <SimOverlay {...props} />
+      </svg>
+    </div>
+  )
+}
+
+function ManagementFloorPlan(props: FloorPlanProps) {
+  const { config } = props
+  const floorPlanSrcByLabel: Record<string, string> = {
+    '1st Floor': '/floorplans/Management%201st%20floor.svg',
+    '2nd Floor': '/floorplans/Management%202nd%20floor.svg', 
+  }
+  const floorPlanSrc = floorPlanSrcByLabel[config.floorLabel] ?? ''
+
+  return (
+    <div style={{ position: 'relative', width: '100%', height: '100%' }}>
+      {floorPlanSrc && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={floorPlanSrc}
+          alt="UP Cebu Management Floor Plan"
+          style={{ width: '100%', height: '100%', display: 'block', position: 'absolute', top: 0, left: 0, objectFit: 'contain', objectPosition: 'center' }}
+        />
+      )}
+      <svg
+        viewBox={`0 0 ${config.viewWidth} ${config.viewHeight}`} preserveAspectRatio="xMidYMid meet"
+        style={{ width: '100%', height: '100%', display: 'block', position: 'absolute', top: 0, left: 0 }}
+      >
+        <SimOverlay {...props} />
+      </svg>
+    </div>
+  )
+}
+
+function UGFloorPlan(props: FloorPlanProps) {
+  const { config } = props
+  const floorPlanSrcByLabel: Record<string, string> = {
+    '1st Floor': '/floorplans/UG%201st%20floor.svg',
+    '2nd Floor': '/floorplans/UG%202nd%20floor.svg',
+  }
+  const floorPlanSrc = floorPlanSrcByLabel[config.floorLabel] ?? ''
+
+  return (
+    <div style={{ position: 'relative', width: '100%', height: '100%' }}>
+      {floorPlanSrc && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={floorPlanSrc}
+          alt="UP Cebu Undergraduate Building Floor Plan"
+          style={{ width: '100%', height: '100%', display: 'block', position: 'absolute', top: 0, left: 0, objectFit: 'contain', objectPosition: 'center' }}
+        />
+      )}
+      <svg
+        viewBox={`0 0 ${config.viewWidth} ${config.viewHeight}`} preserveAspectRatio="xMidYMid meet"
+        style={{ width: '100%', height: '100%', display: 'block', position: 'absolute', top: 0, left: 0 }}
+      >
+        <SimOverlay {...props} />
+      </svg>
+    </div>
+  )
+}
+
+function Som1FloorPlan(props: FloorPlanProps) {
+  const { config } = props
+  const floorPlanSrcByLabel: Record<string, string> = {
+    '1st Floor': '/floorplans/Som1%201st%20floor.svg',
+    '2nd Floor': '/floorplans/Som1%202nd%20floor.svg',
+  }
+  const floorPlanSrc = floorPlanSrcByLabel[config.floorLabel] ?? ''
+
+  return (
+    <div style={{ position: 'relative', width: '100%', height: '100%' }}>
+      {floorPlanSrc && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={floorPlanSrc}
+          alt="UP Cebu Science Building Floor Plan"
           style={{ width: '100%', height: '100%', display: 'block', position: 'absolute', top: 0, left: 0, objectFit: 'contain', objectPosition: 'center' }}
         />
       )}
@@ -1292,6 +1377,65 @@ function CSBFloorPlan(props: FloorPlanProps) {
   )
 }
 
+function ASWestFloorPlan(props: FloorPlanProps) {
+  const { config } = props
+  const floorPlanSrcByLabel: Record<string, string> = {
+    '1st Floor': '/floorplans/AS%20West%20Wing%201st%20floor.svg',
+    '2nd Floor': '/floorplans/AS%20West%20Wing%202nd%20floor.svg',
+    '3rd Floor': '/floorplans/AS%20West%20Wing%203rd%20floor.svg',
+  }
+  const floorPlanSrc = floorPlanSrcByLabel[config.floorLabel] ?? ''
+
+  return (
+    <div style={{ position: 'relative', width: '100%', height: '100%' }}>
+      {floorPlanSrc && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={floorPlanSrc}
+          alt="UP Cebu AS West Wing Floor Plan"
+          style={{ width: '100%', height: '100%', display: 'block', position: 'absolute', top: 0, left: 0, objectFit: 'contain', objectPosition: 'center' }}
+        />
+      )}
+      <svg
+        viewBox={`0 0 ${config.viewWidth} ${config.viewHeight}`} preserveAspectRatio="xMidYMid meet"
+        style={{ width: '100%', height: '100%', display: 'block', position: 'absolute', top: 0, left: 0 }}
+      >
+        <SimOverlay {...props} />
+      </svg>
+    </div>
+  )
+}
+
+function ASEastFloorPlan(props: FloorPlanProps) {
+  const { config } = props
+  const floorPlanSrcByLabel: Record<string, string> = {
+    '1st Floor': '/floorplans/AS%20East%20Wing%201st%20floor.svg',
+    '2nd Floor': '/floorplans/AS%20East%20Wing%202nd%20floor.svg',
+    '3rd Floor': '/floorplans/AS%20East%20Wing%203rd%20floor.svg',
+  }
+  const floorPlanSrc = floorPlanSrcByLabel[config.floorLabel] ?? ''
+
+  return (
+    <div style={{ position: 'relative', width: '100%', height: '100%' }}>
+      {floorPlanSrc && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={floorPlanSrc}
+          alt="UP Cebu AS East Wing Floor Plan"
+          style={{ width: '100%', height: '100%', display: 'block', position: 'absolute', top: 0, left: 0, objectFit: 'contain', objectPosition: 'center' }}
+        />
+      )}
+      <svg
+        viewBox={`0 0 ${config.viewWidth} ${config.viewHeight}`} preserveAspectRatio="xMidYMid meet"
+        style={{ width: '100%', height: '100%', display: 'block', position: 'absolute', top: 0, left: 0 }}
+      >
+        <SimOverlay {...props} />
+      </svg>
+    </div>
+  )
+}
+
+
 // Generic fallback floor plan for buildings without a custom layout — overlays
 // the simulation on a blank canvas so the page still renders.
 function GenericFloorPlan(props: FloorPlanProps) {
@@ -1315,6 +1459,11 @@ function FloorPlanView(props: FloorPlanProps & { buildingId: string }) {
   if (buildingId === 'science-building') return <CSBFloorPlan {...rest} />
   if (buildingId === 'up-cebu-library') return <LibraryFloorPlan {...rest} />
   if (buildingId === 'asx') return <ASXFloorPlan {...rest} />
+  if (buildingId === 'management') return <ManagementFloorPlan {...rest} />
+  if (buildingId === 'social-sciences') return <UGFloorPlan {...rest} />
+  if (buildingId === 'som-building-1') return <Som1FloorPlan {...rest} />
+  if (buildingId === 'as-west-wing') return <ASWestFloorPlan {...rest} />
+  if (buildingId === 'as-east-wing') return <ASEastFloorPlan {...rest} />
   return <GenericFloorPlan {...rest} />
 }
 
@@ -1837,7 +1986,7 @@ export default function SimulationRunPage() {
   const displayName = regionId.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
 
   if (!hasFloors) return (
-    <div style={{ minHeight: '100vh', padding: '88px 40px 56px', maxWidth: '1280px', margin: '0 auto' }}>
+    <div data-page-shell style={{ minHeight: '100vh', padding: '88px 40px 56px', maxWidth: '1280px', margin: '0 auto' }}>
       <button onClick={() => router.push(`/simulate/${encodeURIComponent(regionId)}/disaster`)}
         style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: 'none', border: 'none', color: 'var(--text-secondary)', fontSize: '13px', cursor: 'pointer', padding: 0, marginBottom: '28px' }}>
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6" /></svg>
@@ -1876,7 +2025,7 @@ export default function SimulationRunPage() {
   const canBackOneNode = selectedVias.length > 0
 
   return (
-    <div style={{ minHeight: '100vh', padding: '80px 32px 48px', maxWidth: '1600px', margin: '0 auto', background: 'linear-gradient(180deg, #f6fbff 0%, #f7fafc 44%, #eef4f8 100%)', borderRadius: '20px' }}>
+    <div data-page-shell style={{ minHeight: '100vh', padding: '80px 32px 48px', maxWidth: '1600px', margin: '0 auto', background: 'linear-gradient(180deg, #f6fbff 0%, #f7fafc 44%, #eef4f8 100%)', borderRadius: '20px' }}>
 
       <button
         onClick={() => router.push(`/simulate/${encodeURIComponent(regionId)}/disaster`)}

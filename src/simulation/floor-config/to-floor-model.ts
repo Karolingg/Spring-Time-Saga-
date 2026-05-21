@@ -78,7 +78,7 @@ export function floorConfigToFloorModel(
   const edgeSeen = new Set<string>()
   const edges: NavEdge[] = []
 
-  const addEdge = (fromId: string, toId: string, width = 2.0, blockable = true) => {
+  const addEdge = (fromId: string, toId: string, width = 2.0, blockable = true, fragile = false) => {
     if (fromId === toId) return
     const key = fromId < toId ? `${fromId}|${toId}` : `${toId}|${fromId}`
     if (edgeSeen.has(key)) return
@@ -86,12 +86,17 @@ export function floorConfigToFloorModel(
     const to = nodes.find(n => n.id === toId)
     if (!from || !to) return
     edgeSeen.add(key)
+    // Auto-derive fragility: any edge touching a stairwell node is structurally
+    // fragile by default, so earthquake collapse rolls get sensible coverage
+    // without per-floor authoring. An explicit `fragile` flag adds to this.
+    const isFragile = fragile || from.type === 'stairs' || to.type === 'stairs'
     edges.push({
       from: fromId,
       to: toId,
       distance: Math.max(1, pxDistance(from, to)),
       width,
       blockable,
+      fragile: isFragile,
     })
   }
 
@@ -144,61 +149,73 @@ export function floorConfigToFloorModel(
         exitIdByKey.get(neighbor.label) ??
         nodes.find(n => n.label === neighbor.label)?.id
       if (!toId) continue
-      addEdge(fromId, toId, neighbor.width ?? 2.0, neighbor.blockable ?? true)
+      addEdge(fromId, toId, neighbor.width ?? 2.0, neighbor.blockable ?? true, neighbor.fragile ?? false)
     }
   }
 
-  // 3. Synthesize waypoints from primary paths + reroutes
+  // 3. Synthesize waypoints from primary paths + reroutes — FALLBACK ONLY.
+  //
+  // When the building's FloorConfig provides explicit `corridorNodes`, those
+  // are treated as the *authoritative* navigation graph: both manual drill mode
+  // and autonomous mode pathfind through exactly the nodes the author placed,
+  // with no extra geometry synthesized behind their back. This was an explicit
+  // user request — "only the nodes set up in manual drill mode should be used
+  // in autonomous." Buildings still in placeholder state (no corridorNodes
+  // authored yet) fall back to synthesizing waypoints from the primary path
+  // polylines so they remain navigable until they get a proper graph.
+  const hasAuthoredGraph = corridorNodes.length > 0
   const waypointIdByPos = new Map<string, string>()
   const posKey = (p: Point) => `${Math.round(p.x)}|${Math.round(p.y)}`
 
-  const resolvePoint = (p: Point): string => {
-    // Reuse any node already at this position (exit or declared corridor).
-    const existing = nodes.find(n => samePoint(n, p))
-    if (existing) {
-      waypointIdByPos.set(posKey(p), existing.id)
-      return existing.id
+  if (!hasAuthoredGraph) {
+    const resolvePoint = (p: Point): string => {
+      // Reuse any node already at this position (exit or declared corridor).
+      const existing = nodes.find(n => samePoint(n, p))
+      if (existing) {
+        waypointIdByPos.set(posKey(p), existing.id)
+        return existing.id
+      }
+      const cached = waypointIdByPos.get(posKey(p))
+      if (cached) return cached
+      const id = `${prefix}-wp-${waypointIdByPos.size + 1}`
+      nodes.push({
+        id,
+        label: `Waypoint ${waypointIdByPos.size + 1}`,
+        x: p.x,
+        y: p.y,
+        type: 'corridor',
+        kind: 'corridor',
+        capacity: CORRIDOR_CAPACITY,
+      })
+      waypointIdByPos.set(posKey(p), id)
+      return id
     }
-    const cached = waypointIdByPos.get(posKey(p))
-    if (cached) return cached
-    const id = `${prefix}-wp-${waypointIdByPos.size + 1}`
-    nodes.push({
-      id,
-      label: `Waypoint ${waypointIdByPos.size + 1}`,
-      x: p.x,
-      y: p.y,
-      type: 'corridor',
-      kind: 'corridor',
-      capacity: CORRIDOR_CAPACITY,
-    })
-    waypointIdByPos.set(posKey(p), id)
-    return id
-  }
 
-  const walkPolyline = (polyline: Point[], terminalExitKey?: string) => {
-    if (!polyline || polyline.length === 0) return
-    const ids = polyline.map(resolvePoint)
-    for (let i = 0; i < ids.length - 1; i++) {
-      addEdge(ids[i], ids[i + 1])
-    }
-    if (terminalExitKey) {
-      const exitId = exitIdByKey.get(terminalExitKey)
-      if (exitId && ids.length > 0) {
-        addEdge(ids[ids.length - 1], exitId)
+    const walkPolyline = (polyline: Point[], terminalExitKey?: string) => {
+      if (!polyline || polyline.length === 0) return
+      const ids = polyline.map(resolvePoint)
+      for (let i = 0; i < ids.length - 1; i++) {
+        addEdge(ids[i], ids[i + 1])
+      }
+      if (terminalExitKey) {
+        const exitId = exitIdByKey.get(terminalExitKey)
+        if (exitId && ids.length > 0) {
+          addEdge(ids[ids.length - 1], exitId)
+        }
       }
     }
-  }
 
-  for (const [exitKey, path] of Object.entries(config.primaryPaths)) {
-    walkPolyline(path, exitKey)
-  }
-  for (const [, reroute] of Object.entries(config.reroutes)) {
-    walkPolyline(reroute.path, reroute.to)
-  }
+    for (const [exitKey, path] of Object.entries(config.primaryPaths)) {
+      walkPolyline(path, exitKey)
+    }
+    for (const [, reroute] of Object.entries(config.reroutes)) {
+      walkPolyline(reroute.path, reroute.to)
+    }
 
-  // Ensure startPos is a reachable node (hub) even if no path uses it.
-  if (config.startPos && (config.startPos.x !== 0 || config.startPos.y !== 0)) {
-    resolvePoint(config.startPos)
+    // Ensure startPos is a reachable node (hub) even if no path uses it.
+    if (config.startPos && (config.startPos.x !== 0 || config.startPos.y !== 0)) {
+      resolvePoint(config.startPos)
+    }
   }
 
   // 4. Rooms
@@ -286,6 +303,7 @@ const FLOORPLAN_SRC_BY_BUILDING: Record<string, Record<string, string>> = {
   },
   'asx': {
     '1st Floor': '/floorplans/ASX%201st%20floor.svg',
+    '2nd Floor': '/floorplans/ASX%202nd%20floor.svg',
   },
   'science-building': {
     '1st Floor': '/floorplans/CSB%201st%20floor.svg',
@@ -295,9 +313,27 @@ const FLOORPLAN_SRC_BY_BUILDING: Record<string, Record<string, string>> = {
     '5th Floor': '/floorplans/CSB%205th%20floor.svg',
     '6th Floor': '/floorplans/CSB%206th%20floor.svg',
   },
+  'management': {
+    '1st Floor': '/floorplans/Management%201st%20floor.svg',
+    '2nd Floor': '/floorplans/Management%202nd%20floor.svg',
+  },
+  'social-sciences': {
+    '1st Floor': '/floorplans/UG%201st%20floor.svg',
+    '2nd Floor': '/floorplans/UG%202nd%20floor.svg',
+  },
   'up-cebu-library': {
     '1st Floor': '/floorplans/Library%201st%20floor.svg',
     '2nd Floor': '/floorplans/Library%202nd%20floor.svg',
+  },
+  'as-east-wing': {
+    '1st Floor': '/floorplans/AS%20East%20Wing%201st%20floor.svg',
+    '2nd Floor': '/floorplans/AS%20East%20Wing%202nd%20floor.svg',
+    '3rd Floor': '/floorplans/AS%20East%20Wing%203rd%20floor.svg',
+  },
+  'as-west-wing': {
+    '1st Floor': '/floorplans/AS%20West%20Wing%201st%20floor.svg',
+    '2nd Floor': '/floorplans/AS%20West%20Wing%202nd%20floor.svg',
+    '3rd Floor': '/floorplans/AS%20West%20Wing%203rd%20floor.svg',
   },
 }
 
@@ -310,7 +346,7 @@ const BUILDING_NAMES: Record<string, string> = {
   'asx': 'ASX',
   'as-west-wing': 'Arts & Sciences West Wing',
   'as-east-wing': 'Arts & Sciences East Wing',
-  'som-admin': 'School of Management Admin',
+  'management': 'School of Management Admin',
   'som-building-1': 'School of Management Building 1',
   'cultural-center': 'Cultural Center',
   'social-sciences': 'Social Sciences Building',

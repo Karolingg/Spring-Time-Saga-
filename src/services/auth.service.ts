@@ -1,5 +1,15 @@
 import { supabase } from '@/src/config/supabase'
 
+export async function loginWithGoogle() {
+  const { error } = await supabase.auth.signInWithOAuth({
+    provider: 'google',
+    options: {
+      redirectTo: `${window.location.origin}/auth/callback`,
+    },
+  })
+  if (error) throw new Error(error.message)
+}
+
 export async function loginWithEmail(email: string, password: string) {
   const { error } = await supabase.auth.signInWithPassword({ email, password })
   if (error) throw new Error(error.message)

@@ -100,9 +100,21 @@ export interface MapMarker {
   compact?: boolean // small dot marker, no label
 }
 
+/** Evacuation assembly area marker — visually distinct from building markers
+ *  so users see at a glance where occupants should gather after exiting. */
+export interface AssemblyMarker {
+  id: string
+  name: string
+  lat: number
+  lng: number
+  onClick?: () => void
+  highlighted?: boolean
+}
+
 interface MapViewProps {
   regions?: MapRegion[]
   markers?: MapMarker[]
+  assemblyMarkers?: AssemblyMarker[]
   onRegionClick?: (id: string) => void
   onBuildingClick?: (name: string, coords: [number, number]) => void
   focusCenter?: [number, number] | null
@@ -116,7 +128,7 @@ interface MapViewProps {
   uiOffsetRight?: number
 }
 
-export default function MapView({ regions, markers, onRegionClick, onBuildingClick, focusCenter, highlightAt, maxBounds, minZoom, maxZoom, lockedStyle, flat2d, hoverOnly, uiOffsetRight = 0 }: MapViewProps) {
+export default function MapView({ regions, markers, assemblyMarkers, onRegionClick, onBuildingClick, focusCenter, highlightAt, maxBounds, minZoom, maxZoom, lockedStyle, flat2d, hoverOnly, uiOffsetRight = 0 }: MapViewProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const mapRef = useRef<MapRef>(null)
   const hadSelectedRegionRef = useRef(false)
@@ -768,6 +780,50 @@ export default function MapView({ regions, markers, onRegionClick, onBuildingCli
                     {m.label}
                   </div>
                 )}
+              </div>
+            </Marker>
+          )
+        })}
+
+        {/* Assembly point markers — original green square with people icon.
+            No text label. Click opens a speech-bubble image popup above. */}
+        {canRenderMarkers && assemblyMarkers?.map((a) => {
+          const size = 26
+          const accent = a.highlighted ? '#16a34a' : '#22c55e'
+          return (
+            <Marker
+              key={`assembly-${a.id}`}
+              longitude={a.lng}
+              latitude={a.lat}
+              anchor="center"
+              onClick={(e) => { e.originalEvent.stopPropagation(); a.onClick?.() }}
+            >
+              <div
+                data-assembly-id={a.id}
+                title={a.name}
+                style={{
+                  cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  transition: 'transform 0.15s', pointerEvents: 'auto',
+                }}
+                onMouseEnter={(e) => { e.currentTarget.style.transform = 'scale(1.18)' }}
+                onMouseLeave={(e) => { e.currentTarget.style.transform = 'scale(1)' }}
+              >
+                <div style={{
+                  width: `${size}px`, height: `${size}px`, borderRadius: '8px',
+                  background: accent,
+                  border: '2px solid #ffffff',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  boxShadow: a.highlighted
+                    ? `0 2px 10px rgba(22,163,74,0.55), 0 0 0 4px rgba(34,197,94,0.25)`
+                    : '0 2px 8px rgba(0,0,0,0.4), 0 0 12px rgba(34,197,94,0.35)',
+                }}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#ffffff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="9" cy="8" r="3.2" />
+                    <circle cx="17" cy="9" r="2.4" />
+                    <path d="M3 20c0-3.3 2.7-5.5 6-5.5s6 2.2 6 5.5" />
+                    <path d="M14.5 20c0-2.3 1.9-3.8 4.2-3.8" />
+                  </svg>
+                </div>
               </div>
             </Marker>
           )

@@ -37,7 +37,7 @@ const UP_CEBU_LIBRARY_1F: FloorConfig = {
   },
   corridorNodes: [
     { label: 'Right Corridor', x: 735, y: 460, neighbors: ['Library (Entrance)', 'E2'] },
-    { label: 'Central Corridor', x: 600, y: 460, neighbors: ['Left Corridor', 'Right Corridor '] },
+    { label: 'Central Corridor', x: 600, y: 460, neighbors: ['Left Corridor', 'Right Corridor'] },
     { label: 'Left Corridor', x: 465, y: 460, neighbors: ['Library (Exit)', 'E1'] },
   ],
 }
@@ -78,8 +78,11 @@ const UP_CEBU_LIBRARY_2F: FloorConfig = {
     pah_exit: { label: 'PAH (Exit)', x: 590, y: 355, corridorEntryNode: 'Central Corridor' },
   },
   corridorNodes: [
-    { label: 'Near Stairs Exit 1', x: 400, y: 450, neighbors: ['S1', 'PAH (Entrance)'] },
-    { label: 'Near Stairs Exit 2', x: 758, y: 450, neighbors: ['S2', 'AVR'] },
+    // Floor's exits are keyed E1/E2 — referencing 'S1'/'S2' here previously
+    // left the labeled corridor graph disconnected from every exit, which
+    // trapped every spawned agent at run start.
+    { label: 'Near Stairs Exit 1', x: 400, y: 450, neighbors: ['E1', 'PAH (Entrance)'] },
+    { label: 'Near Stairs Exit 2', x: 758, y: 450, neighbors: ['E2', 'AVR'] },
     { label: 'Central Corridor', x: 590, y: 450, neighbors: ['Near Stairs Exit 1', 'Near Stairs Exit 2'] },
   ],
 }
