@@ -57,6 +57,16 @@ function clearAggregateCache() {
   aggregateCache.clear()
 }
 
+function clearSimulationReadCache() {
+  readCache.clear()
+}
+
+function clearAnalysisCaches() {
+  clearAggregateCache()
+  clearSimulationReadCache()
+  clearBuildingScoreCache()
+}
+
 async function ensureProfile(
   userId: string,
   email: string | undefined,

@@ -82,42 +82,59 @@ const INITIAL_STEPS: OnboardingStep[] = [
 
 const STORAGE_KEY = 'evacsim-onboarding-state'
 
-export function OnboardingProvider({ children }: { children: React.ReactNode }) {
-  const [hasSeenOnboarding, setHasSeenOnboarding] = useState(false)
-  const [currentStep, setCurrentStepState] = useState(0)
-  const [steps, setSteps] = useState<OnboardingStep[]>(INITIAL_STEPS)
-  const [isInitialized, setIsInitialized] = useState(false)
+function cloneInitialSteps(): OnboardingStep[] {
+  return INITIAL_STEPS.map((step) => ({ ...step }))
+}
 
-  // Initialize from localStorage
-  useEffect(() => {
-    const stored = localStorage.getItem(STORAGE_KEY)
-    if (stored) {
-      try {
-        const { completed, current } = JSON.parse(stored)
-        setSteps((prev) =>
-          prev.map((step) => ({
-            ...step,
-            completed: completed[step.id] ?? false,
-          }))
-        )
-        setCurrentStepState(current ?? 0)
-        setHasSeenOnboarding(true)
-      } catch (err) {
-        console.error('Failed to load onboarding state:', err)
-      }
+function getInitialOnboardingState(): {
+  hasSeenOnboarding: boolean
+  currentStep: number
+  steps: OnboardingStep[]
+} {
+  if (typeof window === 'undefined') {
+    return { hasSeenOnboarding: false, currentStep: 0, steps: cloneInitialSteps() }
+  }
+
+  const stored = localStorage.getItem(STORAGE_KEY)
+  if (!stored) {
+    return { hasSeenOnboarding: false, currentStep: 0, steps: cloneInitialSteps() }
+  }
+
+  try {
+    const { completed, current } = JSON.parse(stored) as {
+      completed?: Record<string, boolean>
+      current?: number
     }
-    setIsInitialized(true)
-  }, [])
+    const steps = cloneInitialSteps().map((step) => ({
+      ...step,
+      completed: completed?.[step.id] ?? false,
+    }))
+    const currentStep = typeof current === 'number' ? current : 0
+    return {
+      hasSeenOnboarding: true,
+      currentStep: Math.max(0, Math.min(currentStep, steps.length - 1)),
+      steps,
+    }
+  } catch (err) {
+    console.error('Failed to load onboarding state:', err)
+    return { hasSeenOnboarding: false, currentStep: 0, steps: cloneInitialSteps() }
+  }
+}
+
+export function OnboardingProvider({ children }: { children: React.ReactNode }) {
+  const [initialState] = useState(getInitialOnboardingState)
+  const [hasSeenOnboarding, setHasSeenOnboarding] = useState(initialState.hasSeenOnboarding)
+  const [currentStep, setCurrentStepState] = useState(initialState.currentStep)
+  const [steps, setSteps] = useState<OnboardingStep[]>(initialState.steps)
 
   // Persist to localStorage
   useEffect(() => {
-    if (!isInitialized) return
     const state = {
       completed: Object.fromEntries(steps.map((s) => [s.id, s.completed])),
       current: currentStep,
     }
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state))
-  }, [steps, currentStep, isInitialized])
+  }, [steps, currentStep])
 
   const completeStep = useCallback((stepId: string) => {
     setSteps((prev) =>

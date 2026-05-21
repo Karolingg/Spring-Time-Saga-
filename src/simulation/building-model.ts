@@ -134,7 +134,6 @@ export function findShortestPathToExitWeighted(
   } = options
   const exits = getExits(floor)
   if (exits.length === 0) return null
-  const PX_PER_METER = 10
   const hazardForecastActive = !!(hazards && hazards.length > 0 && agentSpeed && agentSpeed > 0 && elapsedTime !== undefined)
 
   const dist: Record<string, number> = {}

@@ -300,7 +300,7 @@ export default function HelpPage() {
                 marginBottom: 0,
               }}
             >
-              <strong>How it's calculated:</strong> Evacuation rate (40% weight) +
+              <strong>How it&apos;s calculated:</strong> Evacuation rate (40% weight) +
               bottleneck analysis (30%) + evacuation time efficiency (30%)
             </p>
           </div>
@@ -309,13 +309,13 @@ export default function HelpPage() {
           <div style={SECTION_CARD}>
             <h3 style={SECTION_TITLE}><ChartIcon /> Total Simulation Runs</h3>
             <p style={{ color: '#4b5563', lineHeight: '1.6', marginBottom: '12px' }}>
-              The total number of evacuation simulations you've run across all
+              The total number of evacuation simulations you&apos;ve run across all
               buildings and disaster types.
             </p>
             <div style={METRIC_BOX}>
               <p style={{ margin: 0, color: '#374151' }}>
                 Tip: Run simulations with different occupancy levels and hazard
-                scenarios to get comprehensive coverage of your building's evacuation
+                scenarios to get comprehensive coverage of your building&apos;s evacuation
                 capabilities.
               </p>
             </div>
@@ -433,7 +433,7 @@ export default function HelpPage() {
                 Click on any building marker to view its details (capacity, floors,
                 exits, risk level)
               </li>
-              <li>Click <strong>"Run Drill"</strong> to proceed to disaster selection</li>
+              <li>Click <strong>&quot;Run Drill&quot;</strong> to proceed to disaster selection</li>
             </ol>
           </div>
 
@@ -465,7 +465,7 @@ export default function HelpPage() {
                 marginBottom: 0,
               }}
             >
-              Select your target floor and click <strong>"Simulate"</strong>
+              Select your target floor and click <strong>&quot;Simulate&quot;</strong>
             </p>
           </div>
 
@@ -516,7 +516,7 @@ export default function HelpPage() {
           <div style={SECTION_CARD}>
             <h3 style={SECTION_TITLE}>Step 4: Run Simulation & Monitor</h3>
             <p style={{ color: '#4b5563', lineHeight: '1.6', marginBottom: '16px' }}>
-              Click <strong>"Run Simulation"</strong> to launch the evacuation.
+              Click <strong>&quot;Run Simulation&quot;</strong> to launch the evacuation.
             </p>
             <div style={METRIC_BOX}>
               <strong>During Simulation:</strong>

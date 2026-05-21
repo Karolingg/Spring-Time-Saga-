@@ -1,6 +1,5 @@
 'use client'
 
-import { useEffect, useState } from 'react'
 import { useOnboarding } from '@/src/hooks/useOnboarding'
 
 interface OnboardingOverlayProps {
@@ -9,24 +8,18 @@ interface OnboardingOverlayProps {
 
 export function OnboardingOverlay({ currentPage }: OnboardingOverlayProps) {
   const { hasSeenOnboarding, currentStep, steps, setCurrentStep, skipOnboarding } = useOnboarding()
-  const [isVisible, setIsVisible] = useState(false)
 
   const relevantSteps = steps.filter(
     (step) =>
       step.page === currentPage && (step.id === steps[currentStep]?.id || !step.completed)
   )
 
-  useEffect(() => {
-    // Show overlay if user hasn't completed onboarding and there are relevant steps
-    setIsVisible(!hasSeenOnboarding && relevantSteps.length > 0)
-  }, [hasSeenOnboarding, relevantSteps])
+  const isVisible = !hasSeenOnboarding && relevantSteps.length > 0
 
   if (!isVisible || relevantSteps.length === 0) return null
 
   const step = steps[currentStep]
   if (!step) return null
-
-  const progress = steps.filter((s) => s.completed).length
 
   return (
     <div
