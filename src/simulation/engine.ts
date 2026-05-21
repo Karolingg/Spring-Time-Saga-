@@ -230,32 +230,37 @@ const FIRE_DANGER_RADIUS_MULTIPLIER = 1.4
  *  path also takes them near another fire. */
 const FIRE_DANGER_REROUTE_COOLDOWN = 4
 
-/* ── Queue model + capacity enforcement ──
+/* ── Soft queue model + congestion-based capacity ──
  *
- * Without a real queue, the old congestion model just slowed every agent on
- * a busy edge to ~30% — N agents all squeezed through a 1-meter doorway
- * simultaneously. Realistic bottleneck analysis needs ordered access: the
- * first few agents (by edge width) get to move at normal speed, and
- * everyone behind them physically waits at the source node until a slot
- * opens up. EDGE_SLOTS_PER_METER controls how many agents a 1-meter-wide
- * edge can hold at once — 2 is a typical doorway throughput.
+ * An earlier revision used HARD gates: an agent could not step onto a full
+ * edge (it waited at the source) and could not enter a full node (it froze
+ * at 95% of the edge). That produced realistic-looking queues but also
+ * produced DEADLOCKS — when nodes ended up waiting on each other in a cycle,
+ * a crowd of agents could freeze permanently and never evacuate.
  *
- * Node capacity (authored per-node, or defaulted from kind) acts as the
- * destination cap: when a node is full, agents finishing the edge into it
- * stall at the very end of the edge instead of teleporting through. */
+ * The model is now SOFT. Capacity still matters, but it is expressed as a
+ * speed penalty, never a freeze:
+ *   • An over-capacity edge slows every agent on it toward a 15% crawl.
+ *   • An over-capacity destination node slows the agent's approach the
+ *     same way.
+ * Agents always make some forward progress, so a crowd ALWAYS drains and
+ * no agent is ever permanently stuck. Visually a queue still forms — a
+ * slow, dense bunch of agents — and the congestion still drives bottleneck
+ * analytics (edge counts, density heatmap, longer evacuation times).
+ *
+ * EDGE_SLOTS_PER_METER sets an edge's comfortable capacity (agents that fit
+ * before the slowdown kicks in); NODE_CAPACITY_HEADROOM does the same for
+ * nodes. CONGESTION_MIN_SPEED_FACTOR is the crawl floor — speed never drops
+ * below this fraction from crowding alone. */
 const EDGE_SLOTS_PER_METER = 2
-/** Minimum slot count for any edge, even narrow ones. Without this, a
- *  1.2m doorway would only fit 2 agents — fine — but a 0.5m squeeze would
- *  fit just 1, gridlocking floors with mixed-width edges. */
+/** Minimum comfortable capacity for any edge, even narrow ones. */
 const MIN_EDGE_SLOTS = 2
-/** Multiplier on each node's authored capacity for the destination-cap
- *  check. A multiplier > 1 lets the simulation accept brief overcrowding
- *  (agents passing through), reserving the hard cap for true bottlenecks. */
+/** Multiplier on each node's authored capacity before the crowding
+ *  slowdown begins — a little headroom for agents passing through. */
 const NODE_CAPACITY_HEADROOM = 1.25
-/** Progress value an agent holds at when their destination node is full
- *  but the edge ahead is open. They wait at 95% of the edge, ready to
- *  step through as soon as the next node frees up. */
-const NODE_QUEUE_HOLD_PROGRESS = 0.95
+/** Crawl floor: crowding alone never slows an agent below this fraction of
+ *  their walking speed. Guarantees forward progress → no deadlock. */
+const CONGESTION_MIN_SPEED_FACTOR = 0.15
 
 /* ── Cumulative exposure (dose-response trap model) ──
  *
@@ -667,14 +672,16 @@ export function stepSimulation(
   const liveEdgeCounts: Record<string, number> = { ...newState.congestion.edgeCounts }
   const liveNodeCounts: Record<string, number> = { ...newState.congestion.nodeCounts }
 
-  // Iteration order: by current node, then by progress descending. Agents
-  // already further along an edge get to commit their movement first —
-  // they're "ahead in line" and shouldn't lose their slot to a later-
-  // iterated agent at the source.
-  const agentsByPriority = [...newState.agents].sort((a, b) => {
-    if (a.currentNodeId !== b.currentNodeId) return a.currentNodeId < b.currentNodeId ? -1 : 1
-    return b.progress - a.progress
-  })
+  // Iteration order: by progress ASCENDING. Agents standing at a node
+  // (progress 0, about to step onto an outbound edge) are processed first,
+  // so they vacate the node — decrementing its live occupancy — BEFORE the
+  // agents arriving at that same node (progress ≈ 1 on an inbound edge) are
+  // processed. Without this ordering a node could read "full" of agents
+  // who were already leaving it, and arrivals would needlessly stall — the
+  // crowd-deadlock the queue model used to produce. Edge-slot fairness is
+  // unaffected: a mid-edge agent's slot is already reserved in the seeded
+  // `liveEdgeCounts` snapshot, so they never lose it to iteration order.
+  const agentsByPriority = [...newState.agents].sort((a, b) => a.progress - b.progress)
 
   // 4. Update each agent
   for (const agent of agentsByPriority) {
@@ -852,13 +859,21 @@ function updateCongestion(state: SimulationState) {
 
   for (const agent of state.agents) {
     if (agent.state === 'evacuated' || agent.state === 'trapped') continue
-    nodeCounts[agent.currentNodeId] = (nodeCounts[agent.currentNodeId] || 0) + 1
 
-    // Only count an agent on their next edge if they have actually stepped
-    // onto it (progress > 0). At progress == 0 the agent is still standing
-    // at the source node, not occupying the edge yet — counting them here
-    // double-charged the queue model and caused two agents at the same
-    // source to gridlock against each other's "future" presence.
+    // Node occupancy counts ONLY agents physically standing at a node
+    // (progress == 0). An agent mid-edge still has `currentNodeId` pointing
+    // at the edge's SOURCE — but they have already walked off it. Counting
+    // them at the source kept a node reading "full" of agents who had
+    // departed, which stalled every arrival behind them: the crowd
+    // deadlock. A node's live count must reflect who is actually there.
+    if (agent.progress === 0) {
+      nodeCounts[agent.currentNodeId] = (nodeCounts[agent.currentNodeId] || 0) + 1
+    }
+
+    // Edge occupancy counts agents who have actually stepped onto the edge
+    // (progress > 0). At progress == 0 the agent is still at the source
+    // node, not on the edge yet — counting them here double-charged the
+    // queue model and gridlocked two agents at a shared source.
     if (agent.progress > 0 && agent.pathIndex < agent.path.length - 1) {
       const ek = edgeKey(agent.path[agent.pathIndex], agent.path[agent.pathIndex + 1])
       edgeCounts[ek] = (edgeCounts[ek] || 0) + 1
@@ -1251,20 +1266,24 @@ function updateAgent(
       }
     } else {
       agent.rerouteStallTime += dt
+      // Attempt a retreat out of a dead end while one is available.
       if (agent.retreatCooldown <= 0 && (agentIsInsideHardHazard(agent, floor, state) || agent.rerouteStallTime >= 2)) {
         if (retreatOneNode(agent, floor)) {
           // Retreating moved the agent to a new node, so the stall window
-          // resets — they just made progress, even if it's backward. Without
-          // this reset, a sequence of valid retreats still tripped the 10s
-          // stall trap because the timer accumulated across retreats.
+          // resets — they just made progress, even if it's backward.
           agent.retreatCooldown = 1.2
           agent.rerouteStallTime = 0
         }
-      } else if (agent.rerouteStallTime >= 10) {
-        // Last-resort trap gate. The stall trap only fires when there is
-        // genuinely no path from the agent's node to any exit. If a path
-        // exists, our routing logic is just temporarily failing — drop
-        // the cooldowns so the next replan can try with a clean slate.
+      }
+      // Resolve a long stall — INDEPENDENTLY of the retreat attempt above.
+      // Previously this was an `else if`, so once the stall passed 2s the
+      // retreat branch always won and the trap check could never run: an
+      // agent with no history to retreat into (e.g. spawned on a floor
+      // whose graph cannot reach any exit) stayed in 'rerouting' forever,
+      // neither evacuating nor trapping. Now the check always runs.
+      if (agent.rerouteStallTime >= 10) {
+        // Trapped only as the last resort — no exit structurally reachable.
+        // Otherwise drop every cooldown and let the next tick re-plan clean.
         if (!agentHasEscapeRoute(agent, state)) {
           agent.state = 'trapped'
         } else {
@@ -1397,33 +1416,39 @@ function updateAgent(
     const ek = edgeKey(fromId, toId)
     const edgeWidth = edge?.width || 2
 
-    // ── Queue model: enforce edge slot capacity ──────────────────────────
-    // An edge fits a finite number of agents simultaneously (proportional to
-    // its width). The first cohort gets to move at normal pace; overflow
-    // agents wait at the source node until somebody ahead vacates a slot.
-    // This replaces the old "everyone slows down to 30%" model with real
-    // ordered access, so bottlenecks at narrow doorways form a visible
-    // queue rather than a uniform crowd-jelly.
+    // ── Soft queue model: edge congestion slows, never freezes ───────────
+    // An edge has a comfortable capacity proportional to its width. Agents
+    // are NEVER hard-blocked from stepping on — instead, an over-capacity
+    // edge slows everyone on it toward the crawl floor. This still forms a
+    // visible queue (a slow dense bunch) and still drives bottleneck
+    // analytics, but it can never deadlock: forward progress is guaranteed.
     const slotCap = edgeSlotCapacity(edgeWidth)
     const isAlreadyOnEdge = agent.progress > 0
     if (!isAlreadyOnEdge) {
-      const currentLiveLoad = liveEdgeCounts[ek] || 0
-      if (currentLiveLoad >= slotCap) {
-        // Edge is full — agent waits at source. They'll retry next tick when
-        // somebody ahead reaches the next node and frees a slot.
-        return
-      }
-      // Claim a slot for this tick so subsequent agents queued at the same
-      // source node see the correct occupancy.
-      liveEdgeCounts[ek] = currentLiveLoad + 1
+      // Stepping onto the edge: register edge occupancy and release the
+      // source node's occupancy NOW (not at arrival) — a node must read as
+      // having room the instant an agent starts leaving it, or arrivals
+      // stall behind agents who have already departed.
+      liveEdgeCounts[ek] = (liveEdgeCounts[ek] || 0) + 1
+      liveNodeCounts[fromId] = Math.max(0, (liveNodeCounts[fromId] || 1) - 1)
     }
 
-    // Soft congestion factor — kept as a residual slowdown for agents who
-    // ARE on the edge (so a near-full edge still feels slower than empty).
-    // No longer used as the only crowd model; the slot cap above is the
-    // primary mechanism.
+    // Edge congestion: at/under the comfortable capacity → no penalty;
+    // over capacity → slow proportionally, floored at the crawl speed so
+    // the edge always keeps draining.
     const edgeCount = liveEdgeCounts[ek] || 0
-    const congestionFactor = Math.max(0.4, 1 - (edgeCount / Math.max(slotCap * 1.5, 1)))
+    const congestionFactor = edgeCount <= slotCap
+      ? 1
+      : Math.max(CONGESTION_MIN_SPEED_FACTOR, slotCap / edgeCount)
+
+    // Destination-node congestion: an over-capacity next node slows the
+    // agent's approach (soft enforcement) rather than hard-holding them at
+    // the edge's end. Exits never crowd — they absorb agents instantly.
+    const destLoad = liveNodeCounts[toId] || 0
+    const destCap = Math.max(1, toNode.capacity) * NODE_CAPACITY_HEADROOM
+    const destCongestionFactor = (toNode.type === 'exit' || destLoad <= destCap)
+      ? 1
+      : Math.max(CONGESTION_MIN_SPEED_FACTOR, destCap / destLoad)
 
     // Hazard proximity behavior:
     //   • Soft hazards (smoke):   slow down — discourage walking through.
@@ -1524,34 +1549,22 @@ function updateAgent(
     }
     const doseFactor = doseSpeedFactor(agent.fireDose)
 
-    const effectiveSpeed = agent.speed * congestionFactor * hazardFactor * tremorFactor * doseFactor
+    const effectiveSpeed =
+      agent.speed * congestionFactor * destCongestionFactor * hazardFactor * tremorFactor * doseFactor
     agent.progress += (effectiveSpeed * dt) / edgeDist
 
     if (agent.progress >= 1) {
-      // ── Node capacity gate: hold at end-of-edge if destination is full ──
-      // If the next node is already over capacity (other agents have piled
-      // up on it this tick), the arriving agent stalls just short of the
-      // node. They'll cross the rest of the way next tick, when the node
-      // has drained as those agents step onto their next edges. This
-      // produces a visible queue tail just before bottleneck doorways and
-      // stairwells.
-      // Floor the authored capacity at 1 — a node missing a sensible
-      // capacity (some legacy floor configs default to 0) would otherwise
-      // produce `destCap = 0` and gridlock every agent at its doorstep.
-      // The headroom multiplier above is still applied on top.
-      const destCap = Math.max(1, toNode.capacity) * NODE_CAPACITY_HEADROOM
-      const destLoad = liveNodeCounts[toId] || 0
-      if (toNode.type !== 'exit' && destLoad >= destCap) {
-        agent.progress = NODE_QUEUE_HOLD_PROGRESS
-        return
-      }
-
-      // Release the edge slot we claimed at entry — the agent is leaving
-      // the edge now. Decrement clamped at 0 to defend against the rare
-      // mid-tick state-edit cases.
+      // No hard hold any more — destination-node crowding already slowed the
+      // agent's approach via `destCongestionFactor`. The crossing is simply
+      // committed. Capacity is enforced softly (as slowdown), so a node may
+      // briefly exceed its nominal capacity instead of gridlocking every
+      // agent queued behind it. This is what eliminates the crowd-deadlock.
+      //
+      // Release the edge occupancy we registered at entry and register the
+      // arrival at the destination node. `fromId` is NOT decremented here:
+      // that already happened the moment the agent stepped onto the edge.
       liveEdgeCounts[ek] = Math.max(0, (liveEdgeCounts[ek] || 1) - 1)
       liveNodeCounts[toId] = (liveNodeCounts[toId] || 0) + 1
-      liveNodeCounts[fromId] = Math.max(0, (liveNodeCounts[fromId] || 1) - 1)
 
       agent.progress = 0
       agent.pathIndex++

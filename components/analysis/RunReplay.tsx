@@ -93,7 +93,11 @@ function allocateAgentsToRooms(rooms: NavNode[], totalAgents: number): Record<st
 export function RunReplay({
   buildingId,
   simulatedFloorIndex,
-  zones,
+  // `zones` is no longer consumed for room-marker rendering — kept on the
+  // prop surface for backward compatibility with parents that still spread
+  // it in. Renamed to `_zones` so eslint's no-unused-vars rule is satisfied
+  // without breaking the props contract.
+  zones: _zones,
   agentCount,
   disasterType,
   hazards,
@@ -101,6 +105,7 @@ export function RunReplay({
   seed,
   hideHeader = false,
 }: RunReplayProps) {
+  void _zones
   const building = useMemo(
     () => (buildingId ? getBuildingById(buildingId) ?? null : null),
     [buildingId],
@@ -113,11 +118,6 @@ export function RunReplay({
   }, [building, simulatedFloorIndex])
 
   const disaster = (disasterType ?? 'fire') as 'fire' | 'earthquake'
-
-  const intensityByLabel = useMemo(
-    () => new Map(zones.map((zone) => [zone.zoneName, zone.intensity])),
-    [zones],
-  )
 
   /** Build a SimulationState that reproduces the original run as faithfully
    *  as possible. Uses the saved seed + hazards + per-room allocation when
@@ -454,16 +454,13 @@ export function RunReplay({
             </g>
           ))}
 
-          {/* Room intensity %; only with heatmap on so dots can breathe. */}
-          {showHeatmap && floor.nodes.filter((n) => n.type === 'room').map((node) => {
-            const intensity = (intensityByLabel.get(node.label) ?? 0) / 100
-            if (intensity <= 0) return null
-            return (
-              <text key={`label-${node.id}`} x={node.x} y={node.y} textAnchor="middle" fontSize="9" fontWeight="700" fill="#0f172a">
-                {Math.round(intensity * 100)}%
-              </text>
-            )
-          })}
+          {/* Room nodes are deliberately NOT rendered during simulation
+              playback. The heatmap colors already convey per-area
+              intensity; overlaying explicit room markers (text or dots)
+              clutters the floorplan and visually conflates with agent
+              positions. Building authors and analytical views can still
+              reference room nodes through the data model — they just
+              don't get a visual marker on the live simulation stage. */}
         </svg>
 
         {!hasReplayData && (

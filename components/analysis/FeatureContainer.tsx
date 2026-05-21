@@ -45,14 +45,17 @@ export function FeatureContainer({
   const gradient = `linear-gradient(135deg, ${accent} 0%, ${accentDark} 100%)`
 
   return (
-    <div style={{
-      background: '#ffffff',
-      border: '1px solid var(--border)',
-      borderRadius: '16px',
-      overflow: 'hidden',
-      boxShadow: '0 4px 14px rgba(15, 23, 42, 0.06), 0 1px 3px rgba(15, 23, 42, 0.04)',
-      marginBottom: '20px',
-    }}>
+    <div
+      data-feature-card
+      style={{
+        background: '#ffffff',
+        border: '1px solid var(--border)',
+        borderRadius: '16px',
+        overflow: 'hidden',
+        boxShadow: '0 4px 14px rgba(15, 23, 42, 0.06), 0 1px 3px rgba(15, 23, 42, 0.04)',
+        marginBottom: '20px',
+      }}
+    >
       {/* Colored header banner with subtle gradient + radial highlight */}
       <div style={{
         display: 'flex',

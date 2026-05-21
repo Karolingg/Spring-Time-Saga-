@@ -642,6 +642,91 @@ export async function getAggregateZoneStats(): Promise<{
   })
 }
 
+/** One run's headline metrics, used to plot a per-floor drill trend. */
+export interface RunTrendPoint {
+  runId: string
+  createdAt: string
+  disasterType: string
+  /** Seconds to clear the floor. */
+  evacuationTime: number
+  evacuatedCount: number
+  agentCount: number
+  maxCongestion: number
+}
+
+/** Chronological run history for one building floor. */
+export interface BuildingFloorTrend {
+  buildingId: string
+  floorIndex: number
+  /** Oldest-first. */
+  runs: RunTrendPoint[]
+}
+
+/**
+ * Groups every completed run by `(buildingId, floorIndex)` and returns each
+ * group's runs in chronological order with their headline metrics. Feeds the
+ * drill-trend view: direction arrows need run-over-run history, and the
+ * "needs a baseline" gate needs the per-floor run count.
+ */
+export async function getRunTrends(): Promise<BuildingFloorTrend[]> {
+  return getCachedAggregate('run-trends', async () => {
+    const { data: runs, error: runsError } = await supabase
+      .from('simulation_runs')
+      .select('id, building_id, floor_index, disaster_type, created_at')
+      .eq('status', 'completed')
+      .order('created_at', { ascending: true })
+
+    if (runsError) throw new Error(runsError.message)
+    if (!runs || runs.length === 0) return []
+
+    const runsWithFloor = (runs as {
+      id: string; building_id: string | null; floor_index: number | null
+      disaster_type: string | null; created_at: string
+    }[]).filter((r) => r.building_id != null && r.floor_index != null)
+
+    if (runsWithFloor.length === 0) return []
+
+    const runIds = runsWithFloor.map((r) => r.id)
+    const [cfgRes, resRes] = await Promise.all([
+      supabase.from('simulation_configs').select('run_id, agent_count').in('run_id', runIds),
+      supabase.from('simulation_results').select('run_id, evacuation_time, evacuated_count, max_congestion').in('run_id', runIds),
+    ])
+    if (cfgRes.error) throw new Error(cfgRes.error.message)
+    if (resRes.error) throw new Error(resRes.error.message)
+
+    const cfgByRun = new Map(
+      (cfgRes.data as { run_id: string; agent_count: number }[] ?? []).map((c) => [c.run_id, c]),
+    )
+    const resByRun = new Map(
+      (resRes.data as { run_id: string; evacuation_time: number; evacuated_count: number; max_congestion: number }[] ?? [])
+        .map((r) => [r.run_id, r]),
+    )
+
+    const groups = new Map<string, BuildingFloorTrend>()
+    for (const run of runsWithFloor) {
+      const res = resByRun.get(run.id)
+      if (!res) continue // skip runs that never recorded results
+      const cfg = cfgByRun.get(run.id)
+      const key = `${run.building_id}:${run.floor_index}`
+      let group = groups.get(key)
+      if (!group) {
+        group = { buildingId: run.building_id as string, floorIndex: run.floor_index as number, runs: [] }
+        groups.set(key, group)
+      }
+      group.runs.push({
+        runId: run.id,
+        createdAt: run.created_at,
+        disasterType: run.disaster_type ?? 'fire',
+        evacuationTime: res.evacuation_time ?? 0,
+        evacuatedCount: res.evacuated_count ?? 0,
+        agentCount: cfg?.agent_count ?? 0,
+        maxCongestion: res.max_congestion ?? 0,
+      })
+    }
+    return Array.from(groups.values())
+  })
+}
+
 // ---------------------------------------------------------------------------
 // Run Tags
 // ---------------------------------------------------------------------------

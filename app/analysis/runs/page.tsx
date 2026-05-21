@@ -616,7 +616,7 @@ function SummaryStats({ zoneCount, bottleneckCount, avgEvacTime }: SummaryStatsP
   ]
 
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '14px' }}>
+    <div data-grid-2col-mobile style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '14px' }}>
       {stats.map((stat, i) => (
         <div key={i} style={{
           display: 'flex', alignItems: 'center', gap: '14px',
