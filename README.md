@@ -1,6 +1,18 @@
 # EVACSIM — Crowd Evacuation Simulator
 
-Agent-based crowd evacuation simulator with predictive congestion analysis for the UP Cebu campus.
+Agent-based crowd evacuation simulator with predictive congestion analysis for the UP Cebu campus. Model fire and earthquake scenarios across campus buildings, watch crowds evacuate in real time, and surface bottlenecks before they become real-world risks.
+
+## Features
+
+- **Campus map** — interactive map of UP Cebu buildings; pick a building to drill.
+- **Disaster scenarios** — fire and earthquake drills with placeable hazards (fire, smoke, debris) that grow and spread over time.
+- **Two drill modes** — *manual* (draw an evacuation path yourself) and *autonomous* (an agent-based crowd that pathfinds to exits on its own).
+- **Adaptive agent routing** — Dijkstra-based pathfinding with live rerouting: agents avoid blocked corridors, smoke, and the danger radius of spreading fire.
+- **Congestion heatmaps** — spatial density maps and time-lapse replay of agent movement, clipped to the building footprint.
+- **Run analysis** — per-run zone analysis, bottleneck identification, and key evacuation metrics (including the evacuated-rate outcome).
+- **Aggregate insights** — cross-run floor heatmaps, drill-over-drill trends, and zone trends.
+- **Side-by-side comparison** — compare two completed runs to see which KPIs improved or regressed.
+- **Generated reports** — printable per-run reports with summary stats and crowd heatmap.
 
 ## Quick Start
 
@@ -22,17 +34,23 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 ## Project Structure
 
 ```
-app/              → Next.js pages (dashboard, simulate, analysis, map, auth, settings)
-components/       → Reusable UI components (Navbar, MapView, etc.)
+app/               → Next.js pages
+  page.tsx           → Dashboard (campus readiness, recent drills)
+  map/               → Interactive campus map
+  simulate/[id]/     → Disaster setup, manual run, autonomous drill
+  analysis/          → Run analysis, summary, compare, generated reports
+  auth/, settings/   → Authentication and user settings
+components/         → Reusable UI components (Navbar, MapView, analysis widgets)
 src/
-  config/         → Supabase client setup
-  context/        → React context providers (Auth)
-  hooks/          → Custom hooks (useAuth)
-  schema/         → TypeScript types & enums for the database
-  services/       → Data access layer (auth, simulation, user)
-styles/           → Global and component CSS
-supabase/         → Database migrations
-docs/             → Guidelines and documentation
+  config/           → Supabase client setup
+  context/          → React context providers (Auth)
+  hooks/            → Custom hooks (useAuth)
+  schema/           → TypeScript types & enums for the database
+  services/         → Data access layer (auth, simulation, analytics)
+  simulation/       → Agent-based engine: pathfinding, hazards, building model
+styles/             → Global and component CSS
+supabase/           → Database migrations
+docs/               → Guidelines and documentation
 ```
 
 ## Tech Stack

@@ -33,6 +33,18 @@ interface RunHistoryItem {
   label: string
 }
 
+/** Compact relative-time label, e.g. "2h ago" — keeps the run selector
+ *  scannable instead of a 40-character datetime string. */
+function relativeTime(dateStr: string): string {
+  const mins = Math.floor((Date.now() - new Date(dateStr).getTime()) / 60000)
+  if (mins < 1) return 'just now'
+  if (mins < 60) return `${mins}m ago`
+  const hrs = Math.floor(mins / 60)
+  if (hrs < 24) return `${hrs}h ago`
+  const days = Math.floor(hrs / 24)
+  return `${days} day${days === 1 ? '' : 's'} ago`
+}
+
 export default function AnalysisRunsPage() {
   const { isAuthenticated, isLoading: isAuthLoading } = useAuth()
 
@@ -78,10 +90,13 @@ export default function AnalysisRunsPage() {
   }
 
   function buildRunHistory(runs: SimulationRun[]): RunHistoryItem[] {
-    return runs.map(r => ({
-      id: r.id,
-      label: `${r.disasterType} — ${r.config?.agentCount ?? 0} agents (${new Date(r.createdAt).toLocaleString()})`,
-    }))
+    return runs.map(r => {
+      const type = r.disasterType.charAt(0).toUpperCase() + r.disasterType.slice(1)
+      return {
+        id: r.id,
+        label: `${type} · ${r.config?.agentCount ?? 0} agents · ${relativeTime(r.createdAt)}`,
+      }
+    })
   }
 
   async function handleRunChange(selectedRunId: string) {
@@ -166,6 +181,9 @@ export default function AnalysisRunsPage() {
   ))
   const bottleneckCount = usedZones.reduce((sum, z) => sum + z.bottleneckCount, 0)
   const avgEvacTime = run?.results?.evacuationTime != null ? `${run.results.evacuationTime.toFixed(1)}s` : '—'
+  const agentCount = run?.config?.agentCount ?? 0
+  const evacuatedCount = run?.results?.evacuatedCount ?? 0
+  const evacuatedPct = agentCount > 0 ? (evacuatedCount / agentCount) * 100 : null
   const hasUsedZones = usedZones.length > 0
   const hasDensityCells = densityCells.length > 0
   const hasAnalysisData = hasUsedZones || hasDensityCells
@@ -179,7 +197,6 @@ export default function AnalysisRunsPage() {
         currentRun={run}
         onRunChange={handleRunChange}
         onRequestDelete={id => setConfirmDeleteId(id)}
-        onRequestReset={() => setIsConfirmResetOpen(true)}
         isDeleting={deletingRunId !== null}
         isResetting={isResettingData}
       />
@@ -268,6 +285,7 @@ export default function AnalysisRunsPage() {
               zoneCount={usedZones.length}
               bottleneckCount={bottleneckCount}
               avgEvacTime={avgEvacTime}
+              evacuatedPct={evacuatedPct}
             />
           </FeatureContainer>
         </>
@@ -288,6 +306,15 @@ export default function AnalysisRunsPage() {
             This run did not record any traveled zones yet. Try another run to see heatmap results.
           </p>
         </div>
+      )}
+
+      {/* ── Danger zone — destructive reset, kept well away from navigation ── */}
+      {!isLoadingData && runHistory.length > 0 && (
+        <DangerZone
+          onRequestReset={() => setIsConfirmResetOpen(true)}
+          isResetting={isResettingData}
+          isDisabled={isResettingData || deletingRunId !== null}
+        />
       )}
 
       <ConfirmModal
@@ -327,7 +354,6 @@ interface PageHeaderProps {
   currentRun: SimulationRun | null
   onRunChange: (id: string) => void
   onRequestDelete: (id: string) => void
-  onRequestReset: () => void
   isDeleting: boolean
   isResetting: boolean
 }
@@ -338,53 +364,69 @@ function PageHeader({
   currentRun,
   onRunChange,
   onRequestDelete,
-  onRequestReset,
   isDeleting,
   isResetting,
 }: PageHeaderProps) {
   const hasRun = currentRun !== null
   const isMutating = isDeleting || isResetting
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '32px', flexWrap: 'wrap' }}>
-      <div style={{
-        width: '44px', height: '44px', borderRadius: '12px',
-        background: 'rgba(45,184,176,0.1)',
-        display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-      }}>
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#2db8b0" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M3 3v18h18"/><path d="M18.7 8l-5.1 5.2-2.8-2.7L7 14.3"/>
-        </svg>
-      </div>
-      <div style={{ flex: 1 }}>
-        <h1 style={{ margin: 0, fontSize: '26px', fontWeight: '700', color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>
-          Run Analysis
-        </h1>
-        <p style={{ margin: 0, fontSize: '14px', color: 'var(--text-secondary)' }}>
-          Crowd heatmap and bottleneck identification
-        </p>
+    <div style={{ marginBottom: '28px' }}>
+      {/* ── Row 1 — identity + navigation/selection ── */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flexWrap: 'wrap' }}>
+        <div style={{
+          width: '44px', height: '44px', borderRadius: '12px',
+          background: 'rgba(45,184,176,0.1)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+        }}>
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#2db8b0" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M3 3v18h18"/><path d="M18.7 8l-5.1 5.2-2.8-2.7L7 14.3"/>
+          </svg>
+        </div>
+        <div style={{ flex: 1, minWidth: '200px' }}>
+          <h1 style={{ margin: 0, fontSize: '26px', fontWeight: '700', color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>
+            Run Analysis
+          </h1>
+          <p style={{ margin: 0, fontSize: '14px', color: 'var(--text-secondary)' }}>
+            Crowd heatmap and bottleneck identification
+          </p>
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+          <a href="/analysis" style={{
+            display: 'inline-flex', alignItems: 'center', gap: '6px',
+            padding: '8px 14px', background: '#ffffff', color: '#0f172a',
+            borderRadius: '8px', textDecoration: 'none', fontSize: '13px', fontWeight: '600',
+            border: '1px solid var(--border)', flexShrink: 0,
+          }}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="15 18 9 12 15 6" />
+            </svg>
+            Back to analysis
+          </a>
+          {runHistory.length > 0 && (
+            <RunControls
+              runHistory={runHistory}
+              currentRunId={currentRunId}
+              onRunChange={onRunChange}
+              onRequestDelete={onRequestDelete}
+              isDisabled={isMutating}
+            />
+          )}
+        </div>
       </div>
 
-      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-        <a href="/analysis" style={{
-          display: 'inline-flex', alignItems: 'center', gap: '6px',
-          padding: '8px 14px', background: '#ffffff', color: '#0f172a',
-          borderRadius: '8px', textDecoration: 'none', fontSize: '13px', fontWeight: '600',
-          border: '1px solid var(--border)', flexShrink: 0,
+      {/* ── Row 2 — run actions, separated from navigation ── */}
+      <div style={{
+        display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap',
+        marginTop: '18px', paddingTop: '18px',
+        borderTop: '1px solid var(--border)',
+      }}>
+        <span style={{
+          fontSize: '11px', fontWeight: 700, letterSpacing: '0.09em',
+          textTransform: 'uppercase', color: 'var(--text-muted)', marginRight: '2px',
         }}>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <polyline points="15 18 9 12 15 6" />
-          </svg>
-          Back to analysis
-        </a>
-        {runHistory.length > 0 && (
-          <RunControls
-            runHistory={runHistory}
-            currentRunId={currentRunId}
-            onRunChange={onRunChange}
-            onRequestDelete={onRequestDelete}
-            isDisabled={isMutating}
-          />
-        )}
+          Actions
+        </span>
 
         <button
           type="button"
@@ -464,30 +506,67 @@ function PageHeader({
         <a href="/map" style={{
           display: 'inline-flex', alignItems: 'center', gap: '6px',
           padding: '8px 14px', background: '#2db8b0', color: '#ffffff',
-          borderRadius: '8px', textDecoration: 'none', fontSize: '13px', fontWeight: '600', flexShrink: 0,
+          borderRadius: '8px', textDecoration: 'none', fontSize: '13px', fontWeight: '600',
+          flexShrink: 0, marginLeft: 'auto',
         }}>
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
             <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
           </svg>
           New Simulation
         </a>
-
-        <button
-          onClick={onRequestReset}
-          disabled={isMutating}
-          style={{
-            padding: '8px 14px', background: '#ffffff',
-            border: '1px solid #ef4444', borderRadius: '8px',
-            fontSize: '13px', fontWeight: '600',
-            color: isMutating ? '#fca5a5' : '#ef4444',
-            cursor: isMutating ? 'not-allowed' : 'pointer',
-            opacity: isMutating ? 0.7 : 1,
-            flexShrink: 0,
-          }}
-        >
-          {isResetting ? 'Resetting...' : 'Reset All Data'}
-        </button>
       </div>
+    </div>
+  )
+}
+
+/** Destructive "reset everything" control, isolated in its own red-bordered
+ *  card at the very bottom of the page — well away from the navigation and
+ *  action toolbars so it can't be clicked by accident during a demo. */
+function DangerZone({ onRequestReset, isResetting, isDisabled }: {
+  onRequestReset: () => void
+  isResetting: boolean
+  isDisabled: boolean
+}) {
+  return (
+    <div style={{
+      marginTop: '32px', padding: '20px 24px',
+      background: '#fffbfb', border: '1px solid #fecaca', borderRadius: '14px',
+      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+      gap: '16px', flexWrap: 'wrap',
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', minWidth: '220px', flex: 1 }}>
+        <div style={{
+          width: '40px', height: '40px', borderRadius: '10px',
+          background: 'rgba(239,68,68,0.1)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+        }}>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+            <line x1="12" y1="9" x2="12" y2="13" /><line x1="12" y1="17" x2="12.01" y2="17" />
+          </svg>
+        </div>
+        <div>
+          <div style={{ fontSize: '14px', fontWeight: 700, color: '#b91c1c' }}>Danger Zone</div>
+          <div style={{ fontSize: '13px', color: 'var(--text-secondary)', marginTop: '2px' }}>
+            Permanently delete every simulation run and all associated analysis data. This cannot be undone.
+          </div>
+        </div>
+      </div>
+      <button
+        type="button"
+        onClick={onRequestReset}
+        disabled={isDisabled}
+        style={{
+          padding: '9px 16px',
+          background: isDisabled ? '#fca5a5' : '#ef4444',
+          color: '#ffffff', border: 'none', borderRadius: '8px',
+          fontSize: '13px', fontWeight: 700,
+          cursor: isDisabled ? 'not-allowed' : 'pointer',
+          flexShrink: 0,
+        }}
+      >
+        {isResetting ? 'Resetting...' : 'Reset All Data'}
+      </button>
     </div>
   )
 }
@@ -574,9 +653,18 @@ interface SummaryStatsProps {
   zoneCount: number
   bottleneckCount: number
   avgEvacTime: string
+  evacuatedPct: number | null
 }
 
-function SummaryStats({ zoneCount, bottleneckCount, avgEvacTime }: SummaryStatsProps) {
+function SummaryStats({ zoneCount, bottleneckCount, avgEvacTime, evacuatedPct }: SummaryStatsProps) {
+  // Evacuated rate is the headline outcome metric — color it like a grade:
+  // green ≥ 90 %, amber 70–89 %, red below 70 %, grey when there's no data.
+  const evacAccent = evacuatedPct == null
+    ? '#94a3b8'
+    : evacuatedPct >= 90 ? '#22c55e'
+    : evacuatedPct >= 70 ? '#f59e0b'
+    : '#ef4444'
+
   const stats = [
     {
       label: 'Total Zones Analyzed',
@@ -613,10 +701,22 @@ function SummaryStats({ zoneCount, bottleneckCount, avgEvacTime }: SummaryStatsP
         </svg>
       ),
     },
+    {
+      label: 'Evacuated',
+      value: evacuatedPct != null ? `${evacuatedPct.toFixed(0)}%` : '—',
+      accent: evacAccent,
+      icon: (
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+          <polyline points="16 17 21 12 16 7" />
+          <line x1="21" y1="12" x2="9" y2="12" />
+        </svg>
+      ),
+    },
   ]
 
   return (
-    <div data-grid-2col-mobile style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '14px' }}>
+    <div data-grid-2col-mobile style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '14px' }}>
       {stats.map((stat, i) => (
         <div key={i} style={{
           display: 'flex', alignItems: 'center', gap: '14px',

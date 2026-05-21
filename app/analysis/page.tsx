@@ -1,7 +1,8 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useAuth } from '@/src/hooks/useAuth'
+import { getSimulationHistory } from '@/src/services/simulation.service'
 
 interface FeatureButtonProps {
   href: string
@@ -14,14 +15,54 @@ interface FeatureButtonProps {
 /* Uniform brand accent for all three feature buttons. */
 const ACCENT = '#2db8b0'
 
+interface HubStats {
+  runCount: number
+  lastDrill: string
+  bestEvacTime: number | null
+}
+
+/** Compact relative-time label, e.g. "2h ago". */
+function relativeTime(dateStr: string): string {
+  const mins = Math.floor((Date.now() - new Date(dateStr).getTime()) / 60000)
+  if (mins < 1) return 'just now'
+  if (mins < 60) return `${mins}m ago`
+  const hrs = Math.floor(mins / 60)
+  if (hrs < 24) return `${hrs}h ago`
+  const days = Math.floor(hrs / 24)
+  return `${days} day${days === 1 ? '' : 's'} ago`
+}
+
 export default function AnalysisPage() {
   const { isAuthenticated, isLoading: isAuthLoading } = useAuth()
+  const [hubStats, setHubStats] = useState<HubStats | null>(null)
 
   useEffect(() => {
     if (!isAuthLoading && !isAuthenticated) {
       window.location.href = '/auth'
     }
   }, [isAuthLoading, isAuthenticated])
+
+  // Load a compact live-stats strip — purely additive. If it errors or there
+  // are no runs yet, the strip simply stays unrendered (no flicker, no empty
+  // state) so the hub still reads cleanly.
+  useEffect(() => {
+    if (!isAuthenticated) return
+    let cancelled = false
+    getSimulationHistory(100)
+      .then((runs) => {
+        if (cancelled || runs.length === 0) return
+        const times = runs
+          .map((r) => r.results?.evacuationTime)
+          .filter((t): t is number => typeof t === 'number')
+        setHubStats({
+          runCount: runs.length,
+          lastDrill: relativeTime(runs[0].createdAt),
+          bestEvacTime: times.length > 0 ? Math.min(...times) : null,
+        })
+      })
+      .catch(() => { /* strip stays hidden — non-critical */ })
+    return () => { cancelled = true }
+  }, [isAuthenticated])
 
   if (isAuthLoading) {
     return (
@@ -58,6 +99,35 @@ export default function AnalysisPage() {
         </div>
       </div>
 
+      {/* ── Live stats strip — renders only once run data exists ───── */}
+      {hubStats && (
+        <div style={{
+          display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '12px',
+          marginTop: '20px', padding: '12px 18px',
+          background: '#ffffff', border: '1px solid var(--border)', borderRadius: '12px',
+          boxShadow: '0 4px 18px rgba(15, 23, 42, 0.05), 0 1px 3px rgba(15, 23, 42, 0.04)',
+          fontSize: '13px', color: 'var(--text-secondary)',
+        }}>
+          <span>
+            <strong style={{ color: ACCENT, fontWeight: 700 }}>{hubStats.runCount}</strong>
+            {' '}{hubStats.runCount === 1 ? 'run' : 'runs'} completed
+          </span>
+          <StripDot />
+          <span>
+            Last drill <strong style={{ color: ACCENT, fontWeight: 700 }}>{hubStats.lastDrill}</strong>
+          </span>
+          {hubStats.bestEvacTime != null && (
+            <>
+              <StripDot />
+              <span>
+                Best evac time{' '}
+                <strong style={{ color: ACCENT, fontWeight: 700 }}>{hubStats.bestEvacTime.toFixed(1)}s</strong>
+              </span>
+            </>
+          )}
+        </div>
+      )}
+
       {/* ── Stacked feature buttons ─────────────────────────── */}
       <div style={{
         display: 'flex',
@@ -90,6 +160,16 @@ export default function AnalysisPage() {
         />
       </div>
     </div>
+  )
+}
+
+/** Small separator dot for the live-stats strip. */
+function StripDot() {
+  return (
+    <span style={{
+      width: '4px', height: '4px', borderRadius: '50%',
+      background: 'var(--border-strong)', flexShrink: 0,
+    }} />
   )
 }
 
