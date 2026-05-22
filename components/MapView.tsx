@@ -180,13 +180,24 @@ export default function MapView({ regions, markers, assemblyMarkers, onRegionCli
     }
 
     runResize()
+    const settleTimers: ReturnType<typeof setTimeout>[] = [
+      setTimeout(runResize, 0),
+      setTimeout(runResize, 120),
+      setTimeout(runResize, 360),
+    ]
+
+    window.addEventListener('resize', runResize)
+    window.visualViewport?.addEventListener('resize', runResize)
+    window.visualViewport?.addEventListener('scroll', runResize)
 
     if (typeof ResizeObserver === 'undefined') {
-      window.addEventListener('resize', runResize)
       return () => {
         window.removeEventListener('resize', runResize)
+        window.visualViewport?.removeEventListener('resize', runResize)
+        window.visualViewport?.removeEventListener('scroll', runResize)
         if (rafId !== null) cancelAnimationFrame(rafId)
         if (settleTimer) clearTimeout(settleTimer)
+        for (const timer of settleTimers) clearTimeout(timer)
       }
     }
 
@@ -194,9 +205,13 @@ export default function MapView({ regions, markers, assemblyMarkers, onRegionCli
     observer.observe(container)
 
     return () => {
+      window.removeEventListener('resize', runResize)
+      window.visualViewport?.removeEventListener('resize', runResize)
+      window.visualViewport?.removeEventListener('scroll', runResize)
       observer.disconnect()
       if (rafId !== null) cancelAnimationFrame(rafId)
       if (settleTimer) clearTimeout(settleTimer)
+      for (const timer of settleTimers) clearTimeout(timer)
     }
   }, [mapLoaded, flat2d])
 
@@ -650,7 +665,7 @@ export default function MapView({ regions, markers, assemblyMarkers, onRegionCli
   }, [selectedMapboxBuildingFilter])
 
   return (
-    <div ref={containerRef} className="map-view-shell" style={{ position: 'relative', height: '100%', width: '100%', borderRadius: '12px', overflow: 'hidden' }}>
+    <div ref={containerRef} className="map-view-shell" style={{ position: 'relative', height: '100%', width: '100%', borderRadius: '12px', overflow: 'hidden', zoom: 'calc(1 / var(--app-ui-scale))' }}>
       <style>{`
         .map-view-shell .mapboxgl-ctrl-bottom-right {
           transform: ${uiTransform};

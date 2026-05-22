@@ -18,18 +18,11 @@ import {
   type AccurateCongestion,
   type AutonomousTrace,
 } from '@/src/simulation/autonomous-analytics'
-import { createSimulation, evaluateSimulation, getTremorTimeRemaining, isInTremorPhase, stepSimulation, type QuakeScenario, type SimulationResults, type SimulationState } from '@/src/simulation/engine'
+import { createSimulation, EARTHQUAKE_TREMOR_DURATION, evaluateSimulation, getTremorTimeRemaining, isInTremorPhase, stepSimulation, type QuakeScenario, type SimulationResults, type SimulationState } from '@/src/simulation/engine'
 import { getBuildingById, getNode, type FloorModel } from '@/src/simulation/building-model'
 import { createSimulationRun, saveDensityCells, saveSimulationResults } from '@/src/services/simulation.service'
 import { getFriendlyErrorMessage, isRateLimitError } from '@/src/services/rate-limit.service'
 import { computeFireSeverity, getHazardStorageKey, isHazardStorageAvailable, loadHazardPlan, placedHazardToZone, saveHazardPlan, type PlacedHazard } from '@/src/simulation/hazard-placement'
-import {
-  getOccupancyRatio,
-  getPresetsFor,
-  getSeverityAccent,
-  resolvePresetHazardRadius,
-  type DemoPreset,
-} from '@/src/simulation/presets/demo-presets'
 import {
   createSpatialGridTrace,
   densityCellsFromTrace,
@@ -42,13 +35,8 @@ const SIMULATION_SECONDS_PER_MS = 0.35 / 120
 const MAX_FRAME_DELTA_MS = 48
 const HAZARD_GROWTH_MULTIPLIER = 0.45
 
-/** Brand teal — used for all UI chrome (buttons, sliders, section labels,
- *  highlights, links). Disaster-specific colors (`meta.accent`) are reserved
- *  for the visualization layer (exit markers contrasting against the hazard
- *  rendering on the floorplan). */
 const APP_ACCENT = '#2db8b0'
 const APP_ACCENT_DARK = '#1f9189'
-// Flip to true to reveal the underlying navigation graph (edges + corridor nodes) for debugging.
 const SHOW_DEBUG_GRAPH = false
 
 const DISASTER_META: Record<DisasterType, {
@@ -68,9 +56,6 @@ const DISASTER_META: Record<DisasterType, {
   },
 }
 
-/** Earthquake severity presets. The administrator picks a scenario — an
- *  earthquake happens to the building, it isn't a magnitude dial they set.
- *  The engine rolls a concrete magnitude inside the scenario's band. */
 const QUAKE_SCENARIOS: { id: QuakeScenario; label: string; description: string; accent: string }[] = [
   { id: 'minor', label: 'Minor', description: 'Light shaking — fragile points usually hold.', accent: '#f59e0b' },
   { id: 'moderate', label: 'Moderate', description: 'A stairwell or long span is likely to fail.', accent: '#f97316' },
@@ -115,6 +100,64 @@ function createHazardDragImage(type: 'fire' | 'smoke' | 'debris'): HTMLElement {
 
   document.body.appendChild(el)
   return el
+}
+
+function clampHazardPosition(x: number, y: number, radius: number) {
+  return {
+    x: clamp(x, radius, 1200 - radius),
+    y: clamp(y, radius, 675 - radius),
+  }
+}
+
+function hazardColor(type: 'fire' | 'smoke' | 'debris' | 'blocked', selected = false) {
+  if (type === 'smoke') return {
+    fill: selected ? 'rgba(100, 116, 139, 0.38)' : 'rgba(100, 116, 139, 0.22)',
+    stroke: '#64748b',
+  }
+  if (type === 'debris' || type === 'blocked') return {
+    fill: selected ? 'rgba(245, 158, 11, 0.35)' : 'rgba(120, 53, 15, 0.28)',
+    stroke: selected ? '#f59e0b' : '#92400e',
+  }
+  return {
+    fill: selected ? 'rgba(239, 68, 68, 0.38)' : 'rgba(239, 68, 68, 0.24)',
+    stroke: '#ef4444',
+  }
+}
+
+function renderHazardShape(
+  hazard: { type: 'fire' | 'smoke' | 'debris' | 'blocked'; x: number; y: number; radius: number },
+  currentRadius: number,
+  selected = false,
+  extraProps: { strokeWidth?: number } = {},
+) {
+  const colors = hazardColor(hazard.type, selected)
+  if (hazard.type === 'debris' || hazard.type === 'blocked') {
+    return (
+      <rect
+        x={hazard.x - currentRadius}
+        y={hazard.y - currentRadius}
+        width={currentRadius * 2}
+        height={currentRadius * 2}
+        fill={colors.fill}
+        stroke={colors.stroke}
+        strokeWidth="2"
+        strokeDasharray={hazard.type === 'blocked' ? '6 6' : undefined}
+        rx="4"
+        {...extraProps}
+      />
+    )
+  }
+  return (
+    <circle
+      cx={hazard.x}
+      cy={hazard.y}
+      r={currentRadius}
+      fill={colors.fill}
+      stroke={colors.stroke}
+      strokeWidth="2"
+      {...extraProps}
+    />
+  )
 }
 
 const OCCUPANCY_PRESETS = [
@@ -175,21 +218,6 @@ function describeExitUsage(results: SimulationResults | null) {
   return Object.entries(results.exitUsage).sort((left, right) => right[1] - left[1])
 }
 
-function describePresetOutcome(preset: DemoPreset, results: SimulationResults, peakCongestion: number): string {
-  // Tier 1: severe outcomes first — those carry the strongest stakeholder signal.
-  if (results.trappedCount > 0) {
-    return `${results.trappedCount} occupant${results.trappedCount === 1 ? '' : 's'} trapped — hazards blocked the only legal egress route. Matches the preset intent: ${preset.expectedOutcome}`
-  }
-  if (peakCongestion >= 75) {
-    return `Critical congestion (${peakCongestion} simultaneous agents on one edge) confirms the preset stress. ${preset.expectedOutcome}`
-  }
-  if (results.totalReroutes >= results.evacuatedCount * 0.4) {
-    return `${results.totalReroutes} reroutes triggered — agents heavily replanned mid-evacuation. ${preset.expectedOutcome}`
-  }
-  // Tier 2: clean completion under preset conditions.
-  return `Evacuation completed without critical blockage. ${preset.expectedOutcome}`
-}
-
 export default function AutonomousScienceBuildingPage() {
   const { isAuthenticated, isLoading } = useAuth()
   const params = useParams()
@@ -222,9 +250,6 @@ export default function AutonomousScienceBuildingPage() {
   const baseTrace = useMemo(() => (floor ? createAutonomousTrace(floor) : null), [floor])
 
   const [agentCountOverride, setAgentCountOverride] = useState<number | null>(null)
-  /** Per-room population overrides keyed by NavNode.id. Rooms in this map use
-   *  their fixed value; rooms NOT in this map share the remaining budget
-   *  (totalAgents − sum of overrides) proportionally to their capacity. */
   const [roomOverrides, setRoomOverrides] = useState<Record<string, number>>({})
   const [roomFilter, setRoomFilter] = useState<string>('')
   const [simulationSpeed, setSimulationSpeed] = useState(1)
@@ -239,11 +264,9 @@ export default function AutonomousScienceBuildingPage() {
   const [savedRunId, setSavedRunId] = useState<string | null>(null)
   const [placedHazards, setPlacedHazards] = useState<PlacedHazard[]>([])
   const [selectedHazardId, setSelectedHazardId] = useState<string | null>(null)
+  const [hoveredHazardId, setHoveredHazardId] = useState<string | null>(null)
+  const [draggingHazardId, setDraggingHazardId] = useState<string | null>(null)
   const [storageAvailable] = useState(() => isHazardStorageAvailable())
-  const [appliedPreset, setAppliedPreset] = useState<DemoPreset | null>(null)
-  // Earthquake-only. Severity scenario — the engine rolls a magnitude inside
-  // the scenario's band and the structural-collapse model runs the building's
-  // fragile edges against it on the next run.
   const [quakeScenario, setQuakeScenario] = useState<QuakeScenario>('moderate')
   const dropRef = useRef<HTMLDivElement | null>(null)
 
@@ -253,19 +276,11 @@ export default function AutonomousScienceBuildingPage() {
   const launchedAgentCountRef = useRef(0)
   const animationFrameRef = useRef<number | null>(null)
   const lastFrameTimeRef = useRef<number | null>(null)
-  // Snapshot of the exact inputs the engine was given for the current run,
-  // captured at launch so the analysis "Replay" view can rebuild a bit-for-bit
-  // copy of the simulation later.
   const launchedReplayInputsRef = useRef<{
     seed: number
     hazards: PlacedHazard[]
     agentsPerRoom: Record<string, number>
   } | null>(null)
-  // Severity bucket the launched run falls into. Earthquakes inherit it from
-  // the picked QuakeScenario; fires are auto-classified from the hazards
-  // placed on the floor. Captured at launch and persisted to the saved run
-  // so the building-readiness score can apply difficulty weighting and the
-  // mandatory-coverage cap downstream.
   const launchedSeverityRef = useRef<'minor' | 'moderate' | 'severe'>('minor')
   const totalAgents = maxAgents > 0
     ? clamp(agentCountOverride ?? defaultAgentCount, 1, maxAgents)
@@ -291,8 +306,6 @@ export default function AutonomousScienceBuildingPage() {
     })
   }, [hazardStorageKey])
 
-  // Per-room overrides become meaningless when the floor's room set changes
-  // (different building or different floor), so wipe them on floor switch.
   useEffect(() => {
     queueMicrotask(() => setRoomOverrides({}))
   }, [floor])
@@ -304,26 +317,37 @@ export default function AutonomousScienceBuildingPage() {
 
   const handleDrop = useCallback((event: React.DragEvent<HTMLDivElement>) => {
     event.preventDefault()
+    if (simStateRef.current) return
     const type = event.dataTransfer.getData('application/x-hazard') as PlacedHazard['type']
+    const hazardId = event.dataTransfer.getData('application/x-hazard-id')
     if (!type || !dropRef.current) return
     const rect = dropRef.current.getBoundingClientRect()
     if (!rect.width || !rect.height) return
     const px = ((event.clientX - rect.left) / rect.width) * 1200
     const py = ((event.clientY - rect.top) / rect.height) * 675
     const radius = type === 'fire' ? 38 : type === 'smoke' ? 46 : 34
-    const x = clamp(px, radius, 1200 - radius)
-    const y = clamp(py, radius, 675 - radius)
+    const { x, y } = clampHazardPosition(px, py, radius)
 
-    setPlacedHazards((prev) => [
-      ...prev,
-      {
-        id: `${type}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-        type,
-        x,
-        y,
-        radius,
-      },
-    ])
+    if (hazardId) {
+      setPlacedHazards((prev) => prev.map((hazard) => (
+        hazard.id === hazardId
+          ? { ...hazard, x, y }
+          : hazard
+      )))
+      setSelectedHazardId(hazardId)
+    } else {
+      setPlacedHazards((prev) => [
+        ...prev,
+        {
+          id: `${type}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+          type,
+          x,
+          y,
+          radius,
+        },
+      ])
+    }
+    setDraggingHazardId(null)
   }, [])
 
   const handleDragStart = (type: PlacedHazard['type']) => (event: React.DragEvent<HTMLButtonElement>) => {
@@ -336,6 +360,34 @@ export default function AutonomousScienceBuildingPage() {
     }
   }
 
+  const getMapPointFromClient = useCallback((clientX: number, clientY: number) => {
+    if (!dropRef.current) return null
+    const rect = dropRef.current.getBoundingClientRect()
+    if (!rect.width || !rect.height) return null
+    return {
+      x: ((clientX - rect.left) / rect.width) * 1200,
+      y: ((clientY - rect.top) / rect.height) * 675,
+    }
+  }, [])
+
+  const handlePlacedHazardMouseDown = (hazard: PlacedHazard) => (event: React.MouseEvent<SVGGElement>) => {
+    if (simStateRef.current) return
+    event.preventDefault()
+    setSelectedHazardId(hazard.id)
+    setDraggingHazardId(hazard.id)
+  }
+
+  const handleMapMouseMove = useCallback((event: React.MouseEvent<HTMLDivElement>) => {
+    if (!draggingHazardId || simStateRef.current) return
+    const point = getMapPointFromClient(event.clientX, event.clientY)
+    if (!point) return
+    setPlacedHazards((prev) => prev.map((hazard) => {
+      if (hazard.id !== draggingHazardId) return hazard
+      const next = clampHazardPosition(point.x, point.y, hazard.radius)
+      return { ...hazard, ...next }
+    }))
+  }, [draggingHazardId, getMapPointFromClient])
+
   const removeHazard = useCallback((hazardId: string) => {
     setPlacedHazards((prev) => prev.filter((hazard) => hazard.id !== hazardId))
     if (selectedHazardId === hazardId) setSelectedHazardId(null)
@@ -344,38 +396,7 @@ export default function AutonomousScienceBuildingPage() {
   const clearHazards = useCallback(() => {
     setPlacedHazards([])
     setSelectedHazardId(null)
-    setAppliedPreset(null)
   }, [])
-
-  const availablePresets = useMemo(
-    () => getPresetsFor(regionId, floorIndex, disaster),
-    [regionId, floorIndex, disaster],
-  )
-
-  const applyPreset = useCallback((preset: DemoPreset) => {
-    const stamp = Date.now()
-    const hazards: PlacedHazard[] = preset.hazards.map((hazard, index) => {
-      const radius = resolvePresetHazardRadius(hazard)
-      return {
-        id: `${preset.id}-${index}-${stamp}`,
-        type: hazard.type,
-        x: clamp(hazard.x, radius, 1200 - radius),
-        y: clamp(hazard.y, radius, 675 - radius),
-        radius,
-      }
-    })
-    setPlacedHazards(hazards)
-    setSelectedHazardId(null)
-    setAppliedPreset(preset)
-    if (maxAgents > 0) {
-      setAgentCountOverride(Math.max(1, Math.round(maxAgents * getOccupancyRatio(preset.occupancyPreset))))
-    }
-    setRoomOverrides({})
-  }, [maxAgents])
-
-  // Whenever the user manually edits hazards or occupancy, the "preset
-  // applied" label stops being accurate — drop it so the chip badge clears.
-  const clearAppliedPreset = useCallback(() => setAppliedPreset(null), [])
 
   useEffect(() => {
     simStateRef.current = simState
@@ -518,17 +539,10 @@ export default function AutonomousScienceBuildingPage() {
     }
   }, [floor, isPlaying, persistCompletedRun, simulationSpeed])
 
-  /**
-   * Final per-room agent counts. Rooms with explicit overrides use that exact
-   * number (clamped to capacity). Remaining rooms split the leftover budget
-   * (`totalAgents − sum of overrides`) proportionally to their capacity, using
-   * the same algorithm as `distributeAgentsByCapacity`.
-   */
   const roomAllocations = useMemo<Record<string, number>>(() => {
     if (!floor) return {}
     const rooms = floor.nodes.filter((node) => node.type === 'room')
 
-    // Pin overrides first.
     const result: Record<string, number> = {}
     let overriddenSum = 0
     for (const r of rooms) {
@@ -539,7 +553,6 @@ export default function AutonomousScienceBuildingPage() {
       }
     }
 
-    // Distribute remaining budget proportionally across non-overridden rooms.
     const remainingRooms = rooms.filter(
       (r) => !Object.prototype.hasOwnProperty.call(roomOverrides, r.id),
     )
@@ -547,8 +560,6 @@ export default function AutonomousScienceBuildingPage() {
     const remainingBudget = Math.max(0, totalAgents - overriddenSum)
 
     if (remainingRooms.length > 0 && remainingCap > 0 && remainingBudget > 0) {
-      // Largest-remainder rounding so the per-room shares sum back to
-      // `remainingBudget` exactly (no off-by-one drift).
       const exact = remainingRooms.map((r) => ({
         id: r.id,
         capacity: r.capacity,
@@ -573,8 +584,6 @@ export default function AutonomousScienceBuildingPage() {
     return result
   }, [floor, totalAgents, roomOverrides])
 
-  /** Sum of room allocations actually being launched (may differ from
-   *  `totalAgents` when overrides exceed the budget — overrides win). */
   const effectiveAgentCount = useMemo(
     () => Object.values(roomAllocations).reduce((sum, n) => sum + n, 0),
     [roomAllocations],
@@ -598,11 +607,6 @@ export default function AutonomousScienceBuildingPage() {
     setRoomOverrides({})
   }, [])
 
-  // Previewed severity bucket this run would save as if launched right now.
-  // Shown next to the hazard placement panel so the user knows whether their
-  // scenario counts as minor / moderate / severe toward the building's
-  // Evacuation Readiness Score — buildings can't earn an A without at least
-  // one severe drill on file.
   const previewSeverity: 'minor' | 'moderate' | 'severe' = useMemo(() => (
     disaster === 'earthquake' ? quakeScenario : computeFireSeverity(placedHazards)
   ), [disaster, quakeScenario, placedHazards])
@@ -616,6 +620,18 @@ export default function AutonomousScienceBuildingPage() {
   ), [activeTrace, floor])
   const exitUsage = useMemo(() => describeExitUsage(results), [results])
   const peakCongestion = useMemo(() => (activeTrace ? getPeakCongestion(activeTrace) : 0), [activeTrace])
+  const activeDebrisCount = simState?.hazards.filter((h) => h.active && h.zone.type === 'debris').length ?? 0
+  const pendingDebrisCount = simState?.hazards.filter((h) => !h.active && h.zone.type === 'debris').length ?? 0
+  const tremorRemaining = simState && disaster === 'earthquake' ? getTremorTimeRemaining(simState) : 0
+  const quakePhaseLabel = disaster === 'earthquake'
+    ? !simState
+      ? 'Ready'
+      : tremorRemaining > 0
+      ? 'Tremor'
+      : pendingDebrisCount > 0
+      ? 'Aftershock watch'
+      : 'Collapse settled'
+    : 'Hazard plan'
 
 
   const setPreset = useCallback((ratio: number) => {
@@ -626,20 +642,12 @@ export default function AutonomousScienceBuildingPage() {
   const launchSimulation = useCallback(() => {
     if (!floor) return
 
-    // Capture the inputs needed to replay this run exactly later. The seed
-    // makes per-agent attributes (reaction delay, speed, jitter)
-    // reproducible; the hazards + room allocations make the world state
-    // reproducible.
     const seed = Math.floor(Math.random() * 0xffffffff) >>> 0
     launchedReplayInputsRef.current = {
       seed,
       hazards: placedHazards.map((h) => ({ ...h })),
       agentsPerRoom: { ...roomAllocations },
     }
-    // Earthquake severity is picked explicitly via the scenario buttons.
-    // Fire severity is derived from the hazards the user actually placed —
-    // an empty placement counts as 'minor', and the score scales up with
-    // hazard count and type (see computeFireSeverity).
     launchedSeverityRef.current = disaster === 'earthquake'
       ? quakeScenario
       : computeFireSeverity(placedHazards)
@@ -648,7 +656,7 @@ export default function AutonomousScienceBuildingPage() {
       disasterType: disaster,
       agentsPerRoom: roomAllocations,
       hazardGrowthMultiplier: HAZARD_GROWTH_MULTIPLIER,
-      hazardOverrides: hazardZones,
+      hazardOverrides: disaster === 'earthquake' ? undefined : hazardZones,
       seed,
       quakeScenario: disaster === 'earthquake' ? quakeScenario : undefined,
     })
@@ -742,10 +750,10 @@ export default function AutonomousScienceBuildingPage() {
               Back to Disaster Setup
             </button>
             <button
-              onClick={() => router.push(`/simulate/${encodeURIComponent(regionId)}/run?disaster=${disaster}&floor=${floorIndex}`)}
+              onClick={() => router.push('/map')}
               style={{ padding: '10px 18px', borderRadius: '8px', border: '1px solid var(--border)', background: '#ffffff', color: 'var(--text-primary)', fontSize: '13px', fontWeight: 600, cursor: 'pointer' }}
             >
-              Open Manual Run
+              Back to Map
             </button>
           </div>
         </div>
@@ -770,9 +778,6 @@ export default function AutonomousScienceBuildingPage() {
         }
         .auto-layout {
           display: grid;
-          /* Symmetric side panels keep the map visually centered no matter
-             how much content each panel renders — fixes the "right panel
-             feels heavier than the left" imbalance in the previous layout. */
           grid-template-columns: minmax(300px, 340px) minmax(0, 1fr) minmax(300px, 340px);
           gap: 18px;
           max-width: 1600px;
@@ -780,7 +785,6 @@ export default function AutonomousScienceBuildingPage() {
           align-items: start;
         }
 
-        /* Tablet — collapse to two columns: map on top, side panels below. */
         @media (max-width: 1100px) {
           .auto-layout {
             grid-template-columns: 1fr 1fr;
@@ -792,7 +796,6 @@ export default function AutonomousScienceBuildingPage() {
           .auto-layout > :nth-child(3) { grid-area: metrics; }
         }
 
-        /* Phone — single column, no sticky side panels. */
         @media (max-width: 720px) {
           .auto-layout {
             grid-template-columns: 1fr;
@@ -825,7 +828,6 @@ export default function AutonomousScienceBuildingPage() {
         .auto-panel-section {
           padding: 18px 20px;
           border-bottom: 1px solid #e4e9ef;
-          /* Consistent vertical rhythm between stacked sections. */
           display: flex;
           flex-direction: column;
           gap: 12px;
@@ -835,6 +837,14 @@ export default function AutonomousScienceBuildingPage() {
 
         .auto-panel-section:last-child {
           border-bottom: 0;
+        }
+
+        .auto-section-title {
+          font-size: 11px;
+          font-weight: 600;
+          letter-spacing: 0.08em;
+          text-transform: uppercase;
+          color: ${APP_ACCENT_DARK};
         }
 
         .auto-chip-row {
@@ -864,8 +874,6 @@ export default function AutonomousScienceBuildingPage() {
           border-color: transparent;
         }
 
-        /* Brand-teal slider — replaces the OS default accent so the slider
-           matches the rest of the EVACSIM chrome regardless of disaster. */
         .auto-range {
           appearance: none;
           -webkit-appearance: none;
@@ -921,8 +929,6 @@ export default function AutonomousScienceBuildingPage() {
           border: 1px solid #dee5ee;
           background: linear-gradient(180deg, #ffffff 0%, #f4f7fb 100%);
           padding: 12px 14px;
-          /* Match the height of the largest stat in the same grid so the
-             panel sections look balanced. */
           display: flex;
           flex-direction: column;
           justify-content: center;
@@ -931,6 +937,77 @@ export default function AutonomousScienceBuildingPage() {
 
         .auto-map-card {
           padding: 16px;
+        }
+
+        .auto-summary-strip {
+          display: grid;
+          grid-template-columns: repeat(4, minmax(0, 1fr));
+          gap: 10px;
+          margin-top: 16px;
+        }
+
+        .auto-summary-card {
+          min-height: 74px;
+          border-radius: 14px;
+          border: 1px solid #d8dfe8;
+          background: rgba(252, 253, 254, 0.92);
+          box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+          padding: 12px 14px;
+          display: flex;
+          flex-direction: column;
+          justify-content: space-between;
+          gap: 8px;
+        }
+
+        .auto-summary-card__label {
+          font-size: 10px;
+          font-weight: 700;
+          letter-spacing: 0.08em;
+          text-transform: uppercase;
+          color: var(--text-muted);
+        }
+
+        .auto-summary-card__value {
+          font-size: 16px;
+          font-weight: 800;
+          color: var(--text-primary);
+          letter-spacing: -0.01em;
+        }
+
+        .auto-summary-card__note {
+          font-size: 11px;
+          color: var(--text-secondary);
+          line-height: 1.35;
+        }
+
+        .auto-tremor-banner {
+          position: absolute;
+          left: 14px;
+          top: 14px;
+          z-index: 5;
+          max-width: min(430px, calc(100% - 28px));
+          border-radius: 12px;
+          border: 1px solid rgba(245, 158, 11, 0.45);
+          background: rgba(255, 251, 235, 0.94);
+          box-shadow: 0 12px 28px rgba(15, 23, 42, 0.16);
+          padding: 10px 12px;
+          color: #92400e;
+          pointer-events: none;
+        }
+
+        .auto-tremor-banner__title {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          font-size: 12px;
+          font-weight: 800;
+          margin-bottom: 3px;
+        }
+
+        .auto-tremor-banner__copy {
+          font-size: 11px;
+          line-height: 1.45;
+          color: #78350f;
         }
 
         .auto-map-shell {
@@ -952,8 +1029,6 @@ export default function AutonomousScienceBuildingPage() {
           display: block;
         }
 
-        /* Compact single-column list — scales to dozens of rooms without
-           dominating the side panel. Caps height and scrolls internally. */
         .auto-room-list {
           display: flex;
           flex-direction: column;
@@ -1067,6 +1142,18 @@ export default function AutonomousScienceBuildingPage() {
           gap: 8px;
         }
 
+        @media (max-width: 980px) {
+          .auto-summary-strip {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+          }
+        }
+
+        @media (max-width: 720px) {
+          .auto-summary-strip {
+            grid-template-columns: 1fr;
+          }
+        }
+
         @media (max-width: 1320px) {
           .auto-layout {
             grid-template-columns: minmax(280px, 320px) minmax(0, 1fr);
@@ -1174,6 +1261,31 @@ export default function AutonomousScienceBuildingPage() {
             >
               Reset
             </button>
+          </div>
+        </div>
+
+        <div className="auto-summary-strip" aria-label="Autonomous drill summary">
+          <div className="auto-summary-card">
+            <div className="auto-summary-card__label">Scenario</div>
+            <div className="auto-summary-card__value" style={{ color: disaster === 'earthquake' ? '#b45309' : '#b91c1c', textTransform: 'capitalize' }}>
+              {disaster === 'earthquake' ? `${quakeScenario} quake` : previewSeverity}
+            </div>
+            <div className="auto-summary-card__note">{disaster === 'earthquake' ? quakePhaseLabel : `${placedHazards.length} placed hazard${placedHazards.length === 1 ? '' : 's'}`}</div>
+          </div>
+          <div className="auto-summary-card">
+            <div className="auto-summary-card__label">Population</div>
+            <div className="auto-summary-card__value">{effectiveAgentCount} agents</div>
+            <div className="auto-summary-card__note">{Object.keys(roomOverrides).length > 0 ? `${Object.keys(roomOverrides).length} room override${Object.keys(roomOverrides).length === 1 ? '' : 's'}` : 'Distributed by room capacity'}</div>
+          </div>
+          <div className="auto-summary-card">
+            <div className="auto-summary-card__label">Hazard timing</div>
+            <div className="auto-summary-card__value">{disaster === 'earthquake' ? `${EARTHQUAKE_TREMOR_DURATION}s tremor` : 'Live spread'}</div>
+            <div className="auto-summary-card__note">{disaster === 'earthquake' ? 'Debris appears after shaking ends' : 'Fire and smoke grow during the run'}</div>
+          </div>
+          <div className="auto-summary-card">
+            <div className="auto-summary-card__label">Run state</div>
+            <div className="auto-summary-card__value">{simState?.finished ? 'Complete' : isPlaying ? 'Running' : simState ? 'Paused' : 'Ready'}</div>
+            <div className="auto-summary-card__note">{results ? `${results.totalReroutes} reroute${results.totalReroutes === 1 ? '' : 's'} recorded` : 'Awaiting launch'}</div>
           </div>
         </div>
       </div>
@@ -1321,98 +1433,16 @@ export default function AutonomousScienceBuildingPage() {
             </div>
           </section>
 
-          {availablePresets.length > 0 && (
-            <section className="auto-panel-section">
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', marginBottom: '10px' }}>
-                <div style={{ fontSize: '11px', fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', color: APP_ACCENT_DARK }}>
-                  Scenario Presets
-                </div>
-                {appliedPreset && (
-                  <button
-                    type="button"
-                    onClick={clearAppliedPreset}
-                    style={{
-                      background: 'none', border: 'none', padding: 0,
-                      color: APP_ACCENT_DARK, fontSize: '11px', fontWeight: 600,
-                      cursor: 'pointer', textDecoration: 'underline',
-                    }}
-                  >
-                    Clear label
-                  </button>
-                )}
-              </div>
-              <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginBottom: '12px', lineHeight: 1.5 }}>
-                One-click recipes from the stakeholder demo guide. Applying a preset replaces hazards and occupancy.
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                {availablePresets.map((preset) => {
-                  const isActive = appliedPreset?.id === preset.id
-                  const accent = getSeverityAccent(preset.severity)
-                  return (
-                    <button
-                      key={preset.id}
-                      type="button"
-                      onClick={() => applyPreset(preset)}
-                      style={{
-                        textAlign: 'left',
-                        padding: '10px 12px',
-                        borderRadius: '10px',
-                        border: `1px solid ${isActive ? accent : 'var(--border)'}`,
-                        background: isActive ? `${accent}14` : '#ffffff',
-                        boxShadow: isActive ? `0 0 0 1px ${accent}40` : 'none',
-                        cursor: 'pointer',
-                        transition: 'all 0.15s',
-                      }}
-                    >
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '6px', marginBottom: '4px' }}>
-                        <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-primary)' }}>
-                          {preset.label}
-                        </div>
-                        <span style={{
-                          fontSize: '9px', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase',
-                          color: accent, padding: '2px 6px', borderRadius: '999px',
-                          background: `${accent}1f`,
-                        }}>
-                          {preset.severity}
-                        </span>
-                      </div>
-                      <div style={{ fontSize: '11px', color: 'var(--text-secondary)', lineHeight: 1.4, marginBottom: '4px' }}>
-                        {preset.description}
-                      </div>
-                      <div style={{ fontSize: '10px', color: 'var(--text-muted)' }}>
-                        {preset.hazards.length} hazard{preset.hazards.length === 1 ? '' : 's'} · {preset.occupancyPreset} occupancy
-                      </div>
-                    </button>
-                  )
-                })}
-              </div>
-              {appliedPreset && (
-                <div style={{
-                  marginTop: '10px',
-                  padding: '8px 10px',
-                  borderRadius: '8px',
-                  background: `${getSeverityAccent(appliedPreset.severity)}14`,
-                  border: `1px solid ${getSeverityAccent(appliedPreset.severity)}40`,
-                  fontSize: '11px',
-                  color: 'var(--text-secondary)',
-                  lineHeight: 1.5,
-                }}>
-                  <strong style={{ color: 'var(--text-primary)' }}>Watch for:</strong> {appliedPreset.expectedOutcome}
-                </div>
-              )}
-            </section>
-          )}
-
           {disaster === 'earthquake' && (
             <section className="auto-panel-section">
               <div style={{ fontSize: '11px', fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', color: APP_ACCENT_DARK, marginBottom: '12px' }}>
                 Earthquake scenario
               </div>
               <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '14px' }}>
-                Pick a severity and run. You don&apos;t place debris — the building&apos;s
-                own weak points decide what fails. Stairwells and long spans are rolled
-                against the quake; collapsed sections drop debris, and aftershocks
-                re-roll whatever is still standing.
+                Pick a severity and run. The first {EARTHQUAKE_TREMOR_DURATION} seconds are a
+                tremor phase: agents move slowly, and debris is held back until shaking ends.
+                After that, the building&apos;s weak spans and stairwells collapse according
+                to the selected scenario.
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                 {QUAKE_SCENARIOS.map((scenario) => {
@@ -1443,19 +1473,41 @@ export default function AutonomousScienceBuildingPage() {
                 })}
               </div>
               <div style={{ marginTop: '10px', fontSize: '11px', color: 'var(--text-muted)', lineHeight: 1.5 }}>
-                Collapse points are defined per floor. Science Building 2F has its
-                stairwells and east span flagged — other floors fall back to authored
-                hazards only.
+                Debris is generated automatically after the tremor phase. Initial
+                collapses and later aftershocks land on corridor spans, so the map
+                changes mid-run without placing debris inside rooms or walls.
+              </div>
+              <div style={{
+                marginTop: '10px', padding: '8px 10px', borderRadius: '8px',
+                background: previewSeverity === 'severe' ? '#fef2f2'
+                  : previewSeverity === 'moderate' ? '#fff7ed' : '#f0f9ff',
+                border: `1px solid ${previewSeverity === 'severe' ? '#fecaca'
+                  : previewSeverity === 'moderate' ? '#fed7aa' : '#bae6fd'}`,
+                fontSize: '11px', color: previewSeverity === 'severe' ? '#991b1b'
+                  : previewSeverity === 'moderate' ? '#9a3412' : '#075985',
+                lineHeight: 1.5,
+              }}>
+                <strong style={{ textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                  Saves as: {previewSeverity}
+                </strong>
+                <div style={{ marginTop: '2px', opacity: 0.85 }}>
+                  {previewSeverity === 'severe'
+                    ? 'Severe drills unlock A–F grading for this building.'
+                    : previewSeverity === 'moderate'
+                    ? 'Moderate drills cap the building grade at B.'
+                    : 'Minor drills cap the building grade at C.'}
+                </div>
               </div>
             </section>
           )}
 
+          {disaster === 'fire' && (
           <section className="auto-panel-section">
-            <div style={{ fontSize: '11px', fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', color: APP_ACCENT_DARK, marginBottom: '12px' }}>
+            <div className="auto-section-title" style={{ marginBottom: '12px' }}>
               Hazard placement
             </div>
             <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '12px' }}>
-              Drag hazards onto the map. You can place multiple fire, smoke, or debris zones.
+              Drag hazards onto the map. You can place multiple fire or smoke zones.
             </div>
             {/* Severity preview — tells the user how this run will count
                 toward the building's Evacuation Readiness Score. */}
@@ -1509,10 +1561,11 @@ export default function AutonomousScienceBuildingPage() {
             </div>
             <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Active hazards are listed on the right panel.</div>
           </section>
+          )}
 
           <section className="auto-panel-section">
             <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: '10px', marginBottom: '4px' }}>
-              <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)' }}>Room population</div>
+              <div className="auto-section-title">Room population</div>
               <div style={{ fontSize: '11px', fontWeight: 600, color: APP_ACCENT_DARK }}>
                 {effectiveAgentCount} / {maxAgents}
               </div>
@@ -1684,32 +1737,41 @@ export default function AutonomousScienceBuildingPage() {
               </div>
             </div>
           </div>
-
           <div
             className="auto-map-shell"
             ref={dropRef}
             onDrop={handleDrop}
             onDragOver={(event) => event.preventDefault()}
+            onMouseMove={handleMapMouseMove}
+            onMouseUp={() => setDraggingHazardId(null)}
+            onMouseLeave={() => setDraggingHazardId(null)}
           >
             {floor.floorplanSrc ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img src={floor.floorplanSrc} alt={`${building?.name ?? regionId} ${floor.label} floor plan`} />
             ) : null}
+            {disaster === 'earthquake' && simState && tremorRemaining > 0 && (
+              <div className="auto-tremor-banner">
+                <div className="auto-tremor-banner__title">
+                  <span style={{
+                    width: '8px', height: '8px', borderRadius: '50%',
+                    background: '#f59e0b', animation: 'tremorPulse 0.6s infinite alternate',
+                    flexShrink: 0,
+                  }} />
+                  Tremor phase - {tremorRemaining.toFixed(1)}s
+                </div>
+                <div className="auto-tremor-banner__copy">
+                  Debris is withheld until shaking ends; agents move at reduced speed.
+                </div>
+              </div>
+            )}
             <svg viewBox="0 0 1200 675" preserveAspectRatio="xMidYMid meet" aria-hidden="true">
-              {/* Navigation-graph overlay (edges + waypoint nodes) is a
-                  setup/debug aid only. Once a simulation is running it is
-                  hidden entirely so room nodes, room-door entry nodes, and
-                  corridor-entry nodes never clutter the live evacuation
-                  view — only agents, hazards, and exits remain on screen. */}
               {SHOW_DEBUG_GRAPH && !simState && floor.edges.map((edge) => {
                 const fromNode = getNode(floor, edge.from)
                 const toNode = getNode(floor, edge.to)
                 if (!fromNode || !toNode) return null
 
                 const intensity = activeTrace ? getEdgeIntensity(edge, activeTrace) : 0
-                // This block only renders while `!simState` (setup/debug),
-                // so no hazard has blocked any edge yet — `blocked` is
-                // always false here.
                 const blocked = false
                 const stroke = blocked ? '#ef4444' : getHeatColor(intensity)
                 const opacity = blocked ? 0.95 : 0.25 + intensity * 0.6
@@ -1737,11 +1799,6 @@ export default function AutonomousScienceBuildingPage() {
               })}
 
               {SHOW_DEBUG_GRAPH && !simState && floor.nodes.filter((node) => (
-                // Exclude room nodes, room-door entry nodes (kind 'door'),
-                // and the room→corridor entry triad ('… Entry' / '… Entrance'
-                // / '… Exit'). Only true corridor / junction / stairs
-                // backbone waypoints remain — and even those vanish the
-                // moment a simulation starts (the !simState guard above).
                 node.type !== 'room'
                 && node.kind !== 'door'
                 && !/(entry|entrance|exit)$/i.test(node.label)
@@ -1767,29 +1824,23 @@ export default function AutonomousScienceBuildingPage() {
               })}
 
               {!simState && placedHazards.map((hazard) => (
-                <g key={hazard.id} onClick={() => setSelectedHazardId(hazard.id)} style={{ cursor: 'pointer' }}>
-                  {hazard.type === 'debris' ? (
-                    <rect
-                      x={hazard.x - hazard.radius}
-                      y={hazard.y - hazard.radius}
-                      width={hazard.radius * 2}
-                      height={hazard.radius * 2}
-                      fill={selectedHazardId === hazard.id ? 'rgba(245, 158, 11, 0.35)' : 'rgba(120, 53, 15, 0.35)'}
-                      stroke={selectedHazardId === hazard.id ? '#f59e0b' : '#92400e'}
-                      strokeWidth="2"
-                      rx="4"
-                    />
-                  ) : (
-                    <circle
-                      cx={hazard.x}
-                      cy={hazard.y}
-                      r={hazard.radius}
-                      fill={hazard.type === 'fire' ? 'rgba(239, 68, 68, 0.28)' : 'rgba(100, 116, 139, 0.28)'}
-                      stroke={hazard.type === 'fire' ? '#ef4444' : '#64748b'}
-                      strokeWidth="2"
-                    />
+                <g
+                  key={hazard.id}
+                  onClick={() => setSelectedHazardId(hazard.id)}
+                  onMouseDown={handlePlacedHazardMouseDown(hazard)}
+                  onMouseEnter={() => setHoveredHazardId(hazard.id)}
+                  onMouseLeave={() => setHoveredHazardId(null)}
+                  style={{ cursor: draggingHazardId === hazard.id ? 'grabbing' : 'grab', opacity: draggingHazardId === hazard.id ? 0.55 : 1 }}
+                >
+                  {renderHazardShape(
+                    hazard,
+                    hazard.radius,
+                    selectedHazardId === hazard.id || hoveredHazardId === hazard.id,
+                    {
+                      strokeWidth: selectedHazardId === hazard.id || hoveredHazardId === hazard.id ? 3 : 2,
+                    },
                   )}
-                  <text x={hazard.x} y={hazard.y + 4} textAnchor="middle" fontSize="10" fontWeight="700" fill="#0f172a">
+                  <text x={hazard.x} y={hazard.y + 4} textAnchor="middle" fontSize="10" fontWeight="700" fill="#0f172a" pointerEvents="none">
                     {hazardLabel(hazard.type, disaster)}
                   </text>
                 </g>
@@ -1797,15 +1848,7 @@ export default function AutonomousScienceBuildingPage() {
 
               {simState?.hazards.filter((hazard) => hazard.active).map((hazard) => (
                 <g key={hazard.zone.id}>
-                  <circle
-                    cx={hazard.zone.x}
-                    cy={hazard.zone.y}
-                    r={hazard.currentRadius}
-                    fill={hazard.zone.type === 'smoke' ? 'rgba(100, 116, 139, 0.18)' : hazard.zone.type === 'debris' ? 'rgba(245, 158, 11, 0.18)' : 'rgba(239, 68, 68, 0.18)'}
-                    stroke={hazard.zone.type === 'smoke' ? '#64748b' : hazard.zone.type === 'debris' ? '#f59e0b' : '#ef4444'}
-                    strokeWidth="2"
-                    strokeDasharray={hazard.zone.type === 'blocked' ? '6 6' : undefined}
-                  />
+                  {renderHazardShape(hazard.zone, hazard.currentRadius)}
                   <text x={hazard.zone.x} y={hazard.zone.y} textAnchor="middle" fontSize="10" fontWeight="700" fill="#0f172a">
                     {hazard.zone.type.toUpperCase()}
                   </text>
@@ -1916,7 +1959,7 @@ export default function AutonomousScienceBuildingPage() {
           </section>
 
           <section className="auto-panel-section">
-            <div style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '12px' }}>Run state</div>
+            <div className="auto-section-title" style={{ marginBottom: '12px' }}>Run state</div>
             <div className="auto-stat-grid">
               <div className="auto-stat">
                 <div style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '4px' }}>Elapsed</div>
@@ -1937,17 +1980,18 @@ export default function AutonomousScienceBuildingPage() {
             )}
           </section>
 
+          {disaster === 'fire' ? (
           <section className="auto-panel-section">
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', marginBottom: '8px' }}>
-              <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)' }}>Active hazards</div>
+              <div className="auto-section-title">Active hazards</div>
               <button
                 onClick={clearHazards}
-                disabled={placedHazards.length === 0}
+                disabled={placedHazards.length === 0 || !!simState}
                 style={{
-                  padding: '5px 10px', borderRadius: '6px', border: `1px solid ${placedHazards.length === 0 ? 'var(--border)' : 'rgba(239,68,68,0.2)'}`,
-                  background: placedHazards.length === 0 ? '#f8fafc' : '#fef2f2',
-                  color: placedHazards.length === 0 ? 'var(--text-muted)' : '#b91c1c',
-                  fontSize: '11px', fontWeight: 600, cursor: placedHazards.length === 0 ? 'not-allowed' : 'pointer',
+                  padding: '5px 10px', borderRadius: '6px', border: `1px solid ${placedHazards.length === 0 || simState ? 'var(--border)' : 'rgba(239,68,68,0.2)'}`,
+                  background: placedHazards.length === 0 || simState ? '#f8fafc' : '#fef2f2',
+                  color: placedHazards.length === 0 || simState ? 'var(--text-muted)' : '#b91c1c',
+                  fontSize: '11px', fontWeight: 600, cursor: placedHazards.length === 0 || simState ? 'not-allowed' : 'pointer',
                 }}
               >
                 Clear
@@ -1972,15 +2016,17 @@ export default function AutonomousScienceBuildingPage() {
                   <div>
                     <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-primary)' }}>{index + 1}. {hazardLabel(hazard.type, disaster)}</div>
                     <div style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>x {Math.round(hazard.x)}, y {Math.round(hazard.y)}</div>
+                    {!simState && <div style={{ fontSize: '10px', color: APP_ACCENT_DARK, fontWeight: 600 }}>Drag on map to reposition</div>}
                   </div>
                   <button
+                    disabled={!!simState}
                     onClick={(event) => {
                       event.stopPropagation()
                       removeHazard(hazard.id)
                     }}
                     style={{
                       padding: '4px 10px', borderRadius: '6px', border: '1px solid rgba(239,68,68,0.2)',
-                      background: '#fef2f2', color: '#b91c1c', fontSize: '11px', fontWeight: 600, cursor: 'pointer',
+                      background: simState ? '#f8fafc' : '#fef2f2', color: simState ? 'var(--text-muted)' : '#b91c1c', fontSize: '11px', fontWeight: 600, cursor: simState ? 'not-allowed' : 'pointer',
                     }}
                   >
                     Remove
@@ -1989,34 +2035,55 @@ export default function AutonomousScienceBuildingPage() {
               ))}
             </div>
           </section>
+          ) : (
+          <section className="auto-panel-section">
+            <div className="auto-section-title" style={{ marginBottom: '8px' }}>Structural debris</div>
+            <div style={{
+              borderRadius: '12px', border: '1px solid #f0d4b3',
+              background: '#fbf6ef', padding: '12px 14px',
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                <span style={{ width: '11px', height: '11px', borderRadius: '3px', background: '#f59e0b', flexShrink: 0 }} />
+                <div style={{ fontSize: '12px', fontWeight: 700, color: '#9a3412', textTransform: 'capitalize' }}>
+                  {quakeScenario} quake
+                </div>
+              </div>
+              <div style={{ fontSize: '11px', color: 'var(--text-secondary)', lineHeight: 1.55 }}>
+                Debris remains hidden during the tremor phase, then collapsed
+                corridor spans appear as active blockage. Aftershocks can add
+                more debris later in the run.
+              </div>
+              {simState && (
+                <div style={{ marginTop: '10px', paddingTop: '10px', borderTop: '1px solid #f0d4b3' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '8px' }}>
+                    <div style={{ borderRadius: '10px', background: '#ffffff', border: '1px solid #f0d4b3', padding: '8px 10px' }}>
+                      <div style={{ fontSize: '10px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Active</div>
+                      <div style={{ fontSize: '18px', fontWeight: 800, color: '#9a3412', letterSpacing: '-0.02em' }}>{activeDebrisCount}</div>
+                    </div>
+                    <div style={{ borderRadius: '10px', background: '#ffffff', border: '1px solid #f0d4b3', padding: '8px 10px' }}>
+                      <div style={{ fontSize: '10px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Waiting</div>
+                      <div style={{ fontSize: '18px', fontWeight: 800, color: '#9a3412', letterSpacing: '-0.02em' }}>{pendingDebrisCount}</div>
+                    </div>
+                  </div>
+                  {tremorRemaining > 0 && (
+                    <div style={{ marginTop: '8px', fontSize: '11px', fontWeight: 600, color: '#92400e' }}>
+                      First debris release in {tremorRemaining.toFixed(1)}s.
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </section>
+          )}
 
           <section className="auto-panel-section">
-            <div style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '12px' }}>Completion summary</div>
+            <div className="auto-section-title" style={{ marginBottom: '12px' }}>Completion summary</div>
             {results ? (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                 <div style={{ borderRadius: '12px', border: '1px solid var(--border)', background: '#f4f7fb', padding: '12px 14px' }}>
                   <div style={{ fontSize: '32px', fontWeight: 700, color: results.trappedCount > 0 ? '#f97316' : '#22c55e', lineHeight: 1, letterSpacing: '-0.02em' }}>{formatSeconds(results.totalTime)}</div>
                   <div style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginTop: '4px' }}>Evacuation time</div>
                 </div>
-                {appliedPreset && (() => {
-                  const narrative = describePresetOutcome(appliedPreset, results, peakCongestion)
-                  const accent = getSeverityAccent(appliedPreset.severity)
-                  return (
-                    <div style={{
-                      borderRadius: '12px',
-                      border: `1px solid ${accent}40`,
-                      background: `${accent}10`,
-                      padding: '12px 14px',
-                    }}>
-                      <div style={{ fontSize: '11px', fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', color: accent, marginBottom: '4px' }}>
-                        Preset · {appliedPreset.label}
-                      </div>
-                      <div style={{ fontSize: '12px', color: 'var(--text-primary)', lineHeight: 1.5 }}>
-                        {narrative}
-                      </div>
-                    </div>
-                  )
-                })()}
                 {/* Compact 2-up grid — Peak congestion and Trapped already
                     appear in the Live Metrics section above, so we keep
                     only the post-run summary metrics here. */}
@@ -2066,10 +2133,10 @@ export default function AutonomousScienceBuildingPage() {
                     Open Analysis
                   </button>
                   <button
-                    onClick={() => router.push(`/simulate/${encodeURIComponent(regionId)}/run?disaster=${disaster}&floor=${floorIndex}`)}
+                    onClick={launchSimulation}
                     style={{ padding: '10px 16px', borderRadius: '8px', border: '1px solid var(--border)', background: '#ffffff', color: 'var(--text-primary)', fontSize: '13px', fontWeight: 600, cursor: 'pointer' }}
                   >
-                    Open Manual Drill
+                    Run Again
                   </button>
                 </div>
               </div>

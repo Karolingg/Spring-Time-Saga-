@@ -7,6 +7,5 @@ _No open items. All previously tracked work has been implemented._
 
 # New Issues 
 
-Determine whether to keep hazard presets for stakeholders demo
 Decide on Admin App View or User App View
 Finalize whether to keep or upgrade the earthquake simulation

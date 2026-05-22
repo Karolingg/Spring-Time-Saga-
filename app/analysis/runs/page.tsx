@@ -344,10 +344,6 @@ export default function AnalysisRunsPage() {
   )
 }
 
-// ---------------------------------------------------------------------------
-// Sub-components
-// ---------------------------------------------------------------------------
-
 interface PageHeaderProps {
   runHistory: RunHistoryItem[]
   currentRunId: string
@@ -657,8 +653,6 @@ interface SummaryStatsProps {
 }
 
 function SummaryStats({ zoneCount, bottleneckCount, avgEvacTime, evacuatedPct }: SummaryStatsProps) {
-  // Evacuated rate is the headline outcome metric — color it like a grade:
-  // green ≥ 90 %, amber 70–89 %, red below 70 %, grey when there's no data.
   const evacAccent = evacuatedPct == null
     ? '#94a3b8'
     : evacuatedPct >= 90 ? '#22c55e'

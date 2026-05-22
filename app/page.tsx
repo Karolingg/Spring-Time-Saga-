@@ -3,14 +3,20 @@
 import { useEffect, useState } from 'react'
 import { useAuth } from '@/src/hooks/useAuth'
 import { useIsMobile } from '@/src/hooks/useIsMobile'
+import { useOnboarding } from '@/src/hooks/useOnboarding'
 import {
   getSimulationHistory,
   getAggregateSimulationStats,
+  getDashboardBuildingCoverage,
 } from '@/src/services/simulation.service'
+import { getBuildingScore } from '@/src/services/building-analytics.service'
+import { getBuildingTotalCapacity } from '@/src/config/building-floor-occupancy'
+import { BUILDING_FLOOR_COUNT } from '@/src/config/building-floor-counts'
 import { getUserProfile } from '@/src/services/user.service'
+import { OnboardingOverlay } from '@/components/Onboarding/OnboardingOverlay'
+import { InfoTooltip } from '@/components/InfoTooltip'
 import type { SimulationRun } from '@/src/schema/simulation.types'
 
-// ─── Constants ────────────────────────────────────────────────────────────────
 const SECTION_CARD: React.CSSProperties = {
   background: '#ffffff',
   border: '1px solid var(--border)',
@@ -20,9 +26,6 @@ const SECTION_CARD: React.CSSProperties = {
   marginBottom: '24px',
 }
 
-const TOTAL_CAMPUS_BUILDINGS = 21
-const BUILDINGS_WITH_FLOORPLANS = 1 // admin-building
-
 interface AggregateStats {
   totalRuns: number
   avgEvacuationRate: number
@@ -31,7 +34,13 @@ interface AggregateStats {
   avgEvacuationTime: number
 }
 
-// ─── Utilities ────────────────────────────────────────────────────────────────
+interface BuildingCoverage {
+  totalBuildings: number
+  coveredBuildings: number
+  pendingBuildings: number
+  coveredBuildingNames: string[]
+}
+
 function timeAgo(dateStr: string): string {
   const now = Date.now()
   const then = new Date(dateStr).getTime()
@@ -81,12 +90,17 @@ function userName(displayName: string | null, metadata: Record<string, unknown> 
   return nameFromEmail(email)
 }
 
-// ─── Page ─────────────────────────────────────────────────────────────────────
 export default function DashboardPage() {
   const isMobile = useIsMobile()
   const { user, isAuthenticated, isLoading: isAuthLoading } = useAuth()
+  const { resetOnboarding } = useOnboarding()
   const [stats, setStats] = useState<AggregateStats | null>(null)
   const [recentRuns, setRecentRuns] = useState<SimulationRun[]>([])
+  const [buildingCoverage, setBuildingCoverage] = useState<BuildingCoverage | null>(null)
+  const [isDashboardLoading, setIsDashboardLoading] = useState(true)
+  const [campusReadiness, setCampusReadiness] = useState<number | null>(null)
+  const [isCampusLoading, setIsCampusLoading] = useState(false)
+  const [dashboardError, setDashboardError] = useState<string | null>(null)
   const [profileName, setProfileName] = useState<{ userId: string; displayName: string | null } | null>(null)
 
   useEffect(() => {
@@ -97,19 +111,71 @@ export default function DashboardPage() {
 
   useEffect(() => {
     if (!isAuthenticated) return
+    let active = true
+
     async function loadData() {
+      setIsDashboardLoading(true)
+      setDashboardError(null)
       try {
-        const [aggregate, history] = await Promise.all([
+        const [aggregate, history, coverage] = await Promise.all([
           getAggregateSimulationStats(),
           getSimulationHistory(10),
+          getDashboardBuildingCoverage(),
         ])
+        if (!active) return
         setStats(aggregate)
         setRecentRuns(history)
+        setBuildingCoverage(coverage)
       } catch (err) {
         console.error('Failed to load dashboard data:', err)
+        if (active) setDashboardError(err instanceof Error ? err.message : 'Unable to load dashboard data.')
+      } finally {
+        if (active) setIsDashboardLoading(false)
       }
     }
     loadData()
+
+    return () => {
+      active = false
+    }
+  }, [isAuthenticated])
+
+  // Compute campus readiness by averaging per-building scores (weighted by capacity).
+  useEffect(() => {
+    if (!isAuthenticated) return
+    let active = true
+    setIsCampusLoading(true)
+    setCampusReadiness(null)
+
+    const buildingIds = Object.keys(BUILDING_FLOOR_COUNT)
+    Promise.all(buildingIds.map(id => getBuildingScore(id, getBuildingTotalCapacity(id)).catch(() => null)))
+      .then((scores) => {
+        if (!active) return
+        let weightedSum = 0
+        let weightTotal = 0
+        for (let i = 0; i < buildingIds.length; i++) {
+          const id = buildingIds[i]
+          const score = scores[i]
+          const cap = getBuildingTotalCapacity(id)
+          if (score && score.runCount > 0) {
+            const w = cap > 0 ? cap : 1
+            weightedSum += (score.score ?? 0) * w
+            weightTotal += w
+          }
+        }
+        if (weightTotal > 0) {
+          setCampusReadiness(Math.round(weightedSum / weightTotal))
+        } else {
+          setCampusReadiness(null)
+        }
+      })
+      .catch(err => {
+        console.error('Failed to load building scores:', err)
+        if (active) setCampusReadiness(null)
+      })
+      .finally(() => { if (active) setIsCampusLoading(false) })
+
+    return () => { active = false }
   }, [isAuthenticated])
 
   useEffect(() => {
@@ -139,11 +205,19 @@ export default function DashboardPage() {
     )
   }
 
-  const readiness = computeReadiness(stats)
-  const rl = readinessLabel(readiness)
-  const statCards = buildStatCards(stats)
+  const effectiveLoading = isDashboardLoading || isCampusLoading
+  const readiness = (!isDashboardLoading && !isCampusLoading && campusReadiness !== null)
+    ? campusReadiness
+    : (isDashboardLoading ? 0 : computeReadiness(stats))
+  const rl = effectiveLoading ? { text: 'Loading', color: '#94a3b8' } : readinessLabel(readiness)
+  const statCards = buildStatCards(stats, isDashboardLoading)
   const greeting = getGreeting()
   const displayName = profileName && profileName.userId === user?.id ? profileName.displayName : null
+  const coverageTotal = buildingCoverage?.totalBuildings ?? 0
+  const coverageCovered = buildingCoverage?.coveredBuildings ?? 0
+  const coveragePending = buildingCoverage?.pendingBuildings ?? 0
+  const coveragePercent = coverageTotal > 0 ? (coverageCovered / coverageTotal) * 100 : 0
+  const coverageNames = buildingCoverage?.coveredBuildingNames ?? []
 
   return (
     <div data-page-shell style={{
@@ -163,19 +237,74 @@ export default function DashboardPage() {
             Campus evacuation overview &amp; drill analytics
           </p>
         </div>
-        <a href="/map" style={{
-          display: 'flex', alignItems: 'center', gap: '8px',
-          padding: '10px 20px', background: '#2db8b0', color: '#fff',
-          borderRadius: '8px', textDecoration: 'none', fontSize: '14px', fontWeight: '600', flexShrink: 0,
-        }}>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="#ffffff" stroke="none">
-            <polygon points="8 5 19 12 8 19 8 5" />
-          </svg>
-          Run Simulation
-        </a>
+        <div style={{ display: 'flex', gap: '12px', flexShrink: 0, flexWrap: 'wrap' }}>
+          <button
+            onClick={() => resetOnboarding()}
+            style={{
+              display: 'flex', alignItems: 'center', gap: '8px',
+              padding: '10px 20px', background: '#f0f4f8', color: '#2db8b0',
+              border: '1px solid #e0e8f0', borderRadius: '8px', cursor: 'pointer',
+              fontSize: '14px', fontWeight: '600', transition: 'all 0.2s ease-in-out',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = '#e8f1f0'
+              e.currentTarget.style.borderColor = '#2db8b0'
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = '#f0f4f8'
+              e.currentTarget.style.borderColor = '#e0e8f0'
+            }}
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="10"/>
+              <line x1="12" y1="16" x2="12" y2="12"/>
+              <line x1="12" y1="8" x2="12.01" y2="8"/>
+            </svg>
+            Tutorial
+          </button>
+          <a href="/map" style={{
+            display: 'flex', alignItems: 'center', gap: '8px',
+            padding: '10px 20px', background: '#2db8b0', color: '#fff',
+            borderRadius: '8px', textDecoration: 'none', fontSize: '14px', fontWeight: '600', flexShrink: 0,
+            transition: 'all 0.2s ease-in-out',
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.background = '#1f9189'
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = '#2db8b0'
+          }}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="#ffffff" stroke="none">
+              <polygon points="8 5 19 12 8 19 8 5" />
+            </svg>
+            Run Simulation
+          </a>
+        </div>
       </div>
 
       {/* ── Readiness + Coverage row ── */}
+      {dashboardError && (
+        <div style={{
+          ...SECTION_CARD,
+          display: 'flex',
+          alignItems: 'center',
+          gap: '10px',
+          padding: '14px 16px',
+          borderColor: 'rgba(239,68,68,0.28)',
+          background: 'rgba(254,242,242,0.95)',
+          color: '#991b1b',
+        }}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="12" r="10" />
+            <line x1="12" y1="8" x2="12" y2="12" />
+            <line x1="12" y1="16" x2="12.01" y2="16" />
+          </svg>
+          <div style={{ fontSize: '13px', lineHeight: 1.5 }}>
+            Dashboard data could not be loaded. {dashboardError}
+          </div>
+        </div>
+      )}
+
       <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '16px', marginBottom: '24px' }}>
 
         {/* Campus Readiness Score */}
@@ -200,14 +329,22 @@ export default function DashboardPage() {
             </div>
           </div>
           <div>
-            <div style={{ fontSize: '11px', fontWeight: '600', letterSpacing: '0.08em', color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '6px' }}>
-              Campus Readiness
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+              <span style={{ fontSize: '11px', fontWeight: '600', letterSpacing: '0.08em', color: 'var(--text-muted)', textTransform: 'uppercase' }}>
+                Campus Readiness
+              </span>
+              <InfoTooltip
+                title="Campus Readiness Score"
+                description="A composite 0-100 score measuring evacuation preparedness. Based on evacuation rate (40%), bottleneck frequency (30%), and response time (30%)."
+              />
             </div>
             <div style={{ fontSize: '20px', fontWeight: '700', color: rl.color, marginBottom: '4px' }}>
               {rl.text}
             </div>
             <div style={{ fontSize: '12px', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
-              Based on evacuation rate, bottleneck frequency, and drill response time across all completed runs.
+              {isDashboardLoading
+                ? 'Loading completed evacuation runs for your account.'
+                : 'Based on evacuation rate, bottleneck frequency, and drill response time across your completed runs.'}
             </div>
           </div>
         </div>
@@ -227,38 +364,42 @@ export default function DashboardPage() {
 
           <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px', marginBottom: '6px' }}>
             <span style={{ fontSize: '32px', fontWeight: '700', color: 'var(--text-primary)', lineHeight: 1 }}>
-              {BUILDINGS_WITH_FLOORPLANS}
+              {isDashboardLoading ? '...' : coverageCovered}
             </span>
             <span style={{ fontSize: '14px', color: 'var(--text-secondary)' }}>
-              / {TOTAL_CAMPUS_BUILDINGS} buildings
+              / {isDashboardLoading ? '...' : coverageTotal} buildings
             </span>
           </div>
 
           <div style={{ height: '6px', background: '#f1f5f9', borderRadius: '3px', marginBottom: '10px' }}>
             <div style={{
               height: '100%', borderRadius: '3px', background: '#2db8b0',
-              width: `${(BUILDINGS_WITH_FLOORPLANS / TOTAL_CAMPUS_BUILDINGS) * 100}%`,
+              width: `${isDashboardLoading ? 0 : coveragePercent}%`,
               transition: 'width 0.3s',
             }} />
           </div>
 
           <div style={{ fontSize: '12px', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
-            Floor plans with simulation support. More buildings will be added for comprehensive campus-wide drills.
+            {isDashboardLoading
+              ? 'Loading building coverage from your completed simulation runs.'
+              : 'Buildings with completed simulation data in your account.'}
           </div>
 
           <div style={{ display: 'flex', gap: '6px', marginTop: '12px', flexWrap: 'wrap' }}>
-            <span style={{
-              padding: '3px 10px', borderRadius: '6px', fontSize: '11px', fontWeight: '600',
-              background: 'rgba(45,184,176,0.1)', color: '#2db8b0',
-            }}>
-              Admin Building
-            </span>
-            <span style={{
-              padding: '3px 10px', borderRadius: '6px', fontSize: '11px', fontWeight: '500',
-              background: '#f1f5f9', color: 'var(--text-muted)',
-            }}>
-              +20 pending
-            </span>
+            {isDashboardLoading ? (
+              <CoveragePill label="Loading" tone="muted" />
+            ) : coverageNames.length > 0 ? (
+              <>
+                {coverageNames.slice(0, 2).map(name => (
+                  <CoveragePill key={name} label={name} tone="active" />
+                ))}
+                {coveragePending > 0 && (
+                  <CoveragePill label={`+${coveragePending} pending`} tone="muted" />
+                )}
+              </>
+            ) : (
+              <CoveragePill label="No covered buildings yet" tone="muted" />
+            )}
           </div>
         </div>
       </div>
@@ -272,23 +413,25 @@ export default function DashboardPage() {
 
       {/* ── Drill Activity Timeline ── */}
       <div style={SECTION_CARD}>
-        <DrillTimeline runs={recentRuns} />
+        <DrillTimeline runs={recentRuns} isLoading={isDashboardLoading} />
       </div>
 
       {/* ── Drill Comparison ── */}
       <div style={SECTION_CARD}>
-        <DrillComparison runs={recentRuns} isMobile={isMobile} />
+        <DrillComparison runs={recentRuns} isMobile={isMobile} isLoading={isDashboardLoading} />
       </div>
 
       {/* ── Quick Actions ── */}
       <div style={SECTION_CARD}>
         <QuickActions isMobile={isMobile} />
       </div>
+
+      {/* Onboarding */}
+      <OnboardingOverlay currentPage="dashboard" />
     </div>
   )
 }
 
-// ─── Greeting based on time of day ───────────────────────────────────────────
 function getGreeting(): string {
   const h = new Date().getHours()
   if (h < 12) return 'Good morning'
@@ -296,7 +439,6 @@ function getGreeting(): string {
   return 'Good evening'
 }
 
-// ─── Stat Card ────────────────────────────────────────────────────────────────
 interface StatCardData {
   icon: React.ReactNode
   label: string
@@ -334,7 +476,22 @@ function StatCard({ icon, label, value, sub, color, progress }: StatCardData) {
   )
 }
 
-function buildStatCards(stats: AggregateStats | null): StatCardData[] {
+function CoveragePill({ label, tone }: { label: string; tone: 'active' | 'muted' }) {
+  return (
+    <span style={{
+      padding: '3px 10px',
+      borderRadius: '6px',
+      fontSize: '11px',
+      fontWeight: tone === 'active' ? '600' : '500',
+      background: tone === 'active' ? 'rgba(45,184,176,0.1)' : '#f1f5f9',
+      color: tone === 'active' ? '#2db8b0' : 'var(--text-muted)',
+    }}>
+      {label}
+    </span>
+  )
+}
+
+function buildStatCards(stats: AggregateStats | null, isLoading: boolean): StatCardData[] {
   return [
     {
       icon: (
@@ -343,8 +500,8 @@ function buildStatCards(stats: AggregateStats | null): StatCardData[] {
         </svg>
       ),
       label: 'SIMULATIONS RUN',
-      value: stats?.totalRuns.toString() ?? '0',
-      sub: stats && stats.totalRuns > 0 ? 'completed runs' : 'No data yet',
+      value: isLoading ? '...' : stats?.totalRuns.toString() ?? '0',
+      sub: isLoading ? 'Loading completed runs' : stats && stats.totalRuns > 0 ? 'completed runs' : 'No data yet',
       color: '#2db8b0',
     },
     {
@@ -355,8 +512,8 @@ function buildStatCards(stats: AggregateStats | null): StatCardData[] {
         </svg>
       ),
       label: 'TOTAL AGENTS',
-      value: stats?.totalAgentsSimulated.toLocaleString() ?? '0',
-      sub: 'across all simulations',
+      value: isLoading ? '...' : stats?.totalAgentsSimulated.toLocaleString() ?? '0',
+      sub: isLoading ? 'Loading agent totals' : 'across your simulations',
       color: '#2db8b0',
     },
     {
@@ -366,10 +523,10 @@ function buildStatCards(stats: AggregateStats | null): StatCardData[] {
         </svg>
       ),
       label: 'AVG EVACUATION',
-      value: stats ? `${stats.avgEvacuationRate.toFixed(0)}%` : '0%',
-      sub: 'average success rate',
+      value: isLoading ? '...' : stats ? `${stats.avgEvacuationRate.toFixed(0)}%` : '0%',
+      sub: isLoading ? 'Loading success rate' : 'average success rate',
       color: '#2db8b0',
-      progress: stats?.avgEvacuationRate ?? 0,
+      progress: isLoading ? 0 : stats?.avgEvacuationRate ?? 0,
     },
     {
       icon: (
@@ -379,20 +536,19 @@ function buildStatCards(stats: AggregateStats | null): StatCardData[] {
         </svg>
       ),
       label: 'AVG BOTTLENECKS',
-      value: stats ? stats.avgBottlenecksPerRun.toFixed(1) : '0',
-      sub: 'per simulation run',
+      value: isLoading ? '...' : stats ? stats.avgBottlenecksPerRun.toFixed(1) : '0',
+      sub: isLoading ? 'Loading bottleneck average' : 'per simulation run',
       color: '#f59e0b',
     },
   ]
 }
 
-// ─── Drill Activity Timeline ─────────────────────────────────────────────────
 const DISASTER_ICON: Record<string, { color: string; bg: string; label: string }> = {
   fire:       { color: '#ff6b35', bg: 'rgba(255,107,53,0.1)',  label: 'Fire Drill' },
   earthquake: { color: '#f59e0b', bg: 'rgba(245,158,11,0.1)', label: 'Earthquake Drill' },
 }
 
-function DrillTimeline({ runs }: { runs: SimulationRun[] }) {
+function DrillTimeline({ runs, isLoading }: { runs: SimulationRun[]; isLoading: boolean }) {
   return (
     <>
       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
@@ -405,7 +561,9 @@ function DrillTimeline({ runs }: { runs: SimulationRun[] }) {
         Latest simulation runs and their outcomes
       </p>
 
-      {runs.length === 0 ? (
+      {isLoading ? (
+        <DashboardLoadingState text="Loading recent drill activity..." />
+      ) : runs.length === 0 ? (
         <div style={{
           padding: '32px 16px', textAlign: 'center',
           background: '#f8fafc', borderRadius: '10px',
@@ -505,7 +663,21 @@ function MetricChip({ label, value }: { label: string; value: string }) {
   )
 }
 
-// ─── Drill Comparison ────────────────────────────────────────────────────────
+function DashboardLoadingState({ text }: { text: string }) {
+  return (
+    <div style={{
+      padding: '32px 16px',
+      textAlign: 'center',
+      background: '#f8fafc',
+      borderRadius: '10px',
+      color: 'var(--text-secondary)',
+      fontSize: '13px',
+    }}>
+      {text}
+    </div>
+  )
+}
+
 function evacRate(run: SimulationRun): number {
   const agents = run.config?.agentCount ?? 0
   const evacuated = run.results?.evacuatedCount ?? 0
@@ -520,7 +692,7 @@ function compareDelta(a: SimulationRun, b: SimulationRun): { evacDelta: number; 
   return { evacDelta: rateB - rateA, timeDelta: timeB - timeA }
 }
 
-function DrillComparison({ runs, isMobile }: { runs: SimulationRun[]; isMobile: boolean }) {
+function DrillComparison({ runs, isMobile, isLoading }: { runs: SimulationRun[]; isMobile: boolean; isLoading: boolean }) {
   const hasPair = runs.length >= 2
   const a = hasPair ? runs[1] : null
   const b = hasPair ? runs[0] : null
@@ -542,7 +714,9 @@ function DrillComparison({ runs, isMobile }: { runs: SimulationRun[]; isMobile: 
         See how the latest drill stacks up against the one before it
       </p>
 
-      {hasPair && a && b ? (
+      {isLoading ? (
+        <DashboardLoadingState text="Loading comparison data..." />
+      ) : hasPair && a && b ? (
         <ComparisonPreview a={a} b={b} compareUrl={compareUrl} isMobile={isMobile} />
       ) : (
         <div style={{
@@ -696,7 +870,6 @@ function DeltaPill({ label, delta, format, betterWhenHigher }: {
   )
 }
 
-// ─── Quick Actions ────────────────────────────────────────────────────────────
 const QUICK_ACTIONS = [
   {
     href: '/map',
