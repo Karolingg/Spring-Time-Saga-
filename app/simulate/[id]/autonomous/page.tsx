@@ -24,13 +24,6 @@ import { createSimulationRun, saveDensityCells, saveSimulationResults } from '@/
 import { getFriendlyErrorMessage, isRateLimitError } from '@/src/services/rate-limit.service'
 import { computeFireSeverity, getHazardStorageKey, isHazardStorageAvailable, loadHazardPlan, placedHazardToZone, saveHazardPlan, type PlacedHazard } from '@/src/simulation/hazard-placement'
 import {
-  getOccupancyRatio,
-  getPresetsFor,
-  getSeverityAccent,
-  resolvePresetHazardRadius,
-  type DemoPreset,
-} from '@/src/simulation/presets/demo-presets'
-import {
   createSpatialGridTrace,
   densityCellsFromTrace,
   updateSpatialGridTrace,
@@ -109,6 +102,64 @@ function createHazardDragImage(type: 'fire' | 'smoke' | 'debris'): HTMLElement {
   return el
 }
 
+function clampHazardPosition(x: number, y: number, radius: number) {
+  return {
+    x: clamp(x, radius, 1200 - radius),
+    y: clamp(y, radius, 675 - radius),
+  }
+}
+
+function hazardColor(type: 'fire' | 'smoke' | 'debris' | 'blocked', selected = false) {
+  if (type === 'smoke') return {
+    fill: selected ? 'rgba(100, 116, 139, 0.38)' : 'rgba(100, 116, 139, 0.22)',
+    stroke: '#64748b',
+  }
+  if (type === 'debris' || type === 'blocked') return {
+    fill: selected ? 'rgba(245, 158, 11, 0.35)' : 'rgba(120, 53, 15, 0.28)',
+    stroke: selected ? '#f59e0b' : '#92400e',
+  }
+  return {
+    fill: selected ? 'rgba(239, 68, 68, 0.38)' : 'rgba(239, 68, 68, 0.24)',
+    stroke: '#ef4444',
+  }
+}
+
+function renderHazardShape(
+  hazard: { type: 'fire' | 'smoke' | 'debris' | 'blocked'; x: number; y: number; radius: number },
+  currentRadius: number,
+  selected = false,
+  extraProps: { strokeWidth?: number } = {},
+) {
+  const colors = hazardColor(hazard.type, selected)
+  if (hazard.type === 'debris' || hazard.type === 'blocked') {
+    return (
+      <rect
+        x={hazard.x - currentRadius}
+        y={hazard.y - currentRadius}
+        width={currentRadius * 2}
+        height={currentRadius * 2}
+        fill={colors.fill}
+        stroke={colors.stroke}
+        strokeWidth="2"
+        strokeDasharray={hazard.type === 'blocked' ? '6 6' : undefined}
+        rx="4"
+        {...extraProps}
+      />
+    )
+  }
+  return (
+    <circle
+      cx={hazard.x}
+      cy={hazard.y}
+      r={currentRadius}
+      fill={colors.fill}
+      stroke={colors.stroke}
+      strokeWidth="2"
+      {...extraProps}
+    />
+  )
+}
+
 const OCCUPANCY_PRESETS = [
   { label: 'Low', ratio: 0.35 },
   { label: 'Medium', ratio: 0.6 },
@@ -167,19 +218,6 @@ function describeExitUsage(results: SimulationResults | null) {
   return Object.entries(results.exitUsage).sort((left, right) => right[1] - left[1])
 }
 
-function describePresetOutcome(preset: DemoPreset, results: SimulationResults, peakCongestion: number): string {
-  if (results.trappedCount > 0) {
-    return `${results.trappedCount} occupant${results.trappedCount === 1 ? '' : 's'} trapped — hazards blocked the only legal egress route. Matches the preset intent: ${preset.expectedOutcome}`
-  }
-  if (peakCongestion >= 75) {
-    return `Critical congestion (${peakCongestion} simultaneous agents on one edge) confirms the preset stress. ${preset.expectedOutcome}`
-  }
-  if (results.totalReroutes >= results.evacuatedCount * 0.4) {
-    return `${results.totalReroutes} reroutes triggered — agents heavily replanned mid-evacuation. ${preset.expectedOutcome}`
-  }
-  return `Evacuation completed without critical blockage. ${preset.expectedOutcome}`
-}
-
 export default function AutonomousScienceBuildingPage() {
   const { isAuthenticated, isLoading } = useAuth()
   const params = useParams()
@@ -226,8 +264,9 @@ export default function AutonomousScienceBuildingPage() {
   const [savedRunId, setSavedRunId] = useState<string | null>(null)
   const [placedHazards, setPlacedHazards] = useState<PlacedHazard[]>([])
   const [selectedHazardId, setSelectedHazardId] = useState<string | null>(null)
+  const [hoveredHazardId, setHoveredHazardId] = useState<string | null>(null)
+  const [draggingHazardId, setDraggingHazardId] = useState<string | null>(null)
   const [storageAvailable] = useState(() => isHazardStorageAvailable())
-  const [appliedPreset, setAppliedPreset] = useState<DemoPreset | null>(null)
   const [quakeScenario, setQuakeScenario] = useState<QuakeScenario>('moderate')
   const dropRef = useRef<HTMLDivElement | null>(null)
 
@@ -278,26 +317,37 @@ export default function AutonomousScienceBuildingPage() {
 
   const handleDrop = useCallback((event: React.DragEvent<HTMLDivElement>) => {
     event.preventDefault()
+    if (simStateRef.current) return
     const type = event.dataTransfer.getData('application/x-hazard') as PlacedHazard['type']
+    const hazardId = event.dataTransfer.getData('application/x-hazard-id')
     if (!type || !dropRef.current) return
     const rect = dropRef.current.getBoundingClientRect()
     if (!rect.width || !rect.height) return
     const px = ((event.clientX - rect.left) / rect.width) * 1200
     const py = ((event.clientY - rect.top) / rect.height) * 675
     const radius = type === 'fire' ? 38 : type === 'smoke' ? 46 : 34
-    const x = clamp(px, radius, 1200 - radius)
-    const y = clamp(py, radius, 675 - radius)
+    const { x, y } = clampHazardPosition(px, py, radius)
 
-    setPlacedHazards((prev) => [
-      ...prev,
-      {
-        id: `${type}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-        type,
-        x,
-        y,
-        radius,
-      },
-    ])
+    if (hazardId) {
+      setPlacedHazards((prev) => prev.map((hazard) => (
+        hazard.id === hazardId
+          ? { ...hazard, x, y }
+          : hazard
+      )))
+      setSelectedHazardId(hazardId)
+    } else {
+      setPlacedHazards((prev) => [
+        ...prev,
+        {
+          id: `${type}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+          type,
+          x,
+          y,
+          radius,
+        },
+      ])
+    }
+    setDraggingHazardId(null)
   }, [])
 
   const handleDragStart = (type: PlacedHazard['type']) => (event: React.DragEvent<HTMLButtonElement>) => {
@@ -310,6 +360,34 @@ export default function AutonomousScienceBuildingPage() {
     }
   }
 
+  const getMapPointFromClient = useCallback((clientX: number, clientY: number) => {
+    if (!dropRef.current) return null
+    const rect = dropRef.current.getBoundingClientRect()
+    if (!rect.width || !rect.height) return null
+    return {
+      x: ((clientX - rect.left) / rect.width) * 1200,
+      y: ((clientY - rect.top) / rect.height) * 675,
+    }
+  }, [])
+
+  const handlePlacedHazardMouseDown = (hazard: PlacedHazard) => (event: React.MouseEvent<SVGGElement>) => {
+    if (simStateRef.current) return
+    event.preventDefault()
+    setSelectedHazardId(hazard.id)
+    setDraggingHazardId(hazard.id)
+  }
+
+  const handleMapMouseMove = useCallback((event: React.MouseEvent<HTMLDivElement>) => {
+    if (!draggingHazardId || simStateRef.current) return
+    const point = getMapPointFromClient(event.clientX, event.clientY)
+    if (!point) return
+    setPlacedHazards((prev) => prev.map((hazard) => {
+      if (hazard.id !== draggingHazardId) return hazard
+      const next = clampHazardPosition(point.x, point.y, hazard.radius)
+      return { ...hazard, ...next }
+    }))
+  }, [draggingHazardId, getMapPointFromClient])
+
   const removeHazard = useCallback((hazardId: string) => {
     setPlacedHazards((prev) => prev.filter((hazard) => hazard.id !== hazardId))
     if (selectedHazardId === hazardId) setSelectedHazardId(null)
@@ -318,36 +396,7 @@ export default function AutonomousScienceBuildingPage() {
   const clearHazards = useCallback(() => {
     setPlacedHazards([])
     setSelectedHazardId(null)
-    setAppliedPreset(null)
   }, [])
-
-  const availablePresets = useMemo(
-    () => (disaster === 'fire' ? getPresetsFor(regionId, floorIndex, disaster) : []),
-    [regionId, floorIndex, disaster],
-  )
-
-  const applyPreset = useCallback((preset: DemoPreset) => {
-    const stamp = Date.now()
-    const hazards: PlacedHazard[] = preset.hazards.map((hazard, index) => {
-      const radius = resolvePresetHazardRadius(hazard)
-      return {
-        id: `${preset.id}-${index}-${stamp}`,
-        type: hazard.type,
-        x: clamp(hazard.x, radius, 1200 - radius),
-        y: clamp(hazard.y, radius, 675 - radius),
-        radius,
-      }
-    })
-    setPlacedHazards(hazards)
-    setSelectedHazardId(null)
-    setAppliedPreset(preset)
-    if (maxAgents > 0) {
-      setAgentCountOverride(Math.max(1, Math.round(maxAgents * getOccupancyRatio(preset.occupancyPreset))))
-    }
-    setRoomOverrides({})
-  }, [maxAgents])
-
-  const clearAppliedPreset = useCallback(() => setAppliedPreset(null), [])
 
   useEffect(() => {
     simStateRef.current = simState
@@ -1384,88 +1433,6 @@ export default function AutonomousScienceBuildingPage() {
             </div>
           </section>
 
-          {availablePresets.length > 0 && (
-            <section className="auto-panel-section">
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', marginBottom: '10px' }}>
-                <div style={{ fontSize: '11px', fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', color: APP_ACCENT_DARK }}>
-                  Scenario Presets
-                </div>
-                {appliedPreset && (
-                  <button
-                    type="button"
-                    onClick={clearAppliedPreset}
-                    style={{
-                      background: 'none', border: 'none', padding: 0,
-                      color: APP_ACCENT_DARK, fontSize: '11px', fontWeight: 600,
-                      cursor: 'pointer', textDecoration: 'underline',
-                    }}
-                  >
-                    Clear label
-                  </button>
-                )}
-              </div>
-              <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginBottom: '12px', lineHeight: 1.5 }}>
-                One-click recipes from the stakeholder demo guide. Applying a preset replaces hazards and occupancy.
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                {availablePresets.map((preset) => {
-                  const isActive = appliedPreset?.id === preset.id
-                  const accent = getSeverityAccent(preset.severity)
-                  return (
-                    <button
-                      key={preset.id}
-                      type="button"
-                      onClick={() => applyPreset(preset)}
-                      style={{
-                        textAlign: 'left',
-                        padding: '10px 12px',
-                        borderRadius: '10px',
-                        border: `1px solid ${isActive ? accent : 'var(--border)'}`,
-                        background: isActive ? `${accent}14` : '#ffffff',
-                        boxShadow: isActive ? `0 0 0 1px ${accent}40` : 'none',
-                        cursor: 'pointer',
-                        transition: 'all 0.15s',
-                      }}
-                    >
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '6px', marginBottom: '4px' }}>
-                        <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-primary)' }}>
-                          {preset.label}
-                        </div>
-                        <span style={{
-                          fontSize: '9px', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase',
-                          color: accent, padding: '2px 6px', borderRadius: '999px',
-                          background: `${accent}1f`,
-                        }}>
-                          {preset.severity}
-                        </span>
-                      </div>
-                      <div style={{ fontSize: '11px', color: 'var(--text-secondary)', lineHeight: 1.4, marginBottom: '4px' }}>
-                        {preset.description}
-                      </div>
-                      <div style={{ fontSize: '10px', color: 'var(--text-muted)' }}>
-                        {preset.hazards.length} hazard{preset.hazards.length === 1 ? '' : 's'} · {preset.occupancyPreset} occupancy
-                      </div>
-                    </button>
-                  )
-                })}
-              </div>
-              {appliedPreset && (
-                <div style={{
-                  marginTop: '10px',
-                  padding: '8px 10px',
-                  borderRadius: '8px',
-                  background: `${getSeverityAccent(appliedPreset.severity)}14`,
-                  border: `1px solid ${getSeverityAccent(appliedPreset.severity)}40`,
-                  fontSize: '11px',
-                  color: 'var(--text-secondary)',
-                  lineHeight: 1.5,
-                }}>
-                  <strong style={{ color: 'var(--text-primary)' }}>Watch for:</strong> {appliedPreset.expectedOutcome}
-                </div>
-              )}
-            </section>
-          )}
-
           {disaster === 'earthquake' && (
             <section className="auto-panel-section">
               <div style={{ fontSize: '11px', fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', color: APP_ACCENT_DARK, marginBottom: '12px' }}>
@@ -1770,12 +1737,14 @@ export default function AutonomousScienceBuildingPage() {
               </div>
             </div>
           </div>
-
           <div
             className="auto-map-shell"
             ref={dropRef}
             onDrop={handleDrop}
             onDragOver={(event) => event.preventDefault()}
+            onMouseMove={handleMapMouseMove}
+            onMouseUp={() => setDraggingHazardId(null)}
+            onMouseLeave={() => setDraggingHazardId(null)}
           >
             {floor.floorplanSrc ? (
               // eslint-disable-next-line @next/next/no-img-element
@@ -1855,29 +1824,23 @@ export default function AutonomousScienceBuildingPage() {
               })}
 
               {!simState && placedHazards.map((hazard) => (
-                <g key={hazard.id} onClick={() => setSelectedHazardId(hazard.id)} style={{ cursor: 'pointer' }}>
-                  {hazard.type === 'debris' ? (
-                    <rect
-                      x={hazard.x - hazard.radius}
-                      y={hazard.y - hazard.radius}
-                      width={hazard.radius * 2}
-                      height={hazard.radius * 2}
-                      fill={selectedHazardId === hazard.id ? 'rgba(245, 158, 11, 0.35)' : 'rgba(120, 53, 15, 0.35)'}
-                      stroke={selectedHazardId === hazard.id ? '#f59e0b' : '#92400e'}
-                      strokeWidth="2"
-                      rx="4"
-                    />
-                  ) : (
-                    <circle
-                      cx={hazard.x}
-                      cy={hazard.y}
-                      r={hazard.radius}
-                      fill={hazard.type === 'fire' ? 'rgba(239, 68, 68, 0.28)' : 'rgba(100, 116, 139, 0.28)'}
-                      stroke={hazard.type === 'fire' ? '#ef4444' : '#64748b'}
-                      strokeWidth="2"
-                    />
+                <g
+                  key={hazard.id}
+                  onClick={() => setSelectedHazardId(hazard.id)}
+                  onMouseDown={handlePlacedHazardMouseDown(hazard)}
+                  onMouseEnter={() => setHoveredHazardId(hazard.id)}
+                  onMouseLeave={() => setHoveredHazardId(null)}
+                  style={{ cursor: draggingHazardId === hazard.id ? 'grabbing' : 'grab', opacity: draggingHazardId === hazard.id ? 0.55 : 1 }}
+                >
+                  {renderHazardShape(
+                    hazard,
+                    hazard.radius,
+                    selectedHazardId === hazard.id || hoveredHazardId === hazard.id,
+                    {
+                      strokeWidth: selectedHazardId === hazard.id || hoveredHazardId === hazard.id ? 3 : 2,
+                    },
                   )}
-                  <text x={hazard.x} y={hazard.y + 4} textAnchor="middle" fontSize="10" fontWeight="700" fill="#0f172a">
+                  <text x={hazard.x} y={hazard.y + 4} textAnchor="middle" fontSize="10" fontWeight="700" fill="#0f172a" pointerEvents="none">
                     {hazardLabel(hazard.type, disaster)}
                   </text>
                 </g>
@@ -1885,15 +1848,7 @@ export default function AutonomousScienceBuildingPage() {
 
               {simState?.hazards.filter((hazard) => hazard.active).map((hazard) => (
                 <g key={hazard.zone.id}>
-                  <circle
-                    cx={hazard.zone.x}
-                    cy={hazard.zone.y}
-                    r={hazard.currentRadius}
-                    fill={hazard.zone.type === 'smoke' ? 'rgba(100, 116, 139, 0.18)' : hazard.zone.type === 'debris' ? 'rgba(245, 158, 11, 0.18)' : 'rgba(239, 68, 68, 0.18)'}
-                    stroke={hazard.zone.type === 'smoke' ? '#64748b' : hazard.zone.type === 'debris' ? '#f59e0b' : '#ef4444'}
-                    strokeWidth="2"
-                    strokeDasharray={hazard.zone.type === 'blocked' ? '6 6' : undefined}
-                  />
+                  {renderHazardShape(hazard.zone, hazard.currentRadius)}
                   <text x={hazard.zone.x} y={hazard.zone.y} textAnchor="middle" fontSize="10" fontWeight="700" fill="#0f172a">
                     {hazard.zone.type.toUpperCase()}
                   </text>
@@ -2031,12 +1986,12 @@ export default function AutonomousScienceBuildingPage() {
               <div className="auto-section-title">Active hazards</div>
               <button
                 onClick={clearHazards}
-                disabled={placedHazards.length === 0}
+                disabled={placedHazards.length === 0 || !!simState}
                 style={{
-                  padding: '5px 10px', borderRadius: '6px', border: `1px solid ${placedHazards.length === 0 ? 'var(--border)' : 'rgba(239,68,68,0.2)'}`,
-                  background: placedHazards.length === 0 ? '#f8fafc' : '#fef2f2',
-                  color: placedHazards.length === 0 ? 'var(--text-muted)' : '#b91c1c',
-                  fontSize: '11px', fontWeight: 600, cursor: placedHazards.length === 0 ? 'not-allowed' : 'pointer',
+                  padding: '5px 10px', borderRadius: '6px', border: `1px solid ${placedHazards.length === 0 || simState ? 'var(--border)' : 'rgba(239,68,68,0.2)'}`,
+                  background: placedHazards.length === 0 || simState ? '#f8fafc' : '#fef2f2',
+                  color: placedHazards.length === 0 || simState ? 'var(--text-muted)' : '#b91c1c',
+                  fontSize: '11px', fontWeight: 600, cursor: placedHazards.length === 0 || simState ? 'not-allowed' : 'pointer',
                 }}
               >
                 Clear
@@ -2061,15 +2016,17 @@ export default function AutonomousScienceBuildingPage() {
                   <div>
                     <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-primary)' }}>{index + 1}. {hazardLabel(hazard.type, disaster)}</div>
                     <div style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>x {Math.round(hazard.x)}, y {Math.round(hazard.y)}</div>
+                    {!simState && <div style={{ fontSize: '10px', color: APP_ACCENT_DARK, fontWeight: 600 }}>Drag on map to reposition</div>}
                   </div>
                   <button
+                    disabled={!!simState}
                     onClick={(event) => {
                       event.stopPropagation()
                       removeHazard(hazard.id)
                     }}
                     style={{
                       padding: '4px 10px', borderRadius: '6px', border: '1px solid rgba(239,68,68,0.2)',
-                      background: '#fef2f2', color: '#b91c1c', fontSize: '11px', fontWeight: 600, cursor: 'pointer',
+                      background: simState ? '#f8fafc' : '#fef2f2', color: simState ? 'var(--text-muted)' : '#b91c1c', fontSize: '11px', fontWeight: 600, cursor: simState ? 'not-allowed' : 'pointer',
                     }}
                   >
                     Remove
@@ -2127,25 +2084,6 @@ export default function AutonomousScienceBuildingPage() {
                   <div style={{ fontSize: '32px', fontWeight: 700, color: results.trappedCount > 0 ? '#f97316' : '#22c55e', lineHeight: 1, letterSpacing: '-0.02em' }}>{formatSeconds(results.totalTime)}</div>
                   <div style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginTop: '4px' }}>Evacuation time</div>
                 </div>
-                {appliedPreset && (() => {
-                  const narrative = describePresetOutcome(appliedPreset, results, peakCongestion)
-                  const accent = getSeverityAccent(appliedPreset.severity)
-                  return (
-                    <div style={{
-                      borderRadius: '12px',
-                      border: `1px solid ${accent}40`,
-                      background: `${accent}10`,
-                      padding: '12px 14px',
-                    }}>
-                      <div style={{ fontSize: '11px', fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', color: accent, marginBottom: '4px' }}>
-                        Preset · {appliedPreset.label}
-                      </div>
-                      <div style={{ fontSize: '12px', color: 'var(--text-primary)', lineHeight: 1.5 }}>
-                        {narrative}
-                      </div>
-                    </div>
-                  )
-                })()}
                 {/* Compact 2-up grid — Peak congestion and Trapped already
                     appear in the Live Metrics section above, so we keep
                     only the post-run summary metrics here. */}

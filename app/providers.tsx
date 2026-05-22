@@ -1,12 +1,12 @@
 'use client';
 
-import { ReactNode } from 'react';
+import { ReactNode, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import { AuthProvider } from '@/src/context/AuthContext';
 import { OnboardingProvider } from '@/src/context/OnboardingContext';
 import { useAuth } from '@/src/hooks/useAuth';
 import { useIsMobile } from '@/src/hooks/useIsMobile';
-import { Navbar, SIDEBAR_WIDTH, MOBILE_TOPBAR_HEIGHT } from '@/components/Navbar';
+import { Navbar, SIDEBAR_WIDTH, COLLAPSED_SIDEBAR_WIDTH, MOBILE_TOPBAR_HEIGHT } from '@/components/Navbar';
 
 /**
  * Inner shell that knows whether the user is authenticated. The sidebar only
@@ -21,23 +21,28 @@ function AppShell({ children }: { children: ReactNode }) {
   const { isAuthenticated, isLoading } = useAuth();
   const pathname = usePathname();
   const isMobile = useIsMobile();
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const isAuthRoute = pathname?.startsWith('/auth');
   const showSidebar = isAuthenticated && !isLoading && !isAuthRoute;
+  const sidebarOffset = isSidebarCollapsed ? COLLAPSED_SIDEBAR_WIDTH : SIDEBAR_WIDTH;
 
   return (
-    <>
-      <Navbar />
+    <div className="app-ui-scale-shell">
+      <Navbar
+        isCollapsed={isSidebarCollapsed}
+        onToggleCollapse={() => setIsSidebarCollapsed(value => !value)}
+      />
       <div
         style={{
           minHeight: '100vh',
-          marginLeft: showSidebar && !isMobile ? `${SIDEBAR_WIDTH}px` : 0,
+          marginLeft: showSidebar && !isMobile ? `${sidebarOffset}px` : 0,
           paddingTop: showSidebar && isMobile ? `${MOBILE_TOPBAR_HEIGHT}px` : 0,
           transition: 'margin-left var(--transition, 200ms)',
         }}
       >
         {children}
       </div>
-    </>
+    </div>
   );
 }
 
