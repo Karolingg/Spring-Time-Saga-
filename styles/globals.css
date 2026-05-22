@@ -52,10 +52,7 @@ body {
 
 @media (min-width: 769px) {
   .app-ui-scale-shell {
-    width: calc(100% / var(--app-ui-scale));
-    min-height: calc(100vh / var(--app-ui-scale));
-    transform: scale(var(--app-ui-scale));
-    transform-origin: top left;
+    zoom: var(--app-ui-scale);
   }
 }
 
