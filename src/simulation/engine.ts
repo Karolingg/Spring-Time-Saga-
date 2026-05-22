@@ -157,7 +157,7 @@ export interface SimulationState {
  *  movement is sharply reduced. Models the period where the ground itself is
  *  still moving — occupants who do start walking can only shuffle. After this
  *  window, normal movement resumes. */
-const EARTHQUAKE_TREMOR_DURATION = 10
+const EARTHQUAKE_TREMOR_DURATION = 8
 /** Movement multiplier applied to any agent that's mid-walk during the tremor
  *  window. Bounded above 0 so tremor agents still progress, just slowly. */
 const EARTHQUAKE_TREMOR_SPEED_MULTIPLIER = 0.3
@@ -360,8 +360,7 @@ function rollQuakeMagnitude(scenario: QuakeScenario, rand: () => number): number
   return lo + rand() * (hi - lo)
 }
 
-/** Main shock at t=0, then two weaker aftershocks. */
-const EARTHQUAKE_SHOCK_TIMES = [0, 18, 36]
+const EARTHQUAKE_SHOCK_TIMES = [0, 18, 36].map(t => t + EARTHQUAKE_TREMOR_DURATION)
 const AFTERSHOCK_PROBABILITY_FACTOR = 0.5
 /** Collapse debris is kept tight to the edge it severs — big enough to block
  *  that edge's midpoint, small enough that it does not bleed into a
@@ -437,8 +436,12 @@ function generateEarthquakeCollapses(
   const zones: HazardZone[] = []
   let idx = 0
 
-  for (const shockTime of EARTHQUAKE_SHOCK_TIMES) {
-    const shockProb = shockTime === 0 ? baseProb : baseProb * AFTERSHOCK_PROBABILITY_FACTOR
+  for (const [shockIndex, shockTime] of EARTHQUAKE_SHOCK_TIMES.entries()) {
+    // The first entry is always the main shock (full collapse probability);
+    // every entry after it is a weaker aftershock. Keyed by index — not by
+    // `shockTime === 0` — so shifting the timeline past the tremor window
+    // doesn't accidentally demote the main shock to aftershock strength.
+    const shockProb = shockIndex === 0 ? baseProb : baseProb * AFTERSHOCK_PROBABILITY_FACTOR
     for (const edge of fragileEdges) {
       const key = edgeKey(edge.from, edge.to)
       if (collapsed.has(key)) continue
