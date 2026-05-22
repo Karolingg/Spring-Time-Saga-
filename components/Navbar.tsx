@@ -94,13 +94,20 @@ const NAV_SECTIONS: { label: string; items: NavItem[] }[] = [
 
 /** Width reserved for the sidebar. Pages get a matching `marginLeft` via the
  *  layout wrapper in `providers.tsx` so content never sits underneath it. */
-export const SIDEBAR_WIDTH = 244
+export const SIDEBAR_WIDTH = 317
+export const COLLAPSED_SIDEBAR_WIDTH = 76
 
 /** Height of the mobile top bar — used by providers.tsx so pages can leave
  *  space for it via `paddingTop`. */
 export const MOBILE_TOPBAR_HEIGHT = 56
 
-export function Navbar() {
+export function Navbar({
+  isCollapsed = false,
+  onToggleCollapse,
+}: {
+  isCollapsed?: boolean
+  onToggleCollapse?: () => void
+}) {
   const { user, isAuthenticated, isLoading, handleLogout } = useAuth()
   const pathname = usePathname()
   const isMobile = useIsMobile()
@@ -231,7 +238,7 @@ export function Navbar() {
       top: 0,
       left: 0,
       bottom: 0,
-      width: `${SIDEBAR_WIDTH}px`,
+      width: `${isCollapsed ? COLLAPSED_SIDEBAR_WIDTH : SIDEBAR_WIDTH}px`,
       // Layered background: a soft teal halo near the brand at the top,
       // sitting on top of a cool diagonal gradient for depth without
       // looking flat or washed-out.
@@ -243,8 +250,19 @@ export function Navbar() {
       flexDirection: 'column',
       zIndex: 100,
       boxShadow: '2px 0 16px -8px rgba(15, 23, 42, 0.10)',
+      transition: 'width var(--transition, 200ms)',
     }}>
-      {renderNavContent({ drawerOpen: false, setDrawerOpen, initials, username, isActive, handleLogout, showCloseButton: false })}
+      {renderNavContent({
+        drawerOpen: false,
+        setDrawerOpen,
+        initials,
+        username,
+        isActive,
+        handleLogout,
+        showCloseButton: false,
+        isCollapsed,
+        onToggleCollapse,
+      })}
     </nav>
   )
 }
@@ -259,6 +277,8 @@ function renderNavContent({
   isActive,
   handleLogout,
   showCloseButton,
+  isCollapsed = false,
+  onToggleCollapse,
 }: {
   drawerOpen: boolean
   setDrawerOpen: (open: boolean) => void
@@ -267,16 +287,18 @@ function renderNavContent({
   isActive: (item: NavItem) => boolean
   handleLogout: () => void
   showCloseButton: boolean
+  isCollapsed?: boolean
+  onToggleCollapse?: () => void
 }) {
   return (
     <>
       {/* Brand header */}
       <div style={{
-        padding: '20px 18px 16px',
+        padding: isCollapsed ? '16px 10px' : '20px 18px 16px',
         borderBottom: '1px solid rgba(15, 23, 42, 0.06)',
-        display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px',
+        display: 'flex', alignItems: 'center', justifyContent: isCollapsed ? 'center' : 'space-between', gap: '8px',
       }}>
-        <Link href="/" style={{
+        {!isCollapsed && <Link href="/" style={{
           display: 'flex',
           alignItems: 'center',
           gap: '11px',
@@ -306,7 +328,7 @@ function renderNavContent({
               Campus Evacuation
             </div>
           </div>
-        </Link>
+        </Link>}
         {showCloseButton && (
           <button
             onClick={() => setDrawerOpen(false)}
@@ -324,20 +346,39 @@ function renderNavContent({
             </svg>
           </button>
         )}
+        {!showCloseButton && onToggleCollapse && (
+          <button
+            onClick={onToggleCollapse}
+            title={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+            aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+            style={{
+              width: '32px', height: '32px', borderRadius: '8px',
+              background: 'rgba(255,255,255,0.75)', border: '1px solid rgba(15,23,42,0.06)',
+              cursor: 'pointer', color: '#475569', flexShrink: 0,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              transform: isCollapsed ? 'rotate(180deg)' : 'none',
+              transition: 'background 140ms, color 140ms, transform 200ms',
+            }}
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="15 18 9 12 15 6"/>
+            </svg>
+          </button>
+        )}
       </div>
 
       {/* Nav sections */}
       <div style={{
         flex: 1,
         overflowY: 'auto',
-        padding: '14px 12px 12px',
+        padding: isCollapsed ? '14px 10px 12px' : '14px 12px 12px',
         display: 'flex',
         flexDirection: 'column',
         gap: '14px',
       }}>
         {NAV_SECTIONS.map((section) => (
           <div key={section.label} style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-            <div style={{
+            {!isCollapsed && <div style={{
               fontSize: '10px',
               fontWeight: 700,
               letterSpacing: '0.1em',
@@ -346,7 +387,7 @@ function renderNavContent({
               padding: '0 12px 6px',
             }}>
               {section.label}
-            </div>
+            </div>}
             {section.items.map((item) => {
               const active = isActive(item)
               return (
@@ -357,8 +398,9 @@ function renderNavContent({
                     position: 'relative',
                     display: 'flex',
                     alignItems: 'center',
-                    gap: '12px',
-                    padding: '9px 12px',
+                    justifyContent: isCollapsed ? 'center' : 'flex-start',
+                    gap: isCollapsed ? 0 : '12px',
+                    padding: isCollapsed ? '10px' : '9px 12px',
                     borderRadius: '10px',
                     background: active ? 'rgba(255, 255, 255, 0.85)' : 'transparent',
                     color: active ? '#1f9189' : '#475569',
@@ -368,7 +410,9 @@ function renderNavContent({
                     fontWeight: active ? 700 : 500,
                     transition: 'background 140ms, color 140ms',
                     letterSpacing: '-0.005em',
+                    minHeight: '40px',
                   }}
+                  title={isCollapsed ? item.title : undefined}
                   onMouseEnter={e => {
                     if (!active) {
                       e.currentTarget.style.background = 'rgba(255, 255, 255, 0.6)'
@@ -406,7 +450,7 @@ function renderNavContent({
                   }}>
                     {item.icon}
                   </span>
-                  <span style={{ flex: 1 }}>{item.title}</span>
+                  {!isCollapsed && <span style={{ flex: 1 }}>{item.title}</span>}
                 </a>
               )
             })}
@@ -416,14 +460,15 @@ function renderNavContent({
 
       {/* Footer: account card */}
       <div style={{
-        padding: '12px',
+        padding: isCollapsed ? '12px 10px' : '12px',
         borderTop: '1px solid rgba(15, 23, 42, 0.06)',
       }}>
         <div style={{
           display: 'flex',
           alignItems: 'center',
-          gap: '10px',
-          padding: '10px 12px',
+          justifyContent: isCollapsed ? 'center' : 'flex-start',
+          gap: isCollapsed ? 0 : '10px',
+          padding: isCollapsed ? '10px' : '10px 12px',
           borderRadius: '12px',
           background: 'rgba(255, 255, 255, 0.85)',
           border: '1px solid rgba(15, 23, 42, 0.06)',
@@ -446,7 +491,7 @@ function renderNavContent({
           }}>
             {initials}
           </div>
-          <div style={{ flex: 1, minWidth: 0 }}>
+          {!isCollapsed && <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{
               fontSize: '12.5px',
               fontWeight: 700,
@@ -469,8 +514,8 @@ function renderNavContent({
             }}>
               Signed in
             </div>
-          </div>
-          <button
+          </div>}
+          {!isCollapsed && <button
             onClick={handleLogout}
             title="Sign out"
             aria-label="Sign out"
@@ -502,7 +547,7 @@ function renderNavContent({
               <polyline points="16 17 21 12 16 7"/>
               <line x1="21" y1="12" x2="9" y2="12"/>
             </svg>
-          </button>
+          </button>}
         </div>
       </div>
     </>
