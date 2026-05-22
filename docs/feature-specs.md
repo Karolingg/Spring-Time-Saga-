@@ -1,72 +1,10 @@
 # Feature Specifications (Ship target: 2026-05-18)
 
-This document defines three stakeholder-facing features and the exact parts of the codebase they touch. It is written for implementation by another developer.
+This document defines stakeholder-facing features and the exact parts of the codebase they touch. It is written for implementation by another developer.
 
 ---
 
-## 1 Stakeholder Demo Mode (Autonomous runs only)
-
-### Goal
-Provide one-click, high-impact scenario presets for autonomous simulations so demos feel intentional and repeatable.
-
-### Where this lives
-- Primary UI: app/simulate/[id]/autonomous/page.tsx
-- Scenario definitions: docs/stakeholder-autonomous-scenarios.md (source for names and intended outcomes)
-- Hazard placement utilities: src/simulation/hazard-placement.ts
-- Simulation engine and results: src/simulation/engine.ts, src/simulation/autonomous-analytics.ts
-- Heatmap/grid utils: src/simulation/spatial-grid.ts
-
-### Data model (new)
-Add a small preset registry in the autonomous page (or a new file under src/simulation/presets/). Example structure:
-
-```
-type DemoPreset = {
-  id: string
-  label: string
-  description: string
-  disaster: 'fire' | 'earthquake'
-  occupancyPreset: 'Low' | 'Medium' | 'High' | 'Full'
-  floorIndex: number
-  hazards: Array<{ type: 'fire' | 'smoke' | 'debris', x: number, y: number, radius: number }>
-}
-```
-
-Notes:
-- Coordinates are in floor SVG space (1200 x 675). Use FLOOR_VIEW_WIDTH and FLOOR_VIEW_HEIGHT.
-- Hazard radius should use getDefaultHazardRadius() unless a custom radius is needed.
-- Presets should be defined per floor where geometry differs.
-
-### UX flow
-1. User opens an autonomous run page.
-2. A "Scenario Presets" panel appears above hazard controls.
-3. Clicking a preset:
-   - Sets the disaster type if needed.
-   - Sets occupancy to the preset value.
-   - Clears existing hazards and places the preset hazards.
-   - Saves the plan using saveHazardPlan() with getHazardStorageKey().
-4. The UI shows a compact summary (preset name, hazard count, occupancy).
-5. Run simulation uses the newly placed hazards as normal.
-6. After completion, a results card shows the key KPIs plus a 1-2 line narrative.
-
-### Acceptance criteria
-- Preset panel only appears on autonomous routes: app/simulate/[id]/autonomous/page.tsx.
-- Preset list is based on docs/stakeholder-autonomous-scenarios.md with matching names.
-- Applying a preset fully replaces existing hazards and updates occupancy.
-- Preset hazards persist on refresh via hazard storage (getHazardStorageKey + saveHazardPlan).
-- Results card includes: evacuation time, evacuated count, trapped count, max congestion, global peak density.
-- Narrative text changes based on results, for example:
-  - If trappedCount > 0 -> "Trapped occupants detected; egress routes were blocked."
-  - If maxCongestion >= 75 -> "Critical congestion in key corridors."
-  - Else -> "Evacuation completed without critical blockage."
-
-### Out of scope
-- Non-autonomous runs
-- New floorplan assets
-- Major engine changes
-
----
-
-## 2) CSV Export (one click from run summary)
+## 1) CSV Export (one click from run summary)
 
 ### Goal
 Allow stakeholders to export a run summary and per-zone metrics as a CSV.
@@ -119,7 +57,7 @@ Format details:
 
 ---
 
-## 3) Evacuation report (HTML/PDF)
+## 2) Evacuation report (HTML/PDF)
 
 ### Goal
 Generate a clean, printable report for a run with a summary narrative and charts.
@@ -163,6 +101,5 @@ Add a "Generate Report" button in the run header next to "Export CSV". It opens 
 ---
 
 ## Testing checklist
-- Verify preset applies correct hazards and occupancy across at least two floors.
 - Run a simulation, export CSV, and verify numeric fields align with the UI.
 - Generate report, print to PDF, and check for layout overflow.

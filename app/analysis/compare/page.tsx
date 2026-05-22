@@ -867,7 +867,7 @@ function EmptyState() {
         Need at least two completed runs
       </h2>
       <p style={{ margin: 0, fontSize: '14px', color: 'var(--text-secondary)' }}>
-        Run the same preset again after changing hazards or occupancy and the second run will appear here for side-by-side review.
+        Run another simulation after changing hazards or occupancy and the second run will appear here for side-by-side review.
       </p>
       <a href="/map" style={{
         display: 'inline-block', marginTop: '16px', padding: '10px 20px',
