@@ -14,6 +14,7 @@ import { GRID_COLS, GRID_ROWS } from '@/src/simulation/spatial-grid'
 import { logAction } from '@/src/services/audit.service'
 import { clearBuildingScoreCache } from '@/src/services/building-analytics.service'
 import { getCurrentUserCacheKey, ReadThroughCache } from '@/src/services/read-cache'
+import { BUILDING_FLOOR_COUNT } from '@/src/config/building-floor-counts'
 
 export interface ReplayInputs {
   hazards: PlacedHazard[]
@@ -65,6 +66,12 @@ function clearAnalysisCaches() {
   clearAggregateCache()
   clearSimulationReadCache()
   clearBuildingScoreCache()
+}
+
+async function getAuthenticatedUserId(): Promise<string> {
+  const { data, error } = await supabase.auth.getUser()
+  if (error || !data.user) throw new Error('Not authenticated')
+  return data.user.id
 }
 
 async function ensureProfile(
@@ -429,11 +436,13 @@ export async function getLatestSimulationRun(): Promise<SimulationRun | null> {
 }
 
 export async function getSimulationHistory(limit: number = 5): Promise<SimulationRun[]> {
-  const userKey = await getCurrentUserCacheKey('simulation')
+  const userId = await getAuthenticatedUserId()
+  const userKey = `simulation:user:${userId}`
   return readCache.get(`${userKey}:history:${limit}`, async () => {
     const { data, error } = await supabase
       .from('simulation_runs')
       .select('*')
+      .eq('user_id', userId)
       .eq('status', 'completed')
       .order('created_at', { ascending: false })
       .limit(limit)
@@ -556,10 +565,12 @@ export async function getAggregateSimulationStats(): Promise<{
   avgBottlenecksPerRun: number
   avgEvacuationTime: number
 }> {
-  return getCachedAggregate('aggregate-simulation-stats', async () => {
+  const userId = await getAuthenticatedUserId()
+  return getCachedAggregate(`aggregate-simulation-stats:user:${userId}`, async () => {
   const { data: runs, error: runsError } = await supabase
     .from('simulation_runs')
     .select('id')
+    .eq('user_id', userId)
     .eq('status', 'completed')
 
   if (runsError) throw new Error(runsError.message)
@@ -607,6 +618,64 @@ export async function getAggregateSimulationStats(): Promise<{
     avgBottlenecksPerRun,
     avgEvacuationTime,
   }
+  })
+}
+
+export interface DashboardBuildingCoverage {
+  totalBuildings: number
+  coveredBuildings: number
+  pendingBuildings: number
+  coveredBuildingNames: string[]
+}
+
+function buildingNameFromId(buildingId: string): string {
+  return buildingId
+    .split('-')
+    .filter(Boolean)
+    .map(part => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(' ')
+}
+
+export async function getDashboardBuildingCoverage(): Promise<DashboardBuildingCoverage> {
+  const userId = await getAuthenticatedUserId()
+  const knownBuildingIds = Object.keys(BUILDING_FLOOR_COUNT)
+    .filter(id => (BUILDING_FLOOR_COUNT[id] ?? 0) > 0)
+  const knownBuildingSet = new Set(knownBuildingIds)
+
+  return getCachedAggregate(`dashboard-building-coverage:user:${userId}`, async () => {
+    const fallback = {
+      totalBuildings: knownBuildingIds.length,
+      coveredBuildings: 0,
+      pendingBuildings: knownBuildingIds.length,
+      coveredBuildingNames: [],
+    }
+
+    const { data, error } = await supabase
+      .from('simulation_runs')
+      .select('building_id')
+      .eq('user_id', userId)
+      .eq('status', 'completed')
+      .not('building_id', 'is', null)
+
+    if (error) {
+      if (/building_id/i.test(error.message)) return fallback
+      throw new Error(error.message)
+    }
+
+    const coveredBuildingIds = Array.from(new Set(
+      ((data ?? []) as { building_id: string | null }[])
+        .map(row => row.building_id)
+        .filter((buildingId): buildingId is string => (
+          typeof buildingId === 'string' && knownBuildingSet.has(buildingId)
+        )),
+    )).sort((a, b) => a.localeCompare(b))
+
+    return {
+      totalBuildings: knownBuildingIds.length,
+      coveredBuildings: coveredBuildingIds.length,
+      pendingBuildings: Math.max(0, knownBuildingIds.length - coveredBuildingIds.length),
+      coveredBuildingNames: coveredBuildingIds.map(buildingNameFromId),
+    }
   })
 }
 
