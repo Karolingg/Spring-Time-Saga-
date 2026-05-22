@@ -83,7 +83,7 @@ export interface SimulationState {
  *  movement is sharply reduced. Models the period where the ground itself is
  *  still moving — occupants who do start walking can only shuffle. After this
  *  window, normal movement resumes. */
-const EARTHQUAKE_TREMOR_DURATION = 8
+export const EARTHQUAKE_TREMOR_DURATION = 8
 /** Movement multiplier applied to any agent that's mid-walk during the tremor
  *  window. Bounded above 0 so tremor agents still progress, just slowly. */
 const EARTHQUAKE_TREMOR_SPEED_MULTIPLIER = 0.3
