@@ -200,7 +200,10 @@ export default function DashboardPage() {
   if (isAuthLoading) {
     return (
       <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg)' }}>
-        <div style={{ color: 'var(--text-secondary)', fontSize: '14px' }}>Loading...</div>
+        <div style={{ color: 'var(--text-secondary)', fontSize: '14px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <span className="spinner" />
+          Loading...
+        </div>
       </div>
     )
   }
@@ -318,7 +321,8 @@ export default function DashboardPage() {
               <circle cx="50" cy="50" r="42" fill="none" stroke="#f1f5f9" strokeWidth="8" />
               <circle cx="50" cy="50" r="42" fill="none" stroke={rl.color} strokeWidth="8"
                 strokeLinecap="round"
-                strokeDasharray={`${readiness * 2.64} ${264 - readiness * 2.64}`} />
+                strokeDasharray={`${readiness * 2.64} ${264 - readiness * 2.64}`}
+                style={{ transition: 'stroke-dasharray 0.8s ease, stroke 0.3s ease' }} />
             </svg>
             <div style={{
               position: 'absolute', inset: 0,
@@ -363,12 +367,18 @@ export default function DashboardPage() {
           </div>
 
           <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px', marginBottom: '6px' }}>
-            <span style={{ fontSize: '32px', fontWeight: '700', color: 'var(--text-primary)', lineHeight: 1 }}>
-              {isDashboardLoading ? '...' : coverageCovered}
-            </span>
-            <span style={{ fontSize: '14px', color: 'var(--text-secondary)' }}>
-              / {isDashboardLoading ? '...' : coverageTotal} buildings
-            </span>
+            {isDashboardLoading ? (
+              <span className="skeleton" style={{ width: '96px', height: '32px' }} />
+            ) : (
+              <>
+                <span style={{ fontSize: '32px', fontWeight: '700', color: 'var(--text-primary)', lineHeight: 1 }}>
+                  {coverageCovered}
+                </span>
+                <span style={{ fontSize: '14px', color: 'var(--text-secondary)' }}>
+                  / {coverageTotal} buildings
+                </span>
+              </>
+            )}
           </div>
 
           <div style={{ height: '6px', background: '#f1f5f9', borderRadius: '3px', marginBottom: '10px' }}>
@@ -446,29 +456,44 @@ interface StatCardData {
   sub: string
   color: string
   progress?: number
+  loading?: boolean
 }
 
-function StatCard({ icon, label, value, sub, color, progress }: StatCardData) {
+function StatCard({ icon, label, value, sub, color, progress, loading }: StatCardData) {
   return (
-    <div style={{
+    <div className="hover-raise" style={{
       background: '#ffffff',
       border: '1px solid var(--border)',
       borderRadius: '14px',
-      padding: '24px 28px',
+      padding: '22px 24px',
       boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
     }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
-        {icon}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '14px' }}>
+        <div style={{
+          width: '32px', height: '32px', borderRadius: '9px',
+          background: `${color}16`,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          flexShrink: 0,
+        }}>
+          {icon}
+        </div>
         <span style={{ fontSize: '11px', fontWeight: '600', letterSpacing: '0.08em', color: 'var(--text-muted)', textTransform: 'uppercase' }}>
           {label}
         </span>
       </div>
-      <div style={{ fontSize: '32px', fontWeight: '700', color: 'var(--text-primary)', letterSpacing: '-0.02em', lineHeight: 1 }}>
-        {value}
-      </div>
+      {loading ? (
+        <span className="skeleton" style={{ width: '72px', height: '32px' }} />
+      ) : (
+        <div style={{ fontSize: '32px', fontWeight: '700', color: 'var(--text-primary)', letterSpacing: '-0.02em', lineHeight: 1 }}>
+          {value}
+        </div>
+      )}
       {progress !== undefined && (
         <div style={{ margin: '10px 0 4px', height: '4px', background: '#f1f5f9', borderRadius: '2px' }}>
-          <div style={{ height: '100%', width: `${Math.min(progress, 100)}%`, background: color, borderRadius: '2px' }} />
+          <div style={{
+            height: '100%', width: `${Math.min(progress, 100)}%`, background: color, borderRadius: '2px',
+            transition: 'width 0.6s ease',
+          }} />
         </div>
       )}
       <div style={{ fontSize: '13px', color: 'var(--text-secondary)', marginTop: '6px' }}>{sub}</div>
@@ -500,9 +525,10 @@ function buildStatCards(stats: AggregateStats | null, isLoading: boolean): StatC
         </svg>
       ),
       label: 'SIMULATIONS RUN',
-      value: isLoading ? '...' : stats?.totalRuns.toString() ?? '0',
+      value: stats?.totalRuns.toString() ?? '0',
       sub: isLoading ? 'Loading completed runs' : stats && stats.totalRuns > 0 ? 'completed runs' : 'No data yet',
       color: '#2db8b0',
+      loading: isLoading,
     },
     {
       icon: (
@@ -512,9 +538,10 @@ function buildStatCards(stats: AggregateStats | null, isLoading: boolean): StatC
         </svg>
       ),
       label: 'TOTAL AGENTS',
-      value: isLoading ? '...' : stats?.totalAgentsSimulated.toLocaleString() ?? '0',
+      value: stats?.totalAgentsSimulated.toLocaleString() ?? '0',
       sub: isLoading ? 'Loading agent totals' : 'across your simulations',
       color: '#2db8b0',
+      loading: isLoading,
     },
     {
       icon: (
@@ -523,10 +550,11 @@ function buildStatCards(stats: AggregateStats | null, isLoading: boolean): StatC
         </svg>
       ),
       label: 'AVG EVACUATION',
-      value: isLoading ? '...' : stats ? `${stats.avgEvacuationRate.toFixed(0)}%` : '0%',
+      value: stats ? `${stats.avgEvacuationRate.toFixed(0)}%` : '0%',
       sub: isLoading ? 'Loading success rate' : 'average success rate',
       color: '#2db8b0',
       progress: isLoading ? 0 : stats?.avgEvacuationRate ?? 0,
+      loading: isLoading,
     },
     {
       icon: (
@@ -536,9 +564,10 @@ function buildStatCards(stats: AggregateStats | null, isLoading: boolean): StatC
         </svg>
       ),
       label: 'AVG BOTTLENECKS',
-      value: isLoading ? '...' : stats ? stats.avgBottlenecksPerRun.toFixed(1) : '0',
+      value: stats ? stats.avgBottlenecksPerRun.toFixed(1) : '0',
       sub: isLoading ? 'Loading bottleneck average' : 'per simulation run',
       color: '#f59e0b',
+      loading: isLoading,
     },
   ]
 }
@@ -672,7 +701,12 @@ function DashboardLoadingState({ text }: { text: string }) {
       borderRadius: '10px',
       color: 'var(--text-secondary)',
       fontSize: '13px',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: '10px',
     }}>
+      <span className="spinner" />
       {text}
     </div>
   )
@@ -728,7 +762,7 @@ function DrillComparison({ runs, isMobile, isLoading }: { runs: SimulationRun[];
               ? 'Run one more simulation to unlock side-by-side comparison.'
               : 'Run at least two simulations to compare them side by side.'}
           </div>
-          <a href="/map" style={{
+          <a href="/map" className="hover-darken" style={{
             display: 'inline-block', marginTop: '8px', padding: '8px 16px',
             background: '#2db8b0', color: '#ffffff', borderRadius: '6px',
             textDecoration: 'none', fontSize: '13px', fontWeight: '600',
@@ -786,7 +820,7 @@ function ComparisonPreview({ a, b, compareUrl, isMobile }: { a: SimulationRun; b
           format={(v) => `${v > 0 ? '+' : ''}${v.toFixed(1)}s`}
           betterWhenHigher={false}
         />
-        <a href={compareUrl} style={{
+        <a href={compareUrl} className="hover-darken" style={{
           display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
           padding: '9px 14px', background: '#2db8b0', color: '#ffffff',
           borderRadius: '6px', textDecoration: 'none', fontSize: '13px', fontWeight: '600',
@@ -918,10 +952,11 @@ function QuickActions({ isMobile }: { isMobile: boolean }) {
       <h2 style={{ margin: '0 0 14px', fontSize: '14px', fontWeight: '600', color: 'var(--text-primary)' }}>Quick Actions</h2>
       <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, 1fr)', gap: '12px' }}>
         {QUICK_ACTIONS.map(item => (
-          <a key={item.label} href={item.href} style={{
+          <a key={item.label} href={item.href} className="hover-raise" style={{
             display: 'flex', alignItems: 'center', gap: '14px',
             padding: '12px 14px', background: '#f8fafc',
-            borderRadius: '8px', textDecoration: 'none',
+            border: '1px solid var(--border)',
+            borderRadius: '10px', textDecoration: 'none',
           }}>
             <div style={{
               width: '36px', height: '36px', borderRadius: '8px',

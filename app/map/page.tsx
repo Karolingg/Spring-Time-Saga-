@@ -332,17 +332,27 @@ export default function MapPage() {
 
   const handleAssemblyClick = useCallback((id: string) => {
     setSelectedAssembly(id)
+    // The popup is `position: fixed`, but it lives inside `.app-ui-scale-shell`,
+    // which applies a `zoom` on desktop. A fixed element's left/top are scaled by
+    // that zoom, so raw viewport coords from getBoundingClientRect() would land
+    // the bubble off-target. Divide by the shell's effective scale (bounding vs.
+    // layout width) so the bubble sits exactly over the marker. On mobile the
+    // zoom isn't applied, so the ratio is 1 and this is a no-op.
+    const shell = document.querySelector('.app-ui-scale-shell') as HTMLElement | null
+    const scale = shell && shell.offsetWidth > 0
+      ? shell.getBoundingClientRect().width / shell.offsetWidth
+      : 1
     const mapContainer = document.querySelector('.map-view-shell')
     const marker = mapContainer?.querySelector(`[data-assembly-id="${id}"]`)
     if (marker) {
       const rect = marker.getBoundingClientRect()
       setAssemblyPopupPos({
-        x: rect.left + rect.width / 2,
-        y: rect.top,
+        x: (rect.left + rect.width / 2) / scale,
+        y: rect.top / scale,
       })
       return
     }
-    setAssemblyPopupPos({ x: window.innerWidth / 2, y: 100 })
+    setAssemblyPopupPos({ x: window.innerWidth / 2 / scale, y: 100 / scale })
   }, [])
 
   const assemblyMarkers: AssemblyMarker[] = useMemo(
@@ -371,7 +381,7 @@ export default function MapPage() {
   if (isLoading) {
     return (
       <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg)' }}>
-        <span style={{ color: 'var(--text-secondary)', fontSize: '14px' }}>Loading...</span>
+        <span style={{ color: 'var(--text-secondary)', fontSize: '14px', display: 'flex', alignItems: 'center', gap: '10px' }}><span className="spinner" />Loading...</span>
       </div>
     )
   }
@@ -426,56 +436,13 @@ export default function MapPage() {
           height: '100%',
           overflow: 'hidden',
         }}>
-          <button
-            onClick={handleRecenterDefault}
-            style={{
-              position: 'absolute',
-              right: '6px',
-              bottom: '130px',
-              zIndex: 1001,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              width: '42px',
-              height: '42px',
-              borderRadius: '14px',
-              border: '1px solid rgba(15,23,42,0.08)',
-              background: '#ffffff',
-              color: '#1e293b',
-              cursor: 'pointer',
-              boxShadow: '0 8px 20px rgba(15,23,42,0.18)',
-              transform: `translateX(-${panelOffset}px)`,
-              transition: 'transform 320ms cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.15s ease',
-              willChange: 'transform',
-            }}
-            title="Recenter to default view"
-            onMouseEnter={e => {
-              e.currentTarget.style.transform = `translateX(-${panelOffset}px) translateY(-1px)`
-              e.currentTarget.style.boxShadow = '0 10px 24px rgba(15,23,42,0.24)'
-            }}
-            onMouseLeave={e => {
-              e.currentTarget.style.transform = `translateX(-${panelOffset}px) translateY(0)`
-              e.currentTarget.style.boxShadow = '0 8px 20px rgba(15,23,42,0.18)'
-            }}
-          >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0f766e" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M12 2v3" />
-              <path d="M12 19v3" />
-              <path d="M4.93 4.93l2.12 2.12" />
-              <path d="M16.95 16.95l2.12 2.12" />
-              <path d="M2 12h3" />
-              <path d="M19 12h3" />
-              <path d="M4.93 19.07l2.12-2.12" />
-              <path d="M16.95 7.05l2.12-2.12" />
-              <circle cx="12" cy="12" r="4" />
-            </svg>
-          </button>
           <MapView
             markers={markers}
             assemblyMarkers={assemblyMarkers}
             flat2d={!selected}
             focusCenter={focusCenter}
             highlightAt={highlightAt}
+            onRecenter={handleRecenterDefault}
             uiOffsetRight={panelOffset}
           />
         </div>

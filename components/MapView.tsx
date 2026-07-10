@@ -126,9 +126,10 @@ interface MapViewProps {
   flat2d?: boolean // flat 2D view â€” no pitch, no extrusions, fill polygons only
   hoverOnly?: boolean // regions invisible by default, shown only on hover or selection
   uiOffsetRight?: number
+  onRecenter?: () => void // when set, shows a recenter button stacked above the zoom control
 }
 
-export default function MapView({ regions, markers, assemblyMarkers, onRegionClick, onBuildingClick, focusCenter, highlightAt, maxBounds, minZoom, maxZoom, lockedStyle, flat2d, hoverOnly, uiOffsetRight = 0 }: MapViewProps) {
+export default function MapView({ regions, markers, assemblyMarkers, onRegionClick, onBuildingClick, focusCenter, highlightAt, maxBounds, minZoom, maxZoom, lockedStyle, flat2d, hoverOnly, uiOffsetRight = 0, onRecenter }: MapViewProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const mapRef = useRef<MapRef>(null)
   const hadSelectedRegionRef = useRef(false)
@@ -928,6 +929,61 @@ export default function MapView({ regions, markers, assemblyMarkers, onRegionCli
           </div>
         )}
       </div>}
+
+      {/* Recenter button — stacked directly above the zoom control. Rendered
+          inside the map shell (same zoom context as the Mapbox controls) and
+          right-aligned to 10px so it sits in the same column as the "+" button.
+          The bottom offset clears the 3-button nav group (~87px) + its 10px
+          margin. Shares `uiTransform` with the nav control so both slide left
+          together when the detail panel opens. */}
+      {onRecenter && (
+        <button
+          onClick={onRecenter}
+          title="Recenter to default view"
+          aria-label="Recenter to default view"
+          style={{
+            position: 'absolute',
+            right: '10px',
+            bottom: '135px',
+            zIndex: 1001,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            width: '29px',
+            height: '29px',
+            padding: 0,
+            borderRadius: '8px',
+            border: '1px solid rgba(15,23,42,0.12)',
+            background: '#ffffff',
+            color: '#0f766e',
+            cursor: 'pointer',
+            boxShadow: '0 6px 16px rgba(15,23,42,0.18)',
+            transform: uiTransform,
+            transition: 'transform 320ms cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.15s ease, background 0.15s ease',
+            willChange: 'transform',
+          }}
+          onMouseEnter={e => {
+            e.currentTarget.style.background = '#f0fdfa'
+            e.currentTarget.style.boxShadow = '0 8px 20px rgba(15,23,42,0.24)'
+          }}
+          onMouseLeave={e => {
+            e.currentTarget.style.background = '#ffffff'
+            e.currentTarget.style.boxShadow = '0 6px 16px rgba(15,23,42,0.18)'
+          }}
+        >
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M12 2v3" />
+            <path d="M12 19v3" />
+            <path d="M4.93 4.93l2.12 2.12" />
+            <path d="M16.95 16.95l2.12 2.12" />
+            <path d="M2 12h3" />
+            <path d="M19 12h3" />
+            <path d="M4.93 19.07l2.12-2.12" />
+            <path d="M16.95 7.05l2.12-2.12" />
+            <circle cx="12" cy="12" r="4" />
+          </svg>
+        </button>
+      )}
 
     </div>
   )

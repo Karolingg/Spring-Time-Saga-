@@ -96,12 +96,13 @@ export default function LoginPage() {
           width: '68px',
           height: '68px',
           borderRadius: '20px',
-          background: 'rgba(45,184,176,0.12)',
+          background: 'linear-gradient(135deg, #2db8b0 0%, #1f9189 100%)',
+          boxShadow: '0 8px 20px -6px rgba(45, 184, 176, 0.5)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
         }}>
-          <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#2db8b0" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+          <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#ffffff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
             <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
           </svg>
         </div>
@@ -115,11 +116,11 @@ export default function LoginPage() {
         </div>
       </div>
 
-      <div style={{
+      <div className="fade-in-up" style={{
         background: '#ffffff',
         borderRadius: '20px',
         border: '1px solid #e2e8f0',
-        boxShadow: '0 4px 24px rgba(0,0,0,0.08)',
+        boxShadow: '0 12px 40px -12px rgba(15, 23, 42, 0.18)',
         padding: '44px 48px',
         width: '100%',
         maxWidth: '480px',
@@ -161,17 +162,8 @@ export default function LoginPage() {
               placeholder="operator@evacsim.io"
               required
               disabled={isLoading || isGoogleLoading}
-              style={{
-                width: '100%',
-                padding: '10px 14px',
-                background: '#f8fafc',
-                border: '1px solid #e2e8f0',
-                borderRadius: '8px',
-                fontSize: '14px',
-                color: '#1a2332',
-                outline: 'none',
-                boxSizing: 'border-box',
-              }}
+              className="input-field"
+              style={{ fontSize: '14px' }}
             />
           </div>
 
@@ -194,17 +186,8 @@ export default function LoginPage() {
               placeholder="********"
               required
               disabled={isLoading || isGoogleLoading}
-              style={{
-                width: '100%',
-                padding: '10px 14px',
-                background: '#f8fafc',
-                border: '1px solid #e2e8f0',
-                borderRadius: '8px',
-                fontSize: '14px',
-                color: '#1a2332',
-                outline: 'none',
-                boxSizing: 'border-box',
-              }}
+              className="input-field"
+              style={{ fontSize: '14px' }}
             />
           </div>
 
@@ -253,12 +236,14 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={isLoading || isGoogleLoading}
+            className="hover-darken"
             style={{
               width: '100%',
               padding: '12px',
               background: isLoading ? '#94e0db' : '#2db8b0',
               border: 'none',
               borderRadius: '8px',
+              boxShadow: '0 4px 12px -4px rgba(45, 184, 176, 0.5)',
               color: '#ffffff',
               fontSize: '14px',
               fontWeight: '600',
@@ -352,9 +337,10 @@ export default function LoginPage() {
               padding: '12px 0 0',
             }}
           >
-            {isRegisterMode
-              ? 'Already have an account? Sign in'
-              : "Don't have an account? Sign up"}
+            {isRegisterMode ? 'Already have an account? ' : "Don't have an account? "}
+            <span style={{ color: '#2db8b0', fontWeight: 600 }}>
+              {isRegisterMode ? 'Sign in' : 'Sign up'}
+            </span>
           </button>
         </div>
       </div>

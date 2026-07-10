@@ -2,7 +2,7 @@
 
 :root {
   --app-ui-scale: 0.80;
-  --font-geist-sans: "Segoe UI";
+  --font-geist-sans: var(--font-inter, "Segoe UI");
   --font-geist-mono: "Consolas";
   --bg: #eef2f5;
   --bg-center-highlight: rgba(45, 184, 176, 0.10);
@@ -19,12 +19,29 @@
   --border-strong: #cbd5e1;
   --shadow: 0 1px 4px rgba(0,0,0,0.06), 0 0 0 1px rgba(0,0,0,0.04);
   --shadow-md: 0 4px 16px rgba(0,0,0,0.08), 0 0 0 1px rgba(0,0,0,0.04);
+  --shadow-lift: 0 8px 24px -8px rgba(15,23,42,0.14), 0 0 0 1px rgba(45,184,176,0.16);
   --radius: 12px;
   --radius-sm: 8px;
 }
 
 *, *::before, *::after {
   box-sizing: border-box;
+}
+
+/* Respect the OS "reduce motion" setting: keep the spinner readable but
+ * strip the decorative shimmer/entrance animations and long transitions
+ * so nothing pulses or slides for motion-sensitive users. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  .spinner {
+    animation-duration: 0.7s !important;
+    animation-iteration-count: infinite !important;
+  }
 }
 
 html, body {
@@ -44,10 +61,60 @@ body {
   background-position: center, center, center;
   background-attachment: fixed;
   color: var(--text-primary);
-  font-family: var(--font-geist-sans), 'Inter', system-ui, -apple-system, sans-serif;
+  font-family: var(--font-geist-sans), "Segoe UI", 'Inter', system-ui, -apple-system, sans-serif;
   -webkit-font-smoothing: antialiased;
   -webkit-text-size-adjust: 100%;
   text-size-adjust: 100%;
+}
+
+/* Form controls don't inherit typography by default — without this, inputs
+ * and buttons fall back to the UA font and look out of place next to text. */
+input, button, textarea, select {
+  font-family: inherit;
+  font-size: inherit;
+  line-height: inherit;
+}
+
+/* Dashboards are full of columns of numbers; lining digits keeps stat
+ * values and table cells from wobbling as they update. */
+body {
+  font-variant-numeric: tabular-nums;
+}
+
+h1, h2, h3 {
+  text-wrap: balance;
+}
+
+::selection {
+  background: rgba(45, 184, 176, 0.22);
+  color: var(--text-primary);
+}
+
+/* Keyboard-only focus ring in the brand color; mouse clicks stay clean. */
+:focus-visible {
+  outline: 2px solid var(--teal);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* Thin, quiet scrollbars that match the light surface palette. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-strong) transparent;
+}
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+*::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border-radius: 8px;
+}
+*::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted);
 }
 
 @media (min-width: 769px) {
@@ -126,4 +193,99 @@ body {
     radial-gradient(circle 1.2px at center, var(--grid-dot) 1px, transparent 1px);
   background-size: 100% 100%, 100% 100%, 28px 28px;
   background-position: center, center, center;
+}
+
+/* ─── Interaction utilities ────────────────────────────────────────────
+ * Pages style themselves with inline objects, which can't express hover/
+ * focus states without JS handlers. These classes layer the interactive
+ * half on top: add the class, keep the inline base styles. */
+
+/* Cards and tiles that respond to the pointer. */
+.hover-raise {
+  transition: transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease;
+}
+.hover-raise:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-lift);
+}
+
+/* Buttons/links with an inline background color: darken on hover without
+ * needing to know the color (filter works over any inline background). */
+.hover-darken {
+  transition: filter 150ms ease, transform 150ms ease, box-shadow 150ms ease;
+}
+.hover-darken:hover:not(:disabled) {
+  filter: brightness(0.94);
+}
+.hover-darken:active:not(:disabled) {
+  transform: translateY(1px) scale(0.99);
+}
+
+/* Text inputs: quiet at rest, teal ring on focus. Pages should not set
+ * border/background/outline inline when using this class. */
+.input-field {
+  width: 100%;
+  padding: 10px 14px;
+  background: #f8fafc;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  outline: none;
+  box-sizing: border-box;
+  transition: border-color 150ms ease, box-shadow 150ms ease, background 150ms ease;
+}
+.input-field::placeholder {
+  color: var(--text-muted);
+}
+.input-field:hover:not(:disabled):not(:focus) {
+  border-color: var(--border-strong);
+}
+.input-field:focus {
+  background: #ffffff;
+  border-color: var(--teal);
+  box-shadow: 0 0 0 3px rgba(45, 184, 176, 0.18);
+}
+.input-field:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Loading placeholders: a soft shimmering bar instead of "..." text. */
+.skeleton {
+  display: inline-block;
+  border-radius: 6px;
+  background: linear-gradient(90deg, #eef1f5 25%, #e3e9ef 50%, #eef1f5 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.4s ease-in-out infinite;
+}
+
+@keyframes shimmer {
+  from { background-position: 200% 0; }
+  to   { background-position: -200% 0; }
+}
+
+/* Small inline spinner for loading rows. */
+.spinner {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 2px solid var(--border);
+  border-top-color: var(--teal);
+  animation: spin 0.7s linear infinite;
+  vertical-align: middle;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Section entrance: subtle rise-and-fade for page content. */
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.fade-in-up {
+  animation: fadeInUp 360ms ease-out both;
 }

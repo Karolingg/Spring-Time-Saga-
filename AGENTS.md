@@ -20,7 +20,7 @@ The app is primarily client-rendered. Most pages are marked `'use client'`, and 
 ## Important Folders and Files
 
 - `app/` - Next.js routes, layouts, and page-level state/flow.
-- `app/layout.tsx` - Root layout, global CSS imports, Mapbox CSS import, and `Providers` wrapper.
+- `app/layout.tsx` - Root layout, global CSS imports, Inter font setup, Mapbox CSS import, and `Providers` wrapper.
 - `app/providers.tsx` - Wraps the app in `AuthProvider`, renders `Navbar`, and offsets authenticated pages by sidebar width.
 - `app/page.tsx` - Auth-gated dashboard with aggregate stats, recent drills, drill comparison preview, and quick actions.
 - `app/auth/page.tsx` - Email/password sign-in/sign-up UI plus Google OAuth sign-in.
@@ -171,7 +171,7 @@ Notable service behavior:
 
 ## Frontend, Page, And Component Flow
 
-- Root layout imports `styles/globals.css`, `styles/components.css`, and Mapbox CSS.
+- Root layout imports `styles/globals.css` and Mapbox CSS, and self-hosts the Inter font via `next/font/google` (exposed as `--font-inter`, consumed by the body font stack in `globals.css`).
 - `Navbar` is only visible for authenticated users and uses `SIDEBAR_WIDTH` exported from `components/Navbar.tsx`.
 - UI style is mostly inline React style objects, with shared/global CSS in `styles/` and analysis/simulation classes in page-specific CSS files.
 - Common app colors are CSS variables in `styles/globals.css`; the main accent is teal `#2db8b0`.

@@ -24,14 +24,15 @@ export function ConfirmModal({
   return (
     <div style={{
       position: 'fixed', inset: 0, zIndex: 1000,
-      background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(4px)',
+      background: 'rgba(15,23,42,0.45)', backdropFilter: 'blur(4px)',
       display: 'flex', alignItems: 'center', justifyContent: 'center',
       padding: '16px',
+      animation: 'fadeIn 0.15s ease-out',
     }}>
-      <div style={{
+      <div className="fade-in-up" style={{
         background: '#ffffff', borderRadius: '16px',
         border: '1px solid var(--border)',
-        boxShadow: 'var(--shadow-md)',
+        boxShadow: '0 20px 50px -12px rgba(15, 23, 42, 0.3)',
         padding: '32px', maxWidth: '420px', width: '100%',
       }}>
         <h2 style={{ margin: '0 0 8px', fontSize: '18px', fontWeight: '700', color: 'var(--text-primary)' }}>
@@ -44,6 +45,7 @@ export function ConfirmModal({
           <button
             onClick={onCancel}
             disabled={isConfirming}
+            className="hover-darken"
             style={{
               padding: '9px 18px', borderRadius: '8px',
               border: '1px solid var(--border)', background: '#f8fafc',
@@ -57,14 +59,17 @@ export function ConfirmModal({
           <button
             onClick={onConfirm}
             disabled={isConfirming}
+            className="hover-darken"
             style={{
               padding: '9px 18px', borderRadius: '8px',
               border: 'none', background: confirmColor,
               fontSize: '14px', fontWeight: '600', color: '#ffffff',
               cursor: isConfirming ? 'not-allowed' : 'pointer',
               opacity: isConfirming ? 0.75 : 1,
+              display: 'inline-flex', alignItems: 'center', gap: '8px',
             }}
           >
+            {isConfirming && <span className="spinner" style={{ width: '13px', height: '13px', borderColor: 'rgba(255,255,255,0.4)', borderTopColor: '#ffffff' }} />}
             {confirmLabel}
           </button>
         </div>
