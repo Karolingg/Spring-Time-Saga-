@@ -433,7 +433,7 @@ export function RunReplay({
           display: 'flex', alignItems: 'center', gap: '16px',
           marginTop: '12px',
           padding: '10px 14px',
-          background: '#ffffff',
+          background: 'var(--bg-card)',
           border: '1px solid var(--border)',
           borderRadius: '12px',
           flexWrap: 'wrap',
@@ -483,7 +483,7 @@ export function RunReplay({
       <div style={{
         display: 'flex', alignItems: 'center', gap: '14px', marginTop: '14px',
         padding: '12px 14px',
-        background: '#ffffff',
+        background: 'var(--bg-card)',
         border: '1px solid var(--border)',
         borderRadius: '12px',
         flexWrap: 'wrap',
@@ -522,7 +522,7 @@ export function RunReplay({
           title="Restart"
           style={{
             width: '38px', height: '38px', borderRadius: '10px',
-            background: '#ffffff', color: 'var(--text-secondary)',
+            background: 'var(--bg-card)', color: 'var(--text-secondary)',
             border: '1px solid var(--border)',
             display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
             cursor: hasReplayData ? 'pointer' : 'not-allowed',
@@ -539,7 +539,7 @@ export function RunReplay({
         <div style={{ flex: 1, minWidth: '160px', display: 'flex', alignItems: 'center', gap: '10px' }}>
           <div style={{
             flex: 1, height: '8px', borderRadius: '999px',
-            background: '#f1f5f9', overflow: 'hidden',
+            background: 'var(--bg-inset)', overflow: 'hidden',
             border: '1px solid var(--border)',
           }}>
             <div style={{

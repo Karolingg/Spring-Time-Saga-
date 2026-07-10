@@ -84,10 +84,10 @@ export default function LoginPage() {
       alignItems: 'center',
       justifyContent: 'center',
       padding: '24px',
-      backgroundColor: '#eef0f2',
+      backgroundColor: 'var(--bg)',
       backgroundImage: `
-        linear-gradient(rgba(0,0,0,0.04) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(0,0,0,0.04) 1px, transparent 1px)
+        linear-gradient(var(--border) 1px, transparent 1px),
+        linear-gradient(90deg, var(--border) 1px, transparent 1px)
       `,
       backgroundSize: '32px 32px',
     }}>
@@ -107,19 +107,19 @@ export default function LoginPage() {
           </svg>
         </div>
         <div style={{ textAlign: 'center' }}>
-          <div style={{ fontSize: '26px', fontWeight: '800', color: '#1a2332' }}>
+          <div style={{ fontSize: '26px', fontWeight: '800', color: 'var(--text-primary)' }}>
             EVAC<span style={{ color: '#2db8b0' }}>SIM</span>
           </div>
-          <div style={{ fontSize: '13px', color: '#64748b', marginTop: '4px' }}>
+          <div style={{ fontSize: '13px', color: 'var(--text-secondary)', marginTop: '4px' }}>
             Crowd Evacuation Simulator with Predictive Congestion Analysis
           </div>
         </div>
       </div>
 
       <div className="fade-in-up" style={{
-        background: '#ffffff',
+        background: 'var(--bg-card)',
         borderRadius: '20px',
-        border: '1px solid #e2e8f0',
+        border: '1px solid var(--border)',
         boxShadow: '0 12px 40px -12px rgba(15, 23, 42, 0.18)',
         padding: '44px 48px',
         width: '100%',
@@ -137,7 +137,7 @@ export default function LoginPage() {
           }}>
             <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#2db8b0' }} />
           </div>
-          <h1 style={{ margin: 0, fontSize: '18px', fontWeight: '700', color: '#1a2332' }}>
+          <h1 style={{ margin: 0, fontSize: '18px', fontWeight: '700', color: 'var(--text-primary)' }}>
             {isRegisterMode ? 'Create Account' : 'Sign In'}
           </h1>
         </div>
@@ -149,7 +149,7 @@ export default function LoginPage() {
               fontSize: '11px',
               fontWeight: '600',
               letterSpacing: '0.08em',
-              color: '#64748b',
+              color: 'var(--text-secondary)',
               textTransform: 'uppercase',
               marginBottom: '6px',
             }}>
@@ -173,7 +173,7 @@ export default function LoginPage() {
               fontSize: '11px',
               fontWeight: '600',
               letterSpacing: '0.08em',
-              color: '#64748b',
+              color: 'var(--text-secondary)',
               textTransform: 'uppercase',
               marginBottom: '6px',
             }}>
@@ -195,10 +195,10 @@ export default function LoginPage() {
             <div style={{
               marginBottom: '16px',
               padding: '10px 14px',
-              background: '#eff6ff',
-              border: '1px solid #bfdbfe',
+              background: 'rgba(59,130,246,0.1)',
+              border: '1px solid rgba(59,130,246,0.35)',
               borderRadius: '8px',
-              color: '#1d4ed8',
+              color: '#3b82f6',
               fontSize: '13px',
             }}>
               {infoMessage}
@@ -209,10 +209,10 @@ export default function LoginPage() {
             <div style={{
               marginBottom: '16px',
               padding: '10px 14px',
-              background: '#fef2f2',
-              border: '1px solid #fecaca',
+              background: 'rgba(239,68,68,0.1)',
+              border: '1px solid rgba(239,68,68,0.35)',
               borderRadius: '8px',
-              color: '#dc2626',
+              color: '#ef4444',
               fontSize: '13px',
             }}>
               {errorMessage}
@@ -223,10 +223,10 @@ export default function LoginPage() {
             <div style={{
               marginBottom: '16px',
               padding: '10px 14px',
-              background: '#f0fdf4',
-              border: '1px solid #bbf7d0',
+              background: 'rgba(34,197,94,0.1)',
+              border: '1px solid rgba(34,197,94,0.35)',
               borderRadius: '8px',
-              color: '#16a34a',
+              color: '#22c55e',
               fontSize: '13px',
             }}>
               {successMessage}
@@ -266,9 +266,9 @@ export default function LoginPage() {
         </form>
 
         <div style={{ margin: '20px 0', display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <div style={{ flex: 1, borderTop: '1px solid #f1f5f9' }} />
-          <span style={{ fontSize: '12px', color: '#94a3b8', fontWeight: '500' }}>or</span>
-          <div style={{ flex: 1, borderTop: '1px solid #f1f5f9' }} />
+          <div style={{ flex: 1, borderTop: '1px solid var(--border)' }} />
+          <span style={{ fontSize: '12px', color: 'var(--text-muted)', fontWeight: '500' }}>or</span>
+          <div style={{ flex: 1, borderTop: '1px solid var(--border)' }} />
         </div>
 
         <button
@@ -278,10 +278,10 @@ export default function LoginPage() {
           style={{
             width: '100%',
             padding: '12px 20px',
-            background: isGoogleLoading ? '#f8fafc' : '#ffffff',
-            border: '1px solid #e2e8f0',
+            background: isGoogleLoading ? 'var(--bg-subtle)' : 'var(--bg-card)',
+            border: '1px solid var(--border)',
             borderRadius: '999px',
-            color: '#40403e',
+            color: 'var(--text-primary)',
             fontSize: '14px',
             fontWeight: '600',
             cursor: (isGoogleLoading || isLoading) ? 'not-allowed' : 'pointer',
@@ -295,12 +295,12 @@ export default function LoginPage() {
           }}
           onMouseEnter={e => {
             if (!isGoogleLoading && !isLoading) {
-              e.currentTarget.style.background = '#f8fafc'
+              e.currentTarget.style.background = 'var(--bg-subtle)'
               e.currentTarget.style.boxShadow = '0 2px 6px rgba(0,0,0,0.12)'
             }
           }}
           onMouseLeave={e => {
-            e.currentTarget.style.background = isGoogleLoading ? '#f8fafc' : '#ffffff'
+            e.currentTarget.style.background = isGoogleLoading ? 'var(--bg-subtle)' : 'var(--bg-card)'
             e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.08)'
           }}
         >
@@ -321,7 +321,7 @@ export default function LoginPage() {
           {isGoogleLoading ? 'Connecting...' : 'Continue with Google'}
         </button>
 
-        <div style={{ margin: '16px 0 0', borderTop: '1px solid #f1f5f9' }} />
+        <div style={{ margin: '16px 0 0', borderTop: '1px solid var(--border)' }} />
 
         <div style={{ textAlign: 'center' }}>
           <button
@@ -331,7 +331,7 @@ export default function LoginPage() {
             style={{
               background: 'none',
               border: 'none',
-              color: '#64748b',
+              color: 'var(--text-secondary)',
               fontSize: '13px',
               cursor: (isLoading || isGoogleLoading) ? 'not-allowed' : 'pointer',
               padding: '12px 0 0',

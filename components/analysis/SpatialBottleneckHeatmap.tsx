@@ -418,7 +418,7 @@ export function SpatialBottleneckHeatmap({
               style={{
                 display: 'inline-flex', alignItems: 'center', gap: '8px',
                 padding: '7px 12px',
-                background: '#f1f5f9', borderRadius: '999px', border: '1px solid var(--border)',
+                background: 'var(--bg-inset)', borderRadius: '999px', border: '1px solid var(--border)',
                 fontSize: '11px', fontWeight: 700, color: '#475569',
                 letterSpacing: '0.04em',
               }}
@@ -432,7 +432,7 @@ export function SpatialBottleneckHeatmap({
           ) : building.floors.length > 1 && (
             <div style={{
               display: 'flex', gap: '2px', padding: '3px',
-              background: '#f1f5f9', borderRadius: '10px', border: '1px solid var(--border)',
+              background: 'var(--bg-inset)', borderRadius: '10px', border: '1px solid var(--border)',
             }}>
               {building.floors.map((floor) => {
                 const selected = floor.id === activeFloor.id
@@ -473,8 +473,8 @@ export function SpatialBottleneckHeatmap({
           </span>
           {previewingOtherDisaster && (
             <span style={{
-              fontSize: '10.5px', fontWeight: 600, color: '#64748b',
-              background: '#f1f5f9', border: '1px solid var(--border)',
+              fontSize: '10.5px', fontWeight: 600, color: 'var(--text-secondary)',
+              background: 'var(--bg-inset)', border: '1px solid var(--border)',
               borderRadius: '999px', padding: '3px 9px',
             }}>
               No data · this run simulated {runDisaster} only
@@ -483,7 +483,7 @@ export function SpatialBottleneckHeatmap({
         </div>
         <div style={{
           display: 'flex', gap: '2px', padding: '3px',
-          background: '#f1f5f9', borderRadius: '10px', border: '1px solid var(--border)',
+          background: 'var(--bg-inset)', borderRadius: '10px', border: '1px solid var(--border)',
         }}>
           {(['fire', 'earthquake'] as const).map((d) => {
             const selected = viewDisaster === d
@@ -719,7 +719,7 @@ export function SpatialBottleneckHeatmap({
               <div style={{ textAlign: 'center', padding: '24px', maxWidth: '320px' }}>
                 <div style={{
                   width: '54px', height: '54px', margin: '0 auto 14px',
-                  borderRadius: '15px', background: '#ffffff',
+                  borderRadius: '15px', background: 'var(--bg-card)',
                   border: '1px solid var(--border)',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                   boxShadow: '0 4px 14px rgba(15,23,42,0.06)',
@@ -737,7 +737,7 @@ export function SpatialBottleneckHeatmap({
                 <div style={{ fontSize: '14px', fontWeight: 700, color: '#334155', marginBottom: '6px' }}>
                   No {viewDisaster === 'fire' ? 'Fire' : 'Earthquake'} heatmap for this run
                 </div>
-                <div style={{ fontSize: '12px', color: '#64748b', lineHeight: 1.55 }}>
+                <div style={{ fontSize: '12px', color: 'var(--text-secondary)', lineHeight: 1.55 }}>
                   This drill simulated a {runDisaster === 'fire' ? 'Fire' : 'Earthquake'} scenario.
                   Switch back to {runDisaster === 'fire' ? 'Fire' : 'Earthquake'} to view its
                   heatmap, or run a {viewDisaster === 'fire' ? 'Fire' : 'Earthquake'} drill on
@@ -768,7 +768,7 @@ export function SpatialBottleneckHeatmap({
               <div style={{
                 display: 'inline-flex', alignItems: 'center', gap: '10px',
                 padding: '10px 16px', borderRadius: '999px',
-                background: '#ffffff', border: '1px solid var(--border)',
+                background: 'var(--bg-card)', border: '1px solid var(--border)',
                 boxShadow: '0 4px 12px rgba(15,23,42,0.06)',
                 color: 'var(--text-secondary)', fontSize: '12px', fontWeight: 600,
               }}>
@@ -789,7 +789,7 @@ export function SpatialBottleneckHeatmap({
           width: '78px',
           display: 'flex', flexDirection: 'column',
           padding: '10px 8px',
-          background: '#ffffff',
+          background: 'var(--bg-card)',
           border: '1px solid var(--border)',
           borderRadius: '12px',
           boxShadow: '0 2px 6px rgba(15,23,42,0.05)',
@@ -826,7 +826,7 @@ export function SpatialBottleneckHeatmap({
       {/* ── Interaction hint ─────────────────────────────────────────── */}
       {interactiveNodes.length > 0 && !previewingOtherDisaster && (
         <p style={{
-          margin: '10px 0 0', fontSize: '11px', color: '#94a3b8',
+          margin: '10px 0 0', fontSize: '11px', color: 'var(--text-muted)',
           display: 'flex', alignItems: 'center', gap: '6px',
         }}>
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
@@ -852,7 +852,7 @@ export function SpatialBottleneckHeatmap({
               <div key={node.id} style={{
                 position: 'relative',
                 padding: '14px 16px 14px 18px',
-                background: '#ffffff',
+                background: 'var(--bg-card)',
                 border: `1px solid ${band.color}33`,
                 borderRadius: '12px',
                 boxShadow: `0 2px 8px rgba(15,23,42,0.06), inset 0 0 0 1px rgba(255,255,255,0.4)`,
@@ -875,11 +875,11 @@ export function SpatialBottleneckHeatmap({
                     {Math.round(intensity)}%
                   </span>
                 </div>
-                <div style={{ fontSize: '13px', fontWeight: 700, color: '#0f172a', marginBottom: '6px', lineHeight: 1.25 }}>
+                <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '6px', lineHeight: 1.25 }}>
                   {node.label}
                 </div>
-                <div style={{ display: 'flex', gap: '10px', fontSize: '11px', color: '#64748b' }}>
-                  <span><strong style={{ color: '#0f172a' }}>{peak}</strong> peak</span>
+                <div style={{ display: 'flex', gap: '10px', fontSize: '11px', color: 'var(--text-secondary)' }}>
+                  <span><strong style={{ color: 'var(--text-primary)' }}>{peak}</strong> peak</span>
                   <span style={{ color: '#cbd5e1' }}>·</span>
                   <span>cap. {node.capacity}</span>
                 </div>
@@ -928,11 +928,11 @@ function StatPill({ label, value, accent, suffix, emphasized }: StatPillProps) {
         {label}
       </div>
       <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px' }}>
-        <span style={{ fontSize: '22px', fontWeight: 800, color: '#0f172a', letterSpacing: '-0.02em', lineHeight: 1 }}>
+        <span style={{ fontSize: '22px', fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.02em', lineHeight: 1 }}>
           {value}
         </span>
         {suffix && (
-          <span style={{ fontSize: '11px', fontWeight: 600, color: '#64748b' }}>{suffix}</span>
+          <span style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-secondary)' }}>{suffix}</span>
         )}
       </div>
     </div>
@@ -974,7 +974,7 @@ function NodeHoverPopup({ node, screenX, screenY, kindLabel, peakAgents, intensi
           : 'translate(-50%, -100%) translateY(-20px)',
         zIndex: 2000,
         width: '210px',
-        background: '#ffffff',
+        background: 'var(--bg-card)',
         borderRadius: '16px',
         boxShadow: '0 8px 32px rgba(0,0,0,0.18), 0 2px 8px rgba(0,0,0,0.08)',
         pointerEvents: 'none',
@@ -1003,7 +1003,7 @@ function NodeHoverPopup({ node, screenX, screenY, kindLabel, peakAgents, intensi
             )}
           </span>
           <div style={{ minWidth: 0 }}>
-            <div style={{ fontSize: '13px', fontWeight: 700, color: '#1a2332', lineHeight: 1.2 }}>
+            <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)', lineHeight: 1.2 }}>
               {node.label}
             </div>
             <div style={{
@@ -1031,7 +1031,7 @@ function NodeHoverPopup({ node, screenX, screenY, kindLabel, peakAgents, intensi
         </div>
 
         {!hasStats && (
-          <div style={{ marginTop: '8px', fontSize: '10px', color: '#94a3b8', lineHeight: 1.45 }}>
+          <div style={{ marginTop: '8px', fontSize: '10px', color: 'var(--text-muted)', lineHeight: 1.45 }}>
             Crowd stats are shown for the run&apos;s own scenario.
           </div>
         )}
@@ -1065,11 +1065,11 @@ function PopupStat({ label, value, tone }: { label: string; value: string; tone?
   const valueColor = tone === 'warn' ? '#dc2626' : tone === 'ok' ? '#16a34a' : '#0f172a'
   return (
     <div style={{
-      background: '#f8fafc', border: '1px solid #eef2f6', borderRadius: '8px',
+      background: 'var(--bg-subtle)', border: '1px solid #eef2f6', borderRadius: '8px',
       padding: '5px 9px', flex: '1 0 auto', minWidth: '54px',
     }}>
       <div style={{
-        fontSize: '8px', fontWeight: 700, color: '#94a3b8',
+        fontSize: '8px', fontWeight: 700, color: 'var(--text-muted)',
         letterSpacing: '0.06em', textTransform: 'uppercase',
       }}>
         {label}

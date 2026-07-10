@@ -126,7 +126,7 @@ export function AggregateFloorHeatmaps({ hideHeader = false }: AggregateFloorHea
 
   return (
     <div style={hideHeader ? {} : {
-      background: '#ffffff',
+      background: 'var(--bg-card)',
       border: '1px solid var(--border)',
       borderRadius: '14px',
       padding: '28px 32px',
@@ -352,7 +352,7 @@ function FloorHeatmapView({ entry }: { entry: ResolvedFloorHeatmap }) {
     }}>
       <div style={{
         padding: '12px 16px',
-        background: '#ffffff',
+        background: 'var(--bg-card)',
         borderBottom: '1px solid var(--border)',
         display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px',
         flexWrap: 'wrap',
@@ -378,7 +378,7 @@ function FloorHeatmapView({ entry }: { entry: ResolvedFloorHeatmap }) {
       <div style={{
         position: 'relative',
         aspectRatio: `${VIEW_WIDTH}/${VIEW_HEIGHT}`,
-        background: '#ffffff',
+        background: 'var(--bg-card)',
         overflow: 'hidden',
       }}>
         {entry.floor?.floorplanSrc && (
@@ -472,7 +472,7 @@ function StatChip({ label, value, accent, emphasized }: StatChipProps) {
       }}>
         {label}
       </span>
-      <span style={{ fontWeight: 800, color: '#0f172a', fontFeatureSettings: '"tnum"' }}>
+      <span style={{ fontWeight: 800, color: 'var(--text-primary)', fontFeatureSettings: '"tnum"' }}>
         {value}
       </span>
     </div>

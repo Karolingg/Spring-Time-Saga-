@@ -92,7 +92,7 @@ export function RunVisualization({
               {simulatedFloorIndex != null && (
                 <span style={{
                   marginLeft: '8px', padding: '2px 8px',
-                  borderRadius: '999px', background: '#f1f5f9',
+                  borderRadius: '999px', background: 'var(--bg-inset)',
                   fontSize: '10px', fontWeight: 700,
                   color: '#475569', letterSpacing: '0.04em',
                 }}>
@@ -110,7 +110,7 @@ export function RunVisualization({
           style={{
             display: 'inline-flex', alignItems: 'center', gap: '4px',
             padding: '4px', borderRadius: '12px',
-            background: '#f1f5f9',
+            background: 'var(--bg-inset)',
             border: '1px solid var(--border)',
             boxShadow: 'inset 0 1px 2px rgba(15,23,42,0.04)',
           }}

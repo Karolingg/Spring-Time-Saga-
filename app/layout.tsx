@@ -34,7 +34,16 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={inter.variable}>
+    <html lang="en" className={inter.variable} suppressHydrationWarning>
+      <head>
+        {/* Stamp the persisted theme before first paint to avoid a light-mode
+            flash. Key must match THEME_STORAGE_KEY in src/context/ThemeContext. */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `try{if(localStorage.getItem('evacsim-theme')==='dark')document.documentElement.setAttribute('data-theme','dark')}catch(e){}`,
+          }}
+        />
+      </head>
       <body className="antialiased">
         <Providers>
           {children}

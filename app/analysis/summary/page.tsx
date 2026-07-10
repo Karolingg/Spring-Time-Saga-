@@ -51,7 +51,7 @@ export default function AnalysisSummaryPage() {
         <div style={{ display: 'flex', gap: '8px' }}>
           <a href="/analysis" style={{
             display: 'inline-flex', alignItems: 'center', gap: '6px',
-            padding: '8px 14px', background: '#ffffff', color: '#0f172a',
+            padding: '8px 14px', background: 'var(--bg-card)', color: 'var(--text-primary)',
             borderRadius: '8px', textDecoration: 'none', fontSize: '13px', fontWeight: '600',
             border: '1px solid var(--border)', flexShrink: 0,
           }}>
@@ -62,7 +62,7 @@ export default function AnalysisSummaryPage() {
           </a>
           <a href="/analysis/runs" style={{
             display: 'inline-flex', alignItems: 'center', gap: '6px',
-            padding: '8px 14px', background: '#ffffff', color: '#0f172a',
+            padding: '8px 14px', background: 'var(--bg-card)', color: 'var(--text-primary)',
             borderRadius: '8px', textDecoration: 'none', fontSize: '13px', fontWeight: '600',
             border: '1px solid var(--border)', flexShrink: 0,
           }}>

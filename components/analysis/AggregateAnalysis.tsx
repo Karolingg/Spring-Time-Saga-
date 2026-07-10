@@ -60,7 +60,7 @@ function actionSentence(zone: AggregateZoneStat): string {
 }
 
 const SECTION_CARD: React.CSSProperties = {
-  background: '#ffffff',
+  background: 'var(--bg-card)',
   border: '1px solid var(--border)',
   borderRadius: '14px',
   padding: '28px 32px',
@@ -215,7 +215,7 @@ export function AggregateAnalysis({ hideHeader = false }: AggregateAnalysisProps
       {/* ── Intensity distribution bar ────────────────────── */}
       <div style={{
         marginBottom: '20px', padding: '12px 16px',
-        background: '#f8fafc', border: '1px solid var(--border)', borderRadius: '12px',
+        background: 'var(--bg-subtle)', border: '1px solid var(--border)', borderRadius: '12px',
       }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px', gap: '12px', flexWrap: 'wrap' }}>
           <span style={{ fontSize: '10px', fontWeight: 700, color: '#475569', letterSpacing: '0.1em', textTransform: 'uppercase' }}>
@@ -225,7 +225,7 @@ export function AggregateAnalysis({ hideHeader = false }: AggregateAnalysisProps
             {BANDS.map(band => (
               <span key={band.key} style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', fontSize: '11px', color: 'var(--text-secondary)' }}>
                 <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: band.color }} />
-                <strong style={{ color: '#0f172a', fontWeight: 700 }}>{summary.counts[band.key]}</strong> {band.label}
+                <strong style={{ color: 'var(--text-primary)', fontWeight: 700 }}>{summary.counts[band.key]}</strong> {band.label}
               </span>
             ))}
           </div>
@@ -234,7 +234,7 @@ export function AggregateAnalysis({ hideHeader = false }: AggregateAnalysisProps
           const total = BANDS.reduce((s, b) => s + summary.counts[b.key], 0)
           if (total === 0) return null
           return (
-            <div style={{ display: 'flex', height: '10px', borderRadius: '999px', overflow: 'hidden', border: '1px solid var(--border)', background: '#f1f5f9' }}>
+            <div style={{ display: 'flex', height: '10px', borderRadius: '999px', overflow: 'hidden', border: '1px solid var(--border)', background: 'var(--bg-inset)' }}>
               {BANDS.map(band => {
                 const n = summary.counts[band.key]
                 if (n === 0) return null
@@ -252,10 +252,10 @@ export function AggregateAnalysis({ hideHeader = false }: AggregateAnalysisProps
       }}>
         <div style={{
           display: 'grid', gridTemplateColumns: '2fr 1fr 90px 90px',
-          padding: '10px 16px', background: '#f8fafc',
+          padding: '10px 16px', background: 'var(--bg-subtle)',
           borderBottom: '1px solid var(--border)',
           fontSize: '10px', fontWeight: 700, letterSpacing: '0.08em',
-          color: '#64748b', textTransform: 'uppercase',
+          color: 'var(--text-secondary)', textTransform: 'uppercase',
         }}>
           <span>Zone</span>
           <span>Risk</span>
@@ -286,8 +286,8 @@ export function AggregateAnalysis({ hideHeader = false }: AggregateAnalysisProps
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                   <div style={{ width: '4px', height: '24px', borderRadius: '2px', background: band.color }} />
                   <div>
-                    <div style={{ fontSize: '13px', fontWeight: 600, color: '#0f172a' }}>{zone.zoneName}</div>
-                    <div style={{ fontSize: '10px', color: '#94a3b8' }}>{friendlyType(zone.zoneName)}</div>
+                    <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)' }}>{zone.zoneName}</div>
+                    <div style={{ fontSize: '10px', color: 'var(--text-muted)' }}>{friendlyType(zone.zoneName)}</div>
                   </div>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center' }}>
@@ -298,7 +298,7 @@ export function AggregateAnalysis({ hideHeader = false }: AggregateAnalysisProps
                   }}>{zone.dominantRiskLevel}</span>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '6px' }}>
-                  <div style={{ width: '36px', height: '6px', borderRadius: '3px', background: '#f1f5f9', overflow: 'hidden' }}>
+                  <div style={{ width: '36px', height: '6px', borderRadius: '3px', background: 'var(--bg-inset)', overflow: 'hidden' }}>
                     <div style={{ height: '100%', width: `${Math.min(100, zone.avgIntensity)}%`, background: band.color, borderRadius: '3px' }} />
                   </div>
                   <span style={{ fontSize: '12px', fontWeight: 600, color: band.color, minWidth: '32px', textAlign: 'right' }}>
@@ -326,7 +326,7 @@ export function AggregateAnalysis({ hideHeader = false }: AggregateAnalysisProps
                   </div>
                   <p style={{
                     margin: 0, fontSize: '12px', color: '#475569', lineHeight: 1.5, fontStyle: 'italic',
-                    padding: '8px 12px', background: '#ffffff', borderRadius: '8px', border: '1px solid var(--border)',
+                    padding: '8px 12px', background: 'var(--bg-card)', borderRadius: '8px', border: '1px solid var(--border)',
                   }}>
                     {actionSentence(zone)}
                   </p>
@@ -381,10 +381,10 @@ export function AggregateAnalysis({ hideHeader = false }: AggregateAnalysisProps
 function KpiPill({ label, value, color }: { label: string; value: string; color: string }) {
   return (
     <div style={{
-      padding: '12px 14px', background: '#ffffff',
+      padding: '12px 14px', background: 'var(--bg-card)',
       border: '1px solid var(--border)', borderRadius: '10px',
     }}>
-      <div style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '0.06em', color: '#94a3b8', textTransform: 'uppercase', marginBottom: '4px' }}>
+      <div style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '0.06em', color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '4px' }}>
         {label}
       </div>
       <div style={{ fontSize: '22px', fontWeight: 800, color, letterSpacing: '-0.02em', lineHeight: 1, fontFeatureSettings: '"tnum"' }}>
@@ -397,7 +397,7 @@ function KpiPill({ label, value, color }: { label: string; value: string; color:
 function DetailItem({ label, value, color }: { label: string; value: string; color?: string }) {
   return (
     <div>
-      <div style={{ fontSize: '10px', fontWeight: 600, color: '#94a3b8', letterSpacing: '0.04em', textTransform: 'uppercase', marginBottom: '2px' }}>{label}</div>
+      <div style={{ fontSize: '10px', fontWeight: 600, color: 'var(--text-muted)', letterSpacing: '0.04em', textTransform: 'uppercase', marginBottom: '2px' }}>{label}</div>
       <div style={{ fontSize: '13px', fontWeight: 600, color: color ?? '#0f172a' }}>{value}</div>
     </div>
   )

@@ -1,27 +1,115 @@
 @import "tailwindcss";
 
 :root {
+  color-scheme: light;
   --app-ui-scale: 0.80;
   --font-geist-sans: var(--font-inter, "Segoe UI");
   --font-geist-mono: "Consolas";
+
+  /* ── Surfaces ── */
   --bg: #eef2f5;
   --bg-center-highlight: rgba(45, 184, 176, 0.10);
   --bg-warm-highlight: rgba(99, 102, 241, 0.04);
   --grid-dot: rgba(45, 184, 176, 0.12);
   --bg-card: #ffffff;
+  --bg-subtle: #f8fafc;   /* inset panels, list rows, empty states */
+  --bg-inset: #f1f5f9;    /* progress tracks, pills, deeper insets */
+
+  /* ── Brand ── */
   --teal: #2db8b0;
   --teal-dark: #1f9991;
   --teal-light: rgba(45,184,176,0.12);
+
+  /* ── Text — tuned for WCAG AA on white (muted was #94a3b8 ≈ 2.8:1) ── */
   --text-primary: #1a2332;
-  --text-secondary: #64748b;
-  --text-muted: #94a3b8;
+  --text-secondary: #475569; /* 7.5:1 */
+  --text-muted: #64748b;     /* 4.8:1 */
+
+  /* ── Lines & elevation ── */
   --border: #e2e8f0;
   --border-strong: #cbd5e1;
   --shadow: 0 1px 4px rgba(0,0,0,0.06), 0 0 0 1px rgba(0,0,0,0.04);
   --shadow-md: 0 4px 16px rgba(0,0,0,0.08), 0 0 0 1px rgba(0,0,0,0.04);
   --shadow-lift: 0 8px 24px -8px rgba(15,23,42,0.14), 0 0 0 1px rgba(45,184,176,0.16);
-  --radius: 12px;
+
+  /* ── Sidebar / app chrome ── */
+  --sidebar-bg:
+    radial-gradient(circle at 20% 0%, rgba(45, 184, 176, 0.10) 0%, transparent 38%),
+    linear-gradient(180deg, #f7fafc 0%, #eef2f7 100%);
+  --sidebar-border: #dbe2ea;
+  --nav-hover-bg: rgba(255, 255, 255, 0.6);
+  --nav-active-bg: rgba(255, 255, 255, 0.85);
+  --nav-active-text: #1f9189;
+  --account-card-bg: rgba(255, 255, 255, 0.85);
+
+  /* ── Spacing scale ── */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-7: 28px;
+  --space-8: 32px;
+  --space-10: 40px;
+
+  /* ── Type scale ── */
+  --text-2xs: 10px;
+  --text-xs: 11px;
+  --text-sm: 12px;
+  --text-base: 13px;
+  --text-md: 14px;
+  --text-lg: 16px;
+  --text-xl: 18px;
+  --text-2xl: 22px;
+  --text-3xl: 26px;
+  --text-num: 32px; /* big stat numbers */
+
+  /* ── Radii ── */
+  --radius-xs: 6px;
   --radius-sm: 8px;
+  --radius-md: 10px;
+  --radius: 12px;
+  --radius-lg: 14px;
+  --radius-xl: 20px;
+  --radius-full: 999px;
+}
+
+/* ── Dark theme ─────────────────────────────────────────────────────────
+ * Applied by ThemeContext stamping data-theme="dark" on <html>. Everything
+ * that reads the variables above flips automatically; hardcoded data colors
+ * (heatmaps, risk levels, disaster hues) intentionally stay fixed. */
+[data-theme="dark"] {
+  color-scheme: dark;
+
+  --bg: #0b1220;
+  --bg-center-highlight: rgba(45, 184, 176, 0.07);
+  --bg-warm-highlight: rgba(99, 102, 241, 0.06);
+  --grid-dot: rgba(148, 163, 184, 0.08);
+  --bg-card: #121b2c;
+  --bg-subtle: #172136;
+  --bg-inset: #1d2a41;
+
+  --teal-light: rgba(45, 184, 176, 0.16);
+
+  --text-primary: #e8eef7;
+  --text-secondary: #a8b8cc; /* ≈8:1 on card */
+  --text-muted: #8496ad;     /* ≈5:1 on card */
+
+  --border: #24334b;
+  --border-strong: #35486a;
+  --shadow: 0 1px 4px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.03);
+  --shadow-md: 0 4px 16px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.03);
+  --shadow-lift: 0 8px 24px -8px rgba(0,0,0,0.6), 0 0 0 1px rgba(45,184,176,0.25);
+
+  --sidebar-bg:
+    radial-gradient(circle at 20% 0%, rgba(45, 184, 176, 0.08) 0%, transparent 38%),
+    linear-gradient(180deg, #0e1728 0%, #0b1220 100%);
+  --sidebar-border: #1c283d;
+  --nav-hover-bg: rgba(255, 255, 255, 0.05);
+  --nav-active-bg: rgba(45, 184, 176, 0.12);
+  --nav-active-text: #53d6cd;
+  --account-card-bg: rgba(255, 255, 255, 0.05);
 }
 
 *, *::before, *::after {
@@ -226,7 +314,7 @@ h1, h2, h3 {
 .input-field {
   width: 100%;
   padding: 10px 14px;
-  background: #f8fafc;
+  background: var(--bg-subtle);
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   color: var(--text-primary);
@@ -241,7 +329,7 @@ h1, h2, h3 {
   border-color: var(--border-strong);
 }
 .input-field:focus {
-  background: #ffffff;
+  background: var(--bg-card);
   border-color: var(--teal);
   box-shadow: 0 0 0 3px rgba(45, 184, 176, 0.18);
 }
@@ -253,8 +341,8 @@ h1, h2, h3 {
 /* Loading placeholders: a soft shimmering bar instead of "..." text. */
 .skeleton {
   display: inline-block;
-  border-radius: 6px;
-  background: linear-gradient(90deg, #eef1f5 25%, #e3e9ef 50%, #eef1f5 75%);
+  border-radius: var(--radius-xs);
+  background: linear-gradient(90deg, var(--bg-inset) 25%, var(--border) 50%, var(--bg-inset) 75%);
   background-size: 200% 100%;
   animation: shimmer 1.4s ease-in-out infinite;
 }
@@ -288,4 +376,99 @@ h1, h2, h3 {
 
 .fade-in-up {
   animation: fadeInUp 360ms ease-out both;
+}
+
+/* Ease surface colors when the theme flips (scoped to the common surface
+ * props so it doesn't slow hover states that animate other properties). */
+body,
+body [data-page-shell] {
+  transition: background-color 200ms ease, color 200ms ease;
+}
+
+/* ─── Toasts ───────────────────────────────────────────────────────────── */
+.toast-viewport {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  z-index: 4000;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-width: min(380px, calc(100vw - 32px));
+  pointer-events: none; /* clicks pass through the stack, toasts re-enable */
+}
+
+@media (max-width: 768px) {
+  .toast-viewport {
+    left: 16px;
+    right: 16px;
+    bottom: 16px;
+    max-width: none;
+  }
+}
+
+.toast {
+  pointer-events: auto;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 14px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--teal);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-md);
+  color: var(--text-primary);
+  font-size: var(--text-base);
+  line-height: 1.5;
+  animation: toastIn 220ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.toast--success { border-left-color: #22c55e; }
+.toast--error   { border-left-color: #ef4444; }
+.toast--info    { border-left-color: var(--teal); }
+
+.toast--leaving {
+  animation: toastOut 180ms ease forwards;
+}
+
+.toast__icon {
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.toast__message {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: break-word;
+}
+
+.toast__close {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: none;
+  border-radius: var(--radius-xs);
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: background 120ms ease, color 120ms ease;
+}
+.toast__close:hover {
+  background: var(--bg-inset);
+  color: var(--text-primary);
+}
+
+@keyframes toastIn {
+  from { opacity: 0; transform: translateY(12px) scale(0.97); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes toastOut {
+  from { opacity: 1; transform: translateY(0) scale(1); }
+  to   { opacity: 0; transform: translateY(8px) scale(0.97); }
 }

@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useAuth } from '@/src/hooks/useAuth'
 import { getSimulationHistory } from '@/src/services/simulation.service'
+import { PageHeader } from '@/components/ui/PageHeader'
 
 interface FeatureButtonProps {
   href: string
@@ -76,32 +77,23 @@ export default function AnalysisPage() {
   return (
     <div data-page-shell style={{ minHeight: '100vh', padding: '88px 40px 56px', maxWidth: '900px', margin: '0 auto' }}>
       {/* ── Page header ──────────────────────────────────────── */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '16px' }}>
-        <div style={{
-          width: '44px', height: '44px', borderRadius: '12px',
-          background: 'rgba(45,184,176,0.1)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-        }}>
+      <PageHeader
+        icon={
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={ACCENT} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M3 3v18h18"/><path d="M18.7 8l-5.1 5.2-2.8-2.7L7 14.3"/>
           </svg>
-        </div>
-        <div>
-          <h1 style={{ margin: 0, fontSize: '26px', fontWeight: '700', color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>
-            Analysis
-          </h1>
-          <p style={{ margin: '4px 0 0', fontSize: '13px', color: 'var(--text-secondary)' }}>
-            Pick a view to explore individual runs or the overall summary.
-          </p>
-        </div>
-      </div>
+        }
+        title="Analysis"
+        subtitle="Pick a view to explore individual runs or the overall summary."
+        style={{ marginBottom: '16px' }}
+      />
 
       {/* ── Live stats strip — renders only once run data exists ───── */}
       {hubStats && (
         <div style={{
           display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '12px',
           marginTop: '20px', padding: '12px 18px',
-          background: '#ffffff', border: '1px solid var(--border)', borderRadius: '12px',
+          background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '12px',
           boxShadow: '0 4px 18px rgba(15, 23, 42, 0.05), 0 1px 3px rgba(15, 23, 42, 0.04)',
           fontSize: '13px', color: 'var(--text-secondary)',
         }}>
@@ -185,7 +177,7 @@ function FeatureButton({
         flexDirection: 'column',
         gap: '8px',
         padding: '22px 26px',
-        background: '#ffffff',
+        background: 'var(--bg-card)',
         border: '1px solid var(--border)',
         borderRadius: '14px',
         textDecoration: 'none',
@@ -216,14 +208,14 @@ function FeatureButton({
       <div style={{
         fontSize: '20px',
         fontWeight: 700,
-        color: '#0f172a',
+        color: 'var(--text-primary)',
         letterSpacing: '-0.01em',
       }}>
         {title}
       </div>
       <div style={{
         fontSize: '13px',
-        color: '#64748b',
+        color: 'var(--text-secondary)',
         lineHeight: 1.6,
       }}>
         {description}

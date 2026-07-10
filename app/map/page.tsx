@@ -6,12 +6,12 @@ import Image from 'next/image'
 import { useAuth } from '@/src/hooks/useAuth'
 import { useIsMobile } from '@/src/hooks/useIsMobile'
 import MapView, { type AssemblyMarker, type MapMarker } from '@/components/MapView'
+import { PageHeader } from '@/components/ui/PageHeader'
 import {BUILDING_FLOOR_COUNT} from '@/src/config/building-floor-counts'
 import { BUILDING_FLOOR_OCCUPANCY, getBuildingTotalCapacity } from '@/src/config/building-floor-occupancy'
 import { ASSEMBLY_POINTS, getNearestAssembly } from '@/src/config/assembly-points'
 import { getBuildingScore, type BuildingGrade, type BuildingScore, type FloorScore } from '@/src/services/building-analytics.service'
 
-/* UP Cebu campus center — used for the default top-down view */
 const CAMPUS_CENTER: [number, number] = [123.8988, 10.3228] // [lng, lat]
 
 /* ── Building data ── */
@@ -332,12 +332,6 @@ export default function MapPage() {
 
   const handleAssemblyClick = useCallback((id: string) => {
     setSelectedAssembly(id)
-    // The popup is `position: fixed`, but it lives inside `.app-ui-scale-shell`,
-    // which applies a `zoom` on desktop. A fixed element's left/top are scaled by
-    // that zoom, so raw viewport coords from getBoundingClientRect() would land
-    // the bubble off-target. Divide by the shell's effective scale (bounding vs.
-    // layout width) so the bubble sits exactly over the marker. On mobile the
-    // zoom isn't applied, so the ratio is 1 and this is a no-op.
     const shell = document.querySelector('.app-ui-scale-shell') as HTMLElement | null
     const scale = shell && shell.offsetWidth > 0
       ? shell.getBoundingClientRect().width / shell.offsetWidth
@@ -395,29 +389,18 @@ export default function MapPage() {
     }}>
 
       {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? '10px' : '14px', marginBottom: isMobile ? '14px' : '20px' }}>
-        <div style={{
-          width: isMobile ? '38px' : '44px',
-          height: isMobile ? '38px' : '44px',
-          borderRadius: '12px',
-          background: 'rgba(45,184,176,0.1)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          flexShrink: 0,
-        }}>
+      <PageHeader
+        dense={isMobile}
+        icon={
           <svg width={isMobile ? 18 : 22} height={isMobile ? 18 : 22} viewBox="0 0 24 24" fill="none" stroke="#2db8b0" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
             <circle cx="12" cy="10" r="3"/>
           </svg>
-        </div>
-        <div style={{ minWidth: 0 }}>
-          <h1 style={{ margin: '0 0 4px', fontSize: isMobile ? '18px' : '22px', fontWeight: '700', color: 'var(--text-primary)' }}>
-            Campus Map Display
-          </h1>
-          <p style={{ margin: 0, fontSize: isMobile ? '12px' : '13px', color: 'var(--text-secondary)' }}>
-            {isMobile ? 'UP Cebu · Tap a building' : 'UP Cebu · Lahug, Cebu City · Click a building for details'}
-          </p>
-        </div>
-      </div>
+        }
+        title="Campus Map Display"
+        subtitle={isMobile ? 'UP Cebu · Tap a building' : 'UP Cebu · Lahug, Cebu City · Click a building for details'}
+        style={{ marginBottom: isMobile ? '14px' : '20px' }}
+      />
 
       {/* Map + detail panel layout */}
       <div style={{
@@ -486,7 +469,7 @@ export default function MapPage() {
                     UP Cebu &middot; Lahug, Cebu City
                   </p>
                 </div>
-                <button onClick={() => setSelected(null)} style={{
+                <button onClick={() => setSelected(null)} aria-label="Close building details" style={{
                   width: '28px', height: '28px', borderRadius: '8px', flexShrink: 0,
                   background: 'rgba(255,255,255,0.72)', border: '1px solid rgba(148,163,184,0.24)',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -688,6 +671,7 @@ export default function MapPage() {
                   <button
                     onClick={() => setScoringModalOpen(true)}
                     title="How is this score calculated?"
+                    aria-label="How is this score calculated?"
                     style={{
                       width: '22px', height: '22px', borderRadius: '50%',
                       background: 'rgba(45,184,176,0.12)',
@@ -1206,6 +1190,7 @@ export default function MapPage() {
               />
               <button
                 onClick={() => setFullscreenImage(null)}
+                aria-label="Close full-size image"
                 style={{
                   position: 'absolute',
                   top: '16px',
@@ -1271,6 +1256,7 @@ export default function MapPage() {
           >
             <button
               onClick={() => setScoringModalOpen(false)}
+              aria-label="Close scoring explanation"
               style={{
                 position: 'absolute', top: '14px', right: '14px',
                 width: '32px', height: '32px', borderRadius: '50%',

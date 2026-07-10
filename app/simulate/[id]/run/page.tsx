@@ -1413,7 +1413,7 @@ function ASEastFloorPlan(props: FloorPlanProps) {
 function GenericFloorPlan(props: FloorPlanProps) {
   const { config } = props
   return (
-    <div style={{ position: 'relative', width: '100%', height: '100%', background: '#f8fafc' }}>
+    <div style={{ position: 'relative', width: '100%', height: '100%', background: 'var(--bg-subtle)' }}>
       <svg
         viewBox={`0 0 ${config.viewWidth} ${config.viewHeight}`} preserveAspectRatio="xMidYMid meet"
         style={{ width: '100%', height: '100%', display: 'block', position: 'absolute', top: 0, left: 0 }}
@@ -1952,7 +1952,7 @@ export default function SimulationRunPage() {
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6" /></svg>
         Change disaster type
       </button>
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '400px', gap: '16px', background: '#f8fafc', borderRadius: '16px', border: '1px solid #c9dae6', padding: '18px', boxShadow: '0 1px 0 rgba(0,0,0,0.02), 0 6px 18px rgba(15,23,42,0.04)' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '400px', gap: '16px', background: 'var(--bg-subtle)', borderRadius: '16px', border: '1px solid #c9dae6', padding: '18px', boxShadow: '0 1px 0 rgba(0,0,0,0.02), 0 6px 18px rgba(15,23,42,0.04)' }}>
         <div style={{ fontSize: '16px', fontWeight: 700, color: 'var(--text-primary)' }}>{displayName}</div>
         <div style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>{floorConfigLoadError || 'Floor plan for this building is coming soon.'}</div>
       </div>
@@ -2054,7 +2054,7 @@ export default function SimulationRunPage() {
               disabled={phase !== 'planning'}
               style={{
                 padding: '6px 26px 6px 10px', borderRadius: '8px', fontSize: '12.5px', fontWeight: 700,
-                border: `1.5px solid ${meta.color}55`, background: '#ffffff', color: '#0f172a',
+                border: `1.5px solid ${meta.color}55`, background: 'var(--bg-card)', color: 'var(--text-primary)',
                 letterSpacing: '0.01em',
                 cursor: phase !== 'planning' ? 'not-allowed' : 'pointer',
                 transition: 'all 0.15s',
@@ -2092,7 +2092,7 @@ export default function SimulationRunPage() {
           />
 
           <div style={{ position: 'absolute', top: '10px', left: '10px', display: 'flex', gap: '6px', flexWrap: 'wrap', pointerEvents: 'none' }}>
-            <span style={{ background: '#ffffffdd', border: '1px solid #d8e4ec', borderRadius: '999px', padding: '4px 9px', fontSize: '10px', fontWeight: 700, color: '#0f172a' }}>Live Drill View</span>
+            <span style={{ background: '#ffffffdd', border: '1px solid #d8e4ec', borderRadius: '999px', padding: '4px 9px', fontSize: '10px', fontWeight: 700, color: 'var(--text-primary)' }}>Live Drill View</span>
             <span style={{ background: '#ffffffdd', border: '1px solid #d8e4ec', borderRadius: '999px', padding: '4px 9px', fontSize: '10px', fontWeight: 600, color: '#2db8b0' }}>Selected Route</span>
             <span style={{ background: '#ffffffdd', border: '1px solid #d8e4ec', borderRadius: '999px', padding: '4px 9px', fontSize: '10px', fontWeight: 600, color: '#ef4444' }}>Blocked Path</span>
           </div>
@@ -2102,22 +2102,22 @@ export default function SimulationRunPage() {
 
           {phase === 'planning' && config && (
             <>
-              <div style={{ background: 'linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%)', border: '1px solid #c9dae6', borderRadius: '12px', padding: '14px', boxShadow: '0 1px 0 rgba(0,0,0,0.02)' }}>
-                <div style={{ fontSize: '11px', fontWeight: 700, color: '#64748b', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Simulation Brief</div>
+              <div style={{ background: 'var(--bg-subtle)', border: '1px solid var(--border)', borderRadius: '12px', padding: '14px', boxShadow: '0 1px 0 rgba(0,0,0,0.02)' }}>
+                <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Simulation Brief</div>
                 <div style={{ fontSize: '12px', color: '#334155', lineHeight: 1.55 }}>
                   Start from your room, click corridor nodes to build your route step by step, then choose an exit and launch the drill.
                 </div>
               </div>
 
               {/* Step 1: Room Selection */}
-              <div style={{ background: '#f8fafc', border: '1px solid #c9dae6', borderRadius: '12px', padding: '16px', boxShadow: '0 1px 0 rgba(0,0,0,0.02)' }}>
+              <div style={{ background: 'var(--bg-subtle)', border: '1px solid #c9dae6', borderRadius: '12px', padding: '16px', boxShadow: '0 1px 0 rgba(0,0,0,0.02)' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
                   <div style={{ width: '22px', height: '22px', borderRadius: '50%', background: selectedRoom ? '#2db8b0' : '#e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: 700, color: selectedRoom ? '#fff' : '#475569', flexShrink: 0 }}>1</div>
                   <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)' }}>Where Are You?</div>
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px' }}>
                   {currentFloorRooms.length === 0 && (
-                    <div style={{ gridColumn: '1 / -1', fontSize: '11px', color: '#64748b', padding: '8px 10px', background: '#f1f5f9', border: '1px dashed #c9dae6', borderRadius: '8px' }}>
+                    <div style={{ gridColumn: '1 / -1', fontSize: '11px', color: 'var(--text-secondary)', padding: '8px 10px', background: 'var(--bg-inset)', border: '1px dashed #c9dae6', borderRadius: '8px' }}>
                       No room options are configured for this floor yet.
                     </div>
                   )}
@@ -2138,17 +2138,17 @@ export default function SimulationRunPage() {
 
               {/* Step 2: Route Strategy */}
               {selectedRoom && (
-                <div style={{ background: '#f8fafc', border: '1px solid #c9dae6', borderRadius: '12px', padding: '16px', boxShadow: '0 1px 0 rgba(0,0,0,0.02)' }}>
+                <div style={{ background: 'var(--bg-subtle)', border: '1px solid #c9dae6', borderRadius: '12px', padding: '16px', boxShadow: '0 1px 0 rgba(0,0,0,0.02)' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
                     <div style={{ width: '22px', height: '22px', borderRadius: '50%', background: routeMode ? '#2db8b0' : '#334155', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: 700, color: routeMode ? '#fff' : '#64748b', flexShrink: 0 }}>2</div>
                     <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)' }}>Choose Route</div>
                   </div>
-                  <div style={{ background: '#ffffff', border: '1px solid #dbe7ee', borderRadius: '9px', padding: '10px 12px', marginBottom: '10px' }}>
-                    <div style={{ fontSize: '10px', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '6px' }}>Corridor Node State</div>
+                  <div style={{ background: 'var(--bg-card)', border: '1px solid #dbe7ee', borderRadius: '9px', padding: '10px 12px', marginBottom: '10px' }}>
+                    <div style={{ fontSize: '10px', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '6px' }}>Corridor Node State</div>
                     <div style={{ fontSize: '11px', color: '#334155', marginBottom: '6px', lineHeight: 1.45 }}>
                       Start: {entryNodeLabel || 'N/A'} {'\u00B7'} Current: {currentNodeLabel || 'N/A'}
                     </div>
-                    <div style={{ fontSize: '10.5px', color: '#64748b', marginBottom: '6px', lineHeight: 1.45 }}>
+                    <div style={{ fontSize: '10.5px', color: 'var(--text-secondary)', marginBottom: '6px', lineHeight: 1.45 }}>
                       Click highlighted corridor nodes directly on the map to build your route in sequence.
                     </div>
                     <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
@@ -2270,7 +2270,7 @@ export default function SimulationRunPage() {
                     Undo
                   </button>
                   <button onClick={resetPlan}
-                    style={{ padding: '10px 12px', borderRadius: '8px', fontSize: '12px', fontWeight: 700, background: '#ffffff', border: '1px solid #c9dae6', color: '#0f172a', cursor: 'pointer' }}>
+                    style={{ padding: '10px 12px', borderRadius: '8px', fontSize: '12px', fontWeight: 700, background: 'var(--bg-card)', border: '1px solid #c9dae6', color: 'var(--text-primary)', cursor: 'pointer' }}>
                     Reset Plan
                   </button>
                 </div>
@@ -2292,7 +2292,7 @@ export default function SimulationRunPage() {
 
           {(phase === 'running' || phase === 'rerouting') && (
             <>
-              <div style={{ background: '#f8fafc', border: '1px solid #c9dae6', borderRadius: '12px', padding: '18px', boxShadow: '0 1px 0 rgba(0,0,0,0.02)' }}>
+              <div style={{ background: 'var(--bg-subtle)', border: '1px solid #c9dae6', borderRadius: '12px', padding: '18px', boxShadow: '0 1px 0 rgba(0,0,0,0.02)' }}>
                 <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '14px' }}>Live Metrics</div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
                   {[
@@ -2308,14 +2308,14 @@ export default function SimulationRunPage() {
                   ))}
                 </div>
               </div>
-              <div style={{ background: '#f8fafc', border: '1px solid #c9dae6', borderRadius: '12px', padding: '14px', maxHeight: '180px', overflowY: 'auto', boxShadow: '0 1px 0 rgba(0,0,0,0.02)' }}>
+              <div style={{ background: 'var(--bg-subtle)', border: '1px solid #c9dae6', borderRadius: '12px', padding: '14px', maxHeight: '180px', overflowY: 'auto', boxShadow: '0 1px 0 rgba(0,0,0,0.02)' }}>
                 <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: '10px', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Event Log</div>
                 {events.length === 0 && <div style={{ fontSize: '12px', color: '#334155' }}>No events yet{'\u2026'}</div>}
                 {events.map((ev, i) => (
-                  <div key={i} style={{ display: 'flex', gap: '8px', marginBottom: '8px', alignItems: 'flex-start', padding: '7px 8px', background: '#ffffff', border: '1px solid #e6edf2', borderRadius: '8px' }}>
+                  <div key={i} style={{ display: 'flex', gap: '8px', marginBottom: '8px', alignItems: 'flex-start', padding: '7px 8px', background: 'var(--bg-card)', border: '1px solid #e6edf2', borderRadius: '8px' }}>
                     <div style={{ width: '6px', height: '6px', borderRadius: '50%', marginTop: '6px', flexShrink: 0, background: ev.type === 'danger' ? '#ef4444' : ev.type === 'warn' ? '#f59e0b' : '#2db8b0' }} />
                     <div style={{ flex: 1 }}>
-                      <div style={{ fontSize: '10px', color: '#64748b', marginBottom: '2px' }}>{formatEventTime(ev.time)}</div>
+                      <div style={{ fontSize: '10px', color: 'var(--text-secondary)', marginBottom: '2px' }}>{formatEventTime(ev.time)}</div>
                       <div style={{ fontSize: '11px', color: ev.type === 'danger' ? '#ef4444' : ev.type === 'warn' ? '#b45309' : 'var(--text-secondary)', lineHeight: 1.4 }}>{ev.message}</div>
                     </div>
                   </div>
@@ -2327,7 +2327,7 @@ export default function SimulationRunPage() {
           {phase === 'completed' && metrics && (
             <>
               {/* Result Summary */}
-              <div style={{ background: '#f8fafc', border: '1px solid #c9dae6', borderRadius: '12px', padding: '18px', boxShadow: '0 1px 0 rgba(0,0,0,0.02)' }}>
+              <div style={{ background: 'var(--bg-subtle)', border: '1px solid #c9dae6', borderRadius: '12px', padding: '18px', boxShadow: '0 1px 0 rgba(0,0,0,0.02)' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
                   <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: '#22c55e18', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
@@ -2341,9 +2341,9 @@ export default function SimulationRunPage() {
                 </div>
 
                 {/* Key metric */}
-                <div style={{ background: '#ffffff', border: '1px solid #e6edf2', borderRadius: '10px', padding: '14px', marginBottom: '12px', textAlign: 'center' }}>
+                <div style={{ background: 'var(--bg-card)', border: '1px solid #e6edf2', borderRadius: '10px', padding: '14px', marginBottom: '12px', textAlign: 'center' }}>
                   <div style={{ fontSize: '32px', fontWeight: 800, color: metrics.evacuationTime > 20 ? '#ef4444' : '#22c55e', lineHeight: 1 }}>{metrics.evacuationTime}s</div>
-                  <div style={{ fontSize: '10px', color: '#64748b', marginTop: '4px', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Evacuation Time</div>
+                  <div style={{ fontSize: '10px', color: 'var(--text-secondary)', marginTop: '4px', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Evacuation Time</div>
                 </div>
 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '6px' }}>
@@ -2352,7 +2352,7 @@ export default function SimulationRunPage() {
                     { label: 'Rerouted', value: metrics.rerouted ? 'Yes' : 'No', color: metrics.rerouted ? '#f59e0b' : '#22c55e' },
                     { label: 'Efficiency', value: `${Math.round(metrics.pathEfficiency * 100)}%`, color: metrics.pathEfficiency >= 0.85 ? '#22c55e' : '#f59e0b' },
                   ].map(m => (
-                    <div key={m.label} style={{ background: '#ffffff', border: '1px solid #e6edf2', borderRadius: '8px', padding: '8px 10px', textAlign: 'center' }}>
+                    <div key={m.label} style={{ background: 'var(--bg-card)', border: '1px solid #e6edf2', borderRadius: '8px', padding: '8px 10px', textAlign: 'center' }}>
                       <div style={{ fontSize: '9px', color: '#475569', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '3px' }}>{m.label}</div>
                       <div style={{ fontSize: '14px', fontWeight: 700, color: m.color }}>{m.value}</div>
                     </div>
@@ -2373,8 +2373,8 @@ export default function SimulationRunPage() {
               </div>
 
               {/* Evaluator */}
-              <div style={{ background: '#f8fafc', border: '1px solid #e6edf2', borderRadius: '10px', padding: '14px' }}>
-                <div style={{ fontSize: '11px', fontWeight: 700, color: '#64748b', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Drill Evaluator</div>
+              <div style={{ background: 'var(--bg-subtle)', border: '1px solid #e6edf2', borderRadius: '10px', padding: '14px' }}>
+                <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Drill Evaluator</div>
                 {feedbackLines.map((line, i) => (
                   <div key={i} style={{ display: 'flex', gap: '8px', marginBottom: '6px', alignItems: 'flex-start' }}>
                     <div style={{ width: '5px', height: '5px', borderRadius: '50%', marginTop: '5px', flexShrink: 0, background: '#2db8b0' }} />
@@ -2386,7 +2386,7 @@ export default function SimulationRunPage() {
               {/* Actions */}
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
                 <button onClick={reset}
-                  style={{ padding: '11px', borderRadius: '10px', fontSize: '12px', fontWeight: 600, background: '#f8fafc', border: '1px solid #e6edf2', color: 'var(--text-primary)', cursor: 'pointer', transition: 'all 0.15s' }}>
+                  style={{ padding: '11px', borderRadius: '10px', fontSize: '12px', fontWeight: 600, background: 'var(--bg-subtle)', border: '1px solid #e6edf2', color: 'var(--text-primary)', cursor: 'pointer', transition: 'all 0.15s' }}>
                   Run Again
                 </button>
                 <button onClick={() => router.push('/map')}

@@ -48,7 +48,7 @@ export function FeatureContainer({
     <div
       data-feature-card
       style={{
-        background: '#ffffff',
+        background: 'var(--bg-card)',
         border: '1px solid var(--border)',
         borderRadius: '16px',
         overflow: 'hidden',
@@ -114,7 +114,7 @@ export function FeatureContainer({
       </div>
 
       {/* White content body */}
-      <div style={{ padding: bodyPadding, background: '#ffffff' }}>
+      <div style={{ padding: bodyPadding, background: 'var(--bg-card)' }}>
         {children}
       </div>
     </div>

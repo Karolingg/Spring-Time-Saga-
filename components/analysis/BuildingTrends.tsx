@@ -118,7 +118,7 @@ export function BuildingTrends() {
             margin: '22px 0 12px',
           }}>
             <div style={{ height: '1px', flex: 1, background: 'var(--border)' }} />
-            <span style={{ fontSize: '10px', fontWeight: 700, color: '#94a3b8', letterSpacing: '0.1em', textTransform: 'uppercase' }}>
+            <span style={{ fontSize: '10px', fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.1em', textTransform: 'uppercase' }}>
               Needs a baseline
             </span>
             <div style={{ height: '1px', flex: 1, background: 'var(--border)' }} />
@@ -144,14 +144,14 @@ function TrendCard({ trend }: { trend: ResolvedTrend }) {
   return (
     <div style={{
       border: '1px solid var(--border)', borderRadius: '12px',
-      padding: '16px 18px', background: '#ffffff',
+      padding: '16px 18px', background: 'var(--bg-card)',
     }}>
       <div style={{
         display: 'flex', alignItems: 'baseline', justifyContent: 'space-between',
         gap: '12px', marginBottom: '14px', flexWrap: 'wrap',
       }}>
         <div>
-          <div style={{ fontSize: '14px', fontWeight: 700, color: '#0f172a' }}>
+          <div style={{ fontSize: '14px', fontWeight: 700, color: 'var(--text-primary)' }}>
             {trend.buildingName}
           </div>
           <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
@@ -160,7 +160,7 @@ function TrendCard({ trend }: { trend: ResolvedTrend }) {
         </div>
         <span style={{
           fontSize: '11px', fontWeight: 700, color: '#475569',
-          background: '#f1f5f9', borderRadius: '999px', padding: '4px 10px',
+          background: 'var(--bg-inset)', borderRadius: '999px', padding: '4px 10px',
         }}>
           {runs.length} drills
         </span>
@@ -195,7 +195,7 @@ function TrendCard({ trend }: { trend: ResolvedTrend }) {
       <div style={{ marginTop: '14px' }}>
         <div style={{
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          fontSize: '10px', fontWeight: 700, color: '#94a3b8',
+          fontSize: '10px', fontWeight: 700, color: 'var(--text-muted)',
           letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: '4px',
         }}>
           <span>Trend · oldest → latest</span>
@@ -226,15 +226,15 @@ function MetricDelta({ label, latest, delta, better, formatDelta }: MetricDeltaP
   return (
     <div style={{
       border: '1px solid var(--border)', borderRadius: '10px',
-      padding: '10px 12px', background: '#f8fafc',
+      padding: '10px 12px', background: 'var(--bg-subtle)',
     }}>
       <div style={{
-        fontSize: '10px', fontWeight: 700, color: '#64748b',
+        fontSize: '10px', fontWeight: 700, color: 'var(--text-secondary)',
         letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: '6px',
       }}>
         {label}
       </div>
-      <div style={{ fontSize: '19px', fontWeight: 800, color: '#0f172a', letterSpacing: '-0.02em', lineHeight: 1 }}>
+      <div style={{ fontSize: '19px', fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.02em', lineHeight: 1 }}>
         {latest}
       </div>
       <div style={{
@@ -324,7 +324,7 @@ function LegendItem({ dashed, color, label }: { dashed: boolean; color: string; 
         />
       </svg>
       <span style={{
-        fontSize: '10px', fontWeight: 700, color: '#64748b',
+        fontSize: '10px', fontWeight: 700, color: 'var(--text-secondary)',
         letterSpacing: '0.04em', textTransform: 'uppercase',
       }}>
         {label}
@@ -342,11 +342,11 @@ function BaselineGateCard({ trend }: { trend: ResolvedTrend }) {
   return (
     <div style={{
       border: '1px dashed #cbd5e1', borderRadius: '12px',
-      padding: '14px 16px', background: '#f8fafc',
+      padding: '14px 16px', background: 'var(--bg-subtle)',
       display: 'flex', alignItems: 'center', gap: '14px', flexWrap: 'wrap',
     }}>
       <div style={{ flex: 1, minWidth: '180px' }}>
-        <div style={{ fontSize: '13px', fontWeight: 700, color: '#0f172a' }}>
+        <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)' }}>
           {trend.buildingName} · {trend.floorLabel}
         </div>
         <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '2px' }}>

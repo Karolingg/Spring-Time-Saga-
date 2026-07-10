@@ -149,10 +149,10 @@ export function ZoneAnalysisPanel({ zones, hideHeader = false }: Props) {
         {/* Table header */}
         <div style={{
           display: 'grid', gridTemplateColumns: '2fr 1fr 80px 80px',
-          padding: '10px 16px', background: '#f8fafc',
+          padding: '10px 16px', background: 'var(--bg-subtle)',
           borderBottom: '1px solid var(--border)',
           fontSize: '10px', fontWeight: 700, letterSpacing: '0.08em',
-          color: '#64748b', textTransform: 'uppercase',
+          color: 'var(--text-secondary)', textTransform: 'uppercase',
         }}>
           <span>Zone</span>
           <span>Risk</span>
@@ -189,10 +189,10 @@ export function ZoneAnalysisPanel({ zones, hideHeader = false }: Props) {
                     background: band.color,
                   }} />
                   <div>
-                    <div style={{ fontSize: '13px', fontWeight: 600, color: '#0f172a' }}>
+                    <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)' }}>
                       {zone.zoneName}
                     </div>
-                    <div style={{ fontSize: '10px', color: '#94a3b8' }}>
+                    <div style={{ fontSize: '10px', color: 'var(--text-muted)' }}>
                       {friendlyType(zone.zoneName)}
                     </div>
                   </div>
@@ -211,7 +211,7 @@ export function ZoneAnalysisPanel({ zones, hideHeader = false }: Props) {
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '6px' }}>
                   <div style={{
                     width: '36px', height: '6px', borderRadius: '3px',
-                    background: '#f1f5f9', overflow: 'hidden',
+                    background: 'var(--bg-inset)', overflow: 'hidden',
                   }}>
                     <div style={{
                       height: '100%', width: `${Math.min(100, zone.intensity)}%`,
@@ -251,7 +251,7 @@ export function ZoneAnalysisPanel({ zones, hideHeader = false }: Props) {
                     margin: 0, fontSize: '12px', color: '#475569',
                     lineHeight: 1.5, fontStyle: 'italic',
                     padding: '8px 12px',
-                    background: '#ffffff',
+                    background: 'var(--bg-card)',
                     borderRadius: '8px',
                     border: '1px solid var(--border)',
                   }}>
@@ -319,13 +319,13 @@ function StatPill({ label, value, color }: { label: string; value: string; color
   return (
     <div style={{
       padding: '12px 14px',
-      background: '#ffffff',
+      background: 'var(--bg-card)',
       border: '1px solid var(--border)',
       borderRadius: '10px',
     }}>
       <div style={{
         fontSize: '10px', fontWeight: 700, letterSpacing: '0.06em',
-        color: '#94a3b8', textTransform: 'uppercase', marginBottom: '4px',
+        color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '4px',
       }}>
         {label}
       </div>
@@ -343,7 +343,7 @@ function StatPill({ label, value, color }: { label: string; value: string; color
 function DetailItem({ label, value, color }: { label: string; value: string; color?: string }) {
   return (
     <div>
-      <div style={{ fontSize: '10px', fontWeight: 600, color: '#94a3b8', letterSpacing: '0.04em', textTransform: 'uppercase', marginBottom: '2px' }}>
+      <div style={{ fontSize: '10px', fontWeight: 600, color: 'var(--text-muted)', letterSpacing: '0.04em', textTransform: 'uppercase', marginBottom: '2px' }}>
         {label}
       </div>
       <div style={{ fontSize: '13px', fontWeight: 600, color: color ?? '#0f172a' }}>

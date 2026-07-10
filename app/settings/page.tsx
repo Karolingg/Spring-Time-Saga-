@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useAuth } from '@/src/hooks/useAuth'
 import { useIsMobile } from '@/src/hooks/useIsMobile'
+import { useToast } from '@/src/context/ToastContext'
 import { getFriendlyErrorMessage } from '@/src/services/rate-limit.service'
 import {
   getUserProfile,
@@ -10,21 +11,10 @@ import {
   updateUserPassword,
   updateUserProfile,
 } from '@/src/services/user.service'
+import { Card } from '@/components/ui/Card'
+import { PageHeader } from '@/components/ui/PageHeader'
 
 type Section = 'profile' | 'security'
-
-const inputBase: React.CSSProperties = {
-  width: '100%',
-  padding: '10px 14px',
-  background: '#f8fafc',
-  border: '1px solid #e2e8f0',
-  borderRadius: '8px',
-  fontSize: '14px',
-  color: '#0f172a',
-  outline: 'none',
-  boxSizing: 'border-box',
-  transition: 'border-color 0.15s',
-}
 
 const labelStyle: React.CSSProperties = {
   display: 'block',
@@ -57,13 +47,19 @@ const btnPrimary = (enabled: boolean): React.CSSProperties => ({
   padding: '10px 20px',
   border: 'none',
   borderRadius: '8px',
-  background: enabled ? '#2db8b0' : '#e2e8f0',
-  color: enabled ? '#fff' : '#94a3b8',
+  background: enabled ? '#2db8b0' : 'var(--bg-inset)',
+  color: enabled ? '#fff' : 'var(--text-muted)',
   fontSize: '13px',
   fontWeight: '600',
   cursor: enabled ? 'pointer' : 'default',
   transition: 'background 0.15s',
 })
+
+const SETTINGS_ICON = (size: number) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="#2db8b0" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+  </svg>
+)
 
 const navIcons: Record<Section, React.ReactNode> = {
   profile: (
@@ -104,37 +100,19 @@ export default function SettingsPage() {
     return (
       <div data-page-shell style={{ minHeight: '100vh', padding: '20px 14px 32px' }}>
         {/* Header */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
-          <div style={{
-            width: '38px',
-            height: '38px',
-            borderRadius: '10px',
-            background: 'rgba(45,184,176,0.1)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#2db8b0" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
-            </svg>
-          </div>
-          <div>
-            <h1 style={{ margin: 0, fontSize: '18px', fontWeight: '700', color: 'var(--text-primary)' }}>Settings</h1>
-            <p style={{ margin: 0, fontSize: '12px', color: 'var(--text-secondary)' }}>Manage your account</p>
-          </div>
-        </div>
+        <PageHeader
+          dense
+          icon={SETTINGS_ICON(20)}
+          title="Settings"
+          subtitle="Manage your account"
+        />
 
         {/* User card */}
-        <div style={{
+        <Card padding="14px" style={{
           display: 'flex',
           alignItems: 'center',
           gap: '12px',
-          padding: '14px',
-          background: '#fff',
-          border: '1px solid var(--border)',
-          borderRadius: '12px',
           marginBottom: '14px',
-          boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
         }}>
           <div style={{
             width: '36px',
@@ -157,7 +135,7 @@ export default function SettingsPage() {
             </div>
             <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Signed in with Google</div>
           </div>
-        </div>
+        </Card>
 
         {/* Pill tab strip */}
         <div className="scroll-hide-x" style={{
@@ -175,7 +153,7 @@ export default function SettingsPage() {
               padding: '8px 14px',
               border: 'none',
               borderRadius: '999px',
-              background: section === item.id ? '#2db8b0' : '#f1f5f9',
+              background: section === item.id ? '#2db8b0' : 'var(--bg-inset)',
               color: section === item.id ? '#fff' : 'var(--text-secondary)',
               fontSize: '13px',
               fontWeight: '600',
@@ -191,16 +169,10 @@ export default function SettingsPage() {
         </div>
 
         {/* Content card */}
-        <div style={{
-          background: '#fff',
-          border: '1px solid var(--border)',
-          borderRadius: '12px',
-          padding: '20px 16px',
-          boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
-        }}>
+        <Card padding="20px 16px">
           {section === 'profile' && <ProfilePanel userEmail={email} />}
           {section === 'security' && <SecurityPanel userEmail={email} />}
-        </div>
+        </Card>
       </div>
     )
   }
@@ -208,37 +180,18 @@ export default function SettingsPage() {
   return (
     <div data-page-shell style={{ minHeight: '100vh', padding: '88px 40px 56px', maxWidth: '920px', margin: '0 auto' }}>
       {/* Page header */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '24px' }}>
-        <div style={{
-          width: '44px',
-          height: '44px',
-          borderRadius: '12px',
-          background: 'rgba(45,184,176,0.1)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-        }}>
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#2db8b0" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
-          </svg>
-        </div>
-        <div style={{ minWidth: 0 }}>
-          <h1 style={{ margin: '0 0 4px', fontSize: '22px', fontWeight: '700', color: 'var(--text-primary)' }}>Settings</h1>
-          <p style={{ margin: 0, fontSize: '13px', color: 'var(--text-secondary)' }}>Manage your account and preferences</p>
-        </div>
-      </div>
+      <PageHeader
+        icon={SETTINGS_ICON(22)}
+        title="Settings"
+        subtitle="Manage your account and preferences"
+      />
 
       {/* User info card — full width */}
-      <div style={{
+      <Card padding="16px 20px" style={{
         display: 'flex',
         alignItems: 'center',
         gap: '14px',
-        padding: '16px 20px',
-        background: '#fff',
-        border: '1px solid var(--border)',
-        borderRadius: '12px',
         marginBottom: '20px',
-        boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
       }}>
         <div style={{
           width: '40px',
@@ -266,31 +219,28 @@ export default function SettingsPage() {
           alignItems: 'center',
           gap: '6px',
           padding: '8px 14px',
-          border: '1px solid #fecaca',
+          border: '1px solid rgba(239,68,68,0.35)',
           borderRadius: '8px',
-          background: '#fff',
+          background: 'transparent',
           color: '#ef4444',
           fontSize: '12px',
           fontWeight: '500',
           cursor: 'pointer',
           transition: 'background 0.12s',
-        }}>
+        }}
+        onMouseEnter={e => e.currentTarget.style.background = 'rgba(239,68,68,0.08)'}
+        onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+        >
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>
           </svg>
           Sign out
         </button>
-      </div>
+      </Card>
 
       {/* Main grid: sidebar nav + content */}
       <div style={{ display: 'grid', gridTemplateColumns: '220px 1fr', gap: '20px', alignItems: 'start' }}>
-        <div style={{
-          background: '#fff',
-          border: '1px solid var(--border)',
-          borderRadius: '12px',
-          padding: '8px',
-          boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
-        }}>
+        <Card padding="8px">
           {nav.map(item => (
             <button key={item.id} onClick={() => setSection(item.id)} style={{
               display: 'flex',
@@ -300,8 +250,8 @@ export default function SettingsPage() {
               padding: '10px 12px',
               border: 'none',
               borderRadius: '8px',
-              background: section === item.id ? '#f0fdfa' : 'transparent',
-              color: section === item.id ? '#0f766e' : 'var(--text-secondary)',
+              background: section === item.id ? 'var(--teal-light)' : 'transparent',
+              color: section === item.id ? 'var(--nav-active-text)' : 'var(--text-secondary)',
               fontSize: '13px',
               fontWeight: section === item.id ? '600' : '400',
               cursor: 'pointer',
@@ -313,34 +263,26 @@ export default function SettingsPage() {
               {item.label}
             </button>
           ))}
-        </div>
+        </Card>
 
         {/* Content panel */}
-        <div style={{
-          background: '#fff',
-          border: '1px solid var(--border)',
-          borderRadius: '12px',
-          padding: '28px 32px',
-          boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
-          minHeight: '380px',
-        }}>
+        <Card style={{ minHeight: '380px' }}>
           {section === 'profile' && <ProfilePanel userEmail={email} />}
           {section === 'security' && <SecurityPanel userEmail={email} />}
-        </div>
+        </Card>
       </div>
     </div>
   )
 }
 
 function ProfilePanel({ userEmail }: { userEmail: string }) {
+  const { showToast } = useToast()
   const [email, setEmail] = useState(userEmail)
   const [displayName, setDisplayName] = useState('')
   const [initialDisplayName, setInitialDisplayName] = useState('')
   const [initialEmail, setInitialEmail] = useState(userEmail)
   const [loadingProfile, setLoadingProfile] = useState(true)
   const [submitting, setSubmitting] = useState(false)
-  const [message, setMessage] = useState('')
-  const [hasError, setHasError] = useState(false)
 
   useEffect(() => {
     getUserProfile()
@@ -363,8 +305,6 @@ function ProfilePanel({ userEmail }: { userEmail: string }) {
   async function save(event: React.FormEvent) {
     event.preventDefault()
     setSubmitting(true)
-    setMessage('')
-    setHasError(false)
     try {
       if (trimmedDisplayName !== initialDisplayName) {
         await updateUserProfile(trimmedDisplayName)
@@ -376,13 +316,12 @@ function ProfilePanel({ userEmail }: { userEmail: string }) {
         await updateUserEmail(trimmedEmail)
         setInitialEmail(trimmedEmail)
         setEmail(trimmedEmail)
-        setMessage('Check your inbox to confirm the new email.')
+        showToast('Check your inbox to confirm the new email.', 'info')
       } else {
-        setMessage('Profile updated successfully.')
+        showToast('Profile updated successfully.', 'success')
       }
     } catch (err) {
-      setHasError(true)
-      setMessage(getFriendlyErrorMessage(err, (err as Error).message))
+      showToast(getFriendlyErrorMessage(err, (err as Error).message), 'error')
     } finally {
       setSubmitting(false)
     }
@@ -393,7 +332,7 @@ function ProfilePanel({ userEmail }: { userEmail: string }) {
       <h2 style={sectionTitle}>Profile</h2>
       <p style={sectionDesc}>Your public account details.</p>
 
-      <div style={{ display: 'flex', alignItems: 'center', gap: '16px', padding: '16px', background: '#f8fafc', borderRadius: '10px', marginBottom: '24px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '16px', padding: '16px', background: 'var(--bg-subtle)', borderRadius: '10px', marginBottom: '24px' }}>
         <div style={{
           width: '48px',
           height: '48px',
@@ -426,11 +365,10 @@ function ProfilePanel({ userEmail }: { userEmail: string }) {
             type="text"
             value={loadingProfile ? '' : displayName}
             onChange={event => setDisplayName(event.target.value)}
-            style={inputBase}
+            className="input-field"
+            style={{ fontSize: '14px' }}
             placeholder={loadingProfile ? 'Loading...' : 'Enter your name'}
             disabled={loadingProfile || submitting}
-            onFocus={event => event.currentTarget.style.borderColor = '#2db8b0'}
-            onBlur={event => event.currentTarget.style.borderColor = '#e2e8f0'}
           />
         </div>
 
@@ -440,11 +378,10 @@ function ProfilePanel({ userEmail }: { userEmail: string }) {
             type="email"
             value={email}
             onChange={event => setEmail(event.target.value)}
-            style={inputBase}
+            className="input-field"
+            style={{ fontSize: '14px' }}
             required
             disabled={submitting}
-            onFocus={event => event.currentTarget.style.borderColor = '#2db8b0'}
-            onBlur={event => event.currentTarget.style.borderColor = '#e2e8f0'}
           />
           <span style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px', display: 'block' }}>
             Changing your email may require confirmation.
@@ -455,7 +392,7 @@ function ProfilePanel({ userEmail }: { userEmail: string }) {
 
         <div style={{ marginBottom: '20px' }}>
           <label style={labelStyle}>Role</label>
-          <div style={{ padding: '10px 14px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', fontSize: '14px', color: 'var(--text-secondary)' }}>
+          <div style={{ padding: '10px 14px', background: 'var(--bg-subtle)', border: '1px solid var(--border)', borderRadius: '8px', fontSize: '14px', color: 'var(--text-secondary)' }}>
             Administrator
           </div>
           <span style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px', display: 'block' }}>
@@ -463,21 +400,7 @@ function ProfilePanel({ userEmail }: { userEmail: string }) {
           </span>
         </div>
 
-        {message && (
-          <div style={{
-            marginBottom: '16px',
-            padding: '10px 14px',
-            borderRadius: '8px',
-            fontSize: '13px',
-            background: hasError ? '#fef2f2' : '#f0fdf4',
-            border: `1px solid ${hasError ? '#fecaca' : '#bbf7d0'}`,
-            color: hasError ? '#dc2626' : '#16a34a',
-          }}>
-            {message}
-          </div>
-        )}
-
-        <button type="submit" disabled={submitting || !hasChanges} style={btnPrimary(!submitting && hasChanges)}>
+        <button type="submit" disabled={submitting || !hasChanges} className="hover-darken" style={btnPrimary(!submitting && hasChanges)}>
           {submitting ? 'Saving...' : 'Save changes'}
         </button>
       </form>
@@ -487,11 +410,10 @@ function ProfilePanel({ userEmail }: { userEmail: string }) {
 
 function SecurityPanel({ userEmail }: { userEmail: string }) {
   const { handleLogout } = useAuth()
+  const { showToast } = useToast()
   const [pw, setPw] = useState('')
   const [confirm, setConfirm] = useState('')
   const [submitting, setSubmitting] = useState(false)
-  const [msg, setMsg] = useState('')
-  const [hasError, setHasError] = useState(false)
   const [isSigningOut, setIsSigningOut] = useState(false)
 
   const mismatch = confirm.length > 0 && pw !== confirm
@@ -499,20 +421,17 @@ function SecurityPanel({ userEmail }: { userEmail: string }) {
 
   async function save(event: React.FormEvent) {
     event.preventDefault()
-    setMsg('')
-    setHasError(false)
-    if (pw !== confirm) { setHasError(true); setMsg('Passwords do not match.'); return }
-    if (pw.length < 6) { setHasError(true); setMsg('Use at least 6 characters.'); return }
+    if (pw !== confirm) { showToast('Passwords do not match.', 'error'); return }
+    if (pw.length < 6) { showToast('Use at least 6 characters.', 'error'); return }
 
     setSubmitting(true)
     try {
       await updateUserPassword(pw)
-      setMsg('Password updated.')
+      showToast('Password updated.', 'success')
       setPw('')
       setConfirm('')
     } catch (error) {
-      setHasError(true)
-      setMsg(getFriendlyErrorMessage(error, (error as Error).message))
+      showToast(getFriendlyErrorMessage(error, (error as Error).message), 'error')
     } finally {
       setSubmitting(false)
     }
@@ -537,9 +456,9 @@ function SecurityPanel({ userEmail }: { userEmail: string }) {
         alignItems: 'center',
         gap: '12px',
         padding: '14px',
-        background: '#f8fafc',
+        background: 'var(--bg-subtle)',
         borderRadius: '8px',
-        border: '1px solid #e2e8f0',
+        border: '1px solid var(--border)',
         marginBottom: '20px',
       }}>
         <div style={{ flex: 1, minWidth: 0 }}>
@@ -563,12 +482,11 @@ function SecurityPanel({ userEmail }: { userEmail: string }) {
             type="password"
             value={pw}
             onChange={e => setPw(e.target.value)}
-            style={inputBase}
+            className="input-field"
+            style={{ fontSize: '14px' }}
             required
             placeholder="At least 6 characters"
             disabled={submitting}
-            onFocus={e => e.currentTarget.style.borderColor = '#2db8b0'}
-            onBlur={e => e.currentTarget.style.borderColor = '#e2e8f0'}
           />
           {tooShort && (
             <span style={{ display: 'block', marginTop: '4px', fontSize: '12px', color: '#ef4444' }}>
@@ -583,12 +501,11 @@ function SecurityPanel({ userEmail }: { userEmail: string }) {
             type="password"
             value={confirm}
             onChange={e => setConfirm(e.target.value)}
-            style={{ ...inputBase, borderColor: mismatch ? '#fecaca' : '#e2e8f0' }}
+            className="input-field"
+            style={{ fontSize: '14px', borderColor: mismatch ? '#ef4444' : undefined }}
             required
             placeholder="Re-enter password"
             disabled={submitting}
-            onFocus={e => e.currentTarget.style.borderColor = mismatch ? '#ef4444' : '#2db8b0'}
-            onBlur={e => e.currentTarget.style.borderColor = mismatch ? '#fecaca' : '#e2e8f0'}
           />
           {mismatch && (
             <span style={{ display: 'block', marginTop: '4px', fontSize: '12px', color: '#ef4444' }}>
@@ -597,21 +514,7 @@ function SecurityPanel({ userEmail }: { userEmail: string }) {
           )}
         </div>
 
-        {msg && (
-          <div style={{
-            marginBottom: '16px',
-            padding: '10px 14px',
-            borderRadius: '8px',
-            fontSize: '13px',
-            background: hasError ? '#fef2f2' : '#f0fdf4',
-            border: `1px solid ${hasError ? '#fecaca' : '#bbf7d0'}`,
-            color: hasError ? '#dc2626' : '#16a34a',
-          }}>
-            {msg}
-          </div>
-        )}
-
-        <button type="submit" disabled={mismatch || tooShort || submitting} style={btnPrimary(!mismatch && !tooShort && !submitting)}>
+        <button type="submit" disabled={mismatch || tooShort || submitting} className="hover-darken" style={btnPrimary(!mismatch && !tooShort && !submitting)}>
           {submitting ? 'Updating...' : 'Update password'}
         </button>
       </form>
@@ -624,7 +527,7 @@ function SecurityPanel({ userEmail }: { userEmail: string }) {
       <p style={{ margin: '0 0 12px', fontSize: '12px', color: 'var(--text-muted)' }}>
         Sign out here to end this browser session.
       </p>
-      <button type="button" onClick={handleSignOut} disabled={isSigningOut} style={btnPrimary(!isSigningOut)}>
+      <button type="button" onClick={handleSignOut} disabled={isSigningOut} className="hover-darken" style={btnPrimary(!isSigningOut)}>
         {isSigningOut ? 'Signing out...' : 'Sign out'}
       </button>
     </div>

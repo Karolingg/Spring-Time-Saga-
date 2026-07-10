@@ -730,7 +730,7 @@ export default function AutonomousScienceBuildingPage() {
   if (unsupportedRoute) {
     return (
       <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '88px 24px 56px', background: 'linear-gradient(180deg, #eaeff5 0%, #e4e9f1 100%)' }}>
-        <div style={{ width: '100%', maxWidth: '620px', background: '#ffffff', border: '1px solid var(--border)', borderRadius: '16px', padding: '28px 30px', boxShadow: '0 10px 35px rgba(15, 23, 42, 0.08)' }}>
+        <div style={{ width: '100%', maxWidth: '620px', background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '16px', padding: '28px 30px', boxShadow: '0 10px 35px rgba(15, 23, 42, 0.08)' }}>
           <div style={{ fontSize: '11px', fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#2db8b0', marginBottom: '12px' }}>
             Autonomous Simulation
           </div>
@@ -751,7 +751,7 @@ export default function AutonomousScienceBuildingPage() {
             </button>
             <button
               onClick={() => router.push('/map')}
-              style={{ padding: '10px 18px', borderRadius: '8px', border: '1px solid var(--border)', background: '#ffffff', color: 'var(--text-primary)', fontSize: '13px', fontWeight: 600, cursor: 'pointer' }}
+              style={{ padding: '10px 18px', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-primary)', fontSize: '13px', fontWeight: 600, cursor: 'pointer' }}
             >
               Back to Map
             </button>
@@ -765,11 +765,11 @@ export default function AutonomousScienceBuildingPage() {
     <div className="auto-page-root" style={{
       minHeight: '100vh',
       padding: '88px 24px 56px',
-      // Layered darker-white background — slightly cooler than pure off-white
-      // to give white panels and cards visible separation from the page.
+      // Layered background — a soft teal halo over the theme surface so
+      // panels and cards keep visible separation from the page.
       background:
         'radial-gradient(circle at 100% 0%, rgba(45, 184, 176, 0.05) 0%, transparent 35%),' +
-        'linear-gradient(180deg, #eaeff5 0%, #e4e9f1 100%)',
+        'linear-gradient(180deg, var(--bg) 0%, var(--bg) 100%)',
     }}>
       <style>{`
         @keyframes tremorPulse {
@@ -814,8 +814,8 @@ export default function AutonomousScienceBuildingPage() {
         }
 
         .auto-panel {
-          background: #fcfdfe;
-          border: 1px solid #d8dfe8;
+          background: var(--bg-card);
+          border: 1px solid var(--border);
           border-radius: 16px;
           box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 8px 24px -10px rgba(15, 23, 42, 0.08);
         }
@@ -827,7 +827,7 @@ export default function AutonomousScienceBuildingPage() {
 
         .auto-panel-section {
           padding: 18px 20px;
-          border-bottom: 1px solid #e4e9ef;
+          border-bottom: 1px solid var(--border);
           display: flex;
           flex-direction: column;
           gap: 12px;
@@ -857,7 +857,7 @@ export default function AutonomousScienceBuildingPage() {
           padding: 7px 12px;
           border-radius: 8px;
           border: 1px solid var(--border);
-          background: #ffffff;
+          background: var(--bg-card);
           color: var(--text-primary);
           font-size: 12px;
           font-weight: 600;
@@ -926,8 +926,8 @@ export default function AutonomousScienceBuildingPage() {
 
         .auto-stat {
           border-radius: 12px;
-          border: 1px solid #dee5ee;
-          background: linear-gradient(180deg, #ffffff 0%, #f4f7fb 100%);
+          border: 1px solid var(--border);
+          background: var(--bg-subtle);
           padding: 12px 14px;
           display: flex;
           flex-direction: column;
@@ -949,8 +949,8 @@ export default function AutonomousScienceBuildingPage() {
         .auto-summary-card {
           min-height: 74px;
           border-radius: 14px;
-          border: 1px solid #d8dfe8;
-          background: rgba(252, 253, 254, 0.92);
+          border: 1px solid var(--border);
+          background: var(--bg-card);
           box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
           padding: 12px 14px;
           display: flex;
@@ -1050,8 +1050,8 @@ export default function AutonomousScienceBuildingPage() {
           gap: 8px;
           padding: 6px 10px;
           border-radius: 8px;
-          border: 1px solid #dee5ee;
-          background: #ffffff;
+          border: 1px solid var(--border);
+          background: var(--bg-card);
           transition: border-color 120ms, box-shadow 120ms;
         }
         .auto-room-row--override {
@@ -1076,7 +1076,7 @@ export default function AutonomousScienceBuildingPage() {
           padding: 5px 6px;
           border-radius: 6px;
           border: 1px solid var(--border);
-          background: #ffffff;
+          background: var(--bg-card);
           color: ${APP_ACCENT_DARK};
           font-size: 13px;
           font-weight: 700;
@@ -1111,7 +1111,7 @@ export default function AutonomousScienceBuildingPage() {
           padding: 6px 10px;
           border-radius: 8px;
           border: 1px solid var(--border);
-          background: #ffffff;
+          background: var(--bg-card);
         }
         .auto-room-search input {
           flex: 1;
@@ -1132,7 +1132,7 @@ export default function AutonomousScienceBuildingPage() {
         .auto-map-insight {
           border-radius: 12px;
           border: 1px solid #e2e8f0;
-          background: #ffffff;
+          background: var(--bg-card);
           padding: 12px 14px;
         }
 
@@ -1234,7 +1234,7 @@ export default function AutonomousScienceBuildingPage() {
                 padding: '10px 18px',
                 borderRadius: '8px',
                 border: '1px solid var(--border)',
-                background: '#ffffff',
+                background: 'var(--bg-card)',
                 color: 'var(--text-primary)',
                 fontSize: '13px',
                 fontWeight: 600,
@@ -1251,7 +1251,7 @@ export default function AutonomousScienceBuildingPage() {
                 padding: '10px 18px',
                 borderRadius: '8px',
                 border: '1px solid var(--border)',
-                background: '#ffffff',
+                background: 'var(--bg-card)',
                 color: 'var(--text-primary)',
                 fontSize: '13px',
                 fontWeight: 600,
@@ -1305,8 +1305,8 @@ export default function AutonomousScienceBuildingPage() {
           <div style={{
             width: '100%',
             maxWidth: '440px',
-            background: '#ffffff',
-            border: '1px solid #e2e8f0',
+            background: 'var(--bg-card)',
+            border: '1px solid var(--border)',
             borderRadius: '16px',
             boxShadow: '0 24px 60px -24px rgba(15, 23, 42, 0.45)',
             padding: '28px',
@@ -1550,7 +1550,7 @@ export default function AutonomousScienceBuildingPage() {
                   style={{
                     display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px',
                     padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--border)',
-                    background: '#ffffff', color: 'var(--text-primary)', fontSize: '12px', fontWeight: 600, cursor: 'grab',
+                    background: 'var(--bg-card)', color: 'var(--text-primary)', fontSize: '12px', fontWeight: 600, cursor: 'grab',
                     transition: 'all 0.15s',
                   }}
                 >
@@ -1894,7 +1894,7 @@ export default function AutonomousScienceBuildingPage() {
               Trapped / blocked
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <span style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#ffffff', border: '2px solid #ff6b35', display: 'inline-block' }} />
+              <span style={{ width: '10px', height: '10px', borderRadius: '50%', background: 'var(--bg-card)', border: '2px solid #ff6b35', display: 'inline-block' }} />
               Exits
             </div>
           </div>
@@ -1919,7 +1919,7 @@ export default function AutonomousScienceBuildingPage() {
               <div style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '12px' }}>Edge bottlenecks</div>
               <div className="auto-map-insight-list">
                 {topBottlenecks.slice(0, 4).map((bottleneck) => (
-                  <div key={bottleneck.zoneName} style={{ borderRadius: '10px', border: '1px solid var(--border)', background: '#ffffff', padding: '10px 12px' }}>
+                  <div key={bottleneck.zoneName} style={{ borderRadius: '10px', border: '1px solid var(--border)', background: 'var(--bg-card)', padding: '10px 12px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', marginBottom: '4px' }}>
                       <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-primary)' }}>{bottleneck.zoneName}</div>
                       <div style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '0.06em', color: bottleneck.severity === 'HIGH' ? '#ef4444' : bottleneck.severity === 'MEDIUM' ? '#f97316' : '#22c55e' }}>
@@ -2056,11 +2056,11 @@ export default function AutonomousScienceBuildingPage() {
               {simState && (
                 <div style={{ marginTop: '10px', paddingTop: '10px', borderTop: '1px solid #f0d4b3' }}>
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '8px' }}>
-                    <div style={{ borderRadius: '10px', background: '#ffffff', border: '1px solid #f0d4b3', padding: '8px 10px' }}>
+                    <div style={{ borderRadius: '10px', background: 'var(--bg-card)', border: '1px solid #f0d4b3', padding: '8px 10px' }}>
                       <div style={{ fontSize: '10px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Active</div>
                       <div style={{ fontSize: '18px', fontWeight: 800, color: '#9a3412', letterSpacing: '-0.02em' }}>{activeDebrisCount}</div>
                     </div>
-                    <div style={{ borderRadius: '10px', background: '#ffffff', border: '1px solid #f0d4b3', padding: '8px 10px' }}>
+                    <div style={{ borderRadius: '10px', background: 'var(--bg-card)', border: '1px solid #f0d4b3', padding: '8px 10px' }}>
                       <div style={{ fontSize: '10px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Waiting</div>
                       <div style={{ fontSize: '18px', fontWeight: 800, color: '#9a3412', letterSpacing: '-0.02em' }}>{pendingDebrisCount}</div>
                     </div>
@@ -2098,7 +2098,7 @@ export default function AutonomousScienceBuildingPage() {
                   </div>
                 </div>
                 {exitUsage.length > 0 && (
-                  <div style={{ borderRadius: '12px', border: '1px solid var(--border)', background: '#ffffff', padding: '12px 14px' }}>
+                  <div style={{ borderRadius: '12px', border: '1px solid var(--border)', background: 'var(--bg-card)', padding: '12px 14px' }}>
                     <div style={{ fontSize: '11px', fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '8px' }}>
                       Exit usage
                     </div>
@@ -2111,7 +2111,7 @@ export default function AutonomousScienceBuildingPage() {
                   </div>
                 )}
                 {results.feedback.length > 0 && (
-                  <div style={{ borderRadius: '12px', border: '1px solid var(--border)', background: '#ffffff', padding: '12px 14px' }}>
+                  <div style={{ borderRadius: '12px', border: '1px solid var(--border)', background: 'var(--bg-card)', padding: '12px 14px' }}>
                     <div style={{ fontSize: '11px', fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '8px' }}>
                       Evaluator
                     </div>
@@ -2134,7 +2134,7 @@ export default function AutonomousScienceBuildingPage() {
                   </button>
                   <button
                     onClick={launchSimulation}
-                    style={{ padding: '10px 16px', borderRadius: '8px', border: '1px solid var(--border)', background: '#ffffff', color: 'var(--text-primary)', fontSize: '13px', fontWeight: 600, cursor: 'pointer' }}
+                    style={{ padding: '10px 16px', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-primary)', fontSize: '13px', fontWeight: 600, cursor: 'pointer' }}
                   >
                     Run Again
                   </button>

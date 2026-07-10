@@ -4,6 +4,8 @@ import { ReactNode, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import { AuthProvider } from '@/src/context/AuthContext';
 import { OnboardingProvider } from '@/src/context/OnboardingContext';
+import { ThemeProvider } from '@/src/context/ThemeContext';
+import { ToastProvider } from '@/src/context/ToastContext';
 import { useAuth } from '@/src/hooks/useAuth';
 import { useIsMobile } from '@/src/hooks/useIsMobile';
 import { Navbar, SIDEBAR_WIDTH, COLLAPSED_SIDEBAR_WIDTH, MOBILE_TOPBAR_HEIGHT } from '@/components/Navbar';
@@ -48,10 +50,14 @@ function AppShell({ children }: { children: ReactNode }) {
 
 export function Providers({ children }: { children: ReactNode }) {
   return (
-    <AuthProvider>
-      <OnboardingProvider>
-        <AppShell>{children}</AppShell>
-      </OnboardingProvider>
-    </AuthProvider>
+    <ThemeProvider>
+      <ToastProvider>
+        <AuthProvider>
+          <OnboardingProvider>
+            <AppShell>{children}</AppShell>
+          </OnboardingProvider>
+        </AuthProvider>
+      </ToastProvider>
+    </ThemeProvider>
   );
 }

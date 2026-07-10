@@ -15,16 +15,10 @@ import { BUILDING_FLOOR_COUNT } from '@/src/config/building-floor-counts'
 import { getUserProfile } from '@/src/services/user.service'
 import { OnboardingOverlay } from '@/components/Onboarding/OnboardingOverlay'
 import { InfoTooltip } from '@/components/InfoTooltip'
+import { Card } from '@/components/ui/Card'
+import { StatCard } from '@/components/ui/StatCard'
+import type { StatCardProps } from '@/components/ui/StatCard'
 import type { SimulationRun } from '@/src/schema/simulation.types'
-
-const SECTION_CARD: React.CSSProperties = {
-  background: '#ffffff',
-  border: '1px solid var(--border)',
-  borderRadius: '14px',
-  padding: '28px 32px',
-  boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
-  marginBottom: '24px',
-}
 
 interface AggregateStats {
   totalRuns: number
@@ -245,17 +239,17 @@ export default function DashboardPage() {
             onClick={() => resetOnboarding()}
             style={{
               display: 'flex', alignItems: 'center', gap: '8px',
-              padding: '10px 20px', background: '#f0f4f8', color: '#2db8b0',
-              border: '1px solid #e0e8f0', borderRadius: '8px', cursor: 'pointer',
+              padding: '10px 20px', background: 'var(--bg-inset)', color: '#2db8b0',
+              border: '1px solid var(--border)', borderRadius: '8px', cursor: 'pointer',
               fontSize: '14px', fontWeight: '600', transition: 'all 0.2s ease-in-out',
             }}
             onMouseEnter={(e) => {
-              e.currentTarget.style.background = '#e8f1f0'
+              e.currentTarget.style.background = 'var(--teal-light)'
               e.currentTarget.style.borderColor = '#2db8b0'
             }}
             onMouseLeave={(e) => {
-              e.currentTarget.style.background = '#f0f4f8'
-              e.currentTarget.style.borderColor = '#e0e8f0'
+              e.currentTarget.style.background = 'var(--bg-inset)'
+              e.currentTarget.style.borderColor = 'var(--border)'
             }}
           >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -287,15 +281,14 @@ export default function DashboardPage() {
 
       {/* ── Readiness + Coverage row ── */}
       {dashboardError && (
-        <div style={{
-          ...SECTION_CARD,
+        <Card padding="14px 16px" style={{
           display: 'flex',
           alignItems: 'center',
           gap: '10px',
-          padding: '14px 16px',
-          borderColor: 'rgba(239,68,68,0.28)',
-          background: 'rgba(254,242,242,0.95)',
-          color: '#991b1b',
+          marginBottom: '24px',
+          borderColor: 'rgba(239,68,68,0.35)',
+          background: 'rgba(239,68,68,0.08)',
+          color: '#ef4444',
         }}>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <circle cx="12" cy="12" r="10" />
@@ -305,20 +298,19 @@ export default function DashboardPage() {
           <div style={{ fontSize: '13px', lineHeight: 1.5 }}>
             Dashboard data could not be loaded. {dashboardError}
           </div>
-        </div>
+        </Card>
       )}
 
       <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '16px', marginBottom: '24px' }}>
 
         {/* Campus Readiness Score */}
-        <div style={{
-          ...SECTION_CARD, marginBottom: 0,
+        <Card style={{
           display: 'flex', alignItems: 'center', gap: '28px',
         }}>
           {/* Circular progress ring */}
           <div style={{ position: 'relative', width: '96px', height: '96px', flexShrink: 0 }}>
             <svg viewBox="0 0 100 100" style={{ width: '100%', height: '100%', transform: 'rotate(-90deg)' }}>
-              <circle cx="50" cy="50" r="42" fill="none" stroke="#f1f5f9" strokeWidth="8" />
+              <circle cx="50" cy="50" r="42" fill="none" stroke="var(--bg-inset)" strokeWidth="8" />
               <circle cx="50" cy="50" r="42" fill="none" stroke={rl.color} strokeWidth="8"
                 strokeLinecap="round"
                 strokeDasharray={`${readiness * 2.64} ${264 - readiness * 2.64}`}
@@ -351,10 +343,10 @@ export default function DashboardPage() {
                 : 'Based on evacuation rate, bottleneck frequency, and drill response time across your completed runs.'}
             </div>
           </div>
-        </div>
+        </Card>
 
         {/* Building Coverage */}
-        <div style={{ ...SECTION_CARD, marginBottom: 0 }}>
+        <Card>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#2db8b0" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
@@ -381,7 +373,7 @@ export default function DashboardPage() {
             )}
           </div>
 
-          <div style={{ height: '6px', background: '#f1f5f9', borderRadius: '3px', marginBottom: '10px' }}>
+          <div style={{ height: '6px', background: 'var(--bg-inset)', borderRadius: '3px', marginBottom: '10px' }}>
             <div style={{
               height: '100%', borderRadius: '3px', background: '#2db8b0',
               width: `${isDashboardLoading ? 0 : coveragePercent}%`,
@@ -411,7 +403,7 @@ export default function DashboardPage() {
               <CoveragePill label="No covered buildings yet" tone="muted" />
             )}
           </div>
-        </div>
+        </Card>
       </div>
 
       {/* ── Stat Cards ── */}
@@ -422,19 +414,19 @@ export default function DashboardPage() {
       </div>
 
       {/* ── Drill Activity Timeline ── */}
-      <div style={SECTION_CARD}>
+      <Card style={{ marginBottom: '24px' }}>
         <DrillTimeline runs={recentRuns} isLoading={isDashboardLoading} />
-      </div>
+      </Card>
 
       {/* ── Drill Comparison ── */}
-      <div style={SECTION_CARD}>
+      <Card style={{ marginBottom: '24px' }}>
         <DrillComparison runs={recentRuns} isMobile={isMobile} isLoading={isDashboardLoading} />
-      </div>
+      </Card>
 
       {/* ── Quick Actions ── */}
-      <div style={SECTION_CARD}>
+      <Card style={{ marginBottom: '24px' }}>
         <QuickActions isMobile={isMobile} />
-      </div>
+      </Card>
 
       {/* Onboarding */}
       <OnboardingOverlay currentPage="dashboard" />
@@ -449,58 +441,6 @@ function getGreeting(): string {
   return 'Good evening'
 }
 
-interface StatCardData {
-  icon: React.ReactNode
-  label: string
-  value: string
-  sub: string
-  color: string
-  progress?: number
-  loading?: boolean
-}
-
-function StatCard({ icon, label, value, sub, color, progress, loading }: StatCardData) {
-  return (
-    <div className="hover-raise" style={{
-      background: '#ffffff',
-      border: '1px solid var(--border)',
-      borderRadius: '14px',
-      padding: '22px 24px',
-      boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
-    }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '14px' }}>
-        <div style={{
-          width: '32px', height: '32px', borderRadius: '9px',
-          background: `${color}16`,
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          flexShrink: 0,
-        }}>
-          {icon}
-        </div>
-        <span style={{ fontSize: '11px', fontWeight: '600', letterSpacing: '0.08em', color: 'var(--text-muted)', textTransform: 'uppercase' }}>
-          {label}
-        </span>
-      </div>
-      {loading ? (
-        <span className="skeleton" style={{ width: '72px', height: '32px' }} />
-      ) : (
-        <div style={{ fontSize: '32px', fontWeight: '700', color: 'var(--text-primary)', letterSpacing: '-0.02em', lineHeight: 1 }}>
-          {value}
-        </div>
-      )}
-      {progress !== undefined && (
-        <div style={{ margin: '10px 0 4px', height: '4px', background: '#f1f5f9', borderRadius: '2px' }}>
-          <div style={{
-            height: '100%', width: `${Math.min(progress, 100)}%`, background: color, borderRadius: '2px',
-            transition: 'width 0.6s ease',
-          }} />
-        </div>
-      )}
-      <div style={{ fontSize: '13px', color: 'var(--text-secondary)', marginTop: '6px' }}>{sub}</div>
-    </div>
-  )
-}
-
 function CoveragePill({ label, tone }: { label: string; tone: 'active' | 'muted' }) {
   return (
     <span style={{
@@ -508,7 +448,7 @@ function CoveragePill({ label, tone }: { label: string; tone: 'active' | 'muted'
       borderRadius: '6px',
       fontSize: '11px',
       fontWeight: tone === 'active' ? '600' : '500',
-      background: tone === 'active' ? 'rgba(45,184,176,0.1)' : '#f1f5f9',
+      background: tone === 'active' ? 'rgba(45,184,176,0.1)' : 'var(--bg-inset)',
       color: tone === 'active' ? '#2db8b0' : 'var(--text-muted)',
     }}>
       {label}
@@ -516,7 +456,7 @@ function CoveragePill({ label, tone }: { label: string; tone: 'active' | 'muted'
   )
 }
 
-function buildStatCards(stats: AggregateStats | null, isLoading: boolean): StatCardData[] {
+function buildStatCards(stats: AggregateStats | null, isLoading: boolean): StatCardProps[] {
   return [
     {
       icon: (
@@ -595,10 +535,10 @@ function DrillTimeline({ runs, isLoading }: { runs: SimulationRun[]; isLoading: 
       ) : runs.length === 0 ? (
         <div style={{
           padding: '32px 16px', textAlign: 'center',
-          background: '#f8fafc', borderRadius: '10px',
+          background: 'var(--bg-subtle)', borderRadius: '10px',
         }}>
           <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '8px' }}>
-            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="var(--border-strong)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
               <circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" />
             </svg>
           </div>
@@ -610,7 +550,7 @@ function DrillTimeline({ runs, isLoading }: { runs: SimulationRun[]; isLoading: 
           {/* Timeline line */}
           <div style={{
             position: 'absolute', left: '7px', top: '8px', bottom: '8px',
-            width: '2px', background: '#e2e8f0', borderRadius: '1px',
+            width: '2px', background: 'var(--border)', borderRadius: '1px',
           }} />
 
           {runs.map((run, i) => {
@@ -636,8 +576,8 @@ function DrillTimeline({ runs, isLoading }: { runs: SimulationRun[]; isLoading: 
                 {/* Card */}
                 <div style={{
                   padding: '14px 16px',
-                  background: '#f8fafc',
-                  border: '1px solid #e2e8f0',
+                  background: 'var(--bg-subtle)',
+                  border: '1px solid var(--border)',
                   borderRadius: '10px',
                 }}>
                   {/* Top row: type + time */}
@@ -697,7 +637,7 @@ function DashboardLoadingState({ text }: { text: string }) {
     <div style={{
       padding: '32px 16px',
       textAlign: 'center',
-      background: '#f8fafc',
+      background: 'var(--bg-subtle)',
       borderRadius: '10px',
       color: 'var(--text-secondary)',
       fontSize: '13px',
@@ -755,7 +695,7 @@ function DrillComparison({ runs, isMobile, isLoading }: { runs: SimulationRun[];
       ) : (
         <div style={{
           padding: '24px 20px', textAlign: 'center',
-          background: '#f8fafc', border: '1px dashed #cbd5e1', borderRadius: '10px',
+          background: 'var(--bg-subtle)', border: '1px dashed var(--border-strong)', borderRadius: '10px',
         }}>
           <div style={{ fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '4px' }}>
             {runs.length === 1
@@ -791,7 +731,7 @@ function ComparisonPreview({ a, b, compareUrl, isMobile }: { a: SimulationRun; b
       <RunCard label="Baseline (A)" badgeColor="#64748b" run={a} dt={dtA} />
 
       <div style={{
-        display: 'flex', alignItems: 'center', color: '#94a3b8',
+        display: 'flex', alignItems: 'center', color: 'var(--text-muted)',
         justifyContent: 'center',
         transform: isMobile ? 'rotate(90deg)' : 'none',
       }}>
@@ -849,8 +789,8 @@ function RunCard({ label, badgeColor, run, dt }: {
 
   return (
     <div style={{
-      padding: '12px 14px', background: '#f8fafc',
-      border: '1px solid #e2e8f0', borderRadius: '10px',
+      padding: '12px 14px', background: 'var(--bg-subtle)',
+      border: '1px solid var(--border)', borderRadius: '10px',
       display: 'flex', flexDirection: 'column', gap: '8px',
     }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '6px' }}>
@@ -886,8 +826,8 @@ function DeltaPill({ label, delta, format, betterWhenHigher }: {
   betterWhenHigher: boolean
 }) {
   const improved = delta !== 0 && (betterWhenHigher ? delta > 0 : delta < 0)
-  const color = delta === 0 ? '#64748b' : improved ? '#22c55e' : '#ef4444'
-  const bg = delta === 0 ? '#e2e8f0' : improved ? 'rgba(34,197,94,0.12)' : 'rgba(239,68,68,0.12)'
+  const color = delta === 0 ? 'var(--text-secondary)' : improved ? '#22c55e' : '#ef4444'
+  const bg = delta === 0 ? 'var(--bg-inset)' : improved ? 'rgba(34,197,94,0.12)' : 'rgba(239,68,68,0.12)'
 
   return (
     <div>
@@ -954,7 +894,7 @@ function QuickActions({ isMobile }: { isMobile: boolean }) {
         {QUICK_ACTIONS.map(item => (
           <a key={item.label} href={item.href} className="hover-raise" style={{
             display: 'flex', alignItems: 'center', gap: '14px',
-            padding: '12px 14px', background: '#f8fafc',
+            padding: '12px 14px', background: 'var(--bg-subtle)',
             border: '1px solid var(--border)',
             borderRadius: '10px', textDecoration: 'none',
           }}>

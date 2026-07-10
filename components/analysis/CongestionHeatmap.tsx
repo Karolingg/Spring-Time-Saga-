@@ -44,7 +44,7 @@ export function CongestionHeatmap({ zones, title = 'Congestion Zones', subtitle 
           return (
             <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
               <span style={{ fontSize: '13px', color: 'var(--text-secondary)', minWidth: '140px' }}>{zone.zoneName}</span>
-              <div style={{ flex: 1, height: '8px', background: '#f1f5f9', borderRadius: '4px', overflow: 'hidden' }}>
+              <div style={{ flex: 1, height: '8px', background: 'var(--bg-inset)', borderRadius: '4px', overflow: 'hidden' }}>
                 <div style={{
                   height: '100%', width: `${zone.intensity}%`,
                   background: color, borderRadius: '4px', transition: 'width 0.6s ease',

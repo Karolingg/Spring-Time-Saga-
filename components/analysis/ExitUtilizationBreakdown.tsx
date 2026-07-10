@@ -128,7 +128,7 @@ export function ExitUtilizationBreakdown({
 
   if (!floor) {
     return (
-      <p style={{ margin: 0, fontSize: '13px', color: '#64748b' }}>
+      <p style={{ margin: 0, fontSize: '13px', color: 'var(--text-secondary)' }}>
         Exit utilization requires a building with a floor model.
       </p>
     )
@@ -136,7 +136,7 @@ export function ExitUtilizationBreakdown({
 
   if (isComputing || !result) {
     return (
-      <p style={{ margin: 0, fontSize: '13px', color: '#64748b' }}>
+      <p style={{ margin: 0, fontSize: '13px', color: 'var(--text-secondary)' }}>
         Computing exit utilization…
       </p>
     )
@@ -146,7 +146,7 @@ export function ExitUtilizationBreakdown({
 
   if (evacuated === 0) {
     return (
-      <p style={{ margin: 0, fontSize: '13px', color: '#64748b' }}>
+      <p style={{ margin: 0, fontSize: '13px', color: 'var(--text-secondary)' }}>
         No occupants reached an exit in this run — every route to an exit was
         cut off by the hazard. See the heatmap for where agents were stranded.
       </p>
@@ -180,14 +180,14 @@ export function ExitUtilizationBreakdown({
             <div key={exit.label} style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
               <div style={{
                 width: '64px', flexShrink: 0,
-                fontSize: '13px', fontWeight: 700, color: '#0f172a',
+                fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)',
               }}>
                 {exit.label}
               </div>
               <div style={{
                 flex: 1, height: '20px', borderRadius: '6px',
-                background: '#f1f5f9', overflow: 'hidden',
-                border: '1px solid #e2e8f0',
+                background: 'var(--bg-inset)', overflow: 'hidden',
+                border: '1px solid var(--border)',
               }}>
                 <div style={{
                   height: '100%', width: `${Math.max(pct, 2)}%`,
@@ -199,7 +199,7 @@ export function ExitUtilizationBreakdown({
                 width: '108px', flexShrink: 0, textAlign: 'right',
                 fontSize: '12px', color: '#475569',
               }}>
-                <strong style={{ color: '#0f172a' }}>{exit.count}</strong>
+                <strong style={{ color: 'var(--text-primary)' }}>{exit.count}</strong>
                 {' '}· {pct.toFixed(0)}%
               </div>
             </div>
@@ -216,7 +216,7 @@ export function ExitUtilizationBreakdown({
             </div>
             <div style={{
               flex: 1, height: '20px', borderRadius: '6px',
-              background: '#f1f5f9', overflow: 'hidden', border: '1px solid #e2e8f0',
+              background: 'var(--bg-inset)', overflow: 'hidden', border: '1px solid var(--border)',
             }}>
               <div style={{
                 height: '100%',
@@ -235,7 +235,7 @@ export function ExitUtilizationBreakdown({
         )}
       </div>
 
-      <p style={{ margin: '14px 0 0', fontSize: '11px', color: '#94a3b8', fontStyle: 'italic' }}>
+      <p style={{ margin: '14px 0 0', fontSize: '11px', color: 'var(--text-muted)', fontStyle: 'italic' }}>
         Percentages are share of evacuees per exit; the trapped row is share of
         all occupants. Derived from a deterministic re-run of the saved seed.
       </p>
