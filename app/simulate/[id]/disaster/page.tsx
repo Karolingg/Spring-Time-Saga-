@@ -102,7 +102,7 @@ export default function DisasterPickerPage() {
   if (isLoading) {
     return (
       <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg)' }}>
-        <div style={{ color: 'var(--text-secondary)', fontSize: '14px' }}>Loading...</div>
+        <div style={{ color: 'var(--text-secondary)', fontSize: '14px', display: 'flex', alignItems: 'center', gap: '10px' }}><span className="spinner" />Loading...</div>
       </div>
     )
   }
@@ -120,7 +120,7 @@ export default function DisasterPickerPage() {
       background:
         'radial-gradient(circle at 80% 0%, rgba(45,184,176,0.06) 0%, transparent 35%),' +
         'radial-gradient(circle at 0% 100%, rgba(245,158,11,0.04) 0%, transparent 35%),' +
-        'linear-gradient(180deg, #f8fafc 0%, #eef2f7 100%)',
+        'linear-gradient(180deg, var(--bg) 0%, var(--bg) 100%)',
     }}>
       <div style={{ maxWidth: '780px', margin: '0 auto' }}>
 
@@ -396,7 +396,7 @@ export default function DisasterPickerPage() {
                       alignItems: 'flex-start',
                       gap: '14px',
                       padding: '18px 18px 16px',
-                      background: '#ffffff',
+                      background: 'var(--bg-card)',
                       border: `1.5px solid ${isFloorHovered ? 'rgba(45,184,176,0.5)' : 'rgba(15,23,42,0.08)'}`,
                       borderRadius: '14px',
                       cursor: 'pointer',

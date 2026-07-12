@@ -1,8 +1,10 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useAuth } from '@/src/hooks/useAuth'
 import { useIsMobile } from '@/src/hooks/useIsMobile'
+import { useTheme, Theme } from '@/src/context/ThemeContext'
+import { useFocusTrap } from '@/src/hooks/useFocusTrap'
 import { usePathname } from 'next/navigation'
 import Link from 'next/link'
 
@@ -109,9 +111,15 @@ export function Navbar({
   onToggleCollapse?: () => void
 }) {
   const { user, isAuthenticated, isLoading, handleLogout } = useAuth()
+  const { theme, toggleTheme } = useTheme()
   const pathname = usePathname()
   const isMobile = useIsMobile()
   const [drawerOpen, setDrawerOpen] = useState(false)
+  const drawerRef = useRef<HTMLElement>(null)
+
+  // Keyboard support for the drawer: trap Tab inside, close on Escape,
+  // restore focus to the hamburger when it closes.
+  useFocusTrap(drawerRef, isMobile && drawerOpen, () => setDrawerOpen(false))
 
   // Close the drawer on every route change so navigating away dismisses it.
   useEffect(() => {
@@ -146,10 +154,8 @@ export function Navbar({
           position: 'fixed',
           top: 0, left: 0, right: 0,
           height: `${MOBILE_TOPBAR_HEIGHT}px`,
-          background:
-            'radial-gradient(circle at 20% 0%, rgba(45, 184, 176, 0.10) 0%, transparent 38%),' +
-            'linear-gradient(180deg, #f7fafc 0%, #eef2f7 100%)',
-          borderBottom: '1px solid #dbe2ea',
+          background: 'var(--sidebar-bg)',
+          borderBottom: '1px solid var(--sidebar-border)',
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
           padding: '0 14px',
           zIndex: 100,
@@ -158,10 +164,11 @@ export function Navbar({
           <button
             onClick={() => setDrawerOpen(true)}
             aria-label="Open menu"
+            aria-expanded={drawerOpen}
             style={{
               width: '40px', height: '40px', borderRadius: '10px',
-              background: 'rgba(255,255,255,0.8)', border: '1px solid rgba(15,23,42,0.06)',
-              cursor: 'pointer', color: '#0f172a',
+              background: 'var(--nav-active-bg)', border: '1px solid var(--border)',
+              cursor: 'pointer', color: 'var(--text-primary)',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
             }}
           >
@@ -183,7 +190,7 @@ export function Navbar({
                 <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
               </svg>
             </div>
-            <span style={{ fontSize: '15px', fontWeight: 800, color: '#0f172a', letterSpacing: '-0.03em' }}>
+            <span style={{ fontSize: '15px', fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.03em' }}>
               EVAC<span style={{ color: '#2db8b0' }}>SIM</span>
             </span>
           </Link>
@@ -211,21 +218,29 @@ export function Navbar({
           />
         )}
 
-        <nav style={{
-          position: 'fixed',
-          top: 0, left: 0, bottom: 0,
-          width: '260px',
-          background:
-            'radial-gradient(circle at 20% 0%, rgba(45, 184, 176, 0.10) 0%, transparent 38%),' +
-            'linear-gradient(180deg, #f7fafc 0%, #eef2f7 100%)',
-          borderRight: '1px solid #dbe2ea',
-          display: 'flex', flexDirection: 'column',
-          zIndex: 201,
-          boxShadow: '2px 0 16px -8px rgba(15, 23, 42, 0.18)',
-          transform: drawerOpen ? 'translateX(0)' : 'translateX(-100%)',
-          transition: 'transform 220ms cubic-bezier(0.22, 1, 0.36, 1)',
-        }}>
-          {renderNavContent({ drawerOpen, setDrawerOpen, initials, username, isActive, handleLogout, showCloseButton: true })}
+        <nav
+          ref={drawerRef}
+          role="dialog"
+          aria-modal="true"
+          aria-label="Navigation menu"
+          aria-hidden={!drawerOpen}
+          style={{
+            position: 'fixed',
+            top: 0, left: 0, bottom: 0,
+            width: '260px',
+            background: 'var(--sidebar-bg)',
+            backgroundColor: 'var(--bg)',
+            borderRight: '1px solid var(--sidebar-border)',
+            display: 'flex', flexDirection: 'column',
+            zIndex: 201,
+            boxShadow: '2px 0 16px -8px rgba(15, 23, 42, 0.18)',
+            transform: drawerOpen ? 'translateX(0)' : 'translateX(-100%)',
+            // `visibility` keeps the closed drawer out of the tab order and
+            // invisible to screen readers; it flips at the end of the slide-out.
+            visibility: drawerOpen ? 'visible' : 'hidden',
+            transition: 'transform 220ms cubic-bezier(0.22, 1, 0.36, 1), visibility 220ms',
+          }}>
+          {renderNavContent({ drawerOpen, setDrawerOpen, initials, username, isActive, handleLogout, showCloseButton: true, theme, toggleTheme })}
         </nav>
       </>
     )
@@ -233,7 +248,7 @@ export function Navbar({
 
   // ── Desktop: fixed sidebar ─────────────────────────────────────────────
   return (
-    <nav style={{
+    <nav aria-label="Main navigation" style={{
       position: 'fixed',
       top: 0,
       left: 0,
@@ -241,11 +256,9 @@ export function Navbar({
       width: `${isCollapsed ? COLLAPSED_SIDEBAR_WIDTH : SIDEBAR_WIDTH}px`,
       // Layered background: a soft teal halo near the brand at the top,
       // sitting on top of a cool diagonal gradient for depth without
-      // looking flat or washed-out.
-      background:
-        'radial-gradient(circle at 20% 0%, rgba(45, 184, 176, 0.10) 0%, transparent 38%),' +
-        'linear-gradient(180deg, #f7fafc 0%, #eef2f7 100%)',
-      borderRight: '1px solid #dbe2ea',
+      // looking flat or washed-out. Both layers come from the theme.
+      background: 'var(--sidebar-bg)',
+      borderRight: '1px solid var(--sidebar-border)',
       display: 'flex',
       flexDirection: 'column',
       zIndex: 100,
@@ -262,6 +275,8 @@ export function Navbar({
         showCloseButton: false,
         isCollapsed,
         onToggleCollapse,
+        theme,
+        toggleTheme,
       })}
     </nav>
   )
@@ -279,6 +294,8 @@ function renderNavContent({
   showCloseButton,
   isCollapsed = false,
   onToggleCollapse,
+  theme,
+  toggleTheme,
 }: {
   drawerOpen: boolean
   setDrawerOpen: (open: boolean) => void
@@ -289,13 +306,15 @@ function renderNavContent({
   showCloseButton: boolean
   isCollapsed?: boolean
   onToggleCollapse?: () => void
+  theme: Theme
+  toggleTheme: () => void
 }) {
   return (
     <>
       {/* Brand header */}
       <div style={{
         padding: isCollapsed ? '16px 10px' : '20px 18px 16px',
-        borderBottom: '1px solid rgba(15, 23, 42, 0.06)',
+        borderBottom: '1px solid var(--border)',
         display: 'flex', alignItems: 'center', justifyContent: isCollapsed ? 'center' : 'space-between', gap: '8px',
       }}>
         {!isCollapsed && <Link href="/" style={{
@@ -321,10 +340,10 @@ function renderNavContent({
             </svg>
           </div>
           <div style={{ minWidth: 0 }}>
-            <div style={{ fontSize: '16px', fontWeight: 800, color: '#0f172a', letterSpacing: '-0.03em', lineHeight: 1 }}>
+            <div style={{ fontSize: '16px', fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.03em', lineHeight: 1 }}>
               EVAC<span style={{ color: '#2db8b0' }}>SIM</span>
             </div>
-            <div style={{ fontSize: '10.5px', fontWeight: 600, color: '#94a3b8', letterSpacing: '0.04em', marginTop: '3px', textTransform: 'uppercase' }}>
+            <div style={{ fontSize: '10.5px', fontWeight: 600, color: 'var(--text-muted)', letterSpacing: '0.04em', marginTop: '3px', textTransform: 'uppercase' }}>
               Campus Evacuation
             </div>
           </div>
@@ -335,8 +354,8 @@ function renderNavContent({
             aria-label="Close menu"
             style={{
               width: '32px', height: '32px', borderRadius: '8px',
-              background: 'rgba(255,255,255,0.7)', border: '1px solid rgba(15,23,42,0.06)',
-              cursor: 'pointer', color: '#475569', flexShrink: 0,
+              background: 'var(--nav-hover-bg)', border: '1px solid var(--border)',
+              cursor: 'pointer', color: 'var(--text-secondary)', flexShrink: 0,
               display: 'flex', alignItems: 'center', justifyContent: 'center',
             }}
           >
@@ -353,8 +372,8 @@ function renderNavContent({
             aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
             style={{
               width: '32px', height: '32px', borderRadius: '8px',
-              background: 'rgba(255,255,255,0.75)', border: '1px solid rgba(15,23,42,0.06)',
-              cursor: 'pointer', color: '#475569', flexShrink: 0,
+              background: 'var(--nav-hover-bg)', border: '1px solid var(--border)',
+              cursor: 'pointer', color: 'var(--text-secondary)', flexShrink: 0,
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               transform: isCollapsed ? 'rotate(180deg)' : 'none',
               transition: 'background 140ms, color 140ms, transform 200ms',
@@ -383,7 +402,7 @@ function renderNavContent({
               fontWeight: 700,
               letterSpacing: '0.1em',
               textTransform: 'uppercase',
-              color: '#94a3b8',
+              color: 'var(--text-muted)',
               padding: '0 12px 6px',
             }}>
               {section.label}
@@ -402,8 +421,8 @@ function renderNavContent({
                     gap: isCollapsed ? 0 : '12px',
                     padding: isCollapsed ? '10px' : '9px 12px',
                     borderRadius: '10px',
-                    background: active ? 'rgba(255, 255, 255, 0.85)' : 'transparent',
-                    color: active ? '#1f9189' : '#475569',
+                    background: active ? 'var(--nav-active-bg)' : 'transparent',
+                    color: active ? 'var(--nav-active-text)' : 'var(--text-secondary)',
                     boxShadow: active ? '0 1px 3px rgba(15, 23, 42, 0.06), 0 0 0 1px rgba(45, 184, 176, 0.18)' : 'none',
                     textDecoration: 'none',
                     fontSize: '13px',
@@ -413,16 +432,17 @@ function renderNavContent({
                     minHeight: '40px',
                   }}
                   title={isCollapsed ? item.title : undefined}
+                  aria-current={active ? 'page' : undefined}
                   onMouseEnter={e => {
                     if (!active) {
-                      e.currentTarget.style.background = 'rgba(255, 255, 255, 0.6)'
-                      e.currentTarget.style.color = '#0f172a'
+                      e.currentTarget.style.background = 'var(--nav-hover-bg)'
+                      e.currentTarget.style.color = 'var(--text-primary)'
                     }
                   }}
                   onMouseLeave={e => {
                     if (!active) {
                       e.currentTarget.style.background = 'transparent'
-                      e.currentTarget.style.color = '#475569'
+                      e.currentTarget.style.color = 'var(--text-secondary)'
                     }
                   }}
                 >
@@ -445,7 +465,7 @@ function renderNavContent({
                     justifyContent: 'center',
                     width: '20px',
                     height: '20px',
-                    color: active ? '#1f9189' : '#64748b',
+                    color: active ? 'var(--nav-active-text)' : 'var(--text-muted)',
                     flexShrink: 0,
                   }}>
                     {item.icon}
@@ -458,11 +478,57 @@ function renderNavContent({
         ))}
       </div>
 
-      {/* Footer: account card */}
+      {/* Footer: theme toggle + account card */}
       <div style={{
         padding: isCollapsed ? '12px 10px' : '12px',
-        borderTop: '1px solid rgba(15, 23, 42, 0.06)',
+        borderTop: '1px solid var(--border)',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '8px',
       }}>
+        <button
+          onClick={toggleTheme}
+          aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+          title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: isCollapsed ? 'center' : 'flex-start',
+            gap: isCollapsed ? 0 : '10px',
+            width: '100%',
+            padding: isCollapsed ? '10px' : '9px 12px',
+            borderRadius: '10px',
+            background: 'transparent',
+            border: '1px solid var(--border)',
+            color: 'var(--text-secondary)',
+            fontSize: '12.5px',
+            fontWeight: 600,
+            cursor: 'pointer',
+            transition: 'background 140ms, color 140ms',
+          }}
+          onMouseEnter={e => {
+            e.currentTarget.style.background = 'var(--nav-hover-bg)'
+            e.currentTarget.style.color = 'var(--text-primary)'
+          }}
+          onMouseLeave={e => {
+            e.currentTarget.style.background = 'transparent'
+            e.currentTarget.style.color = 'var(--text-secondary)'
+          }}
+        >
+          <span style={{ display: 'inline-flex', width: '20px', height: '20px', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            {theme === 'dark' ? (
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <circle cx="12" cy="12" r="4" />
+                <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41" />
+              </svg>
+            ) : (
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+              </svg>
+            )}
+          </span>
+          {!isCollapsed && (theme === 'dark' ? 'Light mode' : 'Dark mode')}
+        </button>
         <div style={{
           display: 'flex',
           alignItems: 'center',
@@ -470,8 +536,8 @@ function renderNavContent({
           gap: isCollapsed ? 0 : '10px',
           padding: isCollapsed ? '10px' : '10px 12px',
           borderRadius: '12px',
-          background: 'rgba(255, 255, 255, 0.85)',
-          border: '1px solid rgba(15, 23, 42, 0.06)',
+          background: 'var(--account-card-bg)',
+          border: '1px solid var(--border)',
           backdropFilter: 'blur(6px)',
           boxShadow: '0 2px 6px -2px rgba(15, 23, 42, 0.08)',
         }}>
@@ -495,7 +561,7 @@ function renderNavContent({
             <div style={{
               fontSize: '12.5px',
               fontWeight: 700,
-              color: '#0f172a',
+              color: 'var(--text-primary)',
               overflow: 'hidden',
               textOverflow: 'ellipsis',
               whiteSpace: 'nowrap',
@@ -506,7 +572,7 @@ function renderNavContent({
             <div style={{
               fontSize: '10.5px',
               fontWeight: 500,
-              color: '#94a3b8',
+              color: 'var(--text-muted)',
               overflow: 'hidden',
               textOverflow: 'ellipsis',
               whiteSpace: 'nowrap',
@@ -527,19 +593,19 @@ function renderNavContent({
               height: '30px',
               borderRadius: '8px',
               background: 'transparent',
-              color: '#94a3b8',
+              color: 'var(--text-muted)',
               border: 'none',
               cursor: 'pointer',
               flexShrink: 0,
               transition: 'background 140ms, color 140ms',
             }}
             onMouseEnter={e => {
-              e.currentTarget.style.background = '#fef2f2'
+              e.currentTarget.style.background = 'rgba(239, 68, 68, 0.12)'
               e.currentTarget.style.color = '#ef4444'
             }}
             onMouseLeave={e => {
               e.currentTarget.style.background = 'transparent'
-              e.currentTarget.style.color = '#94a3b8'
+              e.currentTarget.style.color = 'var(--text-muted)'
             }}
           >
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">

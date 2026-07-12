@@ -39,7 +39,7 @@ export function OnboardingOverlay({ currentPage }: OnboardingOverlayProps) {
     >
       <div
         style={{
-          background: '#ffffff',
+          background: 'var(--bg-card)',
           borderRadius: '16px',
           padding: '40px',
           maxWidth: '500px',

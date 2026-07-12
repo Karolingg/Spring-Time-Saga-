@@ -127,7 +127,7 @@ function DocumentIcon() {
 }
 
 const SECTION_CARD: React.CSSProperties = {
-  background: '#ffffff',
+  background: 'var(--bg-card)',
   border: '1px solid #e5e7eb',
   borderRadius: '14px',
   padding: '28px 32px',

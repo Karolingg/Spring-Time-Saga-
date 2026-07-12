@@ -10,7 +10,7 @@ import { SpatialBottleneckHeatmap } from '@/components/analysis/SpatialBottlenec
 import { FeatureContainer } from '@/components/analysis/FeatureContainer'
 
 const SECTION_CARD: React.CSSProperties = {
-  background: '#ffffff',
+  background: 'var(--bg-card)',
   border: '1px solid var(--border)',
   borderRadius: '14px',
   padding: '24px 28px',
@@ -239,7 +239,7 @@ export default function CompareRunsPage() {
       <Header />
 
       {error && (
-        <div style={{ ...SECTION_CARD, borderColor: '#fecaca', background: '#fef2f2', color: '#991b1b', fontSize: '14px' }}>
+        <div style={{ ...SECTION_CARD, borderColor: 'rgba(239,68,68,0.35)', background: 'rgba(239,68,68,0.08)', color: '#ef4444', fontSize: '14px' }}>
           {error}
         </div>
       )}
@@ -259,7 +259,7 @@ export default function CompareRunsPage() {
           </div>
 
           {sameRun && (
-            <div style={{ ...SECTION_CARD, borderColor: '#fde68a', background: '#fffbeb', color: '#92400e', fontSize: '13px' }}>
+            <div style={{ ...SECTION_CARD, borderColor: 'rgba(245,158,11,0.35)', background: 'rgba(245,158,11,0.1)', color: '#f59e0b', fontSize: '13px' }}>
               Both slots reference the same run. Pick a different run for slot B to see a comparison.
             </div>
           )}
@@ -349,7 +349,7 @@ function Header() {
       <div style={{ display: 'flex', gap: '8px' }}>
         <a href="/analysis" style={{
           display: 'inline-flex', alignItems: 'center', gap: '6px',
-          padding: '8px 14px', background: '#ffffff', color: '#0f172a',
+          padding: '8px 14px', background: 'var(--bg-card)', color: 'var(--text-primary)',
           borderRadius: '8px', textDecoration: 'none', fontSize: '13px', fontWeight: 600,
           border: '1px solid var(--border)', flexShrink: 0,
         }}>
@@ -360,7 +360,7 @@ function Header() {
         </a>
         <a href="/analysis/runs" style={{
           display: 'inline-flex', alignItems: 'center', gap: '6px',
-          padding: '8px 14px', background: '#ffffff', color: '#0f172a',
+          padding: '8px 14px', background: 'var(--bg-card)', color: 'var(--text-primary)',
           borderRadius: '8px', textDecoration: 'none', fontSize: '13px', fontWeight: 600,
           border: '1px solid var(--border)', flexShrink: 0,
         }}>
@@ -399,8 +399,8 @@ function RunPickers({ history, runA, runB, onSelect, onSwap }: RunPickersProps) 
         style={{
           display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
           width: '38px', height: '38px',
-          background: runA && runB ? '#ffffff' : '#f1f5f9',
-          color: runA && runB ? '#0f172a' : '#94a3b8',
+          background: runA && runB ? 'var(--bg-card)' : 'var(--bg-inset)',
+          color: runA && runB ? 'var(--text-primary)' : 'var(--text-muted)',
           border: '1px solid var(--border)', borderRadius: '8px',
           cursor: runA && runB ? 'pointer' : 'not-allowed',
           marginBottom: '4px',
@@ -452,7 +452,7 @@ function RunSlot({ slotLabel, slotColor, history, currentId, currentRun, onChang
         style={{
           width: '100%', padding: '10px 12px', borderRadius: '8px',
           border: '1px solid var(--border)', fontSize: '13px',
-          color: 'var(--text-primary)', background: '#ffffff',
+          color: 'var(--text-primary)', background: 'var(--bg-card)',
         }}
       >
         <option value="">— select a run —</option>
@@ -558,9 +558,9 @@ function ComparisonWarnings({ runA, runB }: { runA: SimulationRun; runB: Simulat
             style={{
               display: 'flex', alignItems: 'flex-start', gap: '10px',
               padding: '12px 16px', borderRadius: '12px',
-              background: hard ? '#fef2f2' : '#fffbeb',
-              border: `1px solid ${hard ? '#fca5a5' : '#fde68a'}`,
-              color: hard ? '#991b1b' : '#92400e',
+              background: hard ? 'rgba(239,68,68,0.08)' : 'rgba(245,158,11,0.1)',
+              border: `1px solid ${hard ? 'rgba(239,68,68,0.35)' : 'rgba(245,158,11,0.35)'}`,
+              color: hard ? '#ef4444' : '#f59e0b',
               fontSize: '13px', lineHeight: 1.55,
             }}
           >
@@ -636,10 +636,10 @@ function KpiDeltaCard({ metric, runA, runB }: { metric: MetricDef; runA: Simulat
       padding: significant ? '13px 15px' : '14px 16px',
       background: significant
         ? (improved ? 'rgba(34,197,94,0.07)' : 'rgba(239,68,68,0.07)')
-        : '#f8fafc',
+        : 'var(--bg-subtle)',
     }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '6px', marginBottom: '10px' }}>
-        <span style={{ fontSize: '11px', fontWeight: 600, letterSpacing: '0.08em', color: '#64748b', textTransform: 'uppercase' }}>
+        <span style={{ fontSize: '11px', fontWeight: 600, letterSpacing: '0.08em', color: 'var(--text-secondary)', textTransform: 'uppercase' }}>
           {metric.label}
         </span>
         {significant && (
@@ -655,10 +655,10 @@ function KpiDeltaCard({ metric, runA, runB }: { metric: MetricDef; runA: Simulat
         )}
       </div>
       <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px', marginBottom: '4px', flexWrap: 'wrap' }}>
-        <span style={{ fontSize: '22px', fontWeight: 700, color: '#0f172a', letterSpacing: '-0.02em' }}>
+        <span style={{ fontSize: '22px', fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>
           {valueB != null ? metric.format(valueB) : '—'}
         </span>
-        <span style={{ fontSize: '12px', color: '#94a3b8' }}>
+        <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
           was {valueA != null ? metric.format(valueA) : '—'}
         </span>
       </div>
@@ -730,7 +730,7 @@ function Th({ children, align = 'left' }: { children: React.ReactNode; align?: '
     <th style={{
       padding: '8px 10px', textAlign: align, borderBottom: '1px solid var(--border)',
       fontSize: '11px', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase',
-      color: '#64748b', background: '#f8fafc',
+      color: 'var(--text-secondary)', background: 'var(--bg-subtle)',
     }}>
       {children}
     </th>
@@ -740,8 +740,8 @@ function Th({ children, align = 'left' }: { children: React.ReactNode; align?: '
 function Td({ children, align = 'left' }: { children: React.ReactNode; align?: 'left' | 'right' }) {
   return (
     <td style={{
-      padding: '10px', textAlign: align, borderBottom: '1px solid #e2e8f0',
-      color: '#0f172a', verticalAlign: 'middle',
+      padding: '10px', textAlign: align, borderBottom: '1px solid var(--border)',
+      color: 'var(--text-primary)', verticalAlign: 'middle',
     }}>
       {children}
     </td>
@@ -771,8 +771,8 @@ function CompareHeatmaps({
       <div style={{
         padding: '32px 20px', textAlign: 'center', fontSize: '13px',
         color: 'var(--text-secondary)',
-        background: 'linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%)',
-        borderRadius: '12px', border: '1px dashed #cbd5e1',
+        background: 'var(--bg-subtle)',
+        borderRadius: '12px', border: '1px dashed var(--border-strong)',
       }}>
         Neither run has a floor-plan model — heatmaps need a building with an autonomous floor model.
       </div>
@@ -791,7 +791,7 @@ function CompareHeatmaps({
           <div style={{
             display: 'inline-block', padding: '3px 10px', borderRadius: '6px',
             fontSize: '11px', fontWeight: 700, letterSpacing: '0.06em',
-            background: 'rgba(100,116,139,0.1)', color: '#64748b',
+            background: 'rgba(100,116,139,0.1)', color: 'var(--text-secondary)',
             marginBottom: '10px',
           }}>
             A · Baseline
@@ -810,7 +810,7 @@ function CompareHeatmaps({
           />
           <div style={{
             marginTop: '8px', padding: '8px 12px',
-            background: '#f8fafc', borderRadius: '8px',
+            background: 'var(--bg-subtle)', borderRadius: '8px',
             border: '1px solid var(--border)',
             fontSize: '12px', color: 'var(--text-secondary)', lineHeight: 1.4,
           }}>
@@ -842,7 +842,7 @@ function CompareHeatmaps({
           />
           <div style={{
             marginTop: '8px', padding: '8px 12px',
-            background: '#f8fafc', borderRadius: '8px',
+            background: 'var(--bg-subtle)', borderRadius: '8px',
             border: '1px solid var(--border)',
             fontSize: '12px', color: 'var(--text-secondary)', lineHeight: 1.4,
           }}>

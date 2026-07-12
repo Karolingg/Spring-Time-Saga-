@@ -6,12 +6,12 @@ import Image from 'next/image'
 import { useAuth } from '@/src/hooks/useAuth'
 import { useIsMobile } from '@/src/hooks/useIsMobile'
 import MapView, { type AssemblyMarker, type MapMarker } from '@/components/MapView'
+import { PageHeader } from '@/components/ui/PageHeader'
 import {BUILDING_FLOOR_COUNT} from '@/src/config/building-floor-counts'
 import { BUILDING_FLOOR_OCCUPANCY, getBuildingTotalCapacity } from '@/src/config/building-floor-occupancy'
 import { ASSEMBLY_POINTS, getNearestAssembly } from '@/src/config/assembly-points'
 import { getBuildingScore, type BuildingGrade, type BuildingScore, type FloorScore } from '@/src/services/building-analytics.service'
 
-/* UP Cebu campus center — used for the default top-down view */
 const CAMPUS_CENTER: [number, number] = [123.8988, 10.3228] // [lng, lat]
 
 /* ── Building data ── */
@@ -332,17 +332,21 @@ export default function MapPage() {
 
   const handleAssemblyClick = useCallback((id: string) => {
     setSelectedAssembly(id)
+    const shell = document.querySelector('.app-ui-scale-shell') as HTMLElement | null
+    const scale = shell && shell.offsetWidth > 0
+      ? shell.getBoundingClientRect().width / shell.offsetWidth
+      : 1
     const mapContainer = document.querySelector('.map-view-shell')
     const marker = mapContainer?.querySelector(`[data-assembly-id="${id}"]`)
     if (marker) {
       const rect = marker.getBoundingClientRect()
       setAssemblyPopupPos({
-        x: rect.left + rect.width / 2,
-        y: rect.top,
+        x: (rect.left + rect.width / 2) / scale,
+        y: rect.top / scale,
       })
       return
     }
-    setAssemblyPopupPos({ x: window.innerWidth / 2, y: 100 })
+    setAssemblyPopupPos({ x: window.innerWidth / 2 / scale, y: 100 / scale })
   }, [])
 
   const assemblyMarkers: AssemblyMarker[] = useMemo(
@@ -371,7 +375,7 @@ export default function MapPage() {
   if (isLoading) {
     return (
       <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg)' }}>
-        <span style={{ color: 'var(--text-secondary)', fontSize: '14px' }}>Loading...</span>
+        <span style={{ color: 'var(--text-secondary)', fontSize: '14px', display: 'flex', alignItems: 'center', gap: '10px' }}><span className="spinner" />Loading...</span>
       </div>
     )
   }
@@ -385,29 +389,18 @@ export default function MapPage() {
     }}>
 
       {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? '10px' : '14px', marginBottom: isMobile ? '14px' : '20px' }}>
-        <div style={{
-          width: isMobile ? '38px' : '44px',
-          height: isMobile ? '38px' : '44px',
-          borderRadius: '12px',
-          background: 'rgba(45,184,176,0.1)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          flexShrink: 0,
-        }}>
+      <PageHeader
+        dense={isMobile}
+        icon={
           <svg width={isMobile ? 18 : 22} height={isMobile ? 18 : 22} viewBox="0 0 24 24" fill="none" stroke="#2db8b0" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
             <circle cx="12" cy="10" r="3"/>
           </svg>
-        </div>
-        <div style={{ minWidth: 0 }}>
-          <h1 style={{ margin: '0 0 4px', fontSize: isMobile ? '18px' : '22px', fontWeight: '700', color: 'var(--text-primary)' }}>
-            Campus Map Display
-          </h1>
-          <p style={{ margin: 0, fontSize: isMobile ? '12px' : '13px', color: 'var(--text-secondary)' }}>
-            {isMobile ? 'UP Cebu · Tap a building' : 'UP Cebu · Lahug, Cebu City · Click a building for details'}
-          </p>
-        </div>
-      </div>
+        }
+        title="Campus Map Display"
+        subtitle={isMobile ? 'UP Cebu · Tap a building' : 'UP Cebu · Lahug, Cebu City · Click a building for details'}
+        style={{ marginBottom: isMobile ? '14px' : '20px' }}
+      />
 
       {/* Map + detail panel layout */}
       <div style={{
@@ -426,56 +419,13 @@ export default function MapPage() {
           height: '100%',
           overflow: 'hidden',
         }}>
-          <button
-            onClick={handleRecenterDefault}
-            style={{
-              position: 'absolute',
-              right: '6px',
-              bottom: '130px',
-              zIndex: 1001,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              width: '42px',
-              height: '42px',
-              borderRadius: '14px',
-              border: '1px solid rgba(15,23,42,0.08)',
-              background: '#ffffff',
-              color: '#1e293b',
-              cursor: 'pointer',
-              boxShadow: '0 8px 20px rgba(15,23,42,0.18)',
-              transform: `translateX(-${panelOffset}px)`,
-              transition: 'transform 320ms cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.15s ease',
-              willChange: 'transform',
-            }}
-            title="Recenter to default view"
-            onMouseEnter={e => {
-              e.currentTarget.style.transform = `translateX(-${panelOffset}px) translateY(-1px)`
-              e.currentTarget.style.boxShadow = '0 10px 24px rgba(15,23,42,0.24)'
-            }}
-            onMouseLeave={e => {
-              e.currentTarget.style.transform = `translateX(-${panelOffset}px) translateY(0)`
-              e.currentTarget.style.boxShadow = '0 8px 20px rgba(15,23,42,0.18)'
-            }}
-          >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0f766e" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M12 2v3" />
-              <path d="M12 19v3" />
-              <path d="M4.93 4.93l2.12 2.12" />
-              <path d="M16.95 16.95l2.12 2.12" />
-              <path d="M2 12h3" />
-              <path d="M19 12h3" />
-              <path d="M4.93 19.07l2.12-2.12" />
-              <path d="M16.95 7.05l2.12-2.12" />
-              <circle cx="12" cy="12" r="4" />
-            </svg>
-          </button>
           <MapView
             markers={markers}
             assemblyMarkers={assemblyMarkers}
             flat2d={!selected}
             focusCenter={focusCenter}
             highlightAt={highlightAt}
+            onRecenter={handleRecenterDefault}
             uiOffsetRight={panelOffset}
           />
         </div>
@@ -519,7 +469,7 @@ export default function MapPage() {
                     UP Cebu &middot; Lahug, Cebu City
                   </p>
                 </div>
-                <button onClick={() => setSelected(null)} style={{
+                <button onClick={() => setSelected(null)} aria-label="Close building details" style={{
                   width: '28px', height: '28px', borderRadius: '8px', flexShrink: 0,
                   background: 'rgba(255,255,255,0.72)', border: '1px solid rgba(148,163,184,0.24)',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -721,6 +671,7 @@ export default function MapPage() {
                   <button
                     onClick={() => setScoringModalOpen(true)}
                     title="How is this score calculated?"
+                    aria-label="How is this score calculated?"
                     style={{
                       width: '22px', height: '22px', borderRadius: '50%',
                       background: 'rgba(45,184,176,0.12)',
@@ -1239,6 +1190,7 @@ export default function MapPage() {
               />
               <button
                 onClick={() => setFullscreenImage(null)}
+                aria-label="Close full-size image"
                 style={{
                   position: 'absolute',
                   top: '16px',
@@ -1304,6 +1256,7 @@ export default function MapPage() {
           >
             <button
               onClick={() => setScoringModalOpen(false)}
+              aria-label="Close scoring explanation"
               style={{
                 position: 'absolute', top: '14px', right: '14px',
                 width: '32px', height: '32px', borderRadius: '50%',

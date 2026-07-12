@@ -15,11 +15,12 @@ import { ZoneAnalysisPanel } from '@/components/analysis/ZoneAnalysisPanel'
 import { FeatureContainer } from '@/components/analysis/FeatureContainer'
 import { ConfirmModal } from '@/components/ConfirmModal'
 import { downloadRunCsv } from '@/src/services/csv-export'
+import { useToast } from '@/src/context/ToastContext'
 import { getFriendlyErrorMessage } from '@/src/services/rate-limit.service'
 import type { DensityCell, SimulationRun, SimulationZone } from '@/src/schema/simulation.types'
 
 const SECTION_CARD: React.CSSProperties = {
-  background: '#ffffff',
+  background: 'var(--bg-card)',
   border: '1px solid var(--border)',
   borderRadius: '14px',
   padding: '28px 32px',
@@ -56,9 +57,8 @@ export default function AnalysisRunsPage() {
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
   const [deletingRunId, setDeletingRunId] = useState<string | null>(null)
   const [isResettingData, setIsResettingData] = useState(false)
-  const [actionMessage, setActionMessage] = useState('')
-  const [isActionError, setIsActionError] = useState(false)
   const isMutationInFlightRef = useRef(false)
+  const { showToast } = useToast()
 
   useEffect(() => {
     if (!isAuthLoading && !isAuthenticated) {
@@ -117,8 +117,6 @@ export default function AnalysisRunsPage() {
 
     isMutationInFlightRef.current = true
     setDeletingRunId(runId)
-    setActionMessage('')
-    setIsActionError(false)
     try {
       await deleteSimulationRun(runId)
       const wasCurrentRun = run?.id === runId
@@ -133,10 +131,10 @@ export default function AnalysisRunsPage() {
           setDensityCells([])
         }
       }
+      showToast('Simulation run deleted.', 'success')
     } catch (err) {
       console.error('Failed to delete simulation run:', err)
-      setIsActionError(true)
-      setActionMessage(getFriendlyErrorMessage(err, 'Failed to delete simulation run.'))
+      showToast(getFriendlyErrorMessage(err, 'Failed to delete simulation run.'), 'error')
     } finally {
       isMutationInFlightRef.current = false
       setDeletingRunId(null)
@@ -149,17 +147,15 @@ export default function AnalysisRunsPage() {
 
     isMutationInFlightRef.current = true
     setIsResettingData(true)
-    setActionMessage('')
-    setIsActionError(false)
     try {
       await resetAllSimulationData()
       setRun(null)
       setDensityCells([])
       setRunHistory([])
+      showToast('All simulation data deleted.', 'success')
     } catch (err) {
       console.error('Failed to reset simulation data:', err)
-      setIsActionError(true)
-      setActionMessage(getFriendlyErrorMessage(err, 'Failed to reset simulation data.'))
+      showToast(getFriendlyErrorMessage(err, 'Failed to reset simulation data.'), 'error')
     } finally {
       isMutationInFlightRef.current = false
       setIsResettingData(false)
@@ -170,7 +166,7 @@ export default function AnalysisRunsPage() {
   if (isAuthLoading) {
     return (
       <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg)' }}>
-        <div style={{ color: 'var(--text-secondary)', fontSize: '14px' }}>Loading...</div>
+        <div style={{ color: 'var(--text-secondary)', fontSize: '14px', display: 'flex', alignItems: 'center', gap: '10px' }}><span className="spinner" />Loading...</div>
       </div>
     )
   }
@@ -200,20 +196,6 @@ export default function AnalysisRunsPage() {
         isDeleting={deletingRunId !== null}
         isResetting={isResettingData}
       />
-
-      {actionMessage && (
-        <div style={{
-          marginBottom: '20px',
-          padding: '12px 14px',
-          borderRadius: '10px',
-          background: isActionError ? '#fef2f2' : '#ecfdf5',
-          border: `1px solid ${isActionError ? '#fecaca' : '#bbf7d0'}`,
-          color: isActionError ? '#b91c1c' : '#166534',
-          fontSize: '13px',
-        }}>
-          {actionMessage}
-        </div>
-      )}
 
       {isLoadingData && (
         <div style={{ textAlign: 'center', padding: '60px 0', color: 'var(--text-secondary)', fontSize: '14px' }}>
@@ -363,6 +345,7 @@ function PageHeader({
   isDeleting,
   isResetting,
 }: PageHeaderProps) {
+  const { showToast } = useToast()
   const hasRun = currentRun !== null
   const isMutating = isDeleting || isResetting
   return (
@@ -390,7 +373,7 @@ function PageHeader({
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
           <a href="/analysis" style={{
             display: 'inline-flex', alignItems: 'center', gap: '6px',
-            padding: '8px 14px', background: '#ffffff', color: '#0f172a',
+            padding: '8px 14px', background: 'var(--bg-card)', color: 'var(--text-primary)',
             borderRadius: '8px', textDecoration: 'none', fontSize: '13px', fontWeight: '600',
             border: '1px solid var(--border)', flexShrink: 0,
           }}>
@@ -426,14 +409,23 @@ function PageHeader({
 
         <button
           type="button"
-          onClick={() => currentRun && downloadRunCsv(currentRun)}
+          onClick={() => {
+            if (!currentRun) return
+            try {
+              downloadRunCsv(currentRun)
+              showToast('CSV exported — check your downloads.', 'success')
+            } catch (err) {
+              console.error('Failed to export CSV:', err)
+              showToast('Failed to export CSV.', 'error')
+            }
+          }}
           disabled={!hasRun}
           title={hasRun ? 'Download a CSV of this run summary + zones' : 'Load a run to enable export'}
           style={{
             display: 'inline-flex', alignItems: 'center', gap: '6px',
             padding: '8px 14px',
-            background: hasRun ? '#ffffff' : '#f1f5f9',
-            color: hasRun ? '#0f172a' : '#94a3b8',
+            background: hasRun ? 'var(--bg-card)' : 'var(--bg-inset)',
+            color: hasRun ? 'var(--text-primary)' : 'var(--text-muted)',
             borderRadius: '8px', fontSize: '13px', fontWeight: '600',
             border: '1px solid var(--border)',
             cursor: hasRun ? 'pointer' : 'not-allowed',
@@ -456,8 +448,8 @@ function PageHeader({
           style={{
             display: 'inline-flex', alignItems: 'center', gap: '6px',
             padding: '8px 14px',
-            background: hasRun ? '#ffffff' : '#f1f5f9',
-            color: hasRun ? '#0f172a' : '#94a3b8',
+            background: hasRun ? 'var(--bg-card)' : 'var(--bg-inset)',
+            color: hasRun ? 'var(--text-primary)' : 'var(--text-muted)',
             borderRadius: '8px', textDecoration: 'none', fontSize: '13px', fontWeight: '600',
             border: '1px solid var(--border)',
             cursor: hasRun ? 'pointer' : 'not-allowed',
@@ -478,7 +470,7 @@ function PageHeader({
           title={hasRun ? 'Compare this run against another' : 'Open the comparison view'}
           style={{
             display: 'inline-flex', alignItems: 'center', gap: '6px',
-            padding: '8px 14px', background: '#ffffff', color: '#0f172a',
+            padding: '8px 14px', background: 'var(--bg-card)', color: 'var(--text-primary)',
             borderRadius: '8px', textDecoration: 'none', fontSize: '13px', fontWeight: '600',
             border: '1px solid var(--border)', flexShrink: 0,
           }}
@@ -492,7 +484,7 @@ function PageHeader({
 
         <a href="/analysis/summary" style={{
           display: 'inline-flex', alignItems: 'center', gap: '6px',
-          padding: '8px 14px', background: '#ffffff', color: '#0f172a',
+          padding: '8px 14px', background: 'var(--bg-card)', color: 'var(--text-primary)',
           borderRadius: '8px', textDecoration: 'none', fontSize: '13px', fontWeight: '600',
           border: '1px solid var(--border)', flexShrink: 0,
         }}>
@@ -526,7 +518,7 @@ function DangerZone({ onRequestReset, isResetting, isDisabled }: {
   return (
     <div style={{
       marginTop: '32px', padding: '20px 24px',
-      background: '#fffbfb', border: '1px solid #fecaca', borderRadius: '14px',
+      background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.35)', borderRadius: '14px',
       display: 'flex', alignItems: 'center', justifyContent: 'space-between',
       gap: '16px', flexWrap: 'wrap',
     }}>
@@ -542,7 +534,7 @@ function DangerZone({ onRequestReset, isResetting, isDisabled }: {
           </svg>
         </div>
         <div>
-          <div style={{ fontSize: '14px', fontWeight: 700, color: '#b91c1c' }}>Danger Zone</div>
+          <div style={{ fontSize: '14px', fontWeight: 700, color: '#ef4444' }}>Danger Zone</div>
           <div style={{ fontSize: '13px', color: 'var(--text-secondary)', marginTop: '2px' }}>
             Permanently delete every simulation run and all associated analysis data. This cannot be undone.
           </div>
@@ -585,7 +577,7 @@ function RunControls({ runHistory, currentRunId, onRunChange, onRequestDelete, i
         style={{
           padding: '8px 12px', borderRadius: '8px',
           border: '1px solid var(--border)', fontSize: '12px',
-          color: 'var(--text-primary)', background: '#ffffff',
+          color: 'var(--text-primary)', background: 'var(--bg-card)',
           maxWidth: '320px',
           cursor: isDisabled ? 'not-allowed' : 'default',
           opacity: isDisabled ? 0.7 : 1,
@@ -599,9 +591,10 @@ function RunControls({ runHistory, currentRunId, onRunChange, onRequestDelete, i
         onClick={() => onRequestDelete(currentRunId)}
         disabled={isDisabled}
         title="Delete this simulation run"
+        aria-label="Delete this simulation run"
         style={{
-          padding: '8px 10px', background: '#fff5f5',
-          border: '1px solid #fecaca', borderRadius: '8px',
+          padding: '8px 10px', background: 'rgba(239,68,68,0.08)',
+          border: '1px solid rgba(239,68,68,0.35)', borderRadius: '8px',
           color: '#ef4444',
           cursor: isDisabled ? 'not-allowed' : 'pointer',
           opacity: isDisabled ? 0.55 : 1,
@@ -715,7 +708,7 @@ function SummaryStats({ zoneCount, bottleneckCount, avgEvacTime, evacuatedPct }:
         <div key={i} style={{
           display: 'flex', alignItems: 'center', gap: '14px',
           padding: '18px 20px',
-          background: 'linear-gradient(180deg, #ffffff 0%, #f8fafc 100%)',
+          background: 'var(--bg-card)',
           border: '1px solid var(--border)',
           borderRadius: '12px',
           boxShadow: '0 1px 2px rgba(0,0,0,0.03)',

@@ -148,11 +148,11 @@ export function ZoneAnalysisPanel({ zones, hideHeader = false }: Props) {
       }}>
         {/* Table header */}
         <div style={{
-          display: 'grid', gridTemplateColumns: '2fr 1fr 80px 80px',
-          padding: '10px 16px', background: '#f8fafc',
+          display: 'grid', gridTemplateColumns: '2fr 1fr 80px 80px', gap: '12px',
+          padding: '10px 16px', background: 'var(--bg-subtle)',
           borderBottom: '1px solid var(--border)',
           fontSize: '10px', fontWeight: 700, letterSpacing: '0.08em',
-          color: '#64748b', textTransform: 'uppercase',
+          color: 'var(--text-secondary)', textTransform: 'uppercase',
         }}>
           <span>Zone</span>
           <span>Risk</span>
@@ -173,15 +173,15 @@ export function ZoneAnalysisPanel({ zones, hideHeader = false }: Props) {
               <div
                 onClick={() => setExpandedZone(isExpanded ? null : zoneKey)}
                 style={{
-                  display: 'grid', gridTemplateColumns: '2fr 1fr 80px 80px',
+                  display: 'grid', gridTemplateColumns: '2fr 1fr 80px 80px', gap: '12px',
                   padding: '12px 16px',
-                  borderBottom: '1px solid #f1f5f9',
+                  borderBottom: '1px solid var(--border)',
                   cursor: 'pointer',
-                  background: isExpanded ? `${band.color}08` : '#ffffff',
+                  background: isExpanded ? `${band.color}08` : 'var(--bg-card)',
                   transition: 'background 0.15s',
                 }}
-                onMouseEnter={e => { if (!isExpanded) e.currentTarget.style.background = '#fafbfd' }}
-                onMouseLeave={e => { if (!isExpanded) e.currentTarget.style.background = '#ffffff' }}
+                onMouseEnter={e => { if (!isExpanded) e.currentTarget.style.background = 'var(--bg-subtle)' }}
+                onMouseLeave={e => { if (!isExpanded) e.currentTarget.style.background = 'var(--bg-card)' }}
               >
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                   <div style={{
@@ -189,10 +189,10 @@ export function ZoneAnalysisPanel({ zones, hideHeader = false }: Props) {
                     background: band.color,
                   }} />
                   <div>
-                    <div style={{ fontSize: '13px', fontWeight: 600, color: '#0f172a' }}>
+                    <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)' }}>
                       {zone.zoneName}
                     </div>
-                    <div style={{ fontSize: '10px', color: '#94a3b8' }}>
+                    <div style={{ fontSize: '10px', color: 'var(--text-muted)' }}>
                       {friendlyType(zone.zoneName)}
                     </div>
                   </div>
@@ -211,7 +211,7 @@ export function ZoneAnalysisPanel({ zones, hideHeader = false }: Props) {
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '6px' }}>
                   <div style={{
                     width: '36px', height: '6px', borderRadius: '3px',
-                    background: '#f1f5f9', overflow: 'hidden',
+                    background: 'var(--bg-inset)', overflow: 'hidden',
                   }}>
                     <div style={{
                       height: '100%', width: `${Math.min(100, zone.intensity)}%`,
@@ -248,10 +248,10 @@ export function ZoneAnalysisPanel({ zones, hideHeader = false }: Props) {
                     <DetailItem label="Risk level" value={zone.riskLevel} color={riskColor} />
                   </div>
                   <p style={{
-                    margin: 0, fontSize: '12px', color: '#475569',
+                    margin: 0, fontSize: '12px', color: 'var(--text-secondary)',
                     lineHeight: 1.5, fontStyle: 'italic',
                     padding: '8px 12px',
-                    background: '#ffffff',
+                    background: 'var(--bg-card)',
                     borderRadius: '8px',
                     border: '1px solid var(--border)',
                   }}>
@@ -270,7 +270,7 @@ export function ZoneAnalysisPanel({ zones, hideHeader = false }: Props) {
             style={{
               padding: '10px 16px', textAlign: 'center',
               fontSize: '12px', fontWeight: 600, color: '#2db8b0',
-              cursor: 'pointer', background: '#fafbfd',
+              cursor: 'pointer', background: 'var(--bg-subtle)',
               borderTop: '1px solid var(--border)',
             }}
           >
@@ -286,7 +286,7 @@ export function ZoneAnalysisPanel({ zones, hideHeader = false }: Props) {
           background: 'linear-gradient(135deg, rgba(45,184,176,0.05) 0%, rgba(45,184,176,0.02) 100%)',
           border: '1px solid rgba(45,184,176,0.15)',
           borderRadius: '12px',
-          fontSize: '13px', lineHeight: 1.6, color: '#334155',
+          fontSize: '13px', lineHeight: 1.6, color: 'var(--text-secondary)',
         }}>
           <div style={{
             display: 'flex', alignItems: 'center', gap: '6px',
@@ -319,13 +319,13 @@ function StatPill({ label, value, color }: { label: string; value: string; color
   return (
     <div style={{
       padding: '12px 14px',
-      background: '#ffffff',
+      background: 'var(--bg-card)',
       border: '1px solid var(--border)',
       borderRadius: '10px',
     }}>
       <div style={{
         fontSize: '10px', fontWeight: 700, letterSpacing: '0.06em',
-        color: '#94a3b8', textTransform: 'uppercase', marginBottom: '4px',
+        color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '4px',
       }}>
         {label}
       </div>
@@ -343,10 +343,10 @@ function StatPill({ label, value, color }: { label: string; value: string; color
 function DetailItem({ label, value, color }: { label: string; value: string; color?: string }) {
   return (
     <div>
-      <div style={{ fontSize: '10px', fontWeight: 600, color: '#94a3b8', letterSpacing: '0.04em', textTransform: 'uppercase', marginBottom: '2px' }}>
+      <div style={{ fontSize: '10px', fontWeight: 600, color: 'var(--text-muted)', letterSpacing: '0.04em', textTransform: 'uppercase', marginBottom: '2px' }}>
         {label}
       </div>
-      <div style={{ fontSize: '13px', fontWeight: 600, color: color ?? '#0f172a' }}>
+      <div style={{ fontSize: '13px', fontWeight: 600, color: color ?? 'var(--text-primary)' }}>
         {value}
       </div>
     </div>

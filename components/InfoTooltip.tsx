@@ -83,7 +83,8 @@ export function InfoTooltip({
         }}
         role="button"
         tabIndex={0}
-        aria-label="Information"
+        aria-label={`Information: ${title}`}
+        aria-expanded={isVisible}
       >
         {children || (
           <div

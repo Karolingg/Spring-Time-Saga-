@@ -2,6 +2,8 @@
 
 import { useEffect } from 'react'
 import { useAuth } from '@/src/hooks/useAuth'
+import { Card } from '@/components/ui/Card'
+import { PageHeader } from '@/components/ui/PageHeader'
 
 const sectionTitle: React.CSSProperties = {
   margin: '0 0 4px',
@@ -34,7 +36,7 @@ export default function AboutPage() {
   if (isLoading) {
     return (
       <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg)' }}>
-        <span style={{ color: 'var(--text-secondary)', fontSize: '14px' }}>Loading...</span>
+        <span style={{ color: 'var(--text-secondary)', fontSize: '14px', display: 'flex', alignItems: 'center', gap: '10px' }}><span className="spinner" />Loading...</span>
       </div>
     )
   }
@@ -58,34 +60,18 @@ export default function AboutPage() {
   ]
 
   return (
-    <div style={{ minHeight: '100vh', padding: '88px 40px 56px', maxWidth: '860px', margin: '0 auto' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '24px' }}>
-        <div style={{
-          width: '44px',
-          height: '44px',
-          borderRadius: '12px',
-          background: 'rgba(45,184,176,0.1)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-        }}>
+    <div data-page-shell style={{ minHeight: '100vh', padding: '88px 40px 56px', maxWidth: '860px', margin: '0 auto' }}>
+      <PageHeader
+        icon={
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#2db8b0" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/>
           </svg>
-        </div>
-        <div>
-          <h1 style={{ margin: '0 0 4px', fontSize: '22px', fontWeight: '700', color: 'var(--text-primary)' }}>About</h1>
-          <p style={{ margin: 0, fontSize: '13px', color: 'var(--text-secondary)' }}>System information and project details</p>
-        </div>
-      </div>
+        }
+        title="About"
+        subtitle="System information and project details"
+      />
 
-      <div style={{
-        background: '#fff',
-        border: '1px solid var(--border)',
-        borderRadius: '12px',
-        padding: '28px 32px',
-        boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
-      }}>
+      <Card>
         <h2 style={sectionTitle}>About EVACSIM</h2>
         <p style={sectionDesc}>System information and project details.</p>
 
@@ -139,18 +125,18 @@ export default function AboutPage() {
         </h3>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '24px' }}>
           {features.map(feature => (
-            <div key={feature} style={{ padding: '8px 12px', background: '#f8fafc', borderRadius: '8px', fontSize: '13px', color: 'var(--text-secondary)', lineHeight: '1.4' }}>
+            <div key={feature} style={{ padding: '8px 12px', background: 'var(--bg-subtle)', borderRadius: '8px', fontSize: '13px', color: 'var(--text-secondary)', lineHeight: '1.4' }}>
               {feature}
             </div>
           ))}
         </div>
 
-        <div style={{ padding: '14px 16px', background: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0', fontSize: '12px', color: 'var(--text-muted)', textAlign: 'center', lineHeight: '1.6' }}>
+        <div style={{ padding: '14px 16px', background: 'var(--bg-subtle)', borderRadius: '8px', border: '1px solid var(--border)', fontSize: '12px', color: 'var(--text-muted)', textAlign: 'center', lineHeight: '1.6' }}>
           Built for academic research at UP Cebu.
           <br />
           For questions or feedback, contact your system administrator.
         </div>
-      </div>
+      </Card>
     </div>
   )
 }

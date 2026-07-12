@@ -126,7 +126,7 @@ export function AggregateFloorHeatmaps({ hideHeader = false }: AggregateFloorHea
 
   return (
     <div style={hideHeader ? {} : {
-      background: '#ffffff',
+      background: 'var(--bg-card)',
       border: '1px solid var(--border)',
       borderRadius: '14px',
       padding: '28px 32px',
@@ -168,7 +168,7 @@ export function AggregateFloorHeatmaps({ hideHeader = false }: AggregateFloorHea
       )}
 
       {error && !isLoading && (
-        <div style={{ padding: '20px', borderRadius: '10px', background: '#fef2f2', border: '1px solid #fecaca', color: '#b91c1c', fontSize: '13px' }}>
+        <div style={{ padding: '20px', borderRadius: '10px', background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.35)', color: '#ef4444', fontSize: '13px' }}>
           {error}
         </div>
       )}
@@ -177,8 +177,8 @@ export function AggregateFloorHeatmaps({ hideHeader = false }: AggregateFloorHea
         <div style={{
           padding: '40px 24px', textAlign: 'center',
           color: 'var(--text-secondary)', fontSize: '13px',
-          background: 'linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%)',
-          borderRadius: '12px', border: '1px dashed #cbd5e1',
+          background: 'var(--bg-subtle)',
+          borderRadius: '12px', border: '1px dashed var(--border-strong)',
         }}>
           No completed runs with recorded floor data yet. Run a few simulations and they&apos;ll aggregate here.
         </div>
@@ -206,7 +206,7 @@ export function AggregateFloorHeatmaps({ hideHeader = false }: AggregateFloorHea
                   style={{
                     textAlign: 'left',
                     padding: '14px 16px',
-                    background: isSelected ? `${ACCENT}10` : '#ffffff',
+                    background: isSelected ? `${ACCENT}10` : 'var(--bg-card)',
                     border: `1.5px solid ${isSelected ? `${ACCENT}66` : 'var(--border)'}`,
                     borderRadius: '12px',
                     cursor: 'pointer',
@@ -219,8 +219,8 @@ export function AggregateFloorHeatmaps({ hideHeader = false }: AggregateFloorHea
                 >
                   <span style={{
                     width: '34px', height: '34px', borderRadius: '9px',
-                    background: isSelected ? `linear-gradient(135deg, ${ACCENT} 0%, ${ACCENT_DARK} 100%)` : '#f1f5f9',
-                    color: isSelected ? '#ffffff' : '#64748b',
+                    background: isSelected ? `linear-gradient(135deg, ${ACCENT} 0%, ${ACCENT_DARK} 100%)` : 'var(--bg-inset)',
+                    color: isSelected ? '#ffffff' : 'var(--text-muted)',
                     display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
                     flexShrink: 0,
                   }}>
@@ -268,9 +268,9 @@ export function AggregateFloorHeatmaps({ hideHeader = false }: AggregateFloorHea
                       style={{
                         display: 'inline-flex', alignItems: 'center', gap: '8px',
                         padding: '8px 14px', borderRadius: '10px',
-                        background: isSelected ? '#ffffff' : '#f1f5f9',
+                        background: isSelected ? 'var(--bg-card)' : 'var(--bg-inset)',
                         border: `1px solid ${isSelected ? `${ACCENT}55` : 'var(--border)'}`,
-                        color: isSelected ? ACCENT_DARK : '#475569',
+                        color: isSelected ? ACCENT_DARK : 'var(--text-secondary)',
                         fontSize: '12px', fontWeight: 700,
                         cursor: 'pointer',
                         boxShadow: isSelected ? `0 1px 3px ${ACCENT}33, 0 0 0 1px ${ACCENT}33` : 'none',
@@ -280,9 +280,9 @@ export function AggregateFloorHeatmaps({ hideHeader = false }: AggregateFloorHea
                       {floorEntry.floor?.label ?? `Floor ${floorEntry.floorIndex + 1}`}
                       <span style={{
                         padding: '2px 7px', borderRadius: '999px',
-                        background: isSelected ? `${ACCENT}18` : '#ffffff',
+                        background: isSelected ? `${ACCENT}18` : 'var(--bg-card)',
                         border: `1px solid ${isSelected ? `${ACCENT}44` : 'var(--border)'}`,
-                        color: isSelected ? ACCENT_DARK : '#64748b',
+                        color: isSelected ? ACCENT_DARK : 'var(--text-muted)',
                         fontSize: '10px', fontWeight: 700,
                         letterSpacing: '0.04em',
                         fontFeatureSettings: '"tnum"',
@@ -344,7 +344,7 @@ function FloorHeatmapView({ entry }: { entry: ResolvedFloorHeatmap }) {
 
   return (
     <div style={{
-      background: 'linear-gradient(180deg, #fafcff 0%, #f2f6fb 100%)',
+      background: 'var(--bg-card)',
       border: '1px solid var(--border)',
       borderRadius: '14px',
       overflow: 'hidden',
@@ -352,7 +352,7 @@ function FloorHeatmapView({ entry }: { entry: ResolvedFloorHeatmap }) {
     }}>
       <div style={{
         padding: '12px 16px',
-        background: '#ffffff',
+        background: 'var(--bg-card)',
         borderBottom: '1px solid var(--border)',
         display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px',
         flexWrap: 'wrap',
@@ -378,7 +378,7 @@ function FloorHeatmapView({ entry }: { entry: ResolvedFloorHeatmap }) {
       <div style={{
         position: 'relative',
         aspectRatio: `${VIEW_WIDTH}/${VIEW_HEIGHT}`,
-        background: '#ffffff',
+        background: 'var(--bg-card)',
         overflow: 'hidden',
       }}>
         {entry.floor?.floorplanSrc && (
@@ -439,7 +439,7 @@ function FloorHeatmapView({ entry }: { entry: ResolvedFloorHeatmap }) {
           <div style={{
             position: 'absolute', inset: 0,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            background: 'rgba(248,250,252,0.85)',
+            background: 'var(--bg-subtle)',
             color: 'var(--text-secondary)', fontSize: '13px',
           }}>
             No density recorded across the contributing runs.
@@ -462,7 +462,7 @@ function StatChip({ label, value, accent, emphasized }: StatChipProps) {
     <div style={{
       display: 'inline-flex', alignItems: 'baseline', gap: '6px',
       padding: '4px 10px', borderRadius: '999px',
-      background: emphasized ? `${accent}12` : '#f8fafc',
+      background: emphasized ? `${accent}12` : 'var(--bg-subtle)',
       border: `1px solid ${emphasized ? `${accent}44` : 'var(--border)'}`,
       fontSize: '11px',
     }}>
@@ -472,7 +472,7 @@ function StatChip({ label, value, accent, emphasized }: StatChipProps) {
       }}>
         {label}
       </span>
-      <span style={{ fontWeight: 800, color: '#0f172a', fontFeatureSettings: '"tnum"' }}>
+      <span style={{ fontWeight: 800, color: 'var(--text-primary)', fontFeatureSettings: '"tnum"' }}>
         {value}
       </span>
     </div>
