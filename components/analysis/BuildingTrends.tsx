@@ -77,7 +77,7 @@ export function BuildingTrends() {
 
   if (error) {
     return (
-      <div style={{ padding: '16px', borderRadius: '10px', background: '#fef2f2', border: '1px solid #fecaca', color: '#b91c1c', fontSize: '13px' }}>
+      <div style={{ padding: '16px', borderRadius: '10px', background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.35)', color: '#ef4444', fontSize: '13px' }}>
         {error}
       </div>
     )
@@ -159,7 +159,7 @@ function TrendCard({ trend }: { trend: ResolvedTrend }) {
           </div>
         </div>
         <span style={{
-          fontSize: '11px', fontWeight: 700, color: '#475569',
+          fontSize: '11px', fontWeight: 700, color: 'var(--text-secondary)',
           background: 'var(--bg-inset)', borderRadius: '999px', padding: '4px 10px',
         }}>
           {runs.length} drills

@@ -239,7 +239,7 @@ export default function CompareRunsPage() {
       <Header />
 
       {error && (
-        <div style={{ ...SECTION_CARD, borderColor: '#fecaca', background: '#fef2f2', color: '#991b1b', fontSize: '14px' }}>
+        <div style={{ ...SECTION_CARD, borderColor: 'rgba(239,68,68,0.35)', background: 'rgba(239,68,68,0.08)', color: '#ef4444', fontSize: '14px' }}>
           {error}
         </div>
       )}
@@ -259,7 +259,7 @@ export default function CompareRunsPage() {
           </div>
 
           {sameRun && (
-            <div style={{ ...SECTION_CARD, borderColor: '#fde68a', background: '#fffbeb', color: '#92400e', fontSize: '13px' }}>
+            <div style={{ ...SECTION_CARD, borderColor: 'rgba(245,158,11,0.35)', background: 'rgba(245,158,11,0.1)', color: '#f59e0b', fontSize: '13px' }}>
               Both slots reference the same run. Pick a different run for slot B to see a comparison.
             </div>
           )}
@@ -399,8 +399,8 @@ function RunPickers({ history, runA, runB, onSelect, onSwap }: RunPickersProps) 
         style={{
           display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
           width: '38px', height: '38px',
-          background: runA && runB ? '#ffffff' : '#f1f5f9',
-          color: runA && runB ? '#0f172a' : '#94a3b8',
+          background: runA && runB ? 'var(--bg-card)' : 'var(--bg-inset)',
+          color: runA && runB ? 'var(--text-primary)' : 'var(--text-muted)',
           border: '1px solid var(--border)', borderRadius: '8px',
           cursor: runA && runB ? 'pointer' : 'not-allowed',
           marginBottom: '4px',
@@ -558,9 +558,9 @@ function ComparisonWarnings({ runA, runB }: { runA: SimulationRun; runB: Simulat
             style={{
               display: 'flex', alignItems: 'flex-start', gap: '10px',
               padding: '12px 16px', borderRadius: '12px',
-              background: hard ? '#fef2f2' : '#fffbeb',
-              border: `1px solid ${hard ? '#fca5a5' : '#fde68a'}`,
-              color: hard ? '#991b1b' : '#92400e',
+              background: hard ? 'rgba(239,68,68,0.08)' : 'rgba(245,158,11,0.1)',
+              border: `1px solid ${hard ? 'rgba(239,68,68,0.35)' : 'rgba(245,158,11,0.35)'}`,
+              color: hard ? '#ef4444' : '#f59e0b',
               fontSize: '13px', lineHeight: 1.55,
             }}
           >
@@ -636,7 +636,7 @@ function KpiDeltaCard({ metric, runA, runB }: { metric: MetricDef; runA: Simulat
       padding: significant ? '13px 15px' : '14px 16px',
       background: significant
         ? (improved ? 'rgba(34,197,94,0.07)' : 'rgba(239,68,68,0.07)')
-        : '#f8fafc',
+        : 'var(--bg-subtle)',
     }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '6px', marginBottom: '10px' }}>
         <span style={{ fontSize: '11px', fontWeight: 600, letterSpacing: '0.08em', color: 'var(--text-secondary)', textTransform: 'uppercase' }}>
@@ -740,7 +740,7 @@ function Th({ children, align = 'left' }: { children: React.ReactNode; align?: '
 function Td({ children, align = 'left' }: { children: React.ReactNode; align?: 'left' | 'right' }) {
   return (
     <td style={{
-      padding: '10px', textAlign: align, borderBottom: '1px solid #e2e8f0',
+      padding: '10px', textAlign: align, borderBottom: '1px solid var(--border)',
       color: 'var(--text-primary)', verticalAlign: 'middle',
     }}>
       {children}
@@ -771,8 +771,8 @@ function CompareHeatmaps({
       <div style={{
         padding: '32px 20px', textAlign: 'center', fontSize: '13px',
         color: 'var(--text-secondary)',
-        background: 'linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%)',
-        borderRadius: '12px', border: '1px dashed #cbd5e1',
+        background: 'var(--bg-subtle)',
+        borderRadius: '12px', border: '1px dashed var(--border-strong)',
       }}>
         Neither run has a floor-plan model — heatmaps need a building with an autonomous floor model.
       </div>

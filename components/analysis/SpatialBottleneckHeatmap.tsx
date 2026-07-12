@@ -311,8 +311,8 @@ export function SpatialBottleneckHeatmap({
     return (
       <div style={{
         padding: '32px 20px', textAlign: 'center', color: 'var(--text-secondary)', fontSize: '13px',
-        background: 'linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%)',
-        borderRadius: '12px', border: '1px dashed #cbd5e1',
+        background: 'var(--bg-subtle)',
+        borderRadius: '12px', border: '1px dashed var(--border-strong)',
       }}>
         Spatial heatmap requires a building with an autonomous floor model
         <div style={{ marginTop: '6px', fontSize: '11px', color: 'var(--text-muted)' }}>
@@ -419,7 +419,7 @@ export function SpatialBottleneckHeatmap({
                 display: 'inline-flex', alignItems: 'center', gap: '8px',
                 padding: '7px 12px',
                 background: 'var(--bg-inset)', borderRadius: '999px', border: '1px solid var(--border)',
-                fontSize: '11px', fontWeight: 700, color: '#475569',
+                fontSize: '11px', fontWeight: 700, color: 'var(--text-secondary)',
                 letterSpacing: '0.04em',
               }}
             >
@@ -443,8 +443,8 @@ export function SpatialBottleneckHeatmap({
                     style={{
                       padding: '7px 14px', fontSize: '11px', fontWeight: 700,
                       borderRadius: '7px', border: 'none',
-                      background: selected ? '#ffffff' : 'transparent',
-                      color: selected ? '#0f172a' : '#64748b',
+                      background: selected ? 'var(--bg-card)' : 'transparent',
+                      color: selected ? 'var(--text-primary)' : 'var(--text-muted)',
                       cursor: 'pointer',
                       boxShadow: selected ? '0 1px 3px rgba(15,23,42,0.10)' : 'none',
                       transition: 'all 0.15s', letterSpacing: '0.01em',
@@ -466,7 +466,7 @@ export function SpatialBottleneckHeatmap({
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
           <span style={{
-            fontSize: '10px', fontWeight: 700, color: '#475569',
+            fontSize: '10px', fontWeight: 700, color: 'var(--text-secondary)',
             letterSpacing: '0.1em', textTransform: 'uppercase',
           }}>
             Scenario
@@ -496,8 +496,8 @@ export function SpatialBottleneckHeatmap({
                   display: 'inline-flex', alignItems: 'center', gap: '6px',
                   padding: '6px 12px', fontSize: '11px', fontWeight: 700,
                   borderRadius: '7px', border: 'none', cursor: 'pointer',
-                  background: selected ? '#ffffff' : 'transparent',
-                  color: selected ? (d === 'fire' ? '#dc2626' : '#b45309') : '#64748b',
+                  background: selected ? 'var(--bg-card)' : 'transparent',
+                  color: selected ? (d === 'fire' ? '#dc2626' : '#b45309') : 'var(--text-muted)',
                   boxShadow: selected ? '0 1px 3px rgba(15,23,42,0.10)' : 'none',
                   transition: 'all 0.15s',
                 }}
@@ -734,7 +734,7 @@ export function SpatialBottleneckHeatmap({
                     </svg>
                   )}
                 </div>
-                <div style={{ fontSize: '14px', fontWeight: 700, color: '#334155', marginBottom: '6px' }}>
+                <div style={{ fontSize: '14px', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '6px' }}>
                   No {viewDisaster === 'fire' ? 'Fire' : 'Earthquake'} heatmap for this run
                 </div>
                 <div style={{ fontSize: '12px', color: 'var(--text-secondary)', lineHeight: 1.55 }}>
@@ -795,7 +795,7 @@ export function SpatialBottleneckHeatmap({
           boxShadow: '0 2px 6px rgba(15,23,42,0.05)',
         }}>
           <div style={{
-            fontSize: '9px', fontWeight: 700, color: '#475569',
+            fontSize: '9px', fontWeight: 700, color: 'var(--text-secondary)',
             letterSpacing: '0.08em', textTransform: 'uppercase',
             textAlign: 'center', marginBottom: '10px', lineHeight: 1.3,
           }}>
@@ -842,7 +842,7 @@ export function SpatialBottleneckHeatmap({
         <div style={{ marginTop: '20px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px' }}>
             <div style={{ height: '2px', flex: 1, background: 'linear-gradient(90deg, #2db8b0 0%, transparent 100%)', borderRadius: '2px' }} />
-            <span style={{ fontSize: '10px', fontWeight: 700, color: '#475569', letterSpacing: '0.12em', textTransform: 'uppercase' }}>
+            <span style={{ fontSize: '10px', fontWeight: 700, color: 'var(--text-secondary)', letterSpacing: '0.12em', textTransform: 'uppercase' }}>
               Top Hotspots
             </span>
             <div style={{ height: '2px', flex: 1, background: 'linear-gradient(270deg, #2db8b0 0%, transparent 100%)', borderRadius: '2px' }} />
@@ -918,7 +918,7 @@ function StatPill({ label, value, accent, suffix, emphasized }: StatPillProps) {
   return (
     <div style={{
       padding: '12px 14px',
-      background: emphasized ? `${accent}10` : '#ffffff',
+      background: emphasized ? `${accent}10` : 'var(--bg-card)',
       border: `1px solid ${emphasized ? `${accent}55` : 'var(--border)'}`,
       borderRadius: '10px',
       boxShadow: emphasized ? `0 0 0 3px ${accent}12` : '0 1px 2px rgba(15,23,42,0.04)',

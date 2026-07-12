@@ -518,7 +518,7 @@ function DangerZone({ onRequestReset, isResetting, isDisabled }: {
   return (
     <div style={{
       marginTop: '32px', padding: '20px 24px',
-      background: '#fffbfb', border: '1px solid #fecaca', borderRadius: '14px',
+      background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.35)', borderRadius: '14px',
       display: 'flex', alignItems: 'center', justifyContent: 'space-between',
       gap: '16px', flexWrap: 'wrap',
     }}>
@@ -534,7 +534,7 @@ function DangerZone({ onRequestReset, isResetting, isDisabled }: {
           </svg>
         </div>
         <div>
-          <div style={{ fontSize: '14px', fontWeight: 700, color: '#b91c1c' }}>Danger Zone</div>
+          <div style={{ fontSize: '14px', fontWeight: 700, color: '#ef4444' }}>Danger Zone</div>
           <div style={{ fontSize: '13px', color: 'var(--text-secondary)', marginTop: '2px' }}>
             Permanently delete every simulation run and all associated analysis data. This cannot be undone.
           </div>
@@ -708,7 +708,7 @@ function SummaryStats({ zoneCount, bottleneckCount, avgEvacTime, evacuatedPct }:
         <div key={i} style={{
           display: 'flex', alignItems: 'center', gap: '14px',
           padding: '18px 20px',
-          background: 'linear-gradient(180deg, #ffffff 0%, #f8fafc 100%)',
+          background: 'var(--bg-card)',
           border: '1px solid var(--border)',
           borderRadius: '12px',
           boxShadow: '0 1px 2px rgba(0,0,0,0.03)',

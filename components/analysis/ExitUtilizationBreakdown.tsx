@@ -158,7 +158,7 @@ export function ExitUtilizationBreakdown({
 
   return (
     <div>
-      <p style={{ margin: '0 0 14px', fontSize: '13px', lineHeight: 1.6, color: '#1e293b' }}>
+      <p style={{ margin: '0 0 14px', fontSize: '13px', lineHeight: 1.6, color: 'var(--text-primary)' }}>
         Evacuee load split across {result.exits.length}{' '}
         {result.exits.length === 1 ? 'exit' : 'exits'} on a deterministic re-run
         of this drill.
@@ -197,7 +197,7 @@ export function ExitUtilizationBreakdown({
               </div>
               <div style={{
                 width: '108px', flexShrink: 0, textAlign: 'right',
-                fontSize: '12px', color: '#475569',
+                fontSize: '12px', color: 'var(--text-secondary)',
               }}>
                 <strong style={{ color: 'var(--text-primary)' }}>{exit.count}</strong>
                 {' '}· {pct.toFixed(0)}%
@@ -226,7 +226,7 @@ export function ExitUtilizationBreakdown({
             </div>
             <div style={{
               width: '108px', flexShrink: 0, textAlign: 'right',
-              fontSize: '12px', color: '#475569',
+              fontSize: '12px', color: 'var(--text-secondary)',
             }}>
               <strong style={{ color: '#b91c1c' }}>{result.notEvacuated}</strong>
               {' '}· {((result.notEvacuated / result.total) * 100).toFixed(0)}%

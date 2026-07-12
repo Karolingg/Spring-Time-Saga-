@@ -94,7 +94,7 @@ export function RunVisualization({
                   marginLeft: '8px', padding: '2px 8px',
                   borderRadius: '999px', background: 'var(--bg-inset)',
                   fontSize: '10px', fontWeight: 700,
-                  color: '#475569', letterSpacing: '0.04em',
+                  color: 'var(--text-secondary)', letterSpacing: '0.04em',
                 }}>
                   SIMULATED FLOOR
                 </span>

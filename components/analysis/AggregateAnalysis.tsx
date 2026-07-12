@@ -218,7 +218,7 @@ export function AggregateAnalysis({ hideHeader = false }: AggregateAnalysisProps
         background: 'var(--bg-subtle)', border: '1px solid var(--border)', borderRadius: '12px',
       }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px', gap: '12px', flexWrap: 'wrap' }}>
-          <span style={{ fontSize: '10px', fontWeight: 700, color: '#475569', letterSpacing: '0.1em', textTransform: 'uppercase' }}>
+          <span style={{ fontSize: '10px', fontWeight: 700, color: 'var(--text-secondary)', letterSpacing: '0.1em', textTransform: 'uppercase' }}>
             Intensity distribution
           </span>
           <div style={{ display: 'inline-flex', gap: '14px', flexWrap: 'wrap' }}>
@@ -275,13 +275,13 @@ export function AggregateAnalysis({ hideHeader = false }: AggregateAnalysisProps
                 onClick={() => setExpandedZone(isExpanded ? null : zoneKey)}
                 style={{
                   display: 'grid', gridTemplateColumns: '2fr 1fr 90px 90px',
-                  padding: '12px 16px', borderBottom: '1px solid #f1f5f9',
+                  padding: '12px 16px', borderBottom: '1px solid var(--border)',
                   cursor: 'pointer',
-                  background: isExpanded ? `${band.color}08` : '#ffffff',
+                  background: isExpanded ? `${band.color}08` : 'var(--bg-card)',
                   transition: 'background 0.15s',
                 }}
-                onMouseEnter={e => { if (!isExpanded) e.currentTarget.style.background = '#fafbfd' }}
-                onMouseLeave={e => { if (!isExpanded) e.currentTarget.style.background = isExpanded ? `${band.color}08` : '#ffffff' }}
+                onMouseEnter={e => { if (!isExpanded) e.currentTarget.style.background = 'var(--bg-subtle)' }}
+                onMouseLeave={e => { if (!isExpanded) e.currentTarget.style.background = isExpanded ? `${band.color}08` : 'var(--bg-card)' }}
               >
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                   <div style={{ width: '4px', height: '24px', borderRadius: '2px', background: band.color }} />
@@ -325,7 +325,7 @@ export function AggregateAnalysis({ hideHeader = false }: AggregateAnalysisProps
                     <DetailItem label="Risk level" value={zone.dominantRiskLevel} color={riskColor} />
                   </div>
                   <p style={{
-                    margin: 0, fontSize: '12px', color: '#475569', lineHeight: 1.5, fontStyle: 'italic',
+                    margin: 0, fontSize: '12px', color: 'var(--text-secondary)', lineHeight: 1.5, fontStyle: 'italic',
                     padding: '8px 12px', background: 'var(--bg-card)', borderRadius: '8px', border: '1px solid var(--border)',
                   }}>
                     {actionSentence(zone)}
@@ -342,7 +342,7 @@ export function AggregateAnalysis({ hideHeader = false }: AggregateAnalysisProps
             style={{
               padding: '10px 16px', textAlign: 'center',
               fontSize: '12px', fontWeight: 600, color: '#2db8b0',
-              cursor: 'pointer', background: '#fafbfd',
+              cursor: 'pointer', background: 'var(--bg-subtle)',
               borderTop: '1px solid var(--border)',
             }}
           >
@@ -357,7 +357,7 @@ export function AggregateAnalysis({ hideHeader = false }: AggregateAnalysisProps
           padding: '14px 18px',
           background: 'linear-gradient(135deg, rgba(45,184,176,0.05) 0%, rgba(45,184,176,0.02) 100%)',
           border: '1px solid rgba(45,184,176,0.15)', borderRadius: '12px',
-          fontSize: '13px', lineHeight: 1.6, color: '#334155',
+          fontSize: '13px', lineHeight: 1.6, color: 'var(--text-secondary)',
         }}>
           <div style={{
             display: 'flex', alignItems: 'center', gap: '6px',

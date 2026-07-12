@@ -312,7 +312,7 @@ export function RunReplay({
         <div style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
           <Pill label="Active" value={activeAgents} bg="#e8f0fb" border="#c8d8ec" color="#1e40af" />
           <Pill label="Evacuated" value={evacuatedAgents} bg="#e8f5ec" border="#c5dfce" color="#166534" />
-          <Pill label="Trapped" value={trappedAgents} bg={trappedAgents > 0 ? '#fef2f2' : '#f8fafc'} border={trappedAgents > 0 ? '#fecaca' : 'var(--border)'} color={trappedAgents > 0 ? '#b91c1c' : '#94a3b8'} />
+          <Pill label="Trapped" value={trappedAgents} bg={trappedAgents > 0 ? 'rgba(239,68,68,0.08)' : 'var(--bg-subtle)'} border={trappedAgents > 0 ? 'rgba(239,68,68,0.35)' : 'var(--border)'} color={trappedAgents > 0 ? '#ef4444' : 'var(--text-muted)'} />
         </div>
       </div>
 
@@ -441,7 +441,7 @@ export function RunReplay({
           <span style={{
             display: 'inline-flex', alignItems: 'center', gap: '6px',
             fontSize: '10px', fontWeight: 700,
-            color: '#475569', letterSpacing: '0.1em', textTransform: 'uppercase',
+            color: 'var(--text-secondary)', letterSpacing: '0.1em', textTransform: 'uppercase',
           }}>
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#475569" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M12 22c4-3 8-7 8-12a8 8 0 0 0-16 0c0 5 4 9 8 12z" />
@@ -551,7 +551,7 @@ export function RunReplay({
           </div>
           <span style={{
             minWidth: '54px', textAlign: 'right',
-            fontSize: '11px', fontWeight: 700, color: '#475569',
+            fontSize: '11px', fontWeight: 700, color: 'var(--text-secondary)',
             fontFeatureSettings: '"tnum"',
           }}>
             {elapsedSec.toFixed(1)}s
@@ -570,8 +570,8 @@ export function RunReplay({
                 style={{
                   padding: '6px 9px', fontSize: '11px', fontWeight: 700,
                   borderRadius: '6px', border: 'none',
-                  background: selected ? '#0f172a' : '#f1f5f9',
-                  color: selected ? '#ffffff' : '#475569',
+                  background: selected ? 'var(--teal)' : 'var(--bg-inset)',
+                  color: selected ? '#ffffff' : 'var(--text-secondary)',
                   cursor: hasReplayData ? 'pointer' : 'not-allowed',
                   opacity: hasReplayData ? 1 : 0.55,
                 }}
@@ -603,7 +603,7 @@ function LayerToggle({ label, active, disabled, onClick, swatch }: LayerTogglePr
       style={{
         display: 'inline-flex', alignItems: 'center', gap: '8px',
         padding: '6px 12px', borderRadius: '999px',
-        background: active ? `${ACCENT}14` : '#ffffff',
+        background: active ? `${ACCENT}14` : 'var(--bg-card)',
         border: `1px solid ${active ? `${ACCENT}55` : 'var(--border)'}`,
         color: active ? ACCENT_DARK : 'var(--text-muted)',
         fontSize: '12px', fontWeight: 700,
@@ -618,7 +618,7 @@ function LayerToggle({ label, active, disabled, onClick, swatch }: LayerTogglePr
       <span style={{
         marginLeft: '4px',
         fontSize: '9.5px', fontWeight: 700,
-        color: active ? ACCENT_DARK : '#94a3b8',
+        color: active ? ACCENT_DARK : 'var(--text-muted)',
         letterSpacing: '0.08em',
         textTransform: 'uppercase',
       }}>
