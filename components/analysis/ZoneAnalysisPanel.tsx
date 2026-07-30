@@ -21,6 +21,14 @@ const RISK_COLORS: Record<string, string> = {
   HIGH: '#ef4444', MEDIUM: '#f59e0b', LOW: '#22c55e',
 }
 
+/** Text-safe counterparts — the vivid hues above stay for the pill fills, but
+ * only reach ~2.2-3.8:1 as text on a light card. */
+const RISK_TEXT_COLORS: Record<string, string> = {
+  HIGH: 'var(--status-text-red)',
+  MEDIUM: 'var(--status-text-amber)',
+  LOW: 'var(--status-text-green)',
+}
+
 /* ── Friendly zone-type mapping ────────────────────────────────────── */
 
 function friendlyType(zoneName: string): string {
@@ -164,6 +172,7 @@ export function ZoneAnalysisPanel({ zones, hideHeader = false }: Props) {
         {displayList.map((zone, i) => {
           const band = bandFor(zone.intensity)
           const riskColor = RISK_COLORS[zone.riskLevel] ?? '#22c55e'
+          const riskTextColor = RISK_TEXT_COLORS[zone.riskLevel] ?? 'var(--status-text-green)'
           const isExpanded = expandedZone === zone.zoneName + i
           const zoneKey = zone.zoneName + i
 
@@ -201,7 +210,7 @@ export function ZoneAnalysisPanel({ zones, hideHeader = false }: Props) {
                 <div style={{ display: 'flex', alignItems: 'center' }}>
                   <span style={{
                     display: 'inline-block', padding: '2px 10px', borderRadius: '999px',
-                    background: `${riskColor}14`, color: riskColor,
+                    background: `${riskColor}14`, color: riskTextColor,
                     fontSize: '10px', fontWeight: 700, letterSpacing: '0.04em',
                   }}>
                     {zone.riskLevel}
@@ -245,7 +254,7 @@ export function ZoneAnalysisPanel({ zones, hideHeader = false }: Props) {
                     <DetailItem label="Zone type" value={friendlyType(zone.zoneName)} />
                     <DetailItem label="Peak agents" value={`${zone.agentCount} people`} />
                     <DetailItem label="Bottleneck events" value={String(zone.bottleneckCount)} />
-                    <DetailItem label="Risk level" value={zone.riskLevel} color={riskColor} />
+                    <DetailItem label="Risk level" value={zone.riskLevel} color={riskTextColor} />
                   </div>
                   <p style={{
                     margin: 0, fontSize: '12px', color: 'var(--text-secondary)',

@@ -3,6 +3,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import { useAuth } from '@/src/hooks/useAuth'
+import { useToast } from '@/src/context/ToastContext'
+import { didGradeRegress, getBuildingScore } from '@/src/services/building-analytics.service'
+import { getBuildingTotalCapacity } from '@/src/config/building-floor-occupancy'
 import {
   buildBottleneckSummaries,
   buildZoneSummaries,
@@ -220,6 +223,7 @@ function describeExitUsage(results: SimulationResults | null) {
 
 export default function AutonomousScienceBuildingPage() {
   const { isAuthenticated, isLoading } = useAuth()
+  const { showToast } = useToast()
   const params = useParams()
   const router = useRouter()
   const search = useSearchParams()
@@ -421,6 +425,11 @@ export default function AutonomousScienceBuildingPage() {
       setSaveStatus('saving')
       setSaveMessage('Saving autonomous run to analysis history...')
 
+      // Snapshot the building's readiness grade before this run lands, so we
+      // can tell the user if it regressed once the new run is scored.
+      const buildingCapacity = getBuildingTotalCapacity(regionId)
+      const scoreBefore = await getBuildingScore(regionId, buildingCapacity).catch(() => null)
+
       const replayInputs = launchedReplayInputsRef.current
       const runId = await createSimulationRun({
         disasterType: disaster,
@@ -453,6 +462,16 @@ export default function AutonomousScienceBuildingPage() {
       setSaveStatus('saved')
       setSaveMessage('Run saved. You can open the analysis page to inspect congestion zones and grid density.')
       setIsRunLimitPopupOpen(false)
+
+      // saveSimulationResults() already invalidated the building score cache,
+      // so this refetches the grade fresh, now including the run just saved.
+      const scoreAfter = await getBuildingScore(regionId, buildingCapacity).catch(() => null)
+      if (didGradeRegress(scoreBefore?.grade ?? null, scoreAfter?.grade ?? null)) {
+        showToast(
+          `${building?.name ?? regionId}'s readiness dropped from ${scoreBefore!.grade} to ${scoreAfter!.grade} after this drill.`,
+          'error',
+        )
+      }
     } catch (error) {
       console.error('Failed to save autonomous run:', error)
       const friendlyMessage = getFriendlyErrorMessage(error, 'Simulation completed, but saving to analysis failed.')
@@ -460,7 +479,7 @@ export default function AutonomousScienceBuildingPage() {
       setSaveMessage(friendlyMessage)
       if (isRateLimitError(error)) setIsRunLimitPopupOpen(true)
     }
-  }, [disaster, regionId, floorIndex, simulationSpeed])
+  }, [disaster, regionId, floorIndex, simulationSpeed, building, showToast])
 
   useEffect(() => {
     if (!floor || !isPlaying) return
@@ -1536,7 +1555,7 @@ export default function AutonomousScienceBuildingPage() {
               <div style={{
                 marginBottom: '12px', padding: '8px 10px', borderRadius: '8px',
                 background: 'rgba(249,115,22,0.1)', border: '1px solid rgba(249,115,22,0.35)',
-                fontSize: '11px', color: '#9a3412', lineHeight: 1.4,
+                fontSize: '11px', color: 'var(--warn-text-strong)', lineHeight: 1.4,
               }}>
                 Local storage is unavailable. Hazards will be kept in memory but lost on refresh.
               </div>
@@ -1716,7 +1735,7 @@ export default function AutonomousScienceBuildingPage() {
                 <div style={{
                   padding: '6px 10px', borderRadius: '8px',
                   background: 'rgba(245,158,11,0.15)', border: '1px solid rgba(245,158,11,0.45)',
-                  fontSize: '12px', fontWeight: 700, color: '#92400e',
+                  fontSize: '12px', fontWeight: 700, color: 'var(--warn-text)',
                   display: 'flex', alignItems: 'center', gap: '6px',
                 }}>
                   <span style={{
@@ -2039,12 +2058,12 @@ export default function AutonomousScienceBuildingPage() {
           <section className="auto-panel-section">
             <div className="auto-section-title" style={{ marginBottom: '8px' }}>Structural debris</div>
             <div style={{
-              borderRadius: '12px', border: '1px solid #f0d4b3',
+              borderRadius: '12px', border: '1px solid rgba(245,158,11,0.35)',
               background: 'rgba(245,158,11,0.08)', padding: '12px 14px',
             }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
                 <span style={{ width: '11px', height: '11px', borderRadius: '3px', background: '#f59e0b', flexShrink: 0 }} />
-                <div style={{ fontSize: '12px', fontWeight: 700, color: '#9a3412', textTransform: 'capitalize' }}>
+                <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--warn-text-strong)', textTransform: 'capitalize' }}>
                   {quakeScenario} quake
                 </div>
               </div>
@@ -2054,19 +2073,19 @@ export default function AutonomousScienceBuildingPage() {
                 more debris later in the run.
               </div>
               {simState && (
-                <div style={{ marginTop: '10px', paddingTop: '10px', borderTop: '1px solid #f0d4b3' }}>
+                <div style={{ marginTop: '10px', paddingTop: '10px', borderTop: '1px solid rgba(245,158,11,0.35)' }}>
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '8px' }}>
-                    <div style={{ borderRadius: '10px', background: 'var(--bg-card)', border: '1px solid #f0d4b3', padding: '8px 10px' }}>
+                    <div style={{ borderRadius: '10px', background: 'var(--bg-card)', border: '1px solid rgba(245,158,11,0.35)', padding: '8px 10px' }}>
                       <div style={{ fontSize: '10px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Active</div>
-                      <div style={{ fontSize: '18px', fontWeight: 800, color: '#9a3412', letterSpacing: '-0.02em' }}>{activeDebrisCount}</div>
+                      <div style={{ fontSize: '18px', fontWeight: 800, color: 'var(--warn-text-strong)', letterSpacing: '-0.02em' }}>{activeDebrisCount}</div>
                     </div>
-                    <div style={{ borderRadius: '10px', background: 'var(--bg-card)', border: '1px solid #f0d4b3', padding: '8px 10px' }}>
+                    <div style={{ borderRadius: '10px', background: 'var(--bg-card)', border: '1px solid rgba(245,158,11,0.35)', padding: '8px 10px' }}>
                       <div style={{ fontSize: '10px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Waiting</div>
-                      <div style={{ fontSize: '18px', fontWeight: 800, color: '#9a3412', letterSpacing: '-0.02em' }}>{pendingDebrisCount}</div>
+                      <div style={{ fontSize: '18px', fontWeight: 800, color: 'var(--warn-text-strong)', letterSpacing: '-0.02em' }}>{pendingDebrisCount}</div>
                     </div>
                   </div>
                   {tremorRemaining > 0 && (
-                    <div style={{ marginTop: '8px', fontSize: '11px', fontWeight: 600, color: '#92400e' }}>
+                    <div style={{ marginTop: '8px', fontSize: '11px', fontWeight: 600, color: 'var(--warn-text)' }}>
                       First debris release in {tremorRemaining.toFixed(1)}s.
                     </div>
                   )}

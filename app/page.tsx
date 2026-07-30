@@ -57,12 +57,17 @@ function computeReadiness(stats: AggregateStats | null): number {
   return Math.round(Math.max(0, Math.min(100, evacScore + bottleneckScore + timeScore)))
 }
 
-function readinessLabel(score: number): { text: string; color: string } {
-  if (score >= 80) return { text: 'Excellent', color: '#22c55e' }
-  if (score >= 60) return { text: 'Good', color: '#2db8b0' }
-  if (score >= 40) return { text: 'Fair', color: '#f59e0b' }
-  if (score > 0)   return { text: 'Needs Work', color: '#ef4444' }
-  return { text: 'No Data', color: '#94a3b8' }
+/**
+ * `color` is the vivid hue for the gauge ring (a graphic); `textColor` is the
+ * contrast-safe variant for the label, since the vivid hues only reach
+ * ~2.2-3.8:1 as text on a white card.
+ */
+function readinessLabel(score: number): { text: string; color: string; textColor: string } {
+  if (score >= 80) return { text: 'Excellent', color: '#22c55e', textColor: 'var(--status-text-green)' }
+  if (score >= 60) return { text: 'Good', color: '#2db8b0', textColor: 'var(--status-text-teal)' }
+  if (score >= 40) return { text: 'Fair', color: '#f59e0b', textColor: 'var(--status-text-amber)' }
+  if (score > 0)   return { text: 'Needs Work', color: '#ef4444', textColor: 'var(--status-text-red)' }
+  return { text: 'No Data', color: '#94a3b8', textColor: 'var(--status-text-slate)' }
 }
 
 function nameFromEmail(email?: string | null): string {
@@ -206,7 +211,9 @@ export default function DashboardPage() {
   const readiness = (!isDashboardLoading && !isCampusLoading && campusReadiness !== null)
     ? campusReadiness
     : (isDashboardLoading ? 0 : computeReadiness(stats))
-  const rl = effectiveLoading ? { text: 'Loading', color: '#94a3b8' } : readinessLabel(readiness)
+  const rl = effectiveLoading
+    ? { text: 'Loading', color: '#94a3b8', textColor: 'var(--status-text-slate)' }
+    : readinessLabel(readiness)
   const statCards = buildStatCards(stats, isDashboardLoading)
   const greeting = getGreeting()
   const displayName = profileName && profileName.userId === user?.id ? profileName.displayName : null
@@ -334,7 +341,7 @@ export default function DashboardPage() {
                 description="A composite 0-100 score measuring evacuation preparedness. Based on evacuation rate (40%), bottleneck frequency (30%), and response time (30%)."
               />
             </div>
-            <div style={{ fontSize: '20px', fontWeight: '700', color: rl.color, marginBottom: '4px' }}>
+            <div style={{ fontSize: '20px', fontWeight: '700', color: rl.textColor, marginBottom: '4px' }}>
               {rl.text}
             </div>
             <div style={{ fontSize: '12px', color: 'var(--text-secondary)', lineHeight: 1.5 }}>

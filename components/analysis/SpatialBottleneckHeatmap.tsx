@@ -1065,7 +1065,7 @@ function PopupStat({ label, value, tone }: { label: string; value: string; tone?
   const valueColor = tone === 'warn' ? '#dc2626' : tone === 'ok' ? '#16a34a' : '#0f172a'
   return (
     <div style={{
-      background: 'var(--bg-subtle)', border: '1px solid #eef2f6', borderRadius: '8px',
+      background: 'var(--bg-subtle)', border: '1px solid var(--border)', borderRadius: '8px',
       padding: '5px 9px', flex: '1 0 auto', minWidth: '54px',
     }}>
       <div style={{

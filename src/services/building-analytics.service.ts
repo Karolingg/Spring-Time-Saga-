@@ -91,6 +91,18 @@ function scoreToGrade(score: number): BuildingGrade {
          score >= 60 ? 'D' : 'F'
 }
 
+const GRADE_ORDER: BuildingGrade[] = ['F', 'D', 'C', 'B', 'A']
+
+function gradeRank(grade: BuildingGrade): number {
+  return GRADE_ORDER.indexOf(grade)
+}
+
+/** True when `after` is a strictly worse letter grade than `before`. */
+export function didGradeRegress(before: BuildingGrade | null, after: BuildingGrade | null): boolean {
+  if (before == null || after == null) return false
+  return gradeRank(after) < gradeRank(before)
+}
+
 function scoreOneRun(args: {
   rate: number
   time: number

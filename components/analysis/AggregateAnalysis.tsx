@@ -22,6 +22,14 @@ const RISK_COLORS: Record<string, string> = {
   HIGH: '#ef4444', MEDIUM: '#f59e0b', LOW: '#22c55e',
 }
 
+/** Text-safe counterparts — the vivid hues above stay for the pill fills, but
+ * only reach ~2.2-3.8:1 as text on a light card. */
+const RISK_TEXT_COLORS: Record<string, string> = {
+  HIGH: 'var(--status-text-red)',
+  MEDIUM: 'var(--status-text-amber)',
+  LOW: 'var(--status-text-green)',
+}
+
 interface BandDef { key: BandKey; label: string; color: string; min: number }
 
 const BANDS: BandDef[] = [
@@ -266,6 +274,7 @@ export function AggregateAnalysis({ hideHeader = false }: AggregateAnalysisProps
         {displayList.map((zone, i) => {
           const band = bandFor(zone.avgIntensity)
           const riskColor = RISK_COLORS[zone.dominantRiskLevel] ?? '#22c55e'
+          const riskTextColor = RISK_TEXT_COLORS[zone.dominantRiskLevel] ?? 'var(--status-text-green)'
           const zoneKey = zone.zoneName + i
           const isExpanded = expandedZone === zoneKey
 
@@ -293,7 +302,7 @@ export function AggregateAnalysis({ hideHeader = false }: AggregateAnalysisProps
                 <div style={{ display: 'flex', alignItems: 'center' }}>
                   <span style={{
                     padding: '2px 10px', borderRadius: '999px',
-                    background: `${riskColor}14`, color: riskColor,
+                    background: `${riskColor}14`, color: riskTextColor,
                     fontSize: '10px', fontWeight: 700,
                   }}>{zone.dominantRiskLevel}</span>
                 </div>
@@ -322,7 +331,7 @@ export function AggregateAnalysis({ hideHeader = false }: AggregateAnalysisProps
                     <DetailItem label="Zone type" value={friendlyType(zone.zoneName)} />
                     <DetailItem label="Avg agents" value={`${zone.avgAgentCount} people`} />
                     <DetailItem label="Total bottlenecks" value={String(zone.totalBottlenecks)} />
-                    <DetailItem label="Risk level" value={zone.dominantRiskLevel} color={riskColor} />
+                    <DetailItem label="Risk level" value={zone.dominantRiskLevel} color={riskTextColor} />
                   </div>
                   <p style={{
                     margin: 0, fontSize: '12px', color: 'var(--text-secondary)', lineHeight: 1.5, fontStyle: 'italic',

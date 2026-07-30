@@ -50,6 +50,22 @@
   --glass-card-bg: linear-gradient(180deg, rgba(255,255,255,0.88) 0%, rgba(248,250,252,0.72) 100%);
   --glass-chip-bg: rgba(255, 255, 255, 0.85);
 
+  /* Warning/hazard TEXT on amber-tinted panels. The panel fills stay fixed
+   * (they're semantic hazard colors), but deep-amber text is only legible on
+   * the light fill — on the dark fill it needs to invert to a pale amber. */
+  --warn-text: #92400e;
+  --warn-text-strong: #9a3412;
+
+  /* Text-safe variants of the vivid status hues. The vivid values
+   * (#22c55e, #2db8b0, #f59e0b, #ef4444) stay in use for fills, rings, and
+   * chart marks, but as TEXT they only reach ~2.2-3.8:1 on white. These keep
+   * the hue while clearing 4.5:1 in both themes. */
+  --status-text-green: #15803d;
+  --status-text-teal:  #17756e;
+  --status-text-amber: #b45309;
+  --status-text-red:   #dc2626;
+  --status-text-slate: #64748b;
+
   /* ── Spacing scale ── */
   --space-1: 4px;
   --space-2: 8px;
@@ -122,6 +138,17 @@
   --overlay-panel-bg: linear-gradient(180deg, rgba(19,28,46,0.97) 0%, rgba(11,18,32,0.96) 100%);
   --glass-card-bg: linear-gradient(180deg, rgba(255,255,255,0.07) 0%, rgba(255,255,255,0.03) 100%);
   --glass-chip-bg: rgba(255, 255, 255, 0.08);
+
+  --warn-text: #fbbf24;
+  --warn-text-strong: #fcd34d;
+
+  /* On the dark card the vivid hues already clear 4.5:1, but these stay
+   * slightly lifted so status text reads consistently against tinted pills. */
+  --status-text-green: #4ade80;
+  --status-text-teal:  #53d6cd;
+  --status-text-amber: #fbbf24;
+  --status-text-red:   #f87171;
+  --status-text-slate: #8496ad;
 }
 
 *, *::before, *::after {

@@ -74,7 +74,7 @@ export function OnboardingOverlay({ currentPage }: OnboardingOverlayProps) {
         <p
           style={{
             fontSize: '16px',
-            color: '#4b5563',
+            color: 'var(--text-secondary)',
             lineHeight: '1.6',
             marginBottom: '32px',
           }}

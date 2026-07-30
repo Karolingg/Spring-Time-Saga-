@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import { useAuth } from '@/src/hooks/useAuth'
 import { useIsMobile } from '@/src/hooks/useIsMobile'
-import { useTheme } from '@/src/context/ThemeContext'
 import MapView, { type AssemblyMarker, type MapMarker } from '@/components/MapView'
 import { PageHeader } from '@/components/ui/PageHeader'
 import {BUILDING_FLOOR_COUNT} from '@/src/config/building-floor-counts'
@@ -215,6 +214,14 @@ const RISK_COLORS: Record<string, string> = {
   HIGH: '#ef4444',
 }
 
+/** Text-safe counterparts — the vivid hues above stay for the accent bar and
+ * pill fills, but only reach ~2.2-3.8:1 as text on a light card. */
+const RISK_TEXT_COLORS: Record<string, string> = {
+  LOW: 'var(--status-text-green)',
+  MEDIUM: 'var(--status-text-amber)',
+  HIGH: 'var(--status-text-red)',
+}
+
 function boundsCenter(b: BuildingBounds): [number, number] {
   return [(b.west + b.east) / 2, (b.south + b.north) / 2] // [lng, lat]
 }
@@ -231,10 +238,22 @@ function gradeAccent(grade: BuildingGrade): string {
   }
 }
 
+/** Letter color for the grade badge. White on these fills only reaches
+ *  2.15-3.76:1; these near-black inks clear 4.5:1 on their own fill while
+ *  leaving gradeAccent() untouched, so the badge keeps its color identity
+ *  and its visibility against the dark card. */
+function gradeInk(grade: BuildingGrade): string {
+  switch (grade) {
+    case 'A': return '#052e16'
+    case 'B': return '#052e16'
+    case 'C': return '#422006'
+    case 'D': return '#431407'
+    case 'F': return '#380505'
+  }
+}
+
 export default function MapPage() {
   const { isAuthenticated, isLoading } = useAuth()
-  const { theme } = useTheme()
-  const isDark = theme === 'dark'
   const router = useRouter()
   const [selected, setSelected] = useState<string | null>(null)
   const [forcedCenter, setForcedCenter] = useState<[number, number] | null>(null)
@@ -301,6 +320,7 @@ export default function MapPage() {
   }, [building])
 
   const riskColor = building ? RISK_COLORS[building.riskLevel] : '#22c55e'
+  const riskTextColor = building ? RISK_TEXT_COLORS[building.riskLevel] : 'var(--status-text-green)'
   const panelOffset = building && !isMobile ? 416 : 0
 
   const focusCenter: [number, number] | null = useMemo(() => {
@@ -503,7 +523,7 @@ export default function MapPage() {
                   display: 'inline-flex', alignItems: 'center', gap: '5px',
                   padding: '4px 12px', borderRadius: '20px',
                   background: `${riskColor}15`,
-                  color: riskColor,
+                  color: riskTextColor,
                   fontSize: '11px', fontWeight: '600',
                   border: `1px solid ${riskColor}40`,
                 }}>
@@ -709,7 +729,7 @@ export default function MapPage() {
                       <div style={{
                         width: '52px', height: '52px', borderRadius: '12px',
                         background: gradeAccent(activeScore.grade),
-                        color: '#fff',
+                        color: gradeInk(activeScore.grade),
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
                         fontSize: '26px', fontWeight: 800, letterSpacing: '-0.02em',
                         boxShadow: `0 6px 16px ${gradeAccent(activeScore.grade)}55`,
@@ -724,7 +744,7 @@ export default function MapPage() {
                         <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '5px' }}>
                           Based on {activeScore.runCount} {activeScore.runCount === 1 ? 'drill' : 'drills'}
                           {activeScore.cap && (
-                            <span style={{ color: isDark ? '#fbbf24' : '#92400e', fontWeight: 700 }}>
+                            <span style={{ color: 'var(--warn-text)', fontWeight: 700 }}>
                               {' '}&middot; capped from {activeScore.rawScore}
                             </span>
                           )}
@@ -777,12 +797,12 @@ export default function MapPage() {
                         marginBottom: '12px',
                         display: 'flex', alignItems: 'flex-start', gap: '8px',
                       }}>
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={isDark ? '#fbbf24' : '#b45309'} strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginTop: '1px' }}>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--warn-text)" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginTop: '1px' }}>
                           <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
                           <line x1="12" y1="9" x2="12" y2="13" />
                           <line x1="12" y1="17" x2="12.01" y2="17" />
                         </svg>
-                        <div style={{ fontSize: '11px', color: isDark ? '#fcd34d' : '#9a3412', lineHeight: 1.5 }}>
+                        <div style={{ fontSize: '11px', color: 'var(--warn-text-strong)', lineHeight: 1.5 }}>
                           {activeScore.cap.reason}
                         </div>
                       </div>
@@ -852,7 +872,7 @@ export default function MapPage() {
                               <div style={{
                                 width: '22px', height: '22px', borderRadius: '6px',
                                 background: gradeAccent(floor.grade),
-                                color: '#fff',
+                                color: gradeInk(floor.grade),
                                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                                 fontSize: '10px', fontWeight: 800, flexShrink: 0,
                                 boxShadow: `0 2px 6px ${gradeAccent(floor.grade)}55`,
@@ -1204,6 +1224,9 @@ export default function MapPage() {
                   height: '40px',
                   borderRadius: '50%',
                   background: 'rgba(255, 255, 255, 0.9)',
+                  // Chip stays light over the photo in both themes, so the
+                  // icon is pinned dark rather than inheriting themed text.
+                  color: '#0f172a',
                   border: 'none',
                   cursor: 'pointer',
                   display: 'flex',
@@ -1339,10 +1362,10 @@ export default function MapPage() {
               padding: '12px 14px', background: 'rgba(245,158,11,0.1)', borderRadius: '10px',
               border: '1px solid rgba(245,158,11,0.35)', marginBottom: '12px',
             }}>
-              <div style={{ fontSize: '12px', fontWeight: 700, color: '#92400e', marginBottom: '4px' }}>
+              <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--warn-text)', marginBottom: '4px' }}>
                 Anti-gaming weighting
               </div>
-              <div style={{ fontSize: '12px', color: '#78350f', lineHeight: 1.6 }}>
+              <div style={{ fontSize: '12px', color: 'var(--warn-text-strong)', lineHeight: 1.6 }}>
                 Each run counts as <strong>scenario_multiplier × occupancy_ratio</strong>.
                 A severe + full-building drill counts ~10× more than a near-empty minor drill,
                 so easy runs can&apos;t inflate the grade.
@@ -1354,10 +1377,10 @@ export default function MapPage() {
               padding: '12px 14px', background: 'rgba(245,158,11,0.12)', borderRadius: '10px',
               border: '1px solid rgba(249,115,22,0.35)',
             }}>
-              <div style={{ fontSize: '12px', fontWeight: 700, color: '#9a3412', marginBottom: '6px' }}>
+              <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--warn-text-strong)', marginBottom: '6px' }}>
                 Mandatory coverage cap
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: '4px 12px', fontSize: '12px', color: '#7c2d12' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: '4px 12px', fontSize: '12px', color: 'var(--warn-text)' }}>
                 <span>Has a severe drill</span><span style={{ fontWeight: 700 }}>no cap</span>
                 <span>Moderate only</span><span style={{ fontWeight: 700 }}>max B (≤89)</span>
                 <span>Minor only</span><span style={{ fontWeight: 700 }}>max C (≤79)</span>
