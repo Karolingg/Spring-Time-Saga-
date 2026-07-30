@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import { useAuth } from '@/src/hooks/useAuth'
 import { useIsMobile } from '@/src/hooks/useIsMobile'
+import { useTheme } from '@/src/context/ThemeContext'
 import MapView, { type AssemblyMarker, type MapMarker } from '@/components/MapView'
 import { PageHeader } from '@/components/ui/PageHeader'
 import {BUILDING_FLOOR_COUNT} from '@/src/config/building-floor-counts'
@@ -232,6 +233,8 @@ function gradeAccent(grade: BuildingGrade): string {
 
 export default function MapPage() {
   const { isAuthenticated, isLoading } = useAuth()
+  const { theme } = useTheme()
+  const isDark = theme === 'dark'
   const router = useRouter()
   const [selected, setSelected] = useState<string | null>(null)
   const [forcedCenter, setForcedCenter] = useState<[number, number] | null>(null)
@@ -437,7 +440,7 @@ export default function MapPage() {
             right: 0,
             bottom: 0,
             width: isMobile ? '100%' : '400px',
-            background: 'linear-gradient(180deg, rgba(241,245,249,0.97) 0%, rgba(232,240,247,0.95) 100%)',
+            background: 'var(--overlay-panel-bg)',
             borderLeft: isMobile ? 'none' : '1px solid rgba(148,163,184,0.24)',
             borderRadius: isMobile ? '14px' : '0 14px 14px 0',
             boxShadow: 'inset 1px 0 0 rgba(255,255,255,0.35)',
@@ -462,21 +465,21 @@ export default function MapPage() {
               {/* Close */}
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '4px' }}>
                 <div style={{ flex: 1 }}>
-                  <h2 style={{ margin: '0 0 2px', fontSize: '20px', fontWeight: '700', color: '#0f172a', lineHeight: 1.3 }}>
+                  <h2 style={{ margin: '0 0 2px', fontSize: '20px', fontWeight: '700', color: 'var(--text-primary)', lineHeight: 1.3 }}>
                     {building.name}
                   </h2>
-                  <p style={{ margin: '0', fontSize: '12px', color: '#64748b' }}>
+                  <p style={{ margin: '0', fontSize: '12px', color: 'var(--text-secondary)' }}>
                     UP Cebu &middot; Lahug, Cebu City
                   </p>
                 </div>
                 <button onClick={() => setSelected(null)} aria-label="Close building details" style={{
                   width: '28px', height: '28px', borderRadius: '8px', flexShrink: 0,
-                  background: 'rgba(255,255,255,0.72)', border: '1px solid rgba(148,163,184,0.24)',
+                  background: 'var(--glass-chip-bg)', border: '1px solid var(--border)',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  cursor: 'pointer', color: '#64748b', transition: 'background 0.2s',
+                  cursor: 'pointer', color: 'var(--text-secondary)', transition: 'background 0.2s',
                 }}
-                onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.95)'}
-                onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,255,255,0.72)'}
+                onMouseEnter={e => e.currentTarget.style.background = 'var(--nav-active-bg)'}
+                onMouseLeave={e => e.currentTarget.style.background = 'var(--glass-chip-bg)'}
                 >
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
                 </button>
@@ -515,13 +518,13 @@ export default function MapPage() {
                 style={{
                   width: '100%',
                   height: '180px',
-                  background: 'linear-gradient(180deg, rgba(248,250,252,0.95) 0%, rgba(226,232,240,0.75) 100%)',
+                  background: 'var(--glass-card-bg)',
                   borderRadius: '12px',
                   border: '1px solid rgba(148,163,184,0.2)',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  color: '#94a3b8',
+                  color: 'var(--text-muted)',
                   fontSize: '13px',
                   overflow: 'hidden',
                   position: 'relative',
@@ -575,18 +578,18 @@ export default function MapPage() {
             <div style={{ padding: '0 22px 16px' }}>
               <div style={{
                 padding: '14px 16px',
-                background: 'linear-gradient(180deg, rgba(255,255,255,0.86) 0%, rgba(248,250,252,0.72) 100%)',
+                background: 'var(--glass-card-bg)',
                 borderRadius: '12px',
                 border: '1px solid rgba(148,163,184,0.18)',
                 boxShadow: '0 10px 22px rgba(15,23,42,0.06)',
               }}>
                 <div style={{
-                  fontSize: '10px', color: '#64748b', fontWeight: 700,
+                  fontSize: '10px', color: 'var(--text-secondary)', fontWeight: 700,
                   letterSpacing: '0.6px', textTransform: 'uppercase', marginBottom: '6px',
                 }}>
                   Overview
                 </div>
-                <p style={{ margin: 0, fontSize: '13px', color: '#475569', lineHeight: 1.7 }}>
+                <p style={{ margin: 0, fontSize: '13px', color: 'var(--text-secondary)', lineHeight: 1.7 }}>
                   {building.notes}
                 </p>
               </div>
@@ -601,7 +604,7 @@ export default function MapPage() {
               return (
                 <div style={{
                   margin: '0 22px 16px', padding: '16px 18px',
-                  background: 'linear-gradient(180deg, rgba(255,255,255,0.86) 0%, rgba(248,250,252,0.72) 100%)',
+                  background: 'var(--glass-card-bg)',
                   border: '1px solid rgba(148,163,184,0.2)',
                   borderRadius: '12px',
                   boxShadow: '0 12px 26px rgba(15,23,42,0.06)',
@@ -620,15 +623,15 @@ export default function MapPage() {
                         <div key={floorNum} style={{
                           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                           padding: '8px 12px', borderRadius: '8px',
-                          background: 'rgba(255,255,255,0.85)',
+                          background: 'var(--glass-chip-bg)',
                           border: '1px solid rgba(148,163,184,0.14)',
                         }}>
-                          <span style={{ fontSize: '12px', color: '#475569', fontWeight: 600 }}>
+                          <span style={{ fontSize: '12px', color: 'var(--text-secondary)', fontWeight: 600 }}>
                             {floorLabel}
                           </span>
-                          <span style={{ fontSize: '14px', color: '#0f172a', fontWeight: 700 }}>
+                          <span style={{ fontSize: '14px', color: 'var(--text-primary)', fontWeight: 700 }}>
                             {capacity}
-                            <span style={{ fontSize: '10px', color: '#94a3b8', fontWeight: 600, marginLeft: '4px' }}>max</span>
+                            <span style={{ fontSize: '10px', color: 'var(--text-muted)', fontWeight: 600, marginLeft: '4px' }}>max</span>
                           </span>
                         </div>
                       )
@@ -639,7 +642,7 @@ export default function MapPage() {
                     borderTop: '1px solid rgba(148,163,184,0.18)',
                     display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                   }}>
-                    <span style={{ fontSize: '11px', color: '#64748b', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                    <span style={{ fontSize: '11px', color: 'var(--text-secondary)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                       Total
                     </span>
                     <span style={{ fontSize: '18px', fontWeight: 800, color: '#2db8b0' }}>
@@ -656,7 +659,7 @@ export default function MapPage() {
             <div style={{ padding: '0 22px 16px' }}>
               <div style={{
                 padding: '16px',
-                background: 'linear-gradient(180deg, rgba(255,255,255,0.9) 0%, rgba(248,250,252,0.74) 100%)',
+                background: 'var(--glass-card-bg)',
                 border: '1px solid rgba(45,184,176,0.18)',
                 borderRadius: '12px',
                 boxShadow: '0 12px 26px rgba(15,23,42,0.06)',
@@ -694,7 +697,7 @@ export default function MapPage() {
                   </button>
                 </div>
                 {scoreLoading ? (
-                  <div style={{ fontSize: '12px', color: '#94a3b8', textAlign: 'center', padding: '14px 0' }}>
+                  <div style={{ fontSize: '12px', color: 'var(--text-muted)', textAlign: 'center', padding: '14px 0' }}>
                     Loading drill data&hellip;
                   </div>
                 ) : activeScore ? (
@@ -712,14 +715,14 @@ export default function MapPage() {
                         {activeScore.grade}
                       </div>
                       <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontSize: '24px', fontWeight: 800, color: '#0f172a', lineHeight: 1 }}>
+                        <div style={{ fontSize: '24px', fontWeight: 800, color: 'var(--text-primary)', lineHeight: 1 }}>
                           {activeScore.score}
-                          <span style={{ fontSize: '13px', color: '#64748b', fontWeight: 600, marginLeft: '4px' }}>/100</span>
+                          <span style={{ fontSize: '13px', color: 'var(--text-secondary)', fontWeight: 600, marginLeft: '4px' }}>/100</span>
                         </div>
-                        <div style={{ fontSize: '11px', color: '#64748b', marginTop: '5px' }}>
+                        <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '5px' }}>
                           Based on {activeScore.runCount} {activeScore.runCount === 1 ? 'drill' : 'drills'}
                           {activeScore.cap && (
-                            <span style={{ color: '#92400e', fontWeight: 700 }}>
+                            <span style={{ color: isDark ? '#fbbf24' : '#92400e', fontWeight: 700 }}>
                               {' '}&middot; capped from {activeScore.rawScore}
                             </span>
                           )}
@@ -752,7 +755,7 @@ export default function MapPage() {
                           </div>
                           <div style={{
                             fontSize: '15px', fontWeight: 800,
-                            color: bucket.count > 0 ? '#0f172a' : '#94a3b8',
+                            color: bucket.count > 0 ? 'var(--text-primary)' : 'var(--text-muted)',
                             lineHeight: 1.2, marginTop: '2px',
                           }}>
                             {bucket.count}
@@ -767,31 +770,31 @@ export default function MapPage() {
                       <div style={{
                         padding: '8px 10px',
                         borderRadius: '8px',
-                        background: '#fff7ed',
-                        border: '1px solid #fed7aa',
+                        background: 'rgba(245,158,11,0.12)',
+                        border: '1px solid rgba(249,115,22,0.35)',
                         marginBottom: '12px',
                         display: 'flex', alignItems: 'flex-start', gap: '8px',
                       }}>
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#b45309" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginTop: '1px' }}>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={isDark ? '#fbbf24' : '#b45309'} strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginTop: '1px' }}>
                           <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
                           <line x1="12" y1="9" x2="12" y2="13" />
                           <line x1="12" y1="17" x2="12.01" y2="17" />
                         </svg>
-                        <div style={{ fontSize: '11px', color: '#9a3412', lineHeight: 1.5 }}>
+                        <div style={{ fontSize: '11px', color: isDark ? '#fcd34d' : '#9a3412', lineHeight: 1.5 }}>
                           {activeScore.cap.reason}
                         </div>
                       </div>
                     )}
                     {/* Building-level metric breakdown */}
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', rowGap: '6px', columnGap: '12px', fontSize: '12px' }}>
-                      <div style={{ color: '#475569' }}>Avg evacuated</div>
-                      <div style={{ color: '#0f172a', fontWeight: 600, textAlign: 'right' }}>{Math.round(activeScore.avgEvacuationRate * 100)}%</div>
-                      <div style={{ color: '#475569' }}>Avg evac time</div>
-                      <div style={{ color: '#0f172a', fontWeight: 600, textAlign: 'right' }}>{Math.round(activeScore.avgEvacuationTime)}s</div>
-                      <div style={{ color: '#475569' }}>Avg bottlenecks</div>
-                      <div style={{ color: '#0f172a', fontWeight: 600, textAlign: 'right' }}>{activeScore.avgBottlenecks.toFixed(1)}</div>
-                      <div style={{ color: '#475569' }}>Peak density</div>
-                      <div style={{ color: '#0f172a', fontWeight: 600, textAlign: 'right' }}>{Math.round(activeScore.avgPeakDensity * 100)}%</div>
+                      <div style={{ color: 'var(--text-secondary)' }}>Avg evacuated</div>
+                      <div style={{ color: 'var(--text-primary)', fontWeight: 600, textAlign: 'right' }}>{Math.round(activeScore.avgEvacuationRate * 100)}%</div>
+                      <div style={{ color: 'var(--text-secondary)' }}>Avg evac time</div>
+                      <div style={{ color: 'var(--text-primary)', fontWeight: 600, textAlign: 'right' }}>{Math.round(activeScore.avgEvacuationTime)}s</div>
+                      <div style={{ color: 'var(--text-secondary)' }}>Avg bottlenecks</div>
+                      <div style={{ color: 'var(--text-primary)', fontWeight: 600, textAlign: 'right' }}>{activeScore.avgBottlenecks.toFixed(1)}</div>
+                      <div style={{ color: 'var(--text-secondary)' }}>Peak density</div>
+                      <div style={{ color: 'var(--text-primary)', fontWeight: 600, textAlign: 'right' }}>{Math.round(activeScore.avgPeakDensity * 100)}%</div>
                     </div>
 
                     {/* Per-floor breakdown — only shown when runs carry a floor_index */}
@@ -802,7 +805,7 @@ export default function MapPage() {
                         borderTop: '1px solid rgba(148,163,184,0.2)',
                       }}>
                         <div style={{
-                          fontSize: '10px', color: '#94a3b8', fontWeight: 700,
+                          fontSize: '10px', color: 'var(--text-muted)', fontWeight: 700,
                           letterSpacing: '0.6px', textTransform: 'uppercase', marginBottom: '10px',
                         }}>
                           Floor Breakdown
@@ -812,7 +815,7 @@ export default function MapPage() {
                             <div key={floor.floorIndex} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                               {/* Floor label */}
                               <div style={{
-                                fontSize: '11px', color: '#64748b', fontWeight: 600,
+                                fontSize: '11px', color: 'var(--text-secondary)', fontWeight: 600,
                                 width: '52px', flexShrink: 0,
                               }}>
                                 {floor.floorIndex === 1 ? 'Ground' : `Floor ${floor.floorIndex}`}
@@ -837,7 +840,7 @@ export default function MapPage() {
 
                               {/* Score number */}
                               <div style={{
-                                fontSize: '11px', color: '#334155', fontWeight: 700,
+                                fontSize: '11px', color: 'var(--text-primary)', fontWeight: 700,
                                 width: '26px', textAlign: 'right', flexShrink: 0,
                               }}>
                                 {floor.score}
@@ -857,14 +860,14 @@ export default function MapPage() {
                             </div>
                           ))}
                         </div>
-                        <div style={{ fontSize: '10px', color: '#94a3b8', marginTop: '8px', lineHeight: 1.5 }}>
+                        <div style={{ fontSize: '10px', color: 'var(--text-muted)', marginTop: '8px', lineHeight: 1.5 }}>
                           Building score is the average of all floor scores.
                         </div>
                       </div>
                     )}
                   </>
                 ) : (
-                  <div style={{ fontSize: '12px', color: '#94a3b8', textAlign: 'center', padding: '10px 0', lineHeight: 1.7 }}>
+                  <div style={{ fontSize: '12px', color: 'var(--text-muted)', textAlign: 'center', padding: '10px 0', lineHeight: 1.7 }}>
                     No drill data yet.
                     <div style={{ fontSize: '11px', marginTop: '2px' }}>
                       Run a simulation to generate a score.
@@ -879,7 +882,7 @@ export default function MapPage() {
               <div style={{ padding: '0 22px 16px' }}>
                 <div style={{
                   padding: '14px 16px',
-                  background: 'linear-gradient(180deg, rgba(255,255,255,0.9) 0%, rgba(236,253,245,0.75) 100%)',
+                  background: 'var(--glass-card-bg)',
                   border: '1px solid rgba(34,197,94,0.22)',
                   borderRadius: '12px',
                   boxShadow: '0 12px 26px rgba(15,23,42,0.06)',
@@ -903,10 +906,10 @@ export default function MapPage() {
                       </svg>
                     </div>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: '14px', fontWeight: 700, color: '#0f172a', lineHeight: 1.3 }}>
+                      <div style={{ fontSize: '14px', fontWeight: 700, color: 'var(--text-primary)', lineHeight: 1.3 }}>
                         {nearestAssembly.point.name}
                       </div>
-                      <div style={{ fontSize: '11px', color: '#64748b', marginTop: '3px' }}>
+                      <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '3px' }}>
                         {Math.round(nearestAssembly.distance)} m away &middot; capacity {nearestAssembly.point.capacity}
                       </div>
                     </div>
@@ -921,7 +924,7 @@ export default function MapPage() {
             {/* Stats grid */}
             <div style={{ padding: '0 22px' }}>
               <div style={{
-                fontSize: '10px', color: '#64748b', fontWeight: 700,
+                fontSize: '10px', color: 'var(--text-secondary)', fontWeight: 700,
                 letterSpacing: '0.6px', textTransform: 'uppercase', marginBottom: '8px',
               }}>
                 Building Snapshot
@@ -931,7 +934,7 @@ export default function MapPage() {
                   {/* Floors */}
                   <div style={{
                     padding: '14px 16px',
-                    background: 'linear-gradient(180deg, rgba(255,255,255,0.86) 0%, rgba(248,250,252,0.7) 100%)',
+                    background: 'var(--glass-card-bg)',
                     borderRadius: '12px',
                     border: '1px solid rgba(148,163,184,0.18)',
                     display: 'grid', gridTemplateColumns: '36px 1fr auto', alignItems: 'center', gap: '12px',
@@ -950,14 +953,14 @@ export default function MapPage() {
                       </svg>
                     </div>
                     <div style={{ minWidth: 0 }}>
-                      <div style={{ fontSize: '11px', color: '#64748b', fontWeight: 700, letterSpacing: '0.5px', textTransform: 'uppercase' }}>
+                      <div style={{ fontSize: '11px', color: 'var(--text-secondary)', fontWeight: 700, letterSpacing: '0.5px', textTransform: 'uppercase' }}>
                         Floors
                       </div>
-                      <div style={{ fontSize: '12px', color: '#94a3b8', marginTop: '2px' }}>
+                      <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '2px' }}>
                         Total building levels
                       </div>
                     </div>
-                    <div style={{ fontSize: '22px', fontWeight: 800, color: '#0f172a' }}>
+                    <div style={{ fontSize: '22px', fontWeight: 800, color: 'var(--text-primary)' }}>
                       {BUILDING_FLOOR_COUNT[building.id]}
                     </div>
                   </div>
@@ -969,7 +972,7 @@ export default function MapPage() {
                   background: 'rgba(148,163,184,0.1)',
                   borderRadius: '12px',
                   textAlign: 'center',
-                  color: '#64748b',
+                  color: 'var(--text-secondary)',
                   marginBottom: '16px',
                 }}>
                   <div style={{ fontSize: '14px', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
@@ -1039,7 +1042,7 @@ export default function MapPage() {
               transform: 'translate(-50%, -100%) translateY(-18px)',
               zIndex: 2000,
               width: '220px',
-              background: '#ffffff',
+              background: 'var(--bg-card)',
               borderRadius: '18px',
               boxShadow: '0 8px 32px rgba(0,0,0,0.18), 0 2px 8px rgba(0,0,0,0.08)',
               overflow: 'visible',
@@ -1058,7 +1061,7 @@ export default function MapPage() {
                     height: '130px',
                     borderRadius: '12px',
                     overflow: 'hidden',
-                    border: '1px solid #f0f0f0',
+                    border: '1px solid var(--border)',
                     cursor: 'pointer',
                     transition: 'opacity 0.2s',
                   }}
@@ -1090,17 +1093,17 @@ export default function MapPage() {
                     <circle cx="8.5" cy="8.5" r="1.5"/>
                     <path d="M21 15l-5-5L5 21"/>
                   </svg>
-                  <span style={{ fontSize: '10px', color: '#94a3b8', fontWeight: 500 }}>Evacuation area photo</span>
+                  <span style={{ fontSize: '10px', color: 'var(--text-muted)', fontWeight: 500 }}>Evacuation area photo</span>
                 </div>
               )}
 
               {/* Name + capacity — compact */}
               <div style={{ marginTop: '8px' }}>
-                <div style={{ fontSize: '13px', fontWeight: 700, color: '#1a2332', lineHeight: 1.2 }}>
+                <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)', lineHeight: 1.2 }}>
                   {selectedAssemblyData.name?.trim() || 'Assembly Point'}
                 </div>
                 <div style={{
-                  marginTop: '4px', fontSize: '11px', color: '#64748b', lineHeight: 1.3,
+                  marginTop: '4px', fontSize: '11px', color: 'var(--text-secondary)', lineHeight: 1.3,
                 }}>
                   {selectedAssemblyData.description}
                 </div>
@@ -1129,7 +1132,7 @@ export default function MapPage() {
               width: 0, height: 0,
               borderLeft: '11px solid transparent',
               borderRight: '11px solid transparent',
-              borderTop: '11px solid #ffffff',
+              borderTop: '11px solid var(--bg-card)',
               filter: 'drop-shadow(0 2px 2px rgba(0,0,0,0.06))',
             }} />
           </div>
@@ -1170,7 +1173,7 @@ export default function MapPage() {
                 position: 'relative',
                 maxWidth: '90vw',
                 maxHeight: '90vh',
-                background: '#fff',
+                background: 'var(--bg-card)',
                 borderRadius: '16px',
                 overflow: 'hidden',
                 boxShadow: '0 20px 60px rgba(0, 0, 0, 0.3)',
@@ -1248,7 +1251,7 @@ export default function MapPage() {
               maxWidth: '560px',
               maxHeight: '90vh',
               overflowY: 'auto',
-              background: '#ffffff',
+              background: 'var(--bg-card)',
               borderRadius: '16px',
               boxShadow: '0 20px 60px rgba(0, 0, 0, 0.3)',
               padding: isMobile ? '20px' : '28px 32px',
@@ -1260,12 +1263,12 @@ export default function MapPage() {
               style={{
                 position: 'absolute', top: '14px', right: '14px',
                 width: '32px', height: '32px', borderRadius: '50%',
-                background: '#f1f5f9', border: 'none', cursor: 'pointer',
+                background: 'var(--bg-inset)', border: 'none', cursor: 'pointer',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                color: '#475569', transition: 'background 0.15s',
+                color: 'var(--text-secondary)', transition: 'background 0.15s',
               }}
-              onMouseEnter={(e) => e.currentTarget.style.background = '#e2e8f0'}
-              onMouseLeave={(e) => e.currentTarget.style.background = '#f1f5f9'}
+              onMouseEnter={(e) => e.currentTarget.style.background = 'var(--border)'}
+              onMouseLeave={(e) => e.currentTarget.style.background = 'var(--bg-inset)'}
             >
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                 <line x1="18" y1="6" x2="6" y2="18" />
@@ -1273,37 +1276,37 @@ export default function MapPage() {
               </svg>
             </button>
 
-            <h2 style={{ margin: '0 0 6px', fontSize: '20px', fontWeight: 800, color: '#0f172a' }}>
+            <h2 style={{ margin: '0 0 6px', fontSize: '20px', fontWeight: 800, color: 'var(--text-primary)' }}>
               How the Readiness Score Works
             </h2>
-            <p style={{ margin: '0 0 20px', fontSize: '13px', color: '#64748b', lineHeight: 1.6 }}>
+            <p style={{ margin: '0 0 20px', fontSize: '13px', color: 'var(--text-secondary)', lineHeight: 1.6 }}>
               Every number is derived from completed simulation drills — no fabricated data.
               A building&apos;s grade reflects what its real evacuation runs actually show.
             </p>
 
             {/* Per-run breakdown */}
             <div style={{
-              padding: '14px 16px', background: '#f8fafc', borderRadius: '10px',
-              border: '1px solid #e2e8f0', marginBottom: '16px',
+              padding: '14px 16px', background: 'var(--bg-subtle)', borderRadius: '10px',
+              border: '1px solid var(--border)', marginBottom: '16px',
             }}>
               <div style={{ fontSize: '11px', fontWeight: 700, color: '#2db8b0', letterSpacing: '0.6px', marginBottom: '10px' }}>
                 PER-RUN SCORE (0–100)
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: '6px 16px', fontSize: '13px', color: '#334155' }}>
-                <span>Evacuation rate <span style={{ color: '#94a3b8' }}>(evacuated / total)</span></span>
-                <span style={{ fontWeight: 700, color: '#0f172a' }}>50 pts</span>
-                <span>Evacuation time <span style={{ color: '#94a3b8' }}>(≤60s = full, ≥300s = 0)</span></span>
-                <span style={{ fontWeight: 700, color: '#0f172a' }}>25 pts</span>
-                <span>Bottlenecks <span style={{ color: '#94a3b8' }}>(0 = full, ≥5 = 0)</span></span>
-                <span style={{ fontWeight: 700, color: '#0f172a' }}>15 pts</span>
-                <span>Peak crowd density <span style={{ color: '#94a3b8' }}>(≤50% = full)</span></span>
-                <span style={{ fontWeight: 700, color: '#0f172a' }}>10 pts</span>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: '6px 16px', fontSize: '13px', color: 'var(--text-primary)' }}>
+                <span>Evacuation rate <span style={{ color: 'var(--text-muted)' }}>(evacuated / total)</span></span>
+                <span style={{ fontWeight: 700, color: 'var(--text-primary)' }}>50 pts</span>
+                <span>Evacuation time <span style={{ color: 'var(--text-muted)' }}>(≤60s = full, ≥300s = 0)</span></span>
+                <span style={{ fontWeight: 700, color: 'var(--text-primary)' }}>25 pts</span>
+                <span>Bottlenecks <span style={{ color: 'var(--text-muted)' }}>(0 = full, ≥5 = 0)</span></span>
+                <span style={{ fontWeight: 700, color: 'var(--text-primary)' }}>15 pts</span>
+                <span>Peak crowd density <span style={{ color: 'var(--text-muted)' }}>(≤50% = full)</span></span>
+                <span style={{ fontWeight: 700, color: 'var(--text-primary)' }}>10 pts</span>
               </div>
             </div>
 
             {/* Grade scale */}
             <div style={{ marginBottom: '16px' }}>
-              <div style={{ fontSize: '11px', fontWeight: 700, color: '#64748b', letterSpacing: '0.6px', marginBottom: '8px' }}>
+              <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-secondary)', letterSpacing: '0.6px', marginBottom: '8px' }}>
                 LETTER GRADE
               </div>
               <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
@@ -1321,7 +1324,7 @@ export default function MapPage() {
                     textAlign: 'center',
                   }}>
                     <div style={{ fontSize: '18px', fontWeight: 800, color: g.color }}>{g.grade}</div>
-                    <div style={{ fontSize: '10px', color: '#64748b', marginTop: '2px' }}>
+                    <div style={{ fontSize: '10px', color: 'var(--text-secondary)', marginTop: '2px' }}>
                       {g.grade === 'F' ? '< 60' : `≥ ${g.min}`}
                     </div>
                   </div>
@@ -1331,8 +1334,8 @@ export default function MapPage() {
 
             {/* Run weighting */}
             <div style={{
-              padding: '12px 14px', background: '#fffbeb', borderRadius: '10px',
-              border: '1px solid #fde68a', marginBottom: '12px',
+              padding: '12px 14px', background: 'rgba(245,158,11,0.1)', borderRadius: '10px',
+              border: '1px solid rgba(245,158,11,0.35)', marginBottom: '12px',
             }}>
               <div style={{ fontSize: '12px', fontWeight: 700, color: '#92400e', marginBottom: '4px' }}>
                 Anti-gaming weighting
@@ -1346,8 +1349,8 @@ export default function MapPage() {
 
             {/* Coverage cap */}
             <div style={{
-              padding: '12px 14px', background: '#fff7ed', borderRadius: '10px',
-              border: '1px solid #fed7aa',
+              padding: '12px 14px', background: 'rgba(245,158,11,0.12)', borderRadius: '10px',
+              border: '1px solid rgba(249,115,22,0.35)',
             }}>
               <div style={{ fontSize: '12px', fontWeight: 700, color: '#9a3412', marginBottom: '6px' }}>
                 Mandatory coverage cap

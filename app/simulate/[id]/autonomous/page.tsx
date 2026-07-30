@@ -1017,7 +1017,7 @@ export default function AutonomousScienceBuildingPage() {
           border-radius: 16px;
           overflow: hidden;
           background: #0f172a;
-          border: 1px solid #cbd5e1;
+          border: 1px solid var(--border-strong);
         }
 
         .auto-map-shell img,
@@ -1090,7 +1090,7 @@ export default function AutonomousScienceBuildingPage() {
         .auto-room-row__bar {
           height: 4px;
           border-radius: 2px;
-          background: #e2e8f0;
+          background: var(--bg-inset);
           overflow: hidden;
         }
         .auto-room-row__bar-fill {
@@ -1131,7 +1131,7 @@ export default function AutonomousScienceBuildingPage() {
 
         .auto-map-insight {
           border-radius: 12px;
-          border: 1px solid #e2e8f0;
+          border: 1px solid var(--border);
           background: var(--bg-card);
           padding: 12px 14px;
         }
@@ -1315,7 +1315,7 @@ export default function AutonomousScienceBuildingPage() {
               width: '42px',
               height: '42px',
               borderRadius: '12px',
-              background: '#fef2f2',
+              background: 'rgba(239,68,68,0.08)',
               color: '#dc2626',
               display: 'flex',
               alignItems: 'center',
@@ -1535,7 +1535,7 @@ export default function AutonomousScienceBuildingPage() {
             {!storageAvailable && (
               <div style={{
                 marginBottom: '12px', padding: '8px 10px', borderRadius: '8px',
-                background: '#fff7ed', border: '1px solid #fed7aa',
+                background: 'rgba(249,115,22,0.1)', border: '1px solid rgba(249,115,22,0.35)',
                 fontSize: '11px', color: '#9a3412', lineHeight: 1.4,
               }}>
                 Local storage is unavailable. Hazards will be kept in memory but lost on refresh.
@@ -1715,7 +1715,7 @@ export default function AutonomousScienceBuildingPage() {
               {simState && isInTremorPhase(simState) && (
                 <div style={{
                   padding: '6px 10px', borderRadius: '8px',
-                  background: '#fef3c7', border: '1px solid #fcd34d',
+                  background: 'rgba(245,158,11,0.15)', border: '1px solid rgba(245,158,11,0.45)',
                   fontSize: '12px', fontWeight: 700, color: '#92400e',
                   display: 'flex', alignItems: 'center', gap: '6px',
                 }}>
@@ -1726,13 +1726,13 @@ export default function AutonomousScienceBuildingPage() {
                   Tremor {getTremorTimeRemaining(simState).toFixed(1)}s
                 </div>
               )}
-              <div style={{ padding: '6px 10px', borderRadius: '8px', background: '#e8f0fb', border: '1px solid #c8d8ec', fontSize: '12px', fontWeight: 600, color: '#1e40af' }}>
+              <div style={{ padding: '6px 10px', borderRadius: '8px', background: 'rgba(59,130,246,0.12)', border: '1px solid rgba(59,130,246,0.35)', fontSize: '12px', fontWeight: 600, color: '#3b82f6' }}>
                 Active {getActiveAgentCount(simState)}
               </div>
-              <div style={{ padding: '6px 10px', borderRadius: '8px', background: '#e8f5ec', border: '1px solid #c5dfce', fontSize: '12px', fontWeight: 600, color: '#166534' }}>
+              <div style={{ padding: '6px 10px', borderRadius: '8px', background: 'rgba(34,197,94,0.12)', border: '1px solid rgba(34,197,94,0.35)', fontSize: '12px', fontWeight: 600, color: '#22c55e' }}>
                 Evacuated {getEvacuatedAgentCount(simState)}
               </div>
-              <div style={{ padding: '6px 10px', borderRadius: '8px', background: '#fbf0e6', border: '1px solid #f0d4b3', fontSize: '12px', fontWeight: 600, color: '#9a3412' }}>
+              <div style={{ padding: '6px 10px', borderRadius: '8px', background: 'rgba(249,115,22,0.12)', border: '1px solid rgba(249,115,22,0.35)', fontSize: '12px', fontWeight: 600, color: '#f97316' }}>
                 Blocked edges {getBlockedEdgeCount(simState)}
               </div>
             </div>
@@ -1904,7 +1904,7 @@ export default function AutonomousScienceBuildingPage() {
               <div style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '12px' }}>Top hotspots</div>
               <div className="auto-map-insight-list">
                 {topHotspots.map(({ node, peak, average }) => (
-                  <div key={node.id} style={{ borderRadius: '10px', border: '1px solid var(--border)', background: '#f4f7fb', padding: '10px 12px' }}>
+                  <div key={node.id} style={{ borderRadius: '10px', border: '1px solid var(--border)', background: 'var(--bg-subtle)', padding: '10px 12px' }}>
                     <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '4px' }}>{node.label}</div>
                     <div style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>Peak load {peak}, average load {average.toFixed(1)}</div>
                   </div>
@@ -2040,7 +2040,7 @@ export default function AutonomousScienceBuildingPage() {
             <div className="auto-section-title" style={{ marginBottom: '8px' }}>Structural debris</div>
             <div style={{
               borderRadius: '12px', border: '1px solid #f0d4b3',
-              background: '#fbf6ef', padding: '12px 14px',
+              background: 'rgba(245,158,11,0.08)', padding: '12px 14px',
             }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
                 <span style={{ width: '11px', height: '11px', borderRadius: '3px', background: '#f59e0b', flexShrink: 0 }} />
@@ -2080,7 +2080,7 @@ export default function AutonomousScienceBuildingPage() {
             <div className="auto-section-title" style={{ marginBottom: '12px' }}>Completion summary</div>
             {results ? (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                <div style={{ borderRadius: '12px', border: '1px solid var(--border)', background: '#f4f7fb', padding: '12px 14px' }}>
+                <div style={{ borderRadius: '12px', border: '1px solid var(--border)', background: 'var(--bg-subtle)', padding: '12px 14px' }}>
                   <div style={{ fontSize: '32px', fontWeight: 700, color: results.trappedCount > 0 ? '#f97316' : '#22c55e', lineHeight: 1, letterSpacing: '-0.02em' }}>{formatSeconds(results.totalTime)}</div>
                   <div style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginTop: '4px' }}>Evacuation time</div>
                 </div>

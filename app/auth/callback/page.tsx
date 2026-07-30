@@ -70,10 +70,10 @@ export default function AuthCallbackPage() {
       </div>
 
       <div style={{ textAlign: 'center' }}>
-        <div style={{ fontSize: '15px', fontWeight: '600', color: '#1a2332' }}>
+        <div style={{ fontSize: '15px', fontWeight: '600', color: 'var(--text-primary)' }}>
           {status === 'loading' ? 'Signing you in…' : 'Something went wrong'}
         </div>
-        <div style={{ fontSize: '13px', color: '#64748b', marginTop: '4px' }}>
+        <div style={{ fontSize: '13px', color: 'var(--text-secondary)', marginTop: '4px' }}>
           {status === 'loading' ? 'Just a moment' : 'Redirecting back to login…'}
         </div>
       </div>

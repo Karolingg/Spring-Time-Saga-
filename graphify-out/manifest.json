@@ -1,0 +1,852 @@
+{
+  "app/about/page.tsx": {
+    "mtime": 1783814913.6275012,
+    "ast_hash": "0dfaa7e7b99c4efb880f40537d354c52",
+    "semantic_hash": "0dfaa7e7b99c4efb880f40537d354c52"
+  },
+  "app/analysis/compare/page.tsx": {
+    "mtime": 1783814913.6285088,
+    "ast_hash": "ff73e1ce9fd86c44d3eb398331b9e41c",
+    "semantic_hash": "ff73e1ce9fd86c44d3eb398331b9e41c"
+  },
+  "app/analysis/page.tsx": {
+    "mtime": 1783814913.6285088,
+    "ast_hash": "7c70d22bd7ac25aea1ca9ee96e7c9a25",
+    "semantic_hash": "7c70d22bd7ac25aea1ca9ee96e7c9a25"
+  },
+  "app/analysis/reports/[runId]/page.tsx": {
+    "mtime": 1783945288.2892592,
+    "ast_hash": "7c0d7148875bb2ca82c220cea8876f0f",
+    "semantic_hash": "7c0d7148875bb2ca82c220cea8876f0f"
+  },
+  "app/analysis/runs/page.tsx": {
+    "mtime": 1783814913.6295104,
+    "ast_hash": "fe3f1e5f2ef59df2acd1a49cf0bb778f",
+    "semantic_hash": "fe3f1e5f2ef59df2acd1a49cf0bb778f"
+  },
+  "app/analysis/summary/page.tsx": {
+    "mtime": 1783814913.6308749,
+    "ast_hash": "c7689aa48e1ca3048c8ee7419ef26c0c",
+    "semantic_hash": "c7689aa48e1ca3048c8ee7419ef26c0c"
+  },
+  "app/auth/callback/page.tsx": {
+    "mtime": 1783945219.2486286,
+    "ast_hash": "8611d3fc75e79e87b76ecb008da9b5ba",
+    "semantic_hash": "8611d3fc75e79e87b76ecb008da9b5ba"
+  },
+  "app/auth/page.tsx": {
+    "mtime": 1783814913.6308749,
+    "ast_hash": "296cfb0609765da96ddcb86c835c31e4",
+    "semantic_hash": "296cfb0609765da96ddcb86c835c31e4"
+  },
+  "app/help/page.tsx": {
+    "mtime": 1783945064.699552,
+    "ast_hash": "8753cc9d48587dfc30e52b6fe01c112b",
+    "semantic_hash": "8753cc9d48587dfc30e52b6fe01c112b"
+  },
+  "app/layout.tsx": {
+    "mtime": 1783814913.632893,
+    "ast_hash": "635df6ad1978e8213f4f564714d6a004",
+    "semantic_hash": "635df6ad1978e8213f4f564714d6a004"
+  },
+  "app/map/page.tsx": {
+    "mtime": 1783946314.3457873,
+    "ast_hash": "a5bae87f6be8f9901376c1928965c71e",
+    "semantic_hash": "a5bae87f6be8f9901376c1928965c71e"
+  },
+  "app/page.tsx": {
+    "mtime": 1783814913.6349134,
+    "ast_hash": "35a01801d521780ed04c3bb7ee0b7c30",
+    "semantic_hash": "35a01801d521780ed04c3bb7ee0b7c30"
+  },
+  "app/providers.tsx": {
+    "mtime": 1783814913.6349134,
+    "ast_hash": "2bfae81f590b20bb33491ee61e50d0d3",
+    "semantic_hash": "2bfae81f590b20bb33491ee61e50d0d3"
+  },
+  "app/settings/page.tsx": {
+    "mtime": 1783814913.6349134,
+    "ast_hash": "61a637a8397b2c13fdf1888172372478",
+    "semantic_hash": "61a637a8397b2c13fdf1888172372478"
+  },
+  "app/simulate/[id]/autonomous/page.tsx": {
+    "mtime": 1783945112.9585793,
+    "ast_hash": "4b7b9a15ed0ba8685a62c14e776d281d",
+    "semantic_hash": "4b7b9a15ed0ba8685a62c14e776d281d"
+  },
+  "app/simulate/[id]/disaster/page.tsx": {
+    "mtime": 1783814913.6379035,
+    "ast_hash": "2540629610159f57e19e1d3b21184c97",
+    "semantic_hash": "2540629610159f57e19e1d3b21184c97"
+  },
+  "app/simulate/[id]/run/page.tsx": {
+    "mtime": 1783945112.8855078,
+    "ast_hash": "2f5e8b36355801094cde142d6460ed65",
+    "semantic_hash": "2f5e8b36355801094cde142d6460ed65"
+  },
+  "components/ConfirmModal.tsx": {
+    "mtime": 1783814913.6399496,
+    "ast_hash": "ae901ae30b3a04dd6079ce0e87f200bc",
+    "semantic_hash": "ae901ae30b3a04dd6079ce0e87f200bc"
+  },
+  "components/InfoTooltip.tsx": {
+    "mtime": 1783814913.640959,
+    "ast_hash": "af9241383aa9cd28b24c212e0a85344b",
+    "semantic_hash": "af9241383aa9cd28b24c212e0a85344b"
+  },
+  "components/MapView.tsx": {
+    "mtime": 1783944991.341254,
+    "ast_hash": "48ceef8348ac3b47a26f213aaa31bb34",
+    "semantic_hash": "48ceef8348ac3b47a26f213aaa31bb34"
+  },
+  "components/Navbar.tsx": {
+    "mtime": 1783814913.6421714,
+    "ast_hash": "b8aab309fdb3934f8c020e453112886c",
+    "semantic_hash": "b8aab309fdb3934f8c020e453112886c"
+  },
+  "components/Onboarding/OnboardingOverlay.tsx": {
+    "mtime": 1783945219.1723955,
+    "ast_hash": "672ced6a10c655055213a35984ead217",
+    "semantic_hash": "672ced6a10c655055213a35984ead217"
+  },
+  "components/SessionTimeoutModal.tsx": {
+    "mtime": 1783814913.6441877,
+    "ast_hash": "c363bb846feb4198f592aaa2d78469f6",
+    "semantic_hash": "c363bb846feb4198f592aaa2d78469f6"
+  },
+  "components/analysis/AggregateAnalysis.tsx": {
+    "mtime": 1783814913.6441877,
+    "ast_hash": "84e826f61d9d49f73b47c530934aedea",
+    "semantic_hash": "84e826f61d9d49f73b47c530934aedea"
+  },
+  "components/analysis/AggregateFloorHeatmaps.tsx": {
+    "mtime": 1783814913.645196,
+    "ast_hash": "4e33d8f02697e4c59cf42bf89838713f",
+    "semantic_hash": "4e33d8f02697e4c59cf42bf89838713f"
+  },
+  "components/analysis/BuildingRiskTable.tsx": {
+    "mtime": 1783798611.5539963,
+    "ast_hash": "e577e9619b7374d395eec04c29c61e31",
+    "semantic_hash": "e577e9619b7374d395eec04c29c61e31"
+  },
+  "components/analysis/BuildingTrends.tsx": {
+    "mtime": 1783814913.6465285,
+    "ast_hash": "9006934326a83c69e7f6d279669a8ecb",
+    "semantic_hash": "9006934326a83c69e7f6d279669a8ecb"
+  },
+  "components/analysis/CongestionHeatmap.tsx": {
+    "mtime": 1783814913.6465285,
+    "ast_hash": "361e360980c6c79f34f5cbcd966cf0a3",
+    "semantic_hash": "361e360980c6c79f34f5cbcd966cf0a3"
+  },
+  "components/analysis/ExitUtilizationBreakdown.tsx": {
+    "mtime": 1783814913.6475353,
+    "ast_hash": "785a421ba31f16cfb8be2865cde03ae9",
+    "semantic_hash": "785a421ba31f16cfb8be2865cde03ae9"
+  },
+  "components/analysis/FeatureContainer.tsx": {
+    "mtime": 1783814913.6485662,
+    "ast_hash": "56d1c11ed9d785969ea19498c26d8ad5",
+    "semantic_hash": "56d1c11ed9d785969ea19498c26d8ad5"
+  },
+  "components/analysis/RunReplay.tsx": {
+    "mtime": 1783814913.6485662,
+    "ast_hash": "c17e1b6f1f6c97e86f05c6cf093ddf43",
+    "semantic_hash": "c17e1b6f1f6c97e86f05c6cf093ddf43"
+  },
+  "components/analysis/RunVisualization.tsx": {
+    "mtime": 1783814913.6496744,
+    "ast_hash": "d80933ca6dbfd55af0af2eea63079b8f",
+    "semantic_hash": "d80933ca6dbfd55af0af2eea63079b8f"
+  },
+  "components/analysis/SpatialBottleneckHeatmap.tsx": {
+    "mtime": 1783814913.6506956,
+    "ast_hash": "dbbe37e388044991ef377aebc9c43e42",
+    "semantic_hash": "dbbe37e388044991ef377aebc9c43e42"
+  },
+  "components/analysis/ZoneAnalysisPanel.tsx": {
+    "mtime": 1783814913.6518493,
+    "ast_hash": "3ba5b2464e3d271a4e2f03e62866ba38",
+    "semantic_hash": "3ba5b2464e3d271a4e2f03e62866ba38"
+  },
+  "components/ui/Card.tsx": {
+    "mtime": 1783814913.652885,
+    "ast_hash": "f2bf2989c94f5a275b4efa9fbf35d65c",
+    "semantic_hash": "f2bf2989c94f5a275b4efa9fbf35d65c"
+  },
+  "components/ui/PageHeader.tsx": {
+    "mtime": 1783814913.652885,
+    "ast_hash": "34942ef7935b620297095cf136112c09",
+    "semantic_hash": "34942ef7935b620297095cf136112c09"
+  },
+  "components/ui/StatCard.tsx": {
+    "mtime": 1783814913.652885,
+    "ast_hash": "52ccf7be82efc4ee5a4e35fdb855e1a2",
+    "semantic_hash": "52ccf7be82efc4ee5a4e35fdb855e1a2"
+  },
+  "eslint.config.mjs": {
+    "mtime": 1783647418.9928372,
+    "ast_hash": "3381f7eb7cd8ac1d4f381f5267f8aa50",
+    "semantic_hash": "3381f7eb7cd8ac1d4f381f5267f8aa50"
+  },
+  "next.config.ts": {
+    "mtime": 1783647418.9928372,
+    "ast_hash": "7b720ff2e4f61ab0c06d69da8101dd12",
+    "semantic_hash": "7b720ff2e4f61ab0c06d69da8101dd12"
+  },
+  "package.json": {
+    "mtime": 1783647418.9948814,
+    "ast_hash": "9d5d99439542bfe8e91638c0948b114f",
+    "semantic_hash": "9d5d99439542bfe8e91638c0948b114f"
+  },
+  "postcss.config.mjs": {
+    "mtime": 1783647418.9959018,
+    "ast_hash": "481fac0fdecd70e1821cc30b86030c1a",
+    "semantic_hash": "481fac0fdecd70e1821cc30b86030c1a"
+  },
+  "scripts/audit-floor-graphs.ts": {
+    "mtime": 1783647419.0396936,
+    "ast_hash": "ee5c5a6af95127236d00d887e0507298",
+    "semantic_hash": "ee5c5a6af95127236d00d887e0507298"
+  },
+  "scripts/autonomous-test-runs.cjs": {
+    "mtime": 1783647419.0396936,
+    "ast_hash": "f28d715be4b0e1e8138f435cb63f38f8",
+    "semantic_hash": "f28d715be4b0e1e8138f435cb63f38f8"
+  },
+  "scripts/earthquake-collapse-demo.ts": {
+    "mtime": 1783647419.040723,
+    "ast_hash": "6dc9587035805930c812e3b88ae70860",
+    "semantic_hash": "6dc9587035805930c812e3b88ae70860"
+  },
+  "scripts/hybrid-grid-test-runs.cjs": {
+    "mtime": 1783647419.040723,
+    "ast_hash": "7aedb0347e7d523bcfad4700105942ee",
+    "semantic_hash": "7aedb0347e7d523bcfad4700105942ee"
+  },
+  "simcheck.ts": {
+    "mtime": 1783647419.0417323,
+    "ast_hash": "ceabd51d5ed948eaa9f63858bcaabfba",
+    "semantic_hash": "ceabd51d5ed948eaa9f63858bcaabfba"
+  },
+  "src/config/assembly-points.ts": {
+    "mtime": 1783647419.0427425,
+    "ast_hash": "11854f0c5b27c9473d5346fcde405577",
+    "semantic_hash": "11854f0c5b27c9473d5346fcde405577"
+  },
+  "src/config/building-floor-counts.ts": {
+    "mtime": 1783647419.0427425,
+    "ast_hash": "c46084caea7bacea0595a8eec5a845c1",
+    "semantic_hash": "c46084caea7bacea0595a8eec5a845c1"
+  },
+  "src/config/building-floor-occupancy.ts": {
+    "mtime": 1783647419.0437558,
+    "ast_hash": "dd6ac4ae397d0f26100757d9839726c0",
+    "semantic_hash": "dd6ac4ae397d0f26100757d9839726c0"
+  },
+  "src/config/rate-limits.ts": {
+    "mtime": 1783647419.0447805,
+    "ast_hash": "99976292f6331bdb035c5095f6dfe642",
+    "semantic_hash": "99976292f6331bdb035c5095f6dfe642"
+  },
+  "src/config/session-timeout.ts": {
+    "mtime": 1783647419.0447805,
+    "ast_hash": "f23e7b6d68c040a6e03e0e7af7dc8c41",
+    "semantic_hash": "f23e7b6d68c040a6e03e0e7af7dc8c41"
+  },
+  "src/config/supabase.ts": {
+    "mtime": 1783647419.0447805,
+    "ast_hash": "e9d27ecb1905e204e12ebc6e7ed27c61",
+    "semantic_hash": "e9d27ecb1905e204e12ebc6e7ed27c61"
+  },
+  "src/context/AuthContext.tsx": {
+    "mtime": 1783647419.0458028,
+    "ast_hash": "8e6690eb3e84d4a75ee8bb90a9df1c1f",
+    "semantic_hash": "8e6690eb3e84d4a75ee8bb90a9df1c1f"
+  },
+  "src/context/OnboardingContext.tsx": {
+    "mtime": 1783647419.0458028,
+    "ast_hash": "380d038831c5685ef25456d2c0d36f32",
+    "semantic_hash": "380d038831c5685ef25456d2c0d36f32"
+  },
+  "src/context/ThemeContext.tsx": {
+    "mtime": 1783814913.654133,
+    "ast_hash": "d79047ba467fe0f41e2f8a239c404a99",
+    "semantic_hash": "d79047ba467fe0f41e2f8a239c404a99"
+  },
+  "src/context/ToastContext.tsx": {
+    "mtime": 1783814913.6551337,
+    "ast_hash": "2bfba7c5e4a2470a2d924b31444ee8ee",
+    "semantic_hash": "2bfba7c5e4a2470a2d924b31444ee8ee"
+  },
+  "src/hooks/useAuth.ts": {
+    "mtime": 1783647419.0473056,
+    "ast_hash": "feed051b9623de71ec656779b0adbdde",
+    "semantic_hash": "feed051b9623de71ec656779b0adbdde"
+  },
+  "src/hooks/useFocusTrap.ts": {
+    "mtime": 1783949249.4682314,
+    "ast_hash": "619f3e22b6772ad53ac7637d8bad48a2",
+    "semantic_hash": "619f3e22b6772ad53ac7637d8bad48a2"
+  },
+  "src/hooks/useIsMobile.ts": {
+    "mtime": 1783647419.0473056,
+    "ast_hash": "5dcb5189cb9fc49c4cae87828c6ca82e",
+    "semantic_hash": "5dcb5189cb9fc49c4cae87828c6ca82e"
+  },
+  "src/hooks/useOnboarding.ts": {
+    "mtime": 1783647419.0473056,
+    "ast_hash": "7077d389009bf691d0e44dbb19894c20",
+    "semantic_hash": "7077d389009bf691d0e44dbb19894c20"
+  },
+  "src/schema/building.types.ts": {
+    "mtime": 1783647419.0483363,
+    "ast_hash": "af7b05fef22d853f87a6991e949bcc47",
+    "semantic_hash": "af7b05fef22d853f87a6991e949bcc47"
+  },
+  "src/schema/database.types.ts": {
+    "mtime": 1783647419.0483363,
+    "ast_hash": "b946bed42cc7c2a39504987016c33933",
+    "semantic_hash": "b946bed42cc7c2a39504987016c33933"
+  },
+  "src/schema/enums.ts": {
+    "mtime": 1783647419.0496087,
+    "ast_hash": "5e7f3e5c8b2f8f15815196965910ff32",
+    "semantic_hash": "5e7f3e5c8b2f8f15815196965910ff32"
+  },
+  "src/schema/simulation.types.ts": {
+    "mtime": 1783647419.050616,
+    "ast_hash": "0308867c499803e43467339de8014041",
+    "semantic_hash": "0308867c499803e43467339de8014041"
+  },
+  "src/services/audit.service.ts": {
+    "mtime": 1783647419.050616,
+    "ast_hash": "72439602e369d29641b79895d26f5320",
+    "semantic_hash": "72439602e369d29641b79895d26f5320"
+  },
+  "src/services/auth.service.ts": {
+    "mtime": 1783647419.051623,
+    "ast_hash": "df3402d7df85749c0740e7721ca2575a",
+    "semantic_hash": "df3402d7df85749c0740e7721ca2575a"
+  },
+  "src/services/building-analytics.service.ts": {
+    "mtime": 1783647419.0526347,
+    "ast_hash": "8271db4ba283ca0436aa042db0847bd2",
+    "semantic_hash": "8271db4ba283ca0436aa042db0847bd2"
+  },
+  "src/services/csv-export.ts": {
+    "mtime": 1783647419.0526347,
+    "ast_hash": "6a39685e4a96169eeadf83f8c37d2d4e",
+    "semantic_hash": "6a39685e4a96169eeadf83f8c37d2d4e"
+  },
+  "src/services/rate-limit.service.ts": {
+    "mtime": 1783647419.053645,
+    "ast_hash": "bc9aa4283da989b2d40b75b95efc22f8",
+    "semantic_hash": "bc9aa4283da989b2d40b75b95efc22f8"
+  },
+  "src/services/read-cache.ts": {
+    "mtime": 1783647419.053645,
+    "ast_hash": "8d804bcb9e3e39bbec21e6b90810955f",
+    "semantic_hash": "8d804bcb9e3e39bbec21e6b90810955f"
+  },
+  "src/services/simulation.service.ts": {
+    "mtime": 1783647419.0546553,
+    "ast_hash": "e66447fda7ac2d2b32b905a22f8c0168",
+    "semantic_hash": "e66447fda7ac2d2b32b905a22f8c0168"
+  },
+  "src/services/user.service.ts": {
+    "mtime": 1783647419.0546553,
+    "ast_hash": "bea84edbbdd117946067a37ab81cd316",
+    "semantic_hash": "bea84edbbdd117946067a37ab81cd316"
+  },
+  "src/simulation/autonomous-analytics.ts": {
+    "mtime": 1783647419.056672,
+    "ast_hash": "9633d80575f7a98a597f9fb6ddb93c8c",
+    "semantic_hash": "9633d80575f7a98a597f9fb6ddb93c8c"
+  },
+  "src/simulation/building-model.ts": {
+    "mtime": 1783647419.056672,
+    "ast_hash": "841b80cf8ed91744276b689f9b4dde7b",
+    "semantic_hash": "841b80cf8ed91744276b689f9b4dde7b"
+  },
+  "src/simulation/engine.ts": {
+    "mtime": 1783647419.0581796,
+    "ast_hash": "87323bdea003b329d28c0e67ff2d2a73",
+    "semantic_hash": "87323bdea003b329d28c0e67ff2d2a73"
+  },
+  "src/simulation/floor-config/buildings/admin-building.ts": {
+    "mtime": 1783647419.0591872,
+    "ast_hash": "d5147a00fff9ceddca855b5755bab8d4",
+    "semantic_hash": "d5147a00fff9ceddca855b5755bab8d4"
+  },
+  "src/simulation/floor-config/buildings/as-east-wing.ts": {
+    "mtime": 1783647419.060213,
+    "ast_hash": "51e9d85e32674ec1a1f00419cd0250e3",
+    "semantic_hash": "51e9d85e32674ec1a1f00419cd0250e3"
+  },
+  "src/simulation/floor-config/buildings/as-west-wing.ts": {
+    "mtime": 1783647419.0612223,
+    "ast_hash": "e34348dd5e9ad1e2f1f1ca02b865f07b",
+    "semantic_hash": "e34348dd5e9ad1e2f1f1ca02b865f07b"
+  },
+  "src/simulation/floor-config/buildings/asx.ts": {
+    "mtime": 1783647419.0612223,
+    "ast_hash": "490810bb9549a9330c39c2472f0842d1",
+    "semantic_hash": "490810bb9549a9330c39c2472f0842d1"
+  },
+  "src/simulation/floor-config/buildings/cultural-center.ts": {
+    "mtime": 1783647419.0622313,
+    "ast_hash": "0cc88844467f6fafcc31cb93ccb5e538",
+    "semantic_hash": "0cc88844467f6fafcc31cb93ccb5e538"
+  },
+  "src/simulation/floor-config/buildings/index.ts": {
+    "mtime": 1783647419.0622313,
+    "ast_hash": "0b0a094a80b6b1ab2b499b72f48233bb",
+    "semantic_hash": "0b0a094a80b6b1ab2b499b72f48233bb"
+  },
+  "src/simulation/floor-config/buildings/liadlaw-hall.ts": {
+    "mtime": 1783647419.063276,
+    "ast_hash": "6dee619ad13e49bb93e8ca3a7c2b9f95",
+    "semantic_hash": "6dee619ad13e49bb93e8ca3a7c2b9f95"
+  },
+  "src/simulation/floor-config/buildings/loaders.ts": {
+    "mtime": 1783647419.063276,
+    "ast_hash": "ac5b4fd609d72e9939d7e40b8b54ec13",
+    "semantic_hash": "ac5b4fd609d72e9939d7e40b8b54ec13"
+  },
+  "src/simulation/floor-config/buildings/management.ts": {
+    "mtime": 1783647419.064288,
+    "ast_hash": "2a3b28fc375b57cde073be9f9d7530a4",
+    "semantic_hash": "2a3b28fc375b57cde073be9f9d7530a4"
+  },
+  "src/simulation/floor-config/buildings/science-building.ts": {
+    "mtime": 1783647419.064288,
+    "ast_hash": "80fefe7f9d0a9cbdb418ee53f7c356d5",
+    "semantic_hash": "80fefe7f9d0a9cbdb418ee53f7c356d5"
+  },
+  "src/simulation/floor-config/buildings/social-sciences.ts": {
+    "mtime": 1783647419.0653765,
+    "ast_hash": "b640762c1d6fca800ed0e2b15292ed17",
+    "semantic_hash": "b640762c1d6fca800ed0e2b15292ed17"
+  },
+  "src/simulation/floor-config/buildings/som-building-1.ts": {
+    "mtime": 1783647419.0653765,
+    "ast_hash": "280e4ecf3c3adb97d1eecb5c1b72e20c",
+    "semantic_hash": "280e4ecf3c3adb97d1eecb5c1b72e20c"
+  },
+  "src/simulation/floor-config/buildings/up-cebu-library.ts": {
+    "mtime": 1783647419.0663924,
+    "ast_hash": "cda577b23bc4264a6543d2caadc07c53",
+    "semantic_hash": "cda577b23bc4264a6543d2caadc07c53"
+  },
+  "src/simulation/floor-config/buildings/up-high-school.ts": {
+    "mtime": 1783647419.0663924,
+    "ast_hash": "4152253aff0352c7b57de3028c64185f",
+    "semantic_hash": "4152253aff0352c7b57de3028c64185f"
+  },
+  "src/simulation/floor-config/dense-graph.ts": {
+    "mtime": 1783647419.0673935,
+    "ast_hash": "bc85e582c8bf79b0b9660190d57e9324",
+    "semantic_hash": "bc85e582c8bf79b0b9660190d57e9324"
+  },
+  "src/simulation/floor-config/placeholder.ts": {
+    "mtime": 1783647419.0673935,
+    "ast_hash": "1096a6f752b7bbed6095e4649a73776e",
+    "semantic_hash": "1096a6f752b7bbed6095e4649a73776e"
+  },
+  "src/simulation/floor-config/to-floor-model.ts": {
+    "mtime": 1783647419.068437,
+    "ast_hash": "161676938fa1b6471123e18713eceeb9",
+    "semantic_hash": "161676938fa1b6471123e18713eceeb9"
+  },
+  "src/simulation/floor-config/types.ts": {
+    "mtime": 1783647419.068437,
+    "ast_hash": "620337d0a4d4c7d242102be1ddfa3f6e",
+    "semantic_hash": "620337d0a4d4c7d242102be1ddfa3f6e"
+  },
+  "src/simulation/hazard-physics.ts": {
+    "mtime": 1783647419.068437,
+    "ast_hash": "fb664278a70555e85a7f1397bac7acba",
+    "semantic_hash": "fb664278a70555e85a7f1397bac7acba"
+  },
+  "src/simulation/hazard-placement.ts": {
+    "mtime": 1783647419.0694666,
+    "ast_hash": "280d3f8bd9cb7fb3fee2a53957bdc810",
+    "semantic_hash": "280d3f8bd9cb7fb3fee2a53957bdc810"
+  },
+  "src/simulation/spatial-grid.ts": {
+    "mtime": 1783647419.0694666,
+    "ast_hash": "863ef3911bb2551cea1f5e4be8afd4c3",
+    "semantic_hash": "863ef3911bb2551cea1f5e4be8afd4c3"
+  },
+  "src/types/styles.d.ts": {
+    "mtime": 1783647419.0704756,
+    "ast_hash": "4cd247e7cb22a4981fb7d6a3e61fcbaf",
+    "semantic_hash": "4cd247e7cb22a4981fb7d6a3e61fcbaf"
+  },
+  "supabase/migrations/20260312142037_create_normalized_schema.sql": {
+    "mtime": 1783647419.0813997,
+    "ast_hash": "ea4da4445d7451e803e3599c66e64783",
+    "semantic_hash": "ea4da4445d7451e803e3599c66e64783"
+  },
+  "supabase/migrations/20260410_add_buildings_audit_tags.sql": {
+    "mtime": 1783647419.082399,
+    "ast_hash": "a815d1a9191ee627923b1153e85a02d5",
+    "semantic_hash": "a815d1a9191ee627923b1153e85a02d5"
+  },
+  "supabase/migrations/20260512_add_run_floor_index.sql": {
+    "mtime": 1783647419.082399,
+    "ast_hash": "b8461bcb4e2584f14663ac93f4228722",
+    "semantic_hash": "b8461bcb4e2584f14663ac93f4228722"
+  },
+  "supabase/migrations/20260513_add_run_replay_inputs.sql": {
+    "mtime": 1783647419.082399,
+    "ast_hash": "4fb561c82d5932f112e2134473d5db2f",
+    "semantic_hash": "4fb561c82d5932f112e2134473d5db2f"
+  },
+  "supabase/migrations/20260515_fix_oauth_profile_trigger_and_rls.sql": {
+    "mtime": 1783647419.0837297,
+    "ast_hash": "2d1ae4c0d08bd6864ef924ae9bf3cba8",
+    "semantic_hash": "2d1ae4c0d08bd6864ef924ae9bf3cba8"
+  },
+  "supabase/migrations/20260516_add_scenario_severity.sql": {
+    "mtime": 1783647419.0837297,
+    "ast_hash": "5f9984fc1b8eb584f7d09fb6d8ce8a51",
+    "semantic_hash": "5f9984fc1b8eb584f7d09fb6d8ce8a51"
+  },
+  "supabase/migrations/20260517_add_rate_limiting.sql": {
+    "mtime": 1783647419.084751,
+    "ast_hash": "9d8f6eabe62ea4cf4b5f9aa885bd6f7c",
+    "semantic_hash": "9d8f6eabe62ea4cf4b5f9aa885bd6f7c"
+  },
+  "supabase/migrations/20260518_add_rate_limit_rules.sql": {
+    "mtime": 1783647419.084751,
+    "ast_hash": "08ed5640ae888c7c1c4494189b7f7b2f",
+    "semantic_hash": "08ed5640ae888c7c1c4494189b7f7b2f"
+  },
+  "supabase/migrations/20260519120000_harden_rls_policies.sql": {
+    "mtime": 1783647419.0857599,
+    "ast_hash": "a4b98f06852cfef3cf91939afc1a1325",
+    "semantic_hash": "a4b98f06852cfef3cf91939afc1a1325"
+  },
+  "supabase/migrations/20260519_update_rate_limit_messages.sql": {
+    "mtime": 1783647419.0857599,
+    "ast_hash": "8ced1a2dfd41c2dd25d2ef26269174fb",
+    "semantic_hash": "8ced1a2dfd41c2dd25d2ef26269174fb"
+  },
+  "tests/autonomous-analytics.test.ts": {
+    "mtime": 1783647419.0857599,
+    "ast_hash": "9b8a912197f85377d5dfd34dfb37d874",
+    "semantic_hash": "9b8a912197f85377d5dfd34dfb37d874"
+  },
+  "tests/hazard-physics.test.ts": {
+    "mtime": 1783647419.0857599,
+    "ast_hash": "e3c216cc8855109104e73283c8282b04",
+    "semantic_hash": "e3c216cc8855109104e73283c8282b04"
+  },
+  "tsconfig.json": {
+    "mtime": 1783647419.0872653,
+    "ast_hash": "9116e3e9843f86779c61aba0ba9415e6",
+    "semantic_hash": "9116e3e9843f86779c61aba0ba9415e6"
+  },
+  "vitest.config.ts": {
+    "mtime": 1783647419.0872653,
+    "ast_hash": "78fdc325b5ef0444a870c6184edf0e2d",
+    "semantic_hash": "78fdc325b5ef0444a870c6184edf0e2d"
+  },
+  "AGENTS.md": {
+    "mtime": 1783814913.6264915,
+    "ast_hash": "b6593ba6958dd7d79003927f6c6c8e0e",
+    "semantic_hash": "b6593ba6958dd7d79003927f6c6c8e0e"
+  },
+  "DASHBOARD_IMPROVEMENTS.md": {
+    "mtime": 1783647418.9605372,
+    "ast_hash": "ee663b10539b9010b60452ea72dc1bc8",
+    "semantic_hash": "ee663b10539b9010b60452ea72dc1bc8"
+  },
+  "README.md": {
+    "mtime": 1783647418.9615457,
+    "ast_hash": "0cdc1ffc3170c9cadbfec1b71234cbcc",
+    "semantic_hash": "0cdc1ffc3170c9cadbfec1b71234cbcc"
+  },
+  "docs/adding-building-floors.md": {
+    "mtime": 1783647418.9873743,
+    "ast_hash": "a2216bfea251e0d42ea1ac8b7d2cf460",
+    "semantic_hash": "a2216bfea251e0d42ea1ac8b7d2cf460"
+  },
+  "docs/clean-code-guidelines.md": {
+    "mtime": 1783647418.9887676,
+    "ast_hash": "803578d41741b1ebd710e096e5b8aa3a",
+    "semantic_hash": "803578d41741b1ebd710e096e5b8aa3a"
+  },
+  "docs/coding-practices.md": {
+    "mtime": 1783647418.9897797,
+    "ast_hash": "486154e60b7e1acc1b8b9a3ab26bb512",
+    "semantic_hash": "486154e60b7e1acc1b8b9a3ab26bb512"
+  },
+  "docs/deployment-readiness.md": {
+    "mtime": 1783647418.9897797,
+    "ast_hash": "a420c691c743f4ef105cc67553ad0464",
+    "semantic_hash": "a420c691c743f4ef105cc67553ad0464"
+  },
+  "docs/earthquake-simulation-options-1-2.md": {
+    "mtime": 1783647418.990805,
+    "ast_hash": "a9bd8f2bb2b42cc1374c435917cebaa7",
+    "semantic_hash": "a9bd8f2bb2b42cc1374c435917cebaa7"
+  },
+  "docs/feature-specs.md": {
+    "mtime": 1783647418.990805,
+    "ast_hash": "7bd0bcb3c9d96edde71a6716640ba601",
+    "semantic_hash": "7bd0bcb3c9d96edde71a6716640ba601"
+  },
+  "docs/heatmap-replay-and-planning-persistence.md": {
+    "mtime": 1783647418.990805,
+    "ast_hash": "8bc18305fee6f07d7bea76a12932d9d4",
+    "semantic_hash": "8bc18305fee6f07d7bea76a12932d9d4"
+  },
+  "docs/supabase-setup-guide.md": {
+    "mtime": 1783647418.9918284,
+    "ast_hash": "56835d7ddbb32127fe5910e669429869",
+    "semantic_hash": "56835d7ddbb32127fe5910e669429869"
+  },
+  "docs/todos.md": {
+    "mtime": 1783647418.9918284,
+    "ast_hash": "e21e3d220d6fa426d6cc731811b50b77",
+    "semantic_hash": "e21e3d220d6fa426d6cc731811b50b77"
+  },
+  "docs/vercel-deployment.md": {
+    "mtime": 1783647418.9928372,
+    "ast_hash": "53a02b57e8e92a61f984f26fd8c4635b",
+    "semantic_hash": "53a02b57e8e92a61f984f26fd8c4635b"
+  },
+  "public/coord-helper.html": {
+    "mtime": 1783647418.9959018,
+    "ast_hash": "f5b5d28dab7e30043e9657fceb7fb4e5",
+    "semantic_hash": "f5b5d28dab7e30043e9657fceb7fb4e5"
+  },
+  "src/simulation/RULES.md": {
+    "mtime": 1783647419.055663,
+    "ast_hash": "2cc41636fc7e0bb92da59fa8f724f0c9",
+    "semantic_hash": "2cc41636fc7e0bb92da59fa8f724f0c9"
+  },
+  "public/file.svg": {
+    "mtime": 1783647418.9974062,
+    "ast_hash": "d09f95206c3fa0bb9bd9fefabfd0ea71",
+    "semantic_hash": "d09f95206c3fa0bb9bd9fefabfd0ea71"
+  },
+  "public/floorplans/AS East Wing 1st floor.svg": {
+    "mtime": 1783647418.9984248,
+    "ast_hash": "8d2f357d24e0d8d8578a04319c36d0ab",
+    "semantic_hash": "8d2f357d24e0d8d8578a04319c36d0ab"
+  },
+  "public/floorplans/AS East Wing 2nd floor.svg": {
+    "mtime": 1783647418.9994369,
+    "ast_hash": "62eb2bebc28e7a2b63dddc49a3652662",
+    "semantic_hash": "62eb2bebc28e7a2b63dddc49a3652662"
+  },
+  "public/floorplans/AS East Wing 3rd floor.svg": {
+    "mtime": 1783647419.000471,
+    "ast_hash": "6cb2b83d6054599ba693f580d1420bde",
+    "semantic_hash": "6cb2b83d6054599ba693f580d1420bde"
+  },
+  "public/floorplans/AS West Wing 1st floor.svg": {
+    "mtime": 1783647419.00148,
+    "ast_hash": "95c2e76f00e15fc49b3ff26baebf84fb",
+    "semantic_hash": "95c2e76f00e15fc49b3ff26baebf84fb"
+  },
+  "public/floorplans/AS West Wing 2nd floor.svg": {
+    "mtime": 1783647419.0025003,
+    "ast_hash": "3f14a57fd3395c8da8a53fab683246cd",
+    "semantic_hash": "3f14a57fd3395c8da8a53fab683246cd"
+  },
+  "public/floorplans/AS West Wing 3rd floor.svg": {
+    "mtime": 1783647419.0035918,
+    "ast_hash": "bd9edba1f697c44e1e736647ba66deab",
+    "semantic_hash": "bd9edba1f697c44e1e736647ba66deab"
+  },
+  "public/floorplans/ASX 1st floor.svg": {
+    "mtime": 1783647419.0035918,
+    "ast_hash": "fa21ae2410b58dadb881ebd3ce5dcdf0",
+    "semantic_hash": "fa21ae2410b58dadb881ebd3ce5dcdf0"
+  },
+  "public/floorplans/ASX 2nd floor.svg": {
+    "mtime": 1783647419.004601,
+    "ast_hash": "ea6015d51f78f013533a489b2273ac79",
+    "semantic_hash": "ea6015d51f78f013533a489b2273ac79"
+  },
+  "public/floorplans/Admin 1st floor.svg": {
+    "mtime": 1783647419.0056088,
+    "ast_hash": "6ca830505529ab8a9d748567dd5e0631",
+    "semantic_hash": "6ca830505529ab8a9d748567dd5e0631"
+  },
+  "public/floorplans/Admin 2nd floor.svg": {
+    "mtime": 1783647419.006635,
+    "ast_hash": "4033015a81332e6ff0175f71af50a425",
+    "semantic_hash": "4033015a81332e6ff0175f71af50a425"
+  },
+  "public/floorplans/CSB 2nd floor.svg": {
+    "mtime": 1783647419.006635,
+    "ast_hash": "c3dbaa2650ce874c6a49807ac1e72f46",
+    "semantic_hash": "c3dbaa2650ce874c6a49807ac1e72f46"
+  },
+  "public/floorplans/CSB 3rd floor.svg": {
+    "mtime": 1783647419.0076349,
+    "ast_hash": "e44c29b927cdf91932502d648e979bc0",
+    "semantic_hash": "e44c29b927cdf91932502d648e979bc0"
+  },
+  "public/floorplans/CSB 4th floor.svg": {
+    "mtime": 1783647419.0088944,
+    "ast_hash": "e060ee8b09325a5c6a61fff7d281f4d7",
+    "semantic_hash": "e060ee8b09325a5c6a61fff7d281f4d7"
+  },
+  "public/floorplans/CSB 5th floor.svg": {
+    "mtime": 1783647419.0088944,
+    "ast_hash": "59b7bd29530192a7f94b4d87ac02bd48",
+    "semantic_hash": "59b7bd29530192a7f94b4d87ac02bd48"
+  },
+  "public/floorplans/CSB 6th floor.svg": {
+    "mtime": 1783647419.0099032,
+    "ast_hash": "da778b41d95b7d2872ca05ce3bf1d60b",
+    "semantic_hash": "da778b41d95b7d2872ca05ce3bf1d60b"
+  },
+  "public/floorplans/Library 1st floor.svg": {
+    "mtime": 1783647419.0109227,
+    "ast_hash": "c3ee593b8aae651622552bacc3479bc7",
+    "semantic_hash": "c3ee593b8aae651622552bacc3479bc7"
+  },
+  "public/floorplans/Library 2nd floor.svg": {
+    "mtime": 1783647419.0119286,
+    "ast_hash": "30c4f7b1bb28933c4de0aaf125112fe3",
+    "semantic_hash": "30c4f7b1bb28933c4de0aaf125112fe3"
+  },
+  "public/floorplans/Management 1st floor.svg": {
+    "mtime": 1783647419.0119286,
+    "ast_hash": "c16ed9dd7d8dce7d7df4af6da0c23747",
+    "semantic_hash": "c16ed9dd7d8dce7d7df4af6da0c23747"
+  },
+  "public/floorplans/Management 2nd floor.svg": {
+    "mtime": 1783647419.0119286,
+    "ast_hash": "8ba296bfb29fae3ace29ef5d2423ddec",
+    "semantic_hash": "8ba296bfb29fae3ace29ef5d2423ddec"
+  },
+  "public/floorplans/SocialSciences 1st floor.svg": {
+    "mtime": 1783647419.0131674,
+    "ast_hash": "c798a0a23dab3a366a956862e10c6be1",
+    "semantic_hash": "c798a0a23dab3a366a956862e10c6be1"
+  },
+  "public/floorplans/SocialSciences 2nd floor.svg": {
+    "mtime": 1783647419.0131674,
+    "ast_hash": "844ab2acbd89f850e5cf40988744ef1d",
+    "semantic_hash": "844ab2acbd89f850e5cf40988744ef1d"
+  },
+  "public/floorplans/Som1 1st floor.svg": {
+    "mtime": 1783647419.0141962,
+    "ast_hash": "d52c87ce115c34ba75a1968f95307fda",
+    "semantic_hash": "d52c87ce115c34ba75a1968f95307fda"
+  },
+  "public/floorplans/Som1 2nd floor.svg": {
+    "mtime": 1783647419.0152287,
+    "ast_hash": "56361a76f64878dc1bdb2d44cb7d8f76",
+    "semantic_hash": "56361a76f64878dc1bdb2d44cb7d8f76"
+  },
+  "public/floorplans/UG 1st floor.svg": {
+    "mtime": 1783647419.0162504,
+    "ast_hash": "3b1fe45b00d0f6bae6a88e3762a56231",
+    "semantic_hash": "3b1fe45b00d0f6bae6a88e3762a56231"
+  },
+  "public/floorplans/UG 2nd floor.svg": {
+    "mtime": 1783647419.017251,
+    "ast_hash": "37785856f7748801683e0e5f9c8610f6",
+    "semantic_hash": "37785856f7748801683e0e5f9c8610f6"
+  },
+  "public/floorplans/admin-building.png": {
+    "mtime": 1783647419.0194025,
+    "ast_hash": "36c77c035e87e810715b082a933c8cf4",
+    "semantic_hash": "36c77c035e87e810715b082a933c8cf4"
+  },
+  "public/floorplans/admin-field.jpg": {
+    "mtime": 1783647419.0204098,
+    "ast_hash": "a6bfb8474a6b70720a70cf411322f142",
+    "semantic_hash": "a6bfb8474a6b70720a70cf411322f142"
+  },
+  "public/floorplans/as-east-wing.png": {
+    "mtime": 1783647419.0224416,
+    "ast_hash": "92691c3d11240d045df902aa5ad703b6",
+    "semantic_hash": "92691c3d11240d045df902aa5ad703b6"
+  },
+  "public/floorplans/as-parking.png": {
+    "mtime": 1783647419.0244684,
+    "ast_hash": "fb33c31aaa85031a3e9a8a1d8246c8d3",
+    "semantic_hash": "fb33c31aaa85031a3e9a8a1d8246c8d3"
+  },
+  "public/floorplans/as-west-wing.png": {
+    "mtime": 1783647419.0254793,
+    "ast_hash": "92a0335cf1974fcd1ab520ceb282736b",
+    "semantic_hash": "92a0335cf1974fcd1ab520ceb282736b"
+  },
+  "public/floorplans/asx.png": {
+    "mtime": 1783647419.0274994,
+    "ast_hash": "7c62fa45405859aa537a462489fc40f2",
+    "semantic_hash": "7c62fa45405859aa537a462489fc40f2"
+  },
+  "public/floorplans/liadlaw-hall.png": {
+    "mtime": 1783647419.0274994,
+    "ast_hash": "e5ff6b08154cbf0246622d543dd0d5df",
+    "semantic_hash": "e5ff6b08154cbf0246622d543dd0d5df"
+  },
+  "public/floorplans/management.png": {
+    "mtime": 1783647419.0285928,
+    "ast_hash": "305e6cf1ffc88e0ccaec98dfcee2c966",
+    "semantic_hash": "305e6cf1ffc88e0ccaec98dfcee2c966"
+  },
+  "public/floorplans/science-building.png": {
+    "mtime": 1783647419.0299976,
+    "ast_hash": "3b4ca1a2df9097b2ac018aa717de361b",
+    "semantic_hash": "3b4ca1a2df9097b2ac018aa717de361b"
+  },
+  "public/floorplans/social-sciences.png": {
+    "mtime": 1783647419.0310173,
+    "ast_hash": "93431117dca10df923e54b5495a8745f",
+    "semantic_hash": "93431117dca10df923e54b5495a8745f"
+  },
+  "public/floorplans/som-building-1.png": {
+    "mtime": 1783647419.0320237,
+    "ast_hash": "a765873ad557d64624d5440b6615c5ba",
+    "semantic_hash": "a765873ad557d64624d5440b6615c5ba"
+  },
+  "public/floorplans/up-cebu-library.png": {
+    "mtime": 1783647419.033203,
+    "ast_hash": "1aefed621113502ea0778c9a31294015",
+    "semantic_hash": "1aefed621113502ea0778c9a31294015"
+  },
+  "public/floorplans/up-high-open.png": {
+    "mtime": 1783647419.0354023,
+    "ast_hash": "08fcef92804226e8c44bd8e07a12bf3f",
+    "semantic_hash": "08fcef92804226e8c44bd8e07a12bf3f"
+  },
+  "public/floorplans/volleyball-court.png": {
+    "mtime": 1783647419.0374122,
+    "ast_hash": "4f396ab2d34b18a3a192dbae6060bbb2",
+    "semantic_hash": "4f396ab2d34b18a3a192dbae6060bbb2"
+  },
+  "public/globe.svg": {
+    "mtime": 1783647419.0374122,
+    "ast_hash": "2aaafa6a49b6563925fe440891e32717",
+    "semantic_hash": "2aaafa6a49b6563925fe440891e32717"
+  },
+  "public/next.svg": {
+    "mtime": 1783647419.0386827,
+    "ast_hash": "8e061864f388b47f33a1c3780831193e",
+    "semantic_hash": "8e061864f388b47f33a1c3780831193e"
+  },
+  "public/vercel.svg": {
+    "mtime": 1783647419.0386827,
+    "ast_hash": "c0af2f507b369b085b35ef4bbe3bcf1e",
+    "semantic_hash": "c0af2f507b369b085b35ef4bbe3bcf1e"
+  },
+  "public/window.svg": {
+    "mtime": 1783647419.0386827,
+    "ast_hash": "a2760511c65806022ad20adf74370ff3",
+    "semantic_hash": "a2760511c65806022ad20adf74370ff3"
+  }
+}

@@ -859,8 +859,8 @@ export default function MapView({ regions, markers, assemblyMarkers, onRegionCli
         <button
           onClick={() => setStyleMenuOpen(!styleMenuOpen)}
           style={{
-            background: 'rgba(248,250,252,0.95)',
-            color: '#1e293b',
+            background: 'var(--glass-chip-bg)',
+            color: 'var(--text-primary)',
             border: '1px solid rgba(148,163,184,0.22)',
             borderRadius: '12px', padding: '9px 14px', fontSize: '13px',
             fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px',
@@ -882,7 +882,7 @@ export default function MapView({ regions, markers, assemblyMarkers, onRegionCli
         {styleMenuOpen && (
           <div style={{
             position: 'absolute', top: '44px', right: '0',
-            background: 'rgba(248,250,252,0.97)',
+            background: 'var(--bg-card)',
             border: '1px solid rgba(148,163,184,0.22)',
             borderRadius: '12px', overflow: 'hidden', minWidth: '168px',
             boxShadow: '0 14px 30px rgba(15,23,42,0.16)',
@@ -898,13 +898,13 @@ export default function MapView({ regions, markers, assemblyMarkers, onRegionCli
                   background: style.id === activeStyleId
                     ? 'rgba(45,184,176,0.12)'
                     : 'transparent',
-                  color: '#1e293b',
+                  color: 'var(--text-primary)',
                   fontSize: '13px', fontWeight: style.id === activeStyleId ? 600 : 400,
                   cursor: 'pointer', textAlign: 'left', transition: 'background 0.15s',
                 }}
                 onMouseEnter={(e) => {
                   if (style.id !== activeStyleId)
-                    e.currentTarget.style.background = 'rgba(226,232,240,0.55)'
+                    e.currentTarget.style.background = 'var(--bg-inset)'
                 }}
                 onMouseLeave={(e) => {
                   if (style.id !== activeStyleId)
@@ -915,7 +915,7 @@ export default function MapView({ regions, markers, assemblyMarkers, onRegionCli
                   width: '8px', height: '8px', borderRadius: '50%',
                   background: style.glowColor,
                   boxShadow: style.id === activeStyleId
-                    ? `0 0 0 2px rgba(248,250,252,0.98), 0 0 0 4px ${style.glowColor}`
+                    ? `0 0 0 2px var(--bg-card), 0 0 0 4px ${style.glowColor}`
                     : 'none',
                 }} />
                 {style.label}

@@ -2092,7 +2092,7 @@ export default function SimulationRunPage() {
           />
 
           <div style={{ position: 'absolute', top: '10px', left: '10px', display: 'flex', gap: '6px', flexWrap: 'wrap', pointerEvents: 'none' }}>
-            <span style={{ background: '#ffffffdd', border: '1px solid #d8e4ec', borderRadius: '999px', padding: '4px 9px', fontSize: '10px', fontWeight: 700, color: 'var(--text-primary)' }}>Live Drill View</span>
+            <span style={{ background: '#ffffffdd', border: '1px solid #d8e4ec', borderRadius: '999px', padding: '4px 9px', fontSize: '10px', fontWeight: 700, color: '#0f172a' }}>Live Drill View</span>
             <span style={{ background: '#ffffffdd', border: '1px solid #d8e4ec', borderRadius: '999px', padding: '4px 9px', fontSize: '10px', fontWeight: 600, color: '#2db8b0' }}>Selected Route</span>
             <span style={{ background: '#ffffffdd', border: '1px solid #d8e4ec', borderRadius: '999px', padding: '4px 9px', fontSize: '10px', fontWeight: 600, color: '#ef4444' }}>Blocked Path</span>
           </div>
@@ -2104,7 +2104,7 @@ export default function SimulationRunPage() {
             <>
               <div style={{ background: 'var(--bg-subtle)', border: '1px solid var(--border)', borderRadius: '12px', padding: '14px', boxShadow: '0 1px 0 rgba(0,0,0,0.02)' }}>
                 <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Simulation Brief</div>
-                <div style={{ fontSize: '12px', color: '#334155', lineHeight: 1.55 }}>
+                <div style={{ fontSize: '12px', color: 'var(--text-secondary)', lineHeight: 1.55 }}>
                   Start from your room, click corridor nodes to build your route step by step, then choose an exit and launch the drill.
                 </div>
               </div>
@@ -2145,7 +2145,7 @@ export default function SimulationRunPage() {
                   </div>
                   <div style={{ background: 'var(--bg-card)', border: '1px solid #dbe7ee', borderRadius: '9px', padding: '10px 12px', marginBottom: '10px' }}>
                     <div style={{ fontSize: '10px', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '6px' }}>Corridor Node State</div>
-                    <div style={{ fontSize: '11px', color: '#334155', marginBottom: '6px', lineHeight: 1.45 }}>
+                    <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginBottom: '6px', lineHeight: 1.45 }}>
                       Start: {entryNodeLabel || 'N/A'} {'\u00B7'} Current: {currentNodeLabel || 'N/A'}
                     </div>
                     <div style={{ fontSize: '10.5px', color: 'var(--text-secondary)', marginBottom: '6px', lineHeight: 1.45 }}>
@@ -2222,7 +2222,7 @@ export default function SimulationRunPage() {
 
                     {/* Manual exit selection */}
                     <div style={{ marginTop: '4px' }}>
-                      <div style={{ fontSize: '10px', fontWeight: 600, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '6px' }}>Or choose exit manually</div>
+                      <div style={{ fontSize: '10px', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '6px' }}>Or choose exit manually</div>
                       <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
                         {Object.keys(config.exits).map(key => {
                           const blocked = blockedExits.has(key)
@@ -2310,7 +2310,7 @@ export default function SimulationRunPage() {
               </div>
               <div style={{ background: 'var(--bg-subtle)', border: '1px solid #c9dae6', borderRadius: '12px', padding: '14px', maxHeight: '180px', overflowY: 'auto', boxShadow: '0 1px 0 rgba(0,0,0,0.02)' }}>
                 <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: '10px', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Event Log</div>
-                {events.length === 0 && <div style={{ fontSize: '12px', color: '#334155' }}>No events yet{'\u2026'}</div>}
+                {events.length === 0 && <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>No events yet{'\u2026'}</div>}
                 {events.map((ev, i) => (
                   <div key={i} style={{ display: 'flex', gap: '8px', marginBottom: '8px', alignItems: 'flex-start', padding: '7px 8px', background: 'var(--bg-card)', border: '1px solid #e6edf2', borderRadius: '8px' }}>
                     <div style={{ width: '6px', height: '6px', borderRadius: '50%', marginTop: '6px', flexShrink: 0, background: ev.type === 'danger' ? '#ef4444' : ev.type === 'warn' ? '#f59e0b' : '#2db8b0' }} />
@@ -2353,7 +2353,7 @@ export default function SimulationRunPage() {
                     { label: 'Efficiency', value: `${Math.round(metrics.pathEfficiency * 100)}%`, color: metrics.pathEfficiency >= 0.85 ? '#22c55e' : '#f59e0b' },
                   ].map(m => (
                     <div key={m.label} style={{ background: 'var(--bg-card)', border: '1px solid #e6edf2', borderRadius: '8px', padding: '8px 10px', textAlign: 'center' }}>
-                      <div style={{ fontSize: '9px', color: '#475569', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '3px' }}>{m.label}</div>
+                      <div style={{ fontSize: '9px', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '3px' }}>{m.label}</div>
                       <div style={{ fontSize: '14px', fontWeight: 700, color: m.color }}>{m.value}</div>
                     </div>
                   ))}

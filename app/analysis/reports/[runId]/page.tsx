@@ -259,7 +259,7 @@ export default function EvacuationReportPage() {
 
 function ReportShell({ children }: { children: React.ReactNode }) {
   return (
-    <div data-page-shell className="report-page">
+    <div data-page-shell data-theme="light" className="report-page">
       <style>{`
         .report-page {
           max-width: 820px;

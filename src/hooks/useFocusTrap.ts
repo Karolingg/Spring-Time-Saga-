@@ -11,13 +11,6 @@ const FOCUSABLE_SELECTOR = [
   '[tabindex]:not([tabindex="-1"])',
 ].join(', ')
 
-/**
- * Traps keyboard focus inside `containerRef` while `active` is true:
- * - Focuses the first focusable element on activation (or the container).
- * - Tab / Shift+Tab wrap within the container.
- * - Escape calls `onClose`.
- * - On deactivation, focus returns to the element focused before activation.
- */
 export function useFocusTrap(
   containerRef: RefObject<HTMLElement | null>,
   active: boolean,

@@ -52,7 +52,7 @@ export function OnboardingOverlay({ currentPage }: OnboardingOverlayProps) {
             style={{
               fontSize: '24px',
               fontWeight: '700',
-              color: '#1f2937',
+              color: 'var(--text-primary)',
               margin: '0 0 8px 0',
             }}
           >
@@ -61,7 +61,7 @@ export function OnboardingOverlay({ currentPage }: OnboardingOverlayProps) {
           <div
             style={{
               fontSize: '13px',
-              color: '#6b7280',
+              color: 'var(--text-secondary)',
               textTransform: 'uppercase',
               letterSpacing: '0.5px',
             }}
@@ -86,7 +86,7 @@ export function OnboardingOverlay({ currentPage }: OnboardingOverlayProps) {
         <div
           style={{
             height: '6px',
-            background: '#e5e7eb',
+            background: 'var(--border)',
             borderRadius: '3px',
             marginBottom: '24px',
             overflow: 'hidden',
@@ -115,9 +115,9 @@ export function OnboardingOverlay({ currentPage }: OnboardingOverlayProps) {
             style={{
               padding: '10px 16px',
               borderRadius: '8px',
-              border: '1px solid #d1d5db',
-              background: '#f9fafb',
-              color: '#374151',
+              border: '1px solid var(--border-strong)',
+              background: 'var(--bg-subtle)',
+              color: 'var(--text-secondary)',
               cursor: 'pointer',
               fontSize: '14px',
               fontWeight: '500',

@@ -84,7 +84,7 @@ function GlobeIcon() {
 
 function CloudIcon() {
   return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#6b7280" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ display: 'inline', marginRight: '8px', verticalAlign: 'middle' }}>
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ display: 'inline', marginRight: '8px', verticalAlign: 'middle' }}>
       <path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"/>
     </svg>
   )
@@ -128,7 +128,7 @@ function DocumentIcon() {
 
 const SECTION_CARD: React.CSSProperties = {
   background: 'var(--bg-card)',
-  border: '1px solid #e5e7eb',
+  border: '1px solid var(--border)',
   borderRadius: '14px',
   padding: '28px 32px',
   marginBottom: '24px',
@@ -138,7 +138,7 @@ const SECTION_CARD: React.CSSProperties = {
 const SECTION_TITLE: React.CSSProperties = {
   fontSize: '20px',
   fontWeight: '700',
-  color: '#1f2937',
+  color: 'var(--text-primary)',
   marginBottom: '16px',
   marginTop: 0,
 }
@@ -146,14 +146,14 @@ const SECTION_TITLE: React.CSSProperties = {
 const SUBSECTION_TITLE: React.CSSProperties = {
   fontSize: '16px',
   fontWeight: '600',
-  color: '#374151',
+  color: 'var(--text-primary)',
   marginBottom: '12px',
   marginTop: '20px',
 }
 
 const METRIC_BOX: React.CSSProperties = {
-  background: '#f9fafb',
-  border: '1px solid #e5e7eb',
+  background: 'var(--bg-subtle)',
+  border: '1px solid var(--border)',
   borderRadius: '10px',
   padding: '16px',
   marginBottom: '12px',
@@ -169,7 +169,7 @@ export default function HelpPage() {
 
   if (isAuthLoading) {
     return (
-      <div style={{ padding: '40px', textAlign: 'center', color: '#6b7280' }}>
+      <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)' }}>
         Loading...
       </div>
     )
@@ -195,7 +195,7 @@ export default function HelpPage() {
           style={{
             fontSize: '32px',
             fontWeight: '800',
-            color: '#1f2937',
+            color: 'var(--text-primary)',
             margin: 0,
           }}
         >
@@ -204,7 +204,7 @@ export default function HelpPage() {
         <p
           style={{
             fontSize: '16px',
-            color: '#6b7280',
+            color: 'var(--text-muted)',
             marginTop: '8px',
             marginBottom: 0,
           }}
@@ -218,7 +218,7 @@ export default function HelpPage() {
         style={{
           display: 'flex',
           gap: '16px',
-          borderBottom: '2px solid #e5e7eb',
+          borderBottom: '2px solid var(--border)',
           marginBottom: '32px',
           overflowX: 'auto',
         }}
@@ -234,7 +234,7 @@ export default function HelpPage() {
                 background: 'transparent',
                 fontSize: '16px',
                 fontWeight: '600',
-                color: activeTab === tab ? '#2db8b0' : '#6b7280',
+                color: activeTab === tab ? '#2db8b0' : 'var(--text-muted)',
                 cursor: 'pointer',
                 borderBottom:
                   activeTab === tab ? '3px solid #2db8b0' : 'none',
@@ -257,7 +257,7 @@ export default function HelpPage() {
         <div>
           <div style={SECTION_CARD}>
             <h2 style={SECTION_TITLE}>Dashboard Overview</h2>
-            <p style={{ color: '#4b5563', lineHeight: '1.6' }}>
+            <p style={{ color: 'var(--text-secondary)', lineHeight: '1.6' }}>
               The dashboard provides an at-a-glance view of your campus evacuation
               readiness. It displays aggregate statistics from all your simulation
               runs, helping you identify trends and areas needing improvement.
@@ -267,7 +267,7 @@ export default function HelpPage() {
           {/* Readiness Score */}
           <div style={SECTION_CARD}>
             <h3 style={SECTION_TITLE}><GaugeIcon /> Campus Readiness Score</h3>
-            <p style={{ color: '#4b5563', lineHeight: '', marginBottom: '16px' }}>
+            <p style={{ color: 'var(--text-secondary)', lineHeight: '', marginBottom: '16px' }}>
               A composite score (0-100) that reflects your campus evacuation
               preparedness based on simulation data.
             </p>
@@ -295,7 +295,7 @@ export default function HelpPage() {
             <p
               style={{
                 fontSize: '13px',
-                color: '#6b7280',
+                color: 'var(--text-muted)',
                 marginTop: '16px',
                 marginBottom: 0,
               }}
@@ -308,12 +308,12 @@ export default function HelpPage() {
           {/* Total Runs */}
           <div style={SECTION_CARD}>
             <h3 style={SECTION_TITLE}><ChartIcon /> Total Simulation Runs</h3>
-            <p style={{ color: '#4b5563', lineHeight: '1.6', marginBottom: '12px' }}>
+            <p style={{ color: 'var(--text-secondary)', lineHeight: '1.6', marginBottom: '12px' }}>
               The total number of evacuation simulations you&apos;ve run across all
               buildings and disaster types.
             </p>
             <div style={METRIC_BOX}>
-              <p style={{ margin: 0, color: '#374151' }}>
+              <p style={{ margin: 0, color: 'var(--text-primary)' }}>
                 Tip: Run simulations with different occupancy levels and hazard
                 scenarios to get comprehensive coverage of your building&apos;s evacuation
                 capabilities.
@@ -324,7 +324,7 @@ export default function HelpPage() {
           {/* Evacuation Rate */}
           <div style={SECTION_CARD}>
             <h3 style={SECTION_TITLE}><ExitIcon /> Average Evacuation Rate (%)</h3>
-            <p style={{ color: '#4b5563', lineHeight: '1.6', marginBottom: '12px' }}>
+            <p style={{ color: 'var(--text-secondary)', lineHeight: '1.6', marginBottom: '12px' }}>
               The percentage of occupants who successfully evacuated in your
               simulations (excluded trapped occupants).
             </p>
@@ -353,7 +353,7 @@ export default function HelpPage() {
           {/* Total Agents */}
           <div style={SECTION_CARD}>
             <h3 style={SECTION_TITLE}><UsersIcon /> Total Agents Simulated</h3>
-            <p style={{ color: '#4b5563', lineHeight: '1.6' }}>
+            <p style={{ color: 'var(--text-secondary)', lineHeight: '1.6' }}>
               The cumulative number of virtual occupants across all your simulation
               runs. Higher numbers indicate more comprehensive testing.
             </p>
@@ -362,7 +362,7 @@ export default function HelpPage() {
           {/* Bottlenecks */}
           <div style={SECTION_CARD}>
             <h3 style={SECTION_TITLE}><AlertIcon /> Average Bottlenecks Per Run</h3>
-            <p style={{ color: '#4b5563', lineHeight: '1.6', marginBottom: '12px' }}>
+            <p style={{ color: 'var(--text-secondary)', lineHeight: '1.6', marginBottom: '12px' }}>
               The average number of zones or corridors that become critically congested
               (more than 50% of occupants bunching in one area).
             </p>
@@ -387,7 +387,7 @@ export default function HelpPage() {
           {/* Evacuation Time */}
           <div style={SECTION_CARD}>
             <h3 style={SECTION_TITLE}><ClockIcon /> Average Evacuation Time (seconds)</h3>
-            <p style={{ color: '#4b5563', lineHeight: '1.6', marginBottom: '12px' }}>
+            <p style={{ color: 'var(--text-secondary)', lineHeight: '1.6', marginBottom: '12px' }}>
               The average time in seconds from simulation start until the last
               occupant evacuates the building.
             </p>
@@ -418,7 +418,7 @@ export default function HelpPage() {
         <div>
           <div style={SECTION_CARD}>
             <h2 style={SECTION_TITLE}>Running Evacuation Simulations</h2>
-            <p style={{ color: '#4b5563', lineHeight: '1.6' }}>
+            <p style={{ color: 'var(--text-secondary)', lineHeight: '1.6' }}>
               A step-by-step guide to setting up and running fire and earthquake
               evacuation simulations.
             </p>
@@ -427,7 +427,7 @@ export default function HelpPage() {
           {/* Step 1: Building Selection */}
           <div style={SECTION_CARD}>
             <h3 style={SECTION_TITLE}>Step 1: Select a Building</h3>
-            <ol style={{ color: '#4b5563', lineHeight: '1.8' }}>
+            <ol style={{ color: 'var(--text-secondary)', lineHeight: '1.8' }}>
               <li>Go to the <strong>Campus Map</strong> page</li>
               <li>
                 Click on any building marker to view its details (capacity, floors,
@@ -440,26 +440,26 @@ export default function HelpPage() {
           {/* Step 2: Disaster Selection */}
           <div style={SECTION_CARD}>
             <h3 style={SECTION_TITLE}>Step 2: Choose Disaster Type & Floor</h3>
-            <p style={{ color: '#4b5563', lineHeight: '1.6', marginBottom: '16px' }}>
+            <p style={{ color: 'var(--text-secondary)', lineHeight: '1.6', marginBottom: '16px' }}>
               Select the type of emergency scenario you want to simulate:
             </p>
             <div style={METRIC_BOX}>
               <strong><FireIcon /> Fire Drill:</strong>
-              <p style={{ margin: '8px 0 0 0', color: '#4b5563' }}>
+              <p style={{ margin: '8px 0 0 0', color: 'var(--text-secondary)' }}>
                 Agents move quickly toward the nearest exit, avoiding smoke and flames.
                 Best for testing rapid evacuation and crowd-based rerouting.
               </p>
             </div>
             <div style={METRIC_BOX}>
               <strong><GlobeIcon /> Earthquake Drill:</strong>
-              <p style={{ margin: '8px 0 0 0', color: '#4b5563' }}>
+              <p style={{ margin: '8px 0 0 0', color: 'var(--text-secondary)' }}>
                 Agents move cautiously toward stairwell exits while debris blocks key
                 pathways. Tests structural resilience and alternative routing.
               </p>
             </div>
             <p
               style={{
-                color: '#4b5563',
+                color: 'var(--text-secondary)',
                 lineHeight: '1.6',
                 marginTop: '16px',
                 marginBottom: 0,
@@ -474,7 +474,7 @@ export default function HelpPage() {
             <h3 style={SECTION_TITLE}>Step 3: Configure Simulation Parameters</h3>
 
             <h4 style={SUBSECTION_TITLE}>Occupancy Level</h4>
-            <p style={{ color: '#4b5563', lineHeight: '1.6', marginBottom: '12px' }}>
+            <p style={{ color: 'var(--text-secondary)', lineHeight: '1.6', marginBottom: '12px' }}>
               Set the percentage of building capacity occupied. Presets help:
             </p>
             <div style={METRIC_BOX}>
@@ -495,7 +495,7 @@ export default function HelpPage() {
             </div>
 
             <h4 style={SUBSECTION_TITLE}>Place Hazards</h4>
-            <p style={{ color: '#4b5563', lineHeight: '1.6', marginBottom: '12px' }}>
+            <p style={{ color: 'var(--text-secondary)', lineHeight: '1.6', marginBottom: '12px' }}>
               Click and drag hazards onto the floorplan to simulate obstacles:
             </p>
             <div style={METRIC_BOX}>
@@ -507,7 +507,7 @@ export default function HelpPage() {
             </div>
 
             <h4 style={SUBSECTION_TITLE}>Simulation Speed</h4>
-            <p style={{ color: '#4b5563', lineHeight: '1.6', marginBottom: 0 }}>
+            <p style={{ color: 'var(--text-secondary)', lineHeight: '1.6', marginBottom: 0 }}>
               Watch in real-time (1x) or speed up to 3x to see results faster.
             </p>
           </div>
@@ -515,7 +515,7 @@ export default function HelpPage() {
           {/* Step 4: Run & Monitor */}
           <div style={SECTION_CARD}>
             <h3 style={SECTION_TITLE}>Step 4: Run Simulation & Monitor</h3>
-            <p style={{ color: '#4b5563', lineHeight: '1.6', marginBottom: '16px' }}>
+            <p style={{ color: 'var(--text-secondary)', lineHeight: '1.6', marginBottom: '16px' }}>
               Click <strong>&quot;Run Simulation&quot;</strong> to launch the evacuation.
             </p>
             <div style={METRIC_BOX}>
@@ -538,7 +538,7 @@ export default function HelpPage() {
           {/* Step 5: Review Results */}
           <div style={SECTION_CARD}>
             <h3 style={SECTION_TITLE}>Step 5: Review Results</h3>
-            <p style={{ color: '#4b5563', lineHeight: '1.6', marginBottom: '12px' }}>
+            <p style={{ color: 'var(--text-secondary)', lineHeight: '1.6', marginBottom: '12px' }}>
               After the simulation completes, the results are automatically saved.
               Review key metrics:
             </p>
@@ -568,24 +568,24 @@ export default function HelpPage() {
             <h3 style={SECTION_TITLE}>Understanding Simulation Metrics</h3>
 
             <h4 style={SUBSECTION_TITLE}>Active Agents</h4>
-            <p style={{ color: '#4b5563', lineHeight: '1.6' }}>
+            <p style={{ color: 'var(--text-secondary)', lineHeight: '1.6' }}>
               Occupants still in the building and moving toward exits. Decreases as
               agents evacuate or get trapped.
             </p>
 
             <h4 style={SUBSECTION_TITLE}>Evacuated</h4>
-            <p style={{ color: '#4b5563', lineHeight: '1.6' }}>
+            <p style={{ color: 'var(--text-secondary)', lineHeight: '1.6' }}>
               Agents who successfully reached an exit and left the building.
             </p>
 
             <h4 style={SUBSECTION_TITLE}>Trapped</h4>
-            <p style={{ color: '#4b5563', lineHeight: '1.6' }}>
+            <p style={{ color: 'var(--text-secondary)', lineHeight: '1.6' }}>
               Agents blocked by hazards with no legal evacuation route available.
               This is a critical safety concern.
             </p>
 
             <h4 style={SUBSECTION_TITLE}>Blocked Edges</h4>
-            <p style={{ color: '#4b5563', lineHeight: '1.6', marginBottom: 0 }}>
+            <p style={{ color: 'var(--text-secondary)', lineHeight: '1.6', marginBottom: 0 }}>
               Corridors or pathways completely blocked by hazards, forcing rerouting.
             </p>
           </div>
@@ -597,7 +597,7 @@ export default function HelpPage() {
         <div>
           <div style={SECTION_CARD}>
             <h2 style={SECTION_TITLE}>Analyzing Simulation Results</h2>
-            <p style={{ color: '#4b5563', lineHeight: '1.6' }}>
+            <p style={{ color: 'var(--text-secondary)', lineHeight: '1.6' }}>
               Learn how to interpret heatmaps, bottleneck analysis, zone metrics,
               and comparison reports.
             </p>
@@ -606,7 +606,7 @@ export default function HelpPage() {
           {/* Heatmap */}
           <div style={SECTION_CARD}>
             <h3 style={SECTION_TITLE}><FireIcon /> Congestion Heatmaps</h3>
-            <p style={{ color: '#4b5563', lineHeight: '1.6', marginBottom: '16px' }}>
+            <p style={{ color: 'var(--text-secondary)', lineHeight: '1.6', marginBottom: '16px' }}>
               Visual representation of occupant density across the floor during
               evacuation.
             </p>
@@ -636,7 +636,7 @@ export default function HelpPage() {
           {/* Bottleneck Analysis */}
           <div style={SECTION_CARD}>
             <h3 style={SECTION_TITLE}><AlertIcon /> Bottleneck Analysis</h3>
-            <p style={{ color: '#4b5563', lineHeight: '1.6', marginBottom: '12px' }}>
+            <p style={{ color: 'var(--text-secondary)', lineHeight: '1.6', marginBottom: '12px' }}>
               Identifies corridors, exits, and rooms where occupants bunch up during
               evacuation.
             </p>
@@ -655,7 +655,7 @@ export default function HelpPage() {
           {/* Zone Analysis */}
           <div style={SECTION_CARD}>
             <h3 style={SECTION_TITLE}><ChartIcon /> Zone Analysis</h3>
-            <p style={{ color: '#4b5563', lineHeight: '1.6', marginBottom: '12px' }}>
+            <p style={{ color: 'var(--text-secondary)', lineHeight: '1.6', marginBottom: '12px' }}>
               Breakdown of occupant movement and density by room or zone.
             </p>
             <div style={METRIC_BOX}>
@@ -672,7 +672,7 @@ export default function HelpPage() {
           {/* Exit Utilization */}
           <div style={SECTION_CARD}>
             <h3 style={SECTION_TITLE}><ExitIcon /> Exit Utilization Breakdown</h3>
-            <p style={{ color: '#4b5563', lineHeight: '1.6', marginBottom: '12px' }}>
+            <p style={{ color: 'var(--text-secondary)', lineHeight: '1.6', marginBottom: '12px' }}>
               Shows which exits occupants used and how heavily each was utilized.
             </p>
             <div style={METRIC_BOX}>
@@ -688,15 +688,15 @@ export default function HelpPage() {
           {/* Run Replay */}
           <div style={SECTION_CARD}>
             <h3 style={SECTION_TITLE}><PlayIcon /> Run Replay</h3>
-            <p style={{ color: '#4b5563', lineHeight: '1.6', marginBottom: '12px' }}>
+            <p style={{ color: 'var(--text-secondary)', lineHeight: '1.6', marginBottom: '12px' }}>
               Step through your simulation frame-by-frame to understand occupant
               movements and hazard growth.
             </p>
             <div style={METRIC_BOX}>
-              <p style={{ margin: '0 0 8px 0', color: '#374151' }}>
+              <p style={{ margin: '0 0 8px 0', color: 'var(--text-primary)' }}>
                 <strong>Controls:</strong> Play/pause, frame step, speed adjustment
               </p>
-              <p style={{ margin: 0, color: '#374151' }}>
+              <p style={{ margin: 0, color: 'var(--text-primary)' }}>
                 Great for identifying when occupants first encounter hazards and how
                 they reroute.
               </p>
@@ -706,7 +706,7 @@ export default function HelpPage() {
           {/* Run Comparison */}
           <div style={SECTION_CARD}>
             <h3 style={SECTION_TITLE}><TrendingIcon /> Run Comparison</h3>
-            <p style={{ color: '#4b5563', lineHeight: '1.6', marginBottom: '12px' }}>
+            <p style={{ color: 'var(--text-secondary)', lineHeight: '1.6', marginBottom: '12px' }}>
               Side-by-side comparison of two simulation runs with KPI differences
               highlighted.
             </p>
@@ -724,11 +724,11 @@ export default function HelpPage() {
           {/* Reports */}
           <div style={SECTION_CARD}>
             <h3 style={SECTION_TITLE}><DocumentIcon /> Evacuation Reports</h3>
-            <p style={{ color: '#4b5563', lineHeight: '1.6', marginBottom: '12px' }}>
+            <p style={{ color: 'var(--text-secondary)', lineHeight: '1.6', marginBottom: '12px' }}>
               Printable, comprehensive reports for stakeholder distribution.
             </p>
             <div style={METRIC_BOX}>
-              <p style={{ margin: 0, color: '#374151' }}>
+              <p style={{ margin: 0, color: 'var(--text-primary)' }}>
                 <strong>Includes:</strong> Executive summary, key metrics, heatmaps,
                 findings, and recommendations.
               </p>
@@ -747,45 +747,45 @@ export default function HelpPage() {
           <div style={SECTION_CARD}>
             <h3 style={SECTION_TITLE}>General Terms</h3>
             <div style={{ marginBottom: '20px' }}>
-              <strong style={{ color: '#1f2937' }}>Agent</strong>
-              <p style={{ color: '#4b5563', margin: '4px 0 0 0' }}>
+              <strong style={{ color: 'var(--text-primary)' }}>Agent</strong>
+              <p style={{ color: 'var(--text-secondary)', margin: '4px 0 0 0' }}>
                 A virtual occupant in the simulation representing a real person.
               </p>
             </div>
 
             <div style={{ marginBottom: '20px' }}>
-              <strong style={{ color: '#1f2937' }}>Evacuation Rate</strong>
-              <p style={{ color: '#4b5563', margin: '4px 0 0 0' }}>
+              <strong style={{ color: 'var(--text-primary)' }}>Evacuation Rate</strong>
+              <p style={{ color: 'var(--text-secondary)', margin: '4px 0 0 0' }}>
                 Percentage of occupants who successfully left the building.
               </p>
             </div>
 
             <div style={{ marginBottom: '20px' }}>
-              <strong style={{ color: '#1f2937' }}>Hazard</strong>
-              <p style={{ color: '#4b5563', margin: '4px 0 0 0' }}>
+              <strong style={{ color: 'var(--text-primary)' }}>Hazard</strong>
+              <p style={{ color: 'var(--text-secondary)', margin: '4px 0 0 0' }}>
                 An obstacle (fire, smoke, debris) that blocks or slows occupant
                 movement.
               </p>
             </div>
 
             <div style={{ marginBottom: '20px' }}>
-              <strong style={{ color: '#1f2937' }}>Bottleneck</strong>
-              <p style={{ color: '#4b5563', margin: '4px 0 0 0' }}>
+              <strong style={{ color: 'var(--text-primary)' }}>Bottleneck</strong>
+              <p style={{ color: 'var(--text-secondary)', margin: '4px 0 0 0' }}>
                 A corridor or exit where occupants bunch up, slowing evacuation.
               </p>
             </div>
 
             <div style={{ marginBottom: '20px' }}>
-              <strong style={{ color: '#1f2937' }}>Reroute</strong>
-              <p style={{ color: '#4b5563', margin: '4px 0 0 0' }}>
+              <strong style={{ color: 'var(--text-primary)' }}>Reroute</strong>
+              <p style={{ color: 'var(--text-secondary)', margin: '4px 0 0 0' }}>
                 When an agent changes its path due to encountering a hazard or
                 blockage.
               </p>
             </div>
 
             <div>
-              <strong style={{ color: '#1f2937' }}>Trapped</strong>
-              <p style={{ color: '#4b5563', margin: '4px 0 0 0' }}>
+              <strong style={{ color: 'var(--text-primary)' }}>Trapped</strong>
+              <p style={{ color: 'var(--text-secondary)', margin: '4px 0 0 0' }}>
                 An occupant unable to reach an exit due to hazards blocking all
                 legal routes.
               </p>
@@ -795,31 +795,31 @@ export default function HelpPage() {
           <div style={SECTION_CARD}>
             <h3 style={SECTION_TITLE}>Metrics & Scoring</h3>
             <div style={{ marginBottom: '20px' }}>
-              <strong style={{ color: '#1f2937' }}>Peak Congestion</strong>
-              <p style={{ color: '#4b5563', margin: '4px 0 0 0' }}>
+              <strong style={{ color: 'var(--text-primary)' }}>Peak Congestion</strong>
+              <p style={{ color: 'var(--text-secondary)', margin: '4px 0 0 0' }}>
                 Maximum number of agents simultaneously on a single corridor or exit
                 during the evacuation.
               </p>
             </div>
 
             <div style={{ marginBottom: '20px' }}>
-              <strong style={{ color: '#1f2937' }}>Readiness Score</strong>
-              <p style={{ color: '#4b5563', margin: '4px 0 0 0' }}>
+              <strong style={{ color: 'var(--text-primary)' }}>Readiness Score</strong>
+              <p style={{ color: 'var(--text-secondary)', margin: '4px 0 0 0' }}>
                 Composite 0-100 rating of building evacuation capability based on
                 simulation data.
               </p>
             </div>
 
             <div style={{ marginBottom: '20px' }}>
-              <strong style={{ color: '#1f2937' }}>Occupancy Ratio</strong>
-              <p style={{ color: '#4b5563', margin: '4px 0 0 0' }}>
+              <strong style={{ color: 'var(--text-primary)' }}>Occupancy Ratio</strong>
+              <p style={{ color: 'var(--text-secondary)', margin: '4px 0 0 0' }}>
                 Percentage of building capacity currently occupied (0-100%).
               </p>
             </div>
 
             <div>
-              <strong style={{ color: '#1f2937' }}>Evacuation Time</strong>
-              <p style={{ color: '#4b5563', margin: '4px 0 0 0' }}>
+              <strong style={{ color: 'var(--text-primary)' }}>Evacuation Time</strong>
+              <p style={{ color: 'var(--text-secondary)', margin: '4px 0 0 0' }}>
                 Total seconds from simulation start until the last agent evacuates or
                 is trapped.
               </p>
@@ -829,16 +829,16 @@ export default function HelpPage() {
           <div style={SECTION_CARD}>
             <h3 style={SECTION_TITLE}>Disaster Types</h3>
             <div style={{ marginBottom: '20px' }}>
-              <strong style={{ color: '#1f2937' }}>Fire Drill</strong>
-              <p style={{ color: '#4b5563', margin: '4px 0 0 0' }}>
+              <strong style={{ color: 'var(--text-primary)' }}>Fire Drill</strong>
+              <p style={{ color: 'var(--text-secondary)', margin: '4px 0 0 0' }}>
                 Simulation of a fire emergency. Agents move quickly, fire expands,
                 and smoke spreads.
               </p>
             </div>
 
             <div>
-              <strong style={{ color: '#1f2937' }}>Earthquake Drill</strong>
-              <p style={{ color: '#4b5563', margin: '4px 0 0 0' }}>
+              <strong style={{ color: 'var(--text-primary)' }}>Earthquake Drill</strong>
+              <p style={{ color: 'var(--text-secondary)', margin: '4px 0 0 0' }}>
                 Simulation of an earthquake. Agents move cautiously, debris blocks
                 key paths, and stairwells may collapse.
               </p>
@@ -848,7 +848,7 @@ export default function HelpPage() {
       )}
 
       {/* Footer */}
-      <div style={{ marginTop: '48px', paddingTop: '24px', borderTop: '2px solid #e5e7eb' }}>
+      <div style={{ marginTop: '48px', paddingTop: '24px', borderTop: '2px solid var(--border)' }}>
         <button
           onClick={() => resetOnboarding()}
           style={{
@@ -873,7 +873,7 @@ export default function HelpPage() {
         >
           🎓 Replay Onboarding Tour
         </button>
-        <p style={{ fontSize: '13px', color: '#6b7280', marginTop: '16px', marginBottom: 0 }}>
+        <p style={{ fontSize: '13px', color: 'var(--text-muted)', marginTop: '16px', marginBottom: 0 }}>
           Still need help? The info (?) icons throughout the app provide quick tooltips for
           specific metrics.
         </p>

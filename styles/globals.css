@@ -1,6 +1,9 @@
 @import "tailwindcss";
 
-:root {
+/* Light values live on :root; the [data-theme="light"] alias lets a subtree
+ * (e.g. the printable report) force light rendering even when the app is in
+ * dark mode, since its vars re-resolve at that boundary. */
+:root, [data-theme="light"] {
   color-scheme: light;
   --app-ui-scale: 0.80;
   --font-geist-sans: var(--font-inter, "Segoe UI");
@@ -41,6 +44,11 @@
   --nav-active-bg: rgba(255, 255, 255, 0.85);
   --nav-active-text: #1f9189;
   --account-card-bg: rgba(255, 255, 255, 0.85);
+
+  /* Frosted overlay surfaces (map detail panel, glass cards on it) */
+  --overlay-panel-bg: linear-gradient(180deg, rgba(241,245,249,0.97) 0%, rgba(232,240,247,0.95) 100%);
+  --glass-card-bg: linear-gradient(180deg, rgba(255,255,255,0.88) 0%, rgba(248,250,252,0.72) 100%);
+  --glass-chip-bg: rgba(255, 255, 255, 0.85);
 
   /* ── Spacing scale ── */
   --space-1: 4px;
@@ -110,6 +118,10 @@
   --nav-active-bg: rgba(45, 184, 176, 0.12);
   --nav-active-text: #53d6cd;
   --account-card-bg: rgba(255, 255, 255, 0.05);
+
+  --overlay-panel-bg: linear-gradient(180deg, rgba(19,28,46,0.97) 0%, rgba(11,18,32,0.96) 100%);
+  --glass-card-bg: linear-gradient(180deg, rgba(255,255,255,0.07) 0%, rgba(255,255,255,0.03) 100%);
+  --glass-chip-bg: rgba(255, 255, 255, 0.08);
 }
 
 *, *::before, *::after {
