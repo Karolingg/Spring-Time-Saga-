@@ -383,6 +383,8 @@ export default function MapPage() {
     )
   }
 
+  if (!isAuthenticated) return null
+
   return (
     <div style={{
       minHeight: '100vh',

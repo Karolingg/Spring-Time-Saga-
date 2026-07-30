@@ -187,65 +187,39 @@ export async function saveSimulationResults(
   zones: Omit<SimulationZone, 'id' | 'runId'>[],
   bottlenecks: Omit<SimulationBottleneck, 'id' | 'runId'>[],
 ): Promise<void> {
-  const { error: resErr } = await supabase
-    .from('simulation_results')
-    .upsert(
-      {
-        run_id: runId,
-        total_steps: results.totalSteps,
-        evacuated_count: results.evacuatedCount,
-        max_congestion: results.maxCongestion,
-        evacuation_time: results.evacuationTime,
-        congestion_exposure: results.congestionExposure,
-        global_peak_density: results.globalPeakDensity,
-      },
-      { onConflict: 'run_id' },
-    )
-
-  if (resErr) throw new Error(resErr.message)
-
-  const { error: delZonesErr } = await supabase.from('simulation_zones').delete().eq('run_id', runId)
-  if (delZonesErr) throw new Error(delZonesErr.message)
-
-  if (zones.length > 0) {
-    const zoneRows = zones.map(z => ({
-      run_id: runId,
-      zone_name: z.zoneName,
+  // Results upsert, zone/bottleneck replace, and status update all run inside
+  // one Postgres function invocation (see migration 20260731), so a failure
+  // partway through rolls back every write instead of leaving a run with
+  // deleted zones/bottlenecks and no replacement.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error } = await (supabase as any).rpc('save_simulation_results', {
+    p_run_id: runId,
+    p_total_steps: results.totalSteps,
+    p_evacuated_count: results.evacuatedCount,
+    p_max_congestion: results.maxCongestion,
+    p_evacuation_time: results.evacuationTime,
+    p_congestion_exposure: results.congestionExposure,
+    p_global_peak_density: results.globalPeakDensity,
+    p_status: results.status,
+    p_zones: zones.map(z => ({
+      zoneName: z.zoneName,
       intensity: z.intensity,
-      agent_count: z.agentCount,
-      bottleneck_count: z.bottleneckCount,
-      risk_level: z.riskLevel,
+      agentCount: z.agentCount,
+      bottleneckCount: z.bottleneckCount,
+      riskLevel: z.riskLevel,
       lat: z.lat,
       lng: z.lng,
-    }))
-
-    const { error: zonesInsertErr } = await supabase.from('simulation_zones').insert(zoneRows)
-    if (zonesInsertErr) throw new Error(zonesInsertErr.message)
-  }
-
-  const { error: delBnErr } = await supabase.from('simulation_bottlenecks').delete().eq('run_id', runId)
-  if (delBnErr) throw new Error(delBnErr.message)
-
-  if (bottlenecks.length > 0) {
-    const bnRows = bottlenecks.map(b => ({
-      run_id: runId,
-      zone_name: b.zoneName,
+    })),
+    p_bottlenecks: bottlenecks.map(b => ({
+      zoneName: b.zoneName,
       severity: b.severity,
-      cell_x: b.cellX,
-      cell_y: b.cellY,
+      cellX: b.cellX,
+      cellY: b.cellY,
       description: b.description,
-    }))
+    })),
+  })
 
-    const { error: bnInsertErr } = await supabase.from('simulation_bottlenecks').insert(bnRows)
-    if (bnInsertErr) throw new Error(bnInsertErr.message)
-  }
-
-  const { error: statusErr } = await supabase
-    .from('simulation_runs')
-    .update({ status: results.status, updated_at: new Date().toISOString() })
-    .eq('id', runId)
-
-  if (statusErr) throw new Error(statusErr.message)
+  if (error) throw new Error(error.message)
 
   await logAction('complete', 'run', runId, {
     status: results.status,

@@ -231,6 +231,8 @@ export default function CompareRunsPage() {
     )
   }
 
+  if (!isAuthenticated) return null
+
   const canCompare = runA && runB && runA.id !== runB.id
   const sameRun = runA && runB && runA.id === runB.id
 

@@ -171,6 +171,8 @@ export default function AnalysisRunsPage() {
     )
   }
 
+  if (!isAuthenticated) return null
+
   const zones = run?.zones ?? []
   const usedZones = zones.filter((zone: SimulationZone) => (
     zone.agentCount > 0 || zone.intensity > 0 || zone.bottleneckCount > 0

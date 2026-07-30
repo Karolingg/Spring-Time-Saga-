@@ -107,6 +107,8 @@ export default function DisasterPickerPage() {
     )
   }
 
+  if (!isAuthenticated) return null
+
   const displayName = regionId
     .replace(/-/g, ' ')
     .replace(/\b\w/g, (c) => c.toUpperCase())

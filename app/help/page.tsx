@@ -267,7 +267,7 @@ export default function HelpPage() {
           {/* Readiness Score */}
           <div style={SECTION_CARD}>
             <h3 style={SECTION_TITLE}><GaugeIcon /> Campus Readiness Score</h3>
-            <p style={{ color: 'var(--text-secondary)', lineHeight: '', marginBottom: '16px' }}>
+            <p style={{ color: 'var(--text-secondary)', lineHeight: '1.6', marginBottom: '16px' }}>
               A composite score (0-100) that reflects your campus evacuation
               preparedness based on simulation data.
             </p>
