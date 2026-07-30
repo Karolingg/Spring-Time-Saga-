@@ -61,6 +61,11 @@ const SETTINGS_ICON = (size: number) => (
   </svg>
 )
 
+function roleLabel(role: string | null): string {
+  if (role === 'admin') return 'Administrator'
+  return 'User'
+}
+
 const navIcons: Record<Section, React.ReactNode> = {
   profile: (
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -281,6 +286,7 @@ function ProfilePanel({ userEmail }: { userEmail: string }) {
   const [displayName, setDisplayName] = useState('')
   const [initialDisplayName, setInitialDisplayName] = useState('')
   const [initialEmail, setInitialEmail] = useState(userEmail)
+  const [role, setRole] = useState<string | null>(null)
   const [loadingProfile, setLoadingProfile] = useState(true)
   const [submitting, setSubmitting] = useState(false)
 
@@ -292,6 +298,7 @@ function ProfilePanel({ userEmail }: { userEmail: string }) {
         setInitialDisplayName(profileName)
         setEmail(userEmail)
         setInitialEmail(userEmail)
+        setRole(profile?.role ?? null)
       })
       .catch(() => {})
       .finally(() => setLoadingProfile(false))
@@ -393,7 +400,7 @@ function ProfilePanel({ userEmail }: { userEmail: string }) {
         <div style={{ marginBottom: '20px' }}>
           <label style={labelStyle}>Role</label>
           <div style={{ padding: '10px 14px', background: 'var(--bg-subtle)', border: '1px solid var(--border)', borderRadius: '8px', fontSize: '14px', color: 'var(--text-secondary)' }}>
-            Administrator
+            {loadingProfile ? 'Loading...' : roleLabel(role)}
           </div>
           <span style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px', display: 'block' }}>
             Contact your system admin to change roles.
