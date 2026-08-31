@@ -250,10 +250,14 @@ h1, h2, h3 {
   }
 }
 
-/* Assembly marker speech-bubble pop-in */
+/* Assembly marker speech-bubble pop-in.
+ * Placement is done entirely with left/top/bottom in app/map/page.tsx, so this
+ * animates scale only — a translate here would fight the computed position and
+ * push the bubble off its marker. `transform-origin` is set inline to the tail,
+ * so the bubble grows out of the icon it belongs to. */
 @keyframes assemblyBubbleIn {
-  from { opacity: 0; transform: translate(-50%, -100%) translateY(-8px) scale(0.92); }
-  to   { opacity: 1; transform: translate(-50%, -100%) translateY(-18px) scale(1); }
+  from { opacity: 0; transform: scale(0.92); }
+  to   { opacity: 1; transform: scale(1); }
 }
 
 @keyframes fadeIn {
@@ -320,6 +324,21 @@ h1, h2, h3 {
     radial-gradient(circle 1.2px at center, var(--grid-dot) 1px, transparent 1px);
   background-size: 100% 100%, 100% 100%, 28px 28px;
   background-position: center, center, center;
+}
+
+/* ─── Auth route surface ───────────────────────────────────────────────
+ * The sign-in page opts out of the ambient dot grid: its shell carries
+ * `data-auth-shell`, and :has() lets the body swap to a plain teal/indigo
+ * wash so nothing is ruled behind the card. Painting this on <body> rather
+ * than on the shell also avoids a seam at the bottom of the screen — the
+ * `zoom` on .app-ui-scale-shell makes a descendant's 100vh render shorter
+ * than the actual viewport, exposing the body underneath. */
+body:has([data-auth-shell]) {
+  background-image:
+    radial-gradient(ellipse 90% 55% at 50% -8%, var(--bg-center-highlight), transparent 72%),
+    radial-gradient(ellipse 75% 45% at 50% 106%, var(--bg-warm-highlight), transparent 72%);
+  background-size: 100% 100%, 100% 100%;
+  background-position: center, center;
 }
 
 /* ─── Interaction utilities ────────────────────────────────────────────

@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import { useAuth } from '@/src/hooks/useAuth'
@@ -13,6 +14,22 @@ import { ASSEMBLY_POINTS, getNearestAssembly } from '@/src/config/assembly-point
 import { getBuildingScore, type BuildingGrade, type BuildingScore, type FloorScore } from '@/src/services/building-analytics.service'
 
 const CAMPUS_CENTER: [number, number] = [123.8988, 10.3228] // [lng, lat]
+
+/* ── Assembly-point bubble geometry ─────────────────────────────────────
+ * The bubble is portalled to <body>, outside `.app-ui-scale-shell`, so every
+ * number below is in plain viewport pixels — the same space the marker icon's
+ * getBoundingClientRect() reports. No zoom conversion is involved. */
+const BUBBLE_MARGIN = 8            // keep-away distance from the viewport edges
+const BUBBLE_GAP = 14              // clearance between the icon and the bubble
+const BUBBLE_TAIL = 11             // half-width / height of the triangle tail
+const BUBBLE_MAX_WIDTH = 220
+const BUBBLE_FALLBACK_HEIGHT = 232 // flip estimate used before the first measure
+
+interface AssemblyAnchor {
+  cx: number
+  top: number
+  bottom: number
+}
 
 /* ── Building data ── */
 interface BuildingBounds {
@@ -258,7 +275,10 @@ export default function MapPage() {
   const [selected, setSelected] = useState<string | null>(null)
   const [forcedCenter, setForcedCenter] = useState<[number, number] | null>(null)
   const [selectedAssembly, setSelectedAssembly] = useState<string | null>(null)
-  const [assemblyPopupPos, setAssemblyPopupPos] = useState<{ x: number; y: number } | null>(null)
+  /* Live viewport-space geometry of the selected marker icon, plus the measured
+   * bubble height used to decide whether the bubble fits above the icon. */
+  const [assemblyAnchor, setAssemblyAnchor] = useState<AssemblyAnchor | null>(null)
+  const [assemblyBubbleHeight, setAssemblyBubbleHeight] = useState(BUBBLE_FALLBACK_HEIGHT)
   const [fullscreenImage, setFullscreenImage] = useState<string | null>(null)
   const [scoringModalOpen, setScoringModalOpen] = useState(false)
   const isMobile = useIsMobile()
@@ -272,7 +292,6 @@ export default function MapPage() {
       if (event.key === 'Escape') {
         setSelected(null)
         setSelectedAssembly(null)
-        setAssemblyPopupPos(null)
         setForcedCenter([CAMPUS_CENTER[0], CAMPUS_CENTER[1]])
       }
     }
@@ -355,22 +374,94 @@ export default function MapPage() {
 
   const handleAssemblyClick = useCallback((id: string) => {
     setSelectedAssembly(id)
-    const shell = document.querySelector('.app-ui-scale-shell') as HTMLElement | null
-    const scale = shell && shell.offsetWidth > 0
-      ? shell.getBoundingClientRect().width / shell.offsetWidth
-      : 1
-    const mapContainer = document.querySelector('.map-view-shell')
-    const marker = mapContainer?.querySelector(`[data-assembly-id="${id}"]`)
-    if (marker) {
-      const rect = marker.getBoundingClientRect()
-      setAssemblyPopupPos({
-        x: (rect.left + rect.width / 2) / scale,
-        y: rect.top / scale,
-      })
+  }, [])
+
+  const closeAssemblyBubble = useCallback(() => setSelectedAssembly(null), [])
+
+  /* Track the selected marker's on-screen position.
+   *
+   * The icon sits inside `.map-view-shell`, which cancels the app-wide `zoom`,
+   * so its rect is already in true viewport pixels; the bubble is portalled to
+   * <body>, which is also unzoomed, so the rect transfers across verbatim.
+   * The previous version instead placed the bubble *inside* the zoomed shell and
+   * tried to pre-divide the rect by a zoom ratio derived from
+   * `getBoundingClientRect().width / offsetWidth`. That ratio is only the zoom
+   * factor if the two properties disagree about zoom, which browsers have not
+   * been consistent about; when they agree the ratio is 1, the division is a
+   * no-op, and the still-zoomed bubble lands at 0.8x the icon's coordinates —
+   * i.e. drifting further toward the top-left the further out the icon sits.
+   * Portalling sidesteps the question rather than betting on an answer.
+   *
+   * Mapbox re-places its markers on every frame of a pan or zoom, so we
+   * re-measure on an rAF loop and only commit when the icon actually moved. */
+  useEffect(() => {
+    if (!selectedAssembly) {
+      setAssemblyAnchor(null)
       return
     }
-    setAssemblyPopupPos({ x: window.innerWidth / 2 / scale, y: 100 / scale })
+
+    const escaped = typeof CSS !== 'undefined' && CSS.escape
+      ? CSS.escape(selectedAssembly)
+      : selectedAssembly
+    const selector = `[data-assembly-id="${escaped}"]`
+
+    let frame = requestAnimationFrame(function measure() {
+      const marker = document.querySelector(selector)
+      if (marker) {
+        const rect = marker.getBoundingClientRect()
+        const next: AssemblyAnchor = {
+          cx: rect.left + rect.width / 2,
+          top: rect.top,
+          bottom: rect.bottom,
+        }
+        setAssemblyAnchor((prev) =>
+          prev && Math.abs(prev.cx - next.cx) < 0.5 && Math.abs(prev.top - next.top) < 0.5
+            ? prev
+            : next,
+        )
+      }
+      frame = requestAnimationFrame(measure)
+    })
+
+    return () => cancelAnimationFrame(frame)
+  }, [selectedAssembly])
+
+  /* Measure the rendered bubble so the above/below decision uses its real
+   * height rather than the estimate. Runs in the commit phase, before paint. */
+  const measureAssemblyBubble = useCallback((node: HTMLDivElement | null) => {
+    if (!node) return
+    const { height } = node.getBoundingClientRect()
+    setAssemblyBubbleHeight((prev) => (Math.abs(prev - height) < 0.5 ? prev : height))
   }, [])
+
+  /* Sit the bubble above the icon when there is room, flip it below when there
+   * is not, and clamp it inside the viewport so it never runs off a narrow
+   * phone screen. The tail is placed independently of the bubble body so it
+   * keeps pointing at the icon after a sideways clamp. */
+  const assemblyBubble = useMemo(() => {
+    if (!assemblyAnchor) return null
+
+    const viewportW = window.innerWidth
+    const viewportH = window.innerHeight
+    const width = Math.min(BUBBLE_MAX_WIDTH, viewportW - BUBBLE_MARGIN * 2)
+    const above = assemblyAnchor.top - BUBBLE_GAP - assemblyBubbleHeight >= BUBBLE_MARGIN
+
+    const maxLeft = Math.max(viewportW - width - BUBBLE_MARGIN, BUBBLE_MARGIN)
+    const left = Math.min(Math.max(assemblyAnchor.cx - width / 2, BUBBLE_MARGIN), maxLeft)
+
+    const maxTailX = Math.max(width - BUBBLE_TAIL - 6, BUBBLE_TAIL + 6)
+    const tailX = Math.min(Math.max(assemblyAnchor.cx - left, BUBBLE_TAIL + 6), maxTailX)
+
+    return {
+      above,
+      left,
+      width,
+      tailX,
+      top: assemblyAnchor.bottom + BUBBLE_GAP,
+      bottom: viewportH - assemblyAnchor.top + BUBBLE_GAP,
+      maxHeight: viewportH - BUBBLE_MARGIN * 2 - BUBBLE_GAP,
+    }
+  }, [assemblyAnchor, assemblyBubbleHeight])
 
   const assemblyMarkers: AssemblyMarker[] = useMemo(
     () =>
@@ -1045,34 +1136,40 @@ export default function MapPage() {
         </div>
       </div>
 
-      {/* Assembly point speech-bubble popup — floats directly above the marker icon */}
-      {selectedAssemblyData && assemblyPopupPos && (
+      {/* Assembly point speech-bubble popup — sits directly on top of the marker
+          icon. Portalled to <body> so it escapes `.app-ui-scale-shell`'s zoom and
+          its coordinates line up 1:1 with the icon's viewport rect. */}
+      {selectedAssemblyData && assemblyBubble && createPortal(
         <>
           {/* Invisible backdrop to dismiss on outside click */}
           <div
-            onClick={() => { setSelectedAssembly(null); setAssemblyPopupPos(null) }}
+            onClick={closeAssemblyBubble}
             style={{ position: 'fixed', inset: 0, zIndex: 1999 }}
           />
 
           {/* Speech bubble */}
           <div
+            key={selectedAssembly}
+            ref={measureAssemblyBubble}
             onClick={(e) => e.stopPropagation()}
             style={{
               position: 'fixed',
-              left: `${assemblyPopupPos.x}px`,
-              top: `${assemblyPopupPos.y}px`,
-              transform: 'translate(-50%, -100%) translateY(-18px)',
+              left: `${assemblyBubble.left}px`,
+              ...(assemblyBubble.above
+                ? { bottom: `${assemblyBubble.bottom}px` }
+                : { top: `${assemblyBubble.top}px` }),
               zIndex: 2000,
-              width: '220px',
+              width: `${assemblyBubble.width}px`,
               background: 'var(--bg-card)',
               borderRadius: '18px',
               boxShadow: '0 8px 32px rgba(0,0,0,0.18), 0 2px 8px rgba(0,0,0,0.08)',
               overflow: 'visible',
+              transformOrigin: `${assemblyBubble.tailX}px ${assemblyBubble.above ? '100%' : '0%'}`,
               animation: 'assemblyBubbleIn 0.18s ease-out',
             }}
           >
             {/* Bubble content */}
-            <div style={{ padding: '12px' }}>
+            <div style={{ padding: '12px', maxHeight: `${assemblyBubble.maxHeight}px`, overflowY: 'auto' }}>
               {/* Image frame */}
               {selectedAssemblyData.image ? (
                 <div
@@ -1145,24 +1242,31 @@ export default function MapPage() {
               </div>
             </div>
 
-            {/* Triangle tail — points down toward the marker icon */}
+            {/* Triangle tail — kept aligned with the marker icon even when the
+                bubble has been clamped sideways, and flipped when it sits below. */}
             <div style={{
               position: 'absolute',
-              bottom: '-10px',
-              left: '50%',
+              ...(assemblyBubble.above ? { bottom: `${-BUBBLE_TAIL + 1}px` } : { top: `${-BUBBLE_TAIL + 1}px` }),
+              left: `${assemblyBubble.tailX}px`,
               transform: 'translateX(-50%)',
               width: 0, height: 0,
-              borderLeft: '11px solid transparent',
-              borderRight: '11px solid transparent',
-              borderTop: '11px solid var(--bg-card)',
-              filter: 'drop-shadow(0 2px 2px rgba(0,0,0,0.06))',
+              borderLeft: `${BUBBLE_TAIL}px solid transparent`,
+              borderRight: `${BUBBLE_TAIL}px solid transparent`,
+              ...(assemblyBubble.above
+                ? { borderTop: `${BUBBLE_TAIL}px solid var(--bg-card)` }
+                : { borderBottom: `${BUBBLE_TAIL}px solid var(--bg-card)` }),
+              filter: assemblyBubble.above
+                ? 'drop-shadow(0 2px 2px rgba(0,0,0,0.06))'
+                : 'drop-shadow(0 -2px 2px rgba(0,0,0,0.06))',
             }} />
           </div>
-        </>
+        </>,
+        document.body,
       )}
 
-      {/* Fullscreen image modal */}
-      {fullscreenImage && (
+      {/* Fullscreen image modal — portalled alongside the bubble so both live in
+          the same stacking context and this overlay reliably covers it. */}
+      {fullscreenImage && createPortal(
         <>
           <div
             onClick={() => setFullscreenImage(null)}
@@ -1245,7 +1349,8 @@ export default function MapPage() {
               </button>
             </div>
           </div>
-        </>
+        </>,
+        document.body,
       )}
 
       {/* Scoring methodology modal — surfaces the formula behind the
