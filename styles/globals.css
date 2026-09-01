@@ -23,6 +23,13 @@
   --teal-dark: #1f9991;
   --teal-light: rgba(45,184,176,0.12);
 
+  /* Fill for solid buttons carrying a white label. The brand teal above is
+   * only 2.44:1 against white — below the 4.5:1 AA minimum, and below even
+   * the 3:1 large-text bar — so filled CTAs use this deeper teal (5.52:1)
+   * instead. --teal itself stays the brand hue for marks, borders, icon
+   * chips, and tinted fills, where it is not carrying text. */
+  --teal-button: #17756e;
+
   /* ── Text — tuned for WCAG AA on white (muted was #94a3b8 ≈ 2.8:1) ── */
   --text-primary: #1a2332;
   --text-secondary: #475569; /* 7.5:1 */
@@ -94,7 +101,11 @@
   --radius-sm: 8px;
   --radius-md: 10px;
   --radius: 12px;
-  --radius-lg: 14px;
+  /* Container radius: cards, modals, feature panels. 16px is what the modals
+   * and feature containers had already settled on independently, so the token
+   * matches them rather than the other way round — one radius for every large
+   * surface, instead of Card at 14 and every overlay at 15-16. */
+  --radius-lg: 16px;
   --radius-xl: 20px;
   --radius-full: 999px;
 }

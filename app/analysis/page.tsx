@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { useAuth } from '@/src/hooks/useAuth'
 import { getSimulationHistory } from '@/src/services/simulation.service'
 import { PageHeader } from '@/components/ui/PageHeader'
+import { PageLoading } from '@/components/ui/PageLoading'
 
 interface FeatureButtonProps {
   href: string
@@ -64,9 +65,7 @@ export default function AnalysisPage() {
 
   if (isAuthLoading) {
     return (
-      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg)' }}>
-        <div style={{ color: 'var(--text-secondary)', fontSize: '14px', display: 'flex', alignItems: 'center', gap: '10px' }}><span className="spinner" />Loading...</div>
-      </div>
+      <PageLoading />
     )
   }
 
@@ -179,7 +178,7 @@ function FeatureButton({
         padding: '22px 26px',
         background: 'var(--bg-card)',
         border: '1px solid var(--border)',
-        borderRadius: '14px',
+        borderRadius: 'var(--radius-lg)',
         textDecoration: 'none',
         boxShadow: '0 4px 18px rgba(15, 23, 42, 0.05), 0 1px 3px rgba(15, 23, 42, 0.04)',
         transition: 'transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease',

@@ -12,7 +12,7 @@ import { FeatureContainer } from '@/components/analysis/FeatureContainer'
 const SECTION_CARD: React.CSSProperties = {
   background: 'var(--bg-card)',
   border: '1px solid var(--border)',
-  borderRadius: '14px',
+  borderRadius: 'var(--radius-lg)',
   padding: '24px 28px',
   boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
   marginBottom: '20px',
@@ -241,7 +241,7 @@ export default function CompareRunsPage() {
       <Header />
 
       {error && (
-        <div style={{ ...SECTION_CARD, borderColor: 'rgba(239,68,68,0.35)', background: 'rgba(239,68,68,0.08)', color: '#ef4444', fontSize: '14px' }}>
+        <div style={{ ...SECTION_CARD, borderColor: 'rgba(239,68,68,0.35)', background: 'rgba(239,68,68,0.08)', color: 'var(--status-text-red)', fontSize: '14px' }}>
           {error}
         </div>
       )}
@@ -261,7 +261,7 @@ export default function CompareRunsPage() {
           </div>
 
           {sameRun && (
-            <div style={{ ...SECTION_CARD, borderColor: 'rgba(245,158,11,0.35)', background: 'rgba(245,158,11,0.1)', color: '#f59e0b', fontSize: '13px' }}>
+            <div style={{ ...SECTION_CARD, borderColor: 'rgba(245,158,11,0.35)', background: 'rgba(245,158,11,0.1)', color: 'var(--status-text-amber)', fontSize: '13px' }}>
               Both slots reference the same run. Pick a different run for slot B to see a comparison.
             </div>
           )}
@@ -562,7 +562,7 @@ function ComparisonWarnings({ runA, runB }: { runA: SimulationRun; runB: Simulat
               padding: '12px 16px', borderRadius: '12px',
               background: hard ? 'rgba(239,68,68,0.08)' : 'rgba(245,158,11,0.1)',
               border: `1px solid ${hard ? 'rgba(239,68,68,0.35)' : 'rgba(245,158,11,0.35)'}`,
-              color: hard ? '#ef4444' : '#f59e0b',
+              color: hard ? 'var(--status-text-red)' : 'var(--status-text-amber)',
               fontSize: '13px', lineHeight: 1.55,
             }}
           >
@@ -825,7 +825,7 @@ function CompareHeatmaps({
           <div style={{
             display: 'inline-block', padding: '3px 10px', borderRadius: '6px',
             fontSize: '11px', fontWeight: 700, letterSpacing: '0.06em',
-            background: 'rgba(45,184,176,0.1)', color: '#2db8b0',
+            background: 'rgba(45,184,176,0.1)', color: 'var(--status-text-teal)',
             marginBottom: '10px',
           }}>
             B · Comparison
@@ -873,7 +873,7 @@ function EmptyState() {
       </p>
       <a href="/map" style={{
         display: 'inline-block', marginTop: '16px', padding: '10px 20px',
-        background: '#2db8b0', color: '#ffffff', borderRadius: '8px',
+        background: 'var(--teal-button)', color: '#ffffff', borderRadius: '8px',
         textDecoration: 'none', fontSize: '14px', fontWeight: 600,
       }}>
         Run Simulation

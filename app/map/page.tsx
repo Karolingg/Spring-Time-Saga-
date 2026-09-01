@@ -1,17 +1,19 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import { useAuth } from '@/src/hooks/useAuth'
 import { useIsMobile } from '@/src/hooks/useIsMobile'
+import { useFocusTrap } from '@/src/hooks/useFocusTrap'
 import MapView, { type AssemblyMarker, type MapMarker } from '@/components/MapView'
 import { PageHeader } from '@/components/ui/PageHeader'
 import {BUILDING_FLOOR_COUNT} from '@/src/config/building-floor-counts'
 import { BUILDING_FLOOR_OCCUPANCY, getBuildingTotalCapacity } from '@/src/config/building-floor-occupancy'
 import { ASSEMBLY_POINTS, getNearestAssembly } from '@/src/config/assembly-points'
 import { getBuildingScore, type BuildingGrade, type BuildingScore, type FloorScore } from '@/src/services/building-analytics.service'
+import { PageLoading } from '@/components/ui/PageLoading'
 
 const CAMPUS_CENTER: [number, number] = [123.8988, 10.3228] // [lng, lat]
 
@@ -283,6 +285,18 @@ export default function MapPage() {
   const [scoringModalOpen, setScoringModalOpen] = useState(false)
   const isMobile = useIsMobile()
 
+  /* Both overlays run the app's standard dialog contract (see ConfirmModal):
+   * Tab is trapped inside, Escape closes, and focus returns to the trigger.
+   * The trap also stops the Escape event in the capture phase, which keeps the
+   * page-level Escape handler below from clearing the map selection behind an
+   * open overlay. */
+  const imageDialogRef = useRef<HTMLDivElement>(null)
+  const scoringDialogRef = useRef<HTMLDivElement>(null)
+  const closeFullscreenImage = useCallback(() => setFullscreenImage(null), [])
+  const closeScoringModal = useCallback(() => setScoringModalOpen(false), [])
+  useFocusTrap(imageDialogRef, fullscreenImage !== null, closeFullscreenImage)
+  useFocusTrap(scoringDialogRef, scoringModalOpen, closeScoringModal)
+
   useEffect(() => {
     if (!isLoading && !isAuthenticated) window.location.href = '/auth'
   }, [isLoading, isAuthenticated])
@@ -488,9 +502,7 @@ export default function MapPage() {
 
   if (isLoading) {
     return (
-      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg)' }}>
-        <span style={{ color: 'var(--text-secondary)', fontSize: '14px', display: 'flex', alignItems: 'center', gap: '10px' }}><span className="spinner" />Loading...</span>
-      </div>
+      <PageLoading />
     )
   }
 
@@ -523,7 +535,7 @@ export default function MapPage() {
         position: 'relative',
         background: '#0f172a',
         border: '1px solid #1e293b',
-        borderRadius: '14px',
+        borderRadius: 'var(--radius-lg)',
         boxShadow: '0 4px 24px rgba(0,0,0,0.2)',
         overflow: 'hidden',
         height: isMobile ? '460px' : '640px',
@@ -603,7 +615,7 @@ export default function MapPage() {
                 <span style={{
                   display: 'inline-flex', alignItems: 'center', gap: '5px',
                   padding: '4px 12px', borderRadius: '20px',
-                  background: 'rgba(45,184,176,0.1)', color: '#2db8b0',
+                  background: 'rgba(45,184,176,0.1)', color: 'var(--status-text-teal)',
                   fontSize: '11px', fontWeight: '600',
                   border: '1px solid rgba(45,184,176,0.2)',
                 }}>
@@ -626,11 +638,15 @@ export default function MapPage() {
 
             {/* Building Image Placeholder */}
             <div style={{ padding: '0 22px 16px' }}>
-              <div
+              <button
+                type="button"
                 onClick={() => setFullscreenImage(`/floorplans/${building.id}.png`)}
+                aria-label={`View the ${building.name} floorplan full size`}
                 style={{
                   width: '100%',
                   height: '180px',
+                  padding: 0,
+                  font: 'inherit',
                   background: 'var(--glass-card-bg)',
                   borderRadius: '12px',
                   border: '1px solid rgba(148,163,184,0.2)',
@@ -684,7 +700,7 @@ export default function MapPage() {
                 }}>
                   +
                 </div>
-              </div>
+              </button>
             </div>
 
             {/* Description */}
@@ -723,7 +739,7 @@ export default function MapPage() {
                   boxShadow: '0 12px 26px rgba(15,23,42,0.06)',
                 }}>
                   <div style={{
-                    fontSize: '11px', fontWeight: '700', color: '#2db8b0',
+                    fontSize: '11px', fontWeight: '700', color: 'var(--status-text-teal)',
                     letterSpacing: '0.7px', marginBottom: '12px',
                   }}>
                     FLOOR OCCUPANCY
@@ -758,7 +774,7 @@ export default function MapPage() {
                     <span style={{ fontSize: '11px', color: 'var(--text-secondary)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                       Total
                     </span>
-                    <span style={{ fontSize: '18px', fontWeight: 800, color: '#2db8b0' }}>
+                    <span style={{ fontSize: '18px', fontWeight: 800, color: 'var(--status-text-teal)' }}>
                       {getBuildingTotalCapacity(building.id)}
                     </span>
                   </div>
@@ -781,7 +797,7 @@ export default function MapPage() {
                   display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                   marginBottom: '12px',
                 }}>
-                  <span style={{ fontSize: '11px', color: '#2db8b0', fontWeight: '700', letterSpacing: '0.7px' }}>
+                  <span style={{ fontSize: '11px', color: 'var(--status-text-teal)', fontWeight: '700', letterSpacing: '0.7px' }}>
                     EVACUATION READINESS
                   </span>
                   <button
@@ -792,7 +808,7 @@ export default function MapPage() {
                       width: '22px', height: '22px', borderRadius: '50%',
                       background: 'rgba(45,184,176,0.12)',
                       border: '1px solid rgba(45,184,176,0.28)',
-                      color: '#2db8b0', fontSize: '12px', fontWeight: 700,
+                      color: 'var(--status-text-teal)', fontSize: '12px', fontWeight: 700,
                       cursor: 'pointer',
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
                       transition: 'background 0.15s, transform 0.15s',
@@ -848,7 +864,7 @@ export default function MapPage() {
                         Drives the cap below. */}
                     <div style={{ display: 'flex', gap: '6px', marginBottom: '12px' }}>
                       {([
-                        { key: 'severe',   label: 'Severe',   color: '#ef4444', count: activeScore.coverage.severe },
+                        { key: 'severe',   label: 'Severe',   color: 'var(--status-text-red)', count: activeScore.coverage.severe },
                         { key: 'moderate', label: 'Moderate', color: '#f97316', count: activeScore.coverage.moderate },
                         { key: 'minor',    label: 'Minor',    color: '#3b82f6', count: activeScore.coverage.minor + activeScore.coverage.unclassified },
                       ] as const).map((bucket) => (
@@ -1161,7 +1177,7 @@ export default function MapPage() {
               zIndex: 2000,
               width: `${assemblyBubble.width}px`,
               background: 'var(--bg-card)',
-              borderRadius: '18px',
+              borderRadius: 'var(--radius-lg)',
               boxShadow: '0 8px 32px rgba(0,0,0,0.18), 0 2px 8px rgba(0,0,0,0.08)',
               overflow: 'visible',
               transformOrigin: `${assemblyBubble.tailX}px ${assemblyBubble.above ? '100%' : '0%'}`,
@@ -1172,15 +1188,20 @@ export default function MapPage() {
             <div style={{ padding: '12px', maxHeight: `${assemblyBubble.maxHeight}px`, overflowY: 'auto' }}>
               {/* Image frame */}
               {selectedAssemblyData.image ? (
-                <div
+                <button
+                  type="button"
                   onClick={() => setFullscreenImage(selectedAssemblyData.image!)}
+                  aria-label={`View full-size photo of ${selectedAssemblyData.name}`}
                   style={{
+                    display: 'block',
+                    padding: 0,
                     position: 'relative',
                     width: '100%',
                     height: '130px',
                     borderRadius: '12px',
                     overflow: 'hidden',
                     border: '1px solid var(--border)',
+                    background: 'var(--bg-subtle)',
                     cursor: 'pointer',
                     transition: 'opacity 0.2s',
                   }}
@@ -1193,7 +1214,7 @@ export default function MapPage() {
                     fill
                     style={{ objectFit: 'cover' }}
                   />
-                </div>
+                </button>
               ) : (
                 <div style={{
                   width: '100%',
@@ -1229,7 +1250,7 @@ export default function MapPage() {
                 <div style={{
                   marginTop: '6px',
                   display: 'inline-flex', alignItems: 'center', gap: '4px',
-                  fontSize: '10px', fontWeight: 600, color: '#2db8b0',
+                  fontSize: '10px', fontWeight: 600, color: 'var(--status-text-teal)',
                   background: 'rgba(45,184,176,0.08)',
                   padding: '3px 8px', borderRadius: '6px',
                 }}>
@@ -1269,7 +1290,7 @@ export default function MapPage() {
       {fullscreenImage && createPortal(
         <>
           <div
-            onClick={() => setFullscreenImage(null)}
+            onClick={closeFullscreenImage}
             style={{
               position: 'fixed',
               inset: 0,
@@ -1280,27 +1301,19 @@ export default function MapPage() {
               justifyContent: 'center',
               padding: '20px',
             }}
-          />
-          <div
-            onClick={() => setFullscreenImage(null)}
-            style={{
-              position: 'fixed',
-              inset: 0,
-              zIndex: 3001,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              padding: '20px',
-            }}
           >
             <div
+              ref={imageDialogRef}
+              role="dialog"
+              aria-modal="true"
+              aria-label="Assembly point photo"
               onClick={(e) => e.stopPropagation()}
               style={{
                 position: 'relative',
                 maxWidth: '90vw',
                 maxHeight: '90vh',
                 background: 'var(--bg-card)',
-                borderRadius: '16px',
+                borderRadius: 'var(--radius-lg)',
                 overflow: 'hidden',
                 boxShadow: '0 20px 60px rgba(0, 0, 0, 0.3)',
               }}
@@ -1318,7 +1331,7 @@ export default function MapPage() {
                 }}
               />
               <button
-                onClick={() => setFullscreenImage(null)}
+                onClick={closeFullscreenImage}
                 aria-label="Close full-size image"
                 style={{
                   position: 'absolute',
@@ -1359,7 +1372,7 @@ export default function MapPage() {
           kept in sync with src/services/building-analytics.service.ts. */}
       {scoringModalOpen && (
         <div
-          onClick={() => setScoringModalOpen(false)}
+          onClick={closeScoringModal}
           style={{
             position: 'fixed',
             inset: 0,
@@ -1374,6 +1387,10 @@ export default function MapPage() {
           }}
         >
           <div
+            ref={scoringDialogRef}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="scoring-modal-title"
             onClick={(e) => e.stopPropagation()}
             style={{
               position: 'relative',
@@ -1382,13 +1399,13 @@ export default function MapPage() {
               maxHeight: '90vh',
               overflowY: 'auto',
               background: 'var(--bg-card)',
-              borderRadius: '16px',
+              borderRadius: 'var(--radius-lg)',
               boxShadow: '0 20px 60px rgba(0, 0, 0, 0.3)',
               padding: isMobile ? '20px' : '28px 32px',
             }}
           >
             <button
-              onClick={() => setScoringModalOpen(false)}
+              onClick={closeScoringModal}
               aria-label="Close scoring explanation"
               style={{
                 position: 'absolute', top: '14px', right: '14px',
@@ -1406,7 +1423,7 @@ export default function MapPage() {
               </svg>
             </button>
 
-            <h2 style={{ margin: '0 0 6px', fontSize: '20px', fontWeight: 800, color: 'var(--text-primary)' }}>
+            <h2 id="scoring-modal-title" style={{ margin: '0 0 6px', fontSize: '20px', fontWeight: 800, color: 'var(--text-primary)' }}>
               How the Readiness Score Works
             </h2>
             <p style={{ margin: '0 0 20px', fontSize: '13px', color: 'var(--text-secondary)', lineHeight: 1.6 }}>
@@ -1419,7 +1436,7 @@ export default function MapPage() {
               padding: '14px 16px', background: 'var(--bg-subtle)', borderRadius: '10px',
               border: '1px solid var(--border)', marginBottom: '16px',
             }}>
-              <div style={{ fontSize: '11px', fontWeight: 700, color: '#2db8b0', letterSpacing: '0.6px', marginBottom: '10px' }}>
+              <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--status-text-teal)', letterSpacing: '0.6px', marginBottom: '10px' }}>
                 PER-RUN SCORE (0–100)
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: '6px 16px', fontSize: '13px', color: 'var(--text-primary)' }}>
@@ -1445,7 +1462,7 @@ export default function MapPage() {
                   { grade: 'B' as const, min: 80, color: '#22c55e' },
                   { grade: 'C' as const, min: 70, color: '#f59e0b' },
                   { grade: 'D' as const, min: 60, color: '#f97316' },
-                  { grade: 'F' as const, min: 0,  color: '#ef4444' },
+                  { grade: 'F' as const, min: 0,  color: 'var(--status-text-red)' },
                 ]).map(g => (
                   <div key={g.grade} style={{
                     flex: '1 1 80px',
@@ -1497,7 +1514,7 @@ export default function MapPage() {
       )}
 
       <p style={{ marginTop: '12px', fontSize: '11px', color: 'var(--text-muted)', textAlign: 'center' }}>
-        Map powered by <a href="https://www.mapbox.com" target="_blank" rel="noreferrer" style={{ color: '#2db8b0' }}>Mapbox</a> &middot; Data &copy; <a href="https://www.openstreetmap.org" target="_blank" rel="noreferrer" style={{ color: '#2db8b0' }}>OpenStreetMap</a> contributors.
+        Map powered by <a href="https://www.mapbox.com" target="_blank" rel="noreferrer" style={{ color: 'var(--status-text-teal)' }}>Mapbox</a> &middot; Data &copy; <a href="https://www.openstreetmap.org" target="_blank" rel="noreferrer" style={{ color: 'var(--status-text-teal)' }}>OpenStreetMap</a> contributors.
       </p>
     </div>
   )

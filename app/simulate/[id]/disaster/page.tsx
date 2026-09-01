@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation'
 import { useAuth } from '@/src/hooks/useAuth'
 import { useTheme } from '@/src/context/ThemeContext'
 import { BUILDING_FLOOR_COUNT } from '@/src/config/building-floor-counts'
+import { PageLoading } from '@/components/ui/PageLoading'
 
 interface Disaster {
   type: 'fire' | 'earthquake'
@@ -104,9 +105,7 @@ export default function DisasterPickerPage() {
 
   if (isLoading) {
     return (
-      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg)' }}>
-        <div style={{ color: 'var(--text-secondary)', fontSize: '14px', display: 'flex', alignItems: 'center', gap: '10px' }}><span className="spinner" />Loading...</div>
-      </div>
+      <PageLoading />
     )
   }
 
@@ -223,7 +222,7 @@ export default function DisasterPickerPage() {
                     : isHovered ? `${d.color}80`
                     : 'var(--border)'
                   }`,
-                  borderRadius: '16px',
+                  borderRadius: 'var(--radius-lg)',
                   cursor: 'pointer',
                   textAlign: 'left',
                   transition: 'all 0.2s ease',
@@ -253,7 +252,7 @@ export default function DisasterPickerPage() {
                 <div style={{
                   width: '56px',
                   height: '56px',
-                  borderRadius: '16px',
+                  borderRadius: 'var(--radius-lg)',
                   background: `linear-gradient(135deg, ${d.color}18 0%, ${d.color}08 100%)`,
                   border: `1px solid ${d.color}30`,
                   display: 'flex',
@@ -351,7 +350,7 @@ export default function DisasterPickerPage() {
               <span style={{
                 width: '22px',
                 height: '22px',
-                borderRadius: '7px',
+                borderRadius: 'var(--radius-sm)',
                 background: 'rgba(45,184,176,0.12)',
                 display: 'inline-flex',
                 alignItems: 'center',
@@ -406,7 +405,7 @@ export default function DisasterPickerPage() {
                       padding: '18px 18px 16px',
                       background: 'var(--bg-card)',
                       border: `1.5px solid ${isFloorHovered ? 'rgba(45,184,176,0.5)' : 'var(--border)'}`,
-                      borderRadius: '14px',
+                      borderRadius: 'var(--radius-lg)',
                       cursor: 'pointer',
                       textAlign: 'left',
                       transition: 'all 0.2s ease',

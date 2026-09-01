@@ -39,7 +39,7 @@ export function SessionTimeoutModal({
           maxWidth: '440px',
           background: 'var(--bg-card)',
           border: '1px solid var(--border)',
-          borderRadius: '14px',
+          borderRadius: 'var(--radius-lg)',
           boxShadow: 'var(--shadow-md)',
           padding: '28px',
         }}
@@ -117,7 +117,7 @@ export function SessionTimeoutModal({
               padding: '9px 16px',
               borderRadius: '8px',
               border: 'none',
-              background: '#2db8b0',
+              background: 'var(--teal-button)',
               color: '#ffffff',
               fontSize: '14px',
               fontWeight: 700,

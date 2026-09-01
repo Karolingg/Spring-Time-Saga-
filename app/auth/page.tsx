@@ -352,7 +352,7 @@ export default function LoginPage() {
               className="hover-darken"
               style={{
                 ...CONTROL,
-                background: 'var(--teal)',
+                background: 'var(--teal-button)',
                 border: 'none',
                 boxShadow: '0 6px 16px -8px rgba(45, 184, 176, 0.9)',
                 color: '#ffffff',

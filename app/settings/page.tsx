@@ -13,6 +13,7 @@ import {
 } from '@/src/services/user.service'
 import { Card } from '@/components/ui/Card'
 import { PageHeader } from '@/components/ui/PageHeader'
+import { PageLoading } from '@/components/ui/PageLoading'
 
 type Section = 'profile' | 'security'
 
@@ -86,9 +87,7 @@ export default function SettingsPage() {
 
   if (isLoading) {
     return (
-      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg)' }}>
-        <span style={{ color: 'var(--text-secondary)', fontSize: '14px', display: 'flex', alignItems: 'center', gap: '10px' }}><span className="spinner" />Loading...</span>
-      </div>
+      <PageLoading />
     )
   }
 
@@ -124,7 +123,7 @@ export default function SettingsPage() {
             height: '36px',
             borderRadius: '10px',
             flexShrink: 0,
-            background: '#2db8b0',
+            background: 'var(--teal-button)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -203,7 +202,7 @@ export default function SettingsPage() {
           height: '40px',
           borderRadius: '10px',
           flexShrink: 0,
-          background: '#2db8b0',
+          background: 'var(--teal-button)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
@@ -227,7 +226,7 @@ export default function SettingsPage() {
           border: '1px solid rgba(239,68,68,0.35)',
           borderRadius: '8px',
           background: 'transparent',
-          color: '#ef4444',
+          color: 'var(--status-text-red)',
           fontSize: '12px',
           fontWeight: '500',
           cursor: 'pointer',
@@ -345,7 +344,7 @@ function ProfilePanel({ userEmail }: { userEmail: string }) {
           height: '48px',
           borderRadius: '12px',
           flexShrink: 0,
-          background: '#2db8b0',
+          background: 'var(--teal-button)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
@@ -496,7 +495,7 @@ function SecurityPanel({ userEmail }: { userEmail: string }) {
             disabled={submitting}
           />
           {tooShort && (
-            <span style={{ display: 'block', marginTop: '4px', fontSize: '12px', color: '#ef4444' }}>
+            <span style={{ display: 'block', marginTop: '4px', fontSize: '12px', color: 'var(--status-text-red)' }}>
               Too short - needs 6+ characters
             </span>
           )}
@@ -515,7 +514,7 @@ function SecurityPanel({ userEmail }: { userEmail: string }) {
             disabled={submitting}
           />
           {mismatch && (
-            <span style={{ display: 'block', marginTop: '4px', fontSize: '12px', color: '#ef4444' }}>
+            <span style={{ display: 'block', marginTop: '4px', fontSize: '12px', color: 'var(--status-text-red)' }}>
               Does not match
             </span>
           )}

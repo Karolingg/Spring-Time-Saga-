@@ -70,7 +70,7 @@ function actionSentence(zone: AggregateZoneStat): string {
 const SECTION_CARD: React.CSSProperties = {
   background: 'var(--bg-card)',
   border: '1px solid var(--border)',
-  borderRadius: '14px',
+  borderRadius: 'var(--radius-lg)',
   padding: '28px 32px',
   boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
   marginBottom: '20px',
@@ -281,7 +281,16 @@ export function AggregateAnalysis({ hideHeader = false }: AggregateAnalysisProps
           return (
             <div key={zoneKey}>
               <div
+                role="button"
+                tabIndex={0}
+                aria-expanded={isExpanded}
                 onClick={() => setExpandedZone(isExpanded ? null : zoneKey)}
+                onKeyDown={e => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault()
+                    setExpandedZone(isExpanded ? null : zoneKey)
+                  }
+                }}
                 style={{
                   display: 'grid', gridTemplateColumns: '2fr 1fr 90px 90px',
                   padding: '12px 16px', borderBottom: '1px solid var(--border)',
@@ -315,7 +324,7 @@ export function AggregateAnalysis({ hideHeader = false }: AggregateAnalysisProps
                   </span>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>
-                  <span style={{ fontSize: '12px', fontWeight: 600, color: zone.totalBottlenecks > 0 ? '#ef4444' : '#22c55e' }}>
+                  <span style={{ fontSize: '12px', fontWeight: 600, color: zone.totalBottlenecks > 0 ? 'var(--status-text-red)' : 'var(--status-text-green)' }}>
                     {zone.totalBottlenecks}
                   </span>
                 </div>
@@ -346,17 +355,19 @@ export function AggregateAnalysis({ hideHeader = false }: AggregateAnalysisProps
         })}
 
         {sorted.length > 5 && (
-          <div
+          <button
+            type="button"
             onClick={() => setShowAll(!showAll)}
             style={{
+              display: 'block', width: '100%',
               padding: '10px 16px', textAlign: 'center',
-              fontSize: '12px', fontWeight: 600, color: '#2db8b0',
+              fontSize: '12px', fontWeight: 600, color: 'var(--status-text-teal)',
               cursor: 'pointer', background: 'var(--bg-subtle)',
-              borderTop: '1px solid var(--border)',
+              border: 'none', borderTop: '1px solid var(--border)',
             }}
           >
             {showAll ? 'Show top 5 only' : `Show all ${sorted.length} zones`}
-          </div>
+          </button>
         )}
       </div>
 
@@ -371,7 +382,7 @@ export function AggregateAnalysis({ hideHeader = false }: AggregateAnalysisProps
           <div style={{
             display: 'flex', alignItems: 'center', gap: '6px',
             fontSize: '10px', fontWeight: 700, letterSpacing: '0.08em',
-            color: '#2db8b0', textTransform: 'uppercase', marginBottom: '6px',
+            color: 'var(--status-text-teal)', textTransform: 'uppercase', marginBottom: '6px',
           }}>
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
               <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01z" />

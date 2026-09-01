@@ -7,6 +7,7 @@ import { BUILDING_FLOOR_COUNT } from '@/src/config/building-floor-counts'
 import { makePlaceholderFloor } from '@/src/simulation/floor-config/placeholder'
 import { BUILDING_FLOORS } from '@/src/simulation/floor-config/buildings'
 import { getHazardStorageKey, loadHazardPlan, type PlacedHazard } from '@/src/simulation/hazard-placement'
+import { PageLoading } from '@/components/ui/PageLoading'
 
 type SimPhase = 'planning' | 'running' | 'rerouting' | 'completed'
 type DisasterType = 'fire' | 'earthquake'
@@ -1938,9 +1939,7 @@ export default function SimulationRunPage() {
   }
 
   if (isLoading || isFloorConfigLoading) return (
-    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg)' }}>
-      <div style={{ color: 'var(--text-secondary)', fontSize: '14px' }}>{isLoading ? 'Loading...' : 'Loading floor configuration...'}</div>
-    </div>
+    <PageLoading label={isLoading ? 'Loading...' : 'Loading floor configuration...'} />
   )
 
   if (!isAuthenticated) return null
@@ -1954,7 +1953,7 @@ export default function SimulationRunPage() {
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6" /></svg>
         Change disaster type
       </button>
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '400px', gap: '16px', background: 'var(--bg-subtle)', borderRadius: '16px', border: '1px solid var(--border)', padding: '18px', boxShadow: '0 1px 0 rgba(0,0,0,0.02), 0 6px 18px rgba(15,23,42,0.04)' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '400px', gap: '16px', background: 'var(--bg-subtle)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--border)', padding: '18px', boxShadow: '0 1px 0 rgba(0,0,0,0.02), 0 6px 18px rgba(15,23,42,0.04)' }}>
         <div style={{ fontSize: '16px', fontWeight: 700, color: 'var(--text-primary)' }}>{displayName}</div>
         <div style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>{floorConfigLoadError || 'Floor plan for this building is coming soon.'}</div>
       </div>
@@ -2041,7 +2040,7 @@ export default function SimulationRunPage() {
               onBlur={e => {
                 e.currentTarget.style.borderColor = `${meta.color}55`
                 e.currentTarget.style.boxShadow = 'none'
-                e.currentTarget.style.background = '#ffffff'
+                e.currentTarget.style.background = 'var(--bg-card)'
               }}
               onMouseEnter={e => {
                 if (phase !== 'planning') return
@@ -2051,7 +2050,7 @@ export default function SimulationRunPage() {
               onMouseLeave={e => {
                 if (phase !== 'planning') return
                 e.currentTarget.style.borderColor = `${meta.color}55`
-                e.currentTarget.style.background = '#ffffff'
+                e.currentTarget.style.background = 'var(--bg-card)'
               }}
               disabled={phase !== 'planning'}
               style={{
@@ -2077,7 +2076,7 @@ export default function SimulationRunPage() {
       {/* Main layout */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 380px', gap: '28px', alignItems: 'start' }}>
 
-        <div style={{ background: 'linear-gradient(180deg, #ffffff 0%, #f8fbfd 100%)', borderRadius: '14px', border: '1px solid #dbe7ee', overflow: 'hidden', aspectRatio: `${config!.viewWidth}/${config!.viewHeight}`, boxShadow: '0 14px 30px rgba(15,23,42,0.10)', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
+        <div style={{ background: 'linear-gradient(180deg, #ffffff 0%, #f8fbfd 100%)', borderRadius: 'var(--radius-lg)', border: '1px solid #dbe7ee', overflow: 'hidden', aspectRatio: `${config!.viewWidth}/${config!.viewHeight}`, boxShadow: '0 14px 30px rgba(15,23,42,0.10)', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
           <FloorPlanView
             buildingId={regionId} config={config!} disaster={disaster}
             obstacles={activeObstacles}
@@ -2093,10 +2092,32 @@ export default function SimulationRunPage() {
             backNodeLabel={backNodeLabel}
           />
 
+          {/* Map legend. These chips sit on the floorplan, which stays light in
+              both themes, so their palette is deliberately fixed rather than
+              tokenised. The route colour is carried by a swatch dot instead of
+              by the label text: tinting 10px text teal or red left it at
+              2.4:1 / 3.8:1 on the white pill, and a dot reads as a legend key
+              anyway — it shows the colour the map actually draws. */}
           <div style={{ position: 'absolute', top: '10px', left: '10px', display: 'flex', gap: '6px', flexWrap: 'wrap', pointerEvents: 'none' }}>
-            <span style={{ background: '#ffffffdd', border: '1px solid #d8e4ec', borderRadius: '999px', padding: '4px 9px', fontSize: '10px', fontWeight: 700, color: '#0f172a' }}>Live Drill View</span>
-            <span style={{ background: '#ffffffdd', border: '1px solid #d8e4ec', borderRadius: '999px', padding: '4px 9px', fontSize: '10px', fontWeight: 600, color: '#2db8b0' }}>Selected Route</span>
-            <span style={{ background: '#ffffffdd', border: '1px solid #d8e4ec', borderRadius: '999px', padding: '4px 9px', fontSize: '10px', fontWeight: 600, color: '#ef4444' }}>Blocked Path</span>
+            {[
+              { label: 'Live Drill View', swatch: null },
+              { label: 'Selected Route', swatch: '#2db8b0' },
+              { label: 'Blocked Path', swatch: '#ef4444' },
+            ].map(chip => (
+              <span
+                key={chip.label}
+                style={{
+                  display: 'inline-flex', alignItems: 'center', gap: '5px',
+                  background: '#ffffffdd', border: '1px solid #d8e4ec', borderRadius: '999px',
+                  padding: '4px 9px', fontSize: '10px', fontWeight: 700, color: '#0f172a',
+                }}
+              >
+                {chip.swatch && (
+                  <span style={{ width: '7px', height: '7px', borderRadius: '50%', background: chip.swatch, flexShrink: 0 }} />
+                )}
+                {chip.label}
+              </span>
+            ))}
           </div>
         </div>
 
@@ -2119,7 +2140,7 @@ export default function SimulationRunPage() {
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px' }}>
                   {currentFloorRooms.length === 0 && (
-                    <div style={{ gridColumn: '1 / -1', fontSize: '11px', color: 'var(--text-secondary)', padding: '8px 10px', background: 'var(--bg-inset)', border: '1px dashed #c9dae6', borderRadius: '8px' }}>
+                    <div style={{ gridColumn: '1 / -1', fontSize: '11px', color: 'var(--text-secondary)', padding: '8px 10px', background: 'var(--bg-inset)', border: '1px dashed var(--border-strong)', borderRadius: '8px' }}>
                       No room options are configured for this floor yet.
                     </div>
                   )}
@@ -2127,9 +2148,9 @@ export default function SimulationRunPage() {
                     <button key={key} onClick={() => selectRoom(key)}
                       style={{
                         padding: '8px 10px', borderRadius: '8px', fontSize: '11px', fontWeight: 600,
-                        background: selectedRoom === key ? '#2db8b015' : '#f1f5f9',
-                        border: `1.5px solid ${selectedRoom === key ? '#2db8b0' : '#c9dae6'}`,
-                        color: selectedRoom === key ? '#2db8b0' : '#0f172a',
+                        background: selectedRoom === key ? '#2db8b015' : 'var(--bg-inset)',
+                        border: `1.5px solid ${selectedRoom === key ? '#2db8b0' : 'var(--border-strong)'}`,
+                        color: selectedRoom === key ? 'var(--status-text-teal)' : 'var(--text-primary)',
                         cursor: 'pointer', textAlign: 'left', transition: 'all 0.15s',
                       }}>
                       {room.label}
@@ -2145,7 +2166,7 @@ export default function SimulationRunPage() {
                     <div style={{ width: '22px', height: '22px', borderRadius: '50%', background: routeMode ? '#2db8b0' : 'var(--bg-inset)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: 700, color: routeMode ? '#fff' : 'var(--text-secondary)', flexShrink: 0 }}>2</div>
                     <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)' }}>Choose Route</div>
                   </div>
-                  <div style={{ background: 'var(--bg-card)', border: '1px solid #dbe7ee', borderRadius: '9px', padding: '10px 12px', marginBottom: '10px' }}>
+                  <div style={{ background: 'var(--bg-card)', border: '1px solid #dbe7ee', borderRadius: 'var(--radius-md)', padding: '10px 12px', marginBottom: '10px' }}>
                     <div style={{ fontSize: '10px', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '6px' }}>Corridor Node State</div>
                     <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginBottom: '6px', lineHeight: 1.45 }}>
                       Start: {entryNodeLabel || 'N/A'} {'\u00B7'} Current: {currentNodeLabel || 'N/A'}
@@ -2160,10 +2181,10 @@ export default function SimulationRunPage() {
                         }}
                         disabled={!canBackOneNode || !backNodeLabel}
                         style={{
-                          padding: '6px 10px', borderRadius: '7px', fontSize: '11px', fontWeight: 700,
-                          background: canBackOneNode ? '#fff7ed' : '#f1f5f9',
+                          padding: '6px 10px', borderRadius: 'var(--radius-sm)', fontSize: '11px', fontWeight: 700,
+                          background: canBackOneNode ? 'rgba(245,158,11,0.12)' : 'var(--bg-inset)',
                           border: `1px solid ${canBackOneNode ? '#fdba74' : '#cbd5e1'}`,
-                          color: canBackOneNode ? '#c2410c' : '#94a3b8',
+                          color: canBackOneNode ? 'var(--warn-text)' : 'var(--text-muted)',
                           cursor: canBackOneNode ? 'pointer' : 'not-allowed',
                         }}>
                         Back One Node
@@ -2178,8 +2199,8 @@ export default function SimulationRunPage() {
                       style={{
                         display: 'flex', alignItems: 'center', gap: '12px',
                         padding: '12px 14px', borderRadius: '10px',
-                        background: routeMode === 'safest' ? '#22c55e10' : '#f1f5f9',
-                        border: `1.5px solid ${routeMode === 'safest' ? '#22c55e' : '#c9dae6'}`,
+                        background: routeMode === 'safest' ? '#22c55e10' : 'var(--bg-inset)',
+                        border: `1.5px solid ${routeMode === 'safest' ? '#22c55e' : 'var(--border-strong)'}`,
                         cursor: safestExit ? 'pointer' : 'not-allowed', textAlign: 'left', transition: 'all 0.15s', opacity: safestExit ? 1 : 0.55,
                       }}>
                       <div style={{ width: '36px', height: '36px', borderRadius: '10px', background: '#22c55e15', border: '1px solid #22c55e30', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
@@ -2203,8 +2224,8 @@ export default function SimulationRunPage() {
                       style={{
                         display: 'flex', alignItems: 'center', gap: '12px',
                         padding: '12px 14px', borderRadius: '10px',
-                        background: routeMode === 'fastest' ? '#3b82f610' : '#f1f5f9',
-                        border: `1.5px solid ${routeMode === 'fastest' ? '#3b82f6' : '#c9dae6'}`,
+                        background: routeMode === 'fastest' ? '#3b82f610' : 'var(--bg-inset)',
+                        border: `1.5px solid ${routeMode === 'fastest' ? '#3b82f6' : 'var(--border-strong)'}`,
                         cursor: fastestExit ? 'pointer' : 'not-allowed', textAlign: 'left', transition: 'all 0.15s', opacity: fastestExit ? 1 : 0.55,
                       }}>
                       <div style={{ width: '36px', height: '36px', borderRadius: '10px', background: '#3b82f615', border: '1px solid #3b82f630', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
@@ -2231,14 +2252,16 @@ export default function SimulationRunPage() {
                           const mayBlock = potentialBlockedExits.has(key)
                           const selected = selectedExit === key && routeMode === null
                           const reachableFromNode = reachableExitKeys.has(key)
+                          // Stays a hex: it is alpha-appended below (`${color}15`),
+                          // which a var() reference cannot support.
                           const color = blocked ? '#ef4444' : mayBlock ? '#f59e0b' : '#64748b'
                           return (
                             <button key={key} onClick={() => { setRouteMode(null); setSelectedExit(key) }} disabled={!reachableFromNode}
                               style={{
                                 padding: '6px 12px', borderRadius: '6px', fontSize: '11px', fontWeight: 600,
-                                background: selected ? `${color}15` : reachableFromNode ? '#f1f5f9' : '#f8fafc',
-                                border: `1.5px solid ${selected ? color : reachableFromNode ? '#c9dae6' : '#e2e8f0'}`,
-                                color: selected ? (blocked ? '#ef4444' : 'var(--text-primary)') : reachableFromNode ? '#0f172a' : '#94a3b8',
+                                background: selected ? `${color}15` : reachableFromNode ? 'var(--bg-inset)' : 'var(--bg-subtle)',
+                                border: `1.5px solid ${selected ? color : reachableFromNode ? 'var(--border-strong)' : 'var(--border)'}`,
+                                color: selected ? (blocked ? 'var(--status-text-red)' : 'var(--text-primary)') : reachableFromNode ? 'var(--text-primary)' : 'var(--text-muted)',
                                 cursor: reachableFromNode ? 'pointer' : 'not-allowed', transition: 'all 0.15s',
                               }}>
                               {key} {'\u00B7'} {config.exits[key].desc.split('\u00B7')[0].trim()}
@@ -2280,9 +2303,9 @@ export default function SimulationRunPage() {
                   <button onClick={startSimulation} disabled={!selectedExit || !selectedRoom}
                     style={{
                       padding: '13px', borderRadius: '10px', fontSize: '13px', fontWeight: 700,
-                      background: selectedExit && selectedRoom ? '#2db8b0' : '#f1f5f9',
-                      color: selectedExit && selectedRoom ? '#fff' : '#94a3b8',
-                      border: selectedExit && selectedRoom ? 'none' : '1px solid #c9dae6', cursor: selectedExit && selectedRoom ? 'pointer' : 'not-allowed', transition: 'all 0.15s',
+                      background: selectedExit && selectedRoom ? '#2db8b0' : 'var(--bg-inset)',
+                      color: selectedExit && selectedRoom ? '#fff' : 'var(--text-muted)',
+                      border: selectedExit && selectedRoom ? 'none' : '1px solid var(--border-strong)', cursor: selectedExit && selectedRoom ? 'pointer' : 'not-allowed', transition: 'all 0.15s',
                       boxShadow: selectedExit && selectedRoom ? '0 4px 16px rgba(45,184,176,0.3)' : 'none',
                     }}>
                     {!selectedRoom ? 'Select your location first' : !selectedExit ? 'Choose a route' : `Start Simulation \u2192 ${selectedExit}`}
@@ -2318,7 +2341,7 @@ export default function SimulationRunPage() {
                     <div style={{ width: '6px', height: '6px', borderRadius: '50%', marginTop: '6px', flexShrink: 0, background: ev.type === 'danger' ? '#ef4444' : ev.type === 'warn' ? '#f59e0b' : '#2db8b0' }} />
                     <div style={{ flex: 1 }}>
                       <div style={{ fontSize: '10px', color: 'var(--text-secondary)', marginBottom: '2px' }}>{formatEventTime(ev.time)}</div>
-                      <div style={{ fontSize: '11px', color: ev.type === 'danger' ? '#ef4444' : ev.type === 'warn' ? '#b45309' : 'var(--text-secondary)', lineHeight: 1.4 }}>{ev.message}</div>
+                      <div style={{ fontSize: '11px', color: ev.type === 'danger' ? 'var(--status-text-red)' : ev.type === 'warn' ? '#b45309' : 'var(--text-secondary)', lineHeight: 1.4 }}>{ev.message}</div>
                     </div>
                   </div>
                 ))}
@@ -2335,7 +2358,7 @@ export default function SimulationRunPage() {
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
                   </div>
                   <div>
-                    <div style={{ fontSize: '14px', fontWeight: 700, color: '#22c55e' }}>Drill Complete</div>
+                    <div style={{ fontSize: '14px', fontWeight: 700, color: 'var(--status-text-green)' }}>Drill Complete</div>
                     <div style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
                       {selectedRoom && config?.rooms[selectedRoom] ? `From ${config.rooms[selectedRoom].label}` : 'Evacuation finished'}
                     </div>
@@ -2344,15 +2367,18 @@ export default function SimulationRunPage() {
 
                 {/* Key metric */}
                 <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '10px', padding: '14px', marginBottom: '12px', textAlign: 'center' }}>
-                  <div style={{ fontSize: '32px', fontWeight: 800, color: metrics.evacuationTime > 20 ? '#ef4444' : '#22c55e', lineHeight: 1 }}>{metrics.evacuationTime}s</div>
+                  <div style={{ fontSize: '32px', fontWeight: 800, color: metrics.evacuationTime > 20 ? 'var(--status-text-red)' : 'var(--status-text-green)', lineHeight: 1 }}>{metrics.evacuationTime}s</div>
                   <div style={{ fontSize: '10px', color: 'var(--text-secondary)', marginTop: '4px', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Evacuation Time</div>
                 </div>
 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '6px' }}>
                   {[
-                    { label: 'Exit', value: metrics.actualExit, color: '#2db8b0' },
-                    { label: 'Rerouted', value: metrics.rerouted ? 'Yes' : 'No', color: metrics.rerouted ? '#f59e0b' : '#22c55e' },
-                    { label: 'Efficiency', value: `${Math.round(metrics.pathEfficiency * 100)}%`, color: metrics.pathEfficiency >= 0.85 ? '#22c55e' : '#f59e0b' },
+                    // These render as 14px text on a themed card, so they take
+                    // the contrast-safe status variants rather than the vivid
+                    // hues (which sit at 2.2-3.8:1 on a white surface).
+                    { label: 'Exit', value: metrics.actualExit, color: 'var(--status-text-teal)' },
+                    { label: 'Rerouted', value: metrics.rerouted ? 'Yes' : 'No', color: metrics.rerouted ? 'var(--status-text-amber)' : 'var(--status-text-green)' },
+                    { label: 'Efficiency', value: `${Math.round(metrics.pathEfficiency * 100)}%`, color: metrics.pathEfficiency >= 0.85 ? 'var(--status-text-green)' : 'var(--status-text-amber)' },
                   ].map(m => (
                     <div key={m.label} style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '8px', padding: '8px 10px', textAlign: 'center' }}>
                       <div style={{ fontSize: '9px', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '3px' }}>{m.label}</div>
@@ -2369,8 +2395,8 @@ export default function SimulationRunPage() {
                   <div style={{ fontSize: '13px', fontWeight: 700, color: congestionColor(metrics.congestionLevel) }}>{metrics.congestionLevel}</div>
                 </div>
                 <div style={{ background: `${metrics.hazardExposure ? '#ef4444' : '#22c55e'}12`, border: `1px solid ${metrics.hazardExposure ? '#ef4444' : '#22c55e'}35`, borderRadius: '8px', padding: '10px 12px', boxShadow: '0 1px 0 rgba(0,0,0,0.02)' }}>
-                  <div style={{ fontSize: '9px', color: metrics.hazardExposure ? '#ef4444' : '#22c55e', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '3px' }}>Hazard Exposure</div>
-                  <div style={{ fontSize: '13px', fontWeight: 700, color: metrics.hazardExposure ? '#ef4444' : '#22c55e' }}>{metrics.hazardExposure ? 'Exposed' : 'None'}</div>
+                  <div style={{ fontSize: '9px', color: metrics.hazardExposure ? 'var(--status-text-red)' : 'var(--status-text-green)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '3px' }}>Hazard Exposure</div>
+                  <div style={{ fontSize: '13px', fontWeight: 700, color: metrics.hazardExposure ? 'var(--status-text-red)' : 'var(--status-text-green)' }}>{metrics.hazardExposure ? 'Exposed' : 'None'}</div>
                 </div>
               </div>
 
@@ -2392,7 +2418,7 @@ export default function SimulationRunPage() {
                   Run Again
                 </button>
                 <button onClick={() => router.push('/map')}
-                  style={{ padding: '11px', borderRadius: '10px', fontSize: '12px', fontWeight: 600, background: '#2db8b0', border: 'none', color: '#fff', cursor: 'pointer', transition: 'all 0.15s', boxShadow: '0 2px 12px rgba(45,184,176,0.3)' }}>
+                  style={{ padding: '11px', borderRadius: '10px', fontSize: '12px', fontWeight: 600, background: 'var(--teal-button)', border: 'none', color: '#fff', cursor: 'pointer', transition: 'all 0.15s', boxShadow: '0 2px 12px rgba(45,184,176,0.3)' }}>
                   Back to Map
                 </button>
               </div>

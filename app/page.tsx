@@ -19,6 +19,7 @@ import { Card } from '@/components/ui/Card'
 import { StatCard } from '@/components/ui/StatCard'
 import type { StatCardProps } from '@/components/ui/StatCard'
 import type { SimulationRun } from '@/src/schema/simulation.types'
+import { PageLoading } from '@/components/ui/PageLoading'
 
 interface AggregateStats {
   totalRuns: number
@@ -198,12 +199,7 @@ export default function DashboardPage() {
 
   if (isAuthLoading) {
     return (
-      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg)' }}>
-        <div style={{ color: 'var(--text-secondary)', fontSize: '14px', display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <span className="spinner" />
-          Loading...
-        </div>
-      </div>
+      <PageLoading />
     )
   }
 
@@ -246,7 +242,7 @@ export default function DashboardPage() {
             onClick={() => resetOnboarding()}
             style={{
               display: 'flex', alignItems: 'center', gap: '8px',
-              padding: '10px 20px', background: 'var(--bg-inset)', color: '#2db8b0',
+              padding: '10px 20px', background: 'var(--bg-inset)', color: 'var(--status-text-teal)',
               border: '1px solid var(--border)', borderRadius: '8px', cursor: 'pointer',
               fontSize: '14px', fontWeight: '600', transition: 'all 0.2s ease-in-out',
             }}
@@ -266,17 +262,10 @@ export default function DashboardPage() {
             </svg>
             Tutorial
           </button>
-          <a href="/map" style={{
+          <a href="/map" className="hover-darken" style={{
             display: 'flex', alignItems: 'center', gap: '8px',
-            padding: '10px 20px', background: '#2db8b0', color: '#fff',
+            padding: '10px 20px', background: 'var(--teal-button)', color: '#fff',
             borderRadius: '8px', textDecoration: 'none', fontSize: '14px', fontWeight: '600', flexShrink: 0,
-            transition: 'all 0.2s ease-in-out',
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.background = '#1f9189'
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.background = '#2db8b0'
           }}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="#ffffff" stroke="none">
               <polygon points="8 5 19 12 8 19 8 5" />
@@ -295,7 +284,7 @@ export default function DashboardPage() {
           marginBottom: '24px',
           borderColor: 'rgba(239,68,68,0.35)',
           background: 'rgba(239,68,68,0.08)',
-          color: '#ef4444',
+          color: 'var(--status-text-red)',
         }}>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <circle cx="12" cy="12" r="10" />
@@ -456,7 +445,7 @@ function CoveragePill({ label, tone }: { label: string; tone: 'active' | 'muted'
       fontSize: '11px',
       fontWeight: tone === 'active' ? '600' : '500',
       background: tone === 'active' ? 'rgba(45,184,176,0.1)' : 'var(--bg-inset)',
-      color: tone === 'active' ? '#2db8b0' : 'var(--text-muted)',
+      color: tone === 'active' ? 'var(--status-text-teal)' : 'var(--text-muted)',
     }}>
       {label}
     </span>
@@ -599,7 +588,7 @@ function DrillTimeline({ runs, isLoading }: { runs: SimulationRun[]; isLoading: 
                       <span style={{
                         padding: '2px 8px', borderRadius: '5px', fontSize: '11px', fontWeight: '500',
                         background: evacRate >= 80 ? 'rgba(34,197,94,0.1)' : evacRate >= 50 ? 'rgba(245,158,11,0.1)' : 'rgba(239,68,68,0.1)',
-                        color: evacRate >= 80 ? '#22c55e' : evacRate >= 50 ? '#f59e0b' : '#ef4444',
+                        color: evacRate >= 80 ? 'var(--status-text-green)' : evacRate >= 50 ? 'var(--status-text-amber)' : 'var(--status-text-red)',
                       }}>
                         {evacRate}% evacuated
                       </span>
@@ -711,7 +700,7 @@ function DrillComparison({ runs, isMobile, isLoading }: { runs: SimulationRun[];
           </div>
           <a href="/map" className="hover-darken" style={{
             display: 'inline-block', marginTop: '8px', padding: '8px 16px',
-            background: '#2db8b0', color: '#ffffff', borderRadius: '6px',
+            background: 'var(--teal-button)', color: '#ffffff', borderRadius: '6px',
             textDecoration: 'none', fontSize: '13px', fontWeight: '600',
           }}>
             Run another simulation
@@ -769,7 +758,7 @@ function ComparisonPreview({ a, b, compareUrl, isMobile }: { a: SimulationRun; b
         />
         <a href={compareUrl} className="hover-darken" style={{
           display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
-          padding: '9px 14px', background: '#2db8b0', color: '#ffffff',
+          padding: '9px 14px', background: 'var(--teal-button)', color: '#ffffff',
           borderRadius: '6px', textDecoration: 'none', fontSize: '13px', fontWeight: '600',
           width: isMobile ? '100%' : undefined,
         }}>
@@ -868,7 +857,7 @@ const QUICK_ACTIONS = [
     href: '/map',
     label: 'Earthquake Drill',
     sub: 'Dynamic obstacles scenario',
-    color: '#f59e0b',
+    color: 'var(--status-text-amber)',
     icon: (
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <path d="M3 8h18" />
@@ -882,7 +871,7 @@ const QUICK_ACTIONS = [
     href: '/analysis',
     label: 'Heatmap Analysis',
     sub: 'View density & bottlenecks',
-    color: '#2db8b0',
+    color: 'var(--status-text-teal)',
     icon: (
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2db8b0" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <rect x="3" y="3" width="18" height="18" rx="2" />

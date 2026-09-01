@@ -51,7 +51,7 @@ export function ConfirmModal({
         className="fade-in-up"
         onClick={(e) => e.stopPropagation()}
         style={{
-          background: 'var(--bg-card)', borderRadius: '16px',
+          background: 'var(--bg-card)', borderRadius: 'var(--radius-lg)',
           border: '1px solid var(--border)',
           boxShadow: '0 20px 50px -12px rgba(0, 0, 0, 0.4)',
           padding: '32px', maxWidth: '420px', width: '100%',

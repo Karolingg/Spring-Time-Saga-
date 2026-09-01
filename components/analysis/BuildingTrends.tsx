@@ -77,7 +77,7 @@ export function BuildingTrends() {
 
   if (error) {
     return (
-      <div style={{ padding: '16px', borderRadius: '10px', background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.35)', color: '#ef4444', fontSize: '13px' }}>
+      <div style={{ padding: '16px', borderRadius: '10px', background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.35)', color: 'var(--status-text-red)', fontSize: '13px' }}>
         {error}
       </div>
     )

@@ -442,7 +442,7 @@ export function SpatialBottleneckHeatmap({
                     onClick={() => setActiveFloorId(floor.id)}
                     style={{
                       padding: '7px 14px', fontSize: '11px', fontWeight: 700,
-                      borderRadius: '7px', border: 'none',
+                      borderRadius: 'var(--radius-sm)', border: 'none',
                       background: selected ? 'var(--bg-card)' : 'transparent',
                       color: selected ? 'var(--text-primary)' : 'var(--text-muted)',
                       cursor: 'pointer',
@@ -495,7 +495,7 @@ export function SpatialBottleneckHeatmap({
                 style={{
                   display: 'inline-flex', alignItems: 'center', gap: '6px',
                   padding: '6px 12px', fontSize: '11px', fontWeight: 700,
-                  borderRadius: '7px', border: 'none', cursor: 'pointer',
+                  borderRadius: 'var(--radius-sm)', border: 'none', cursor: 'pointer',
                   background: selected ? 'var(--bg-card)' : 'transparent',
                   color: selected ? (d === 'fire' ? '#dc2626' : '#b45309') : 'var(--text-muted)',
                   boxShadow: selected ? '0 1px 3px rgba(15,23,42,0.10)' : 'none',
@@ -536,7 +536,7 @@ export function SpatialBottleneckHeatmap({
           position: 'relative',
           flex: 1,
           aspectRatio: `${VIEW_WIDTH}/${VIEW_HEIGHT}`,
-          borderRadius: '14px',
+          borderRadius: 'var(--radius-lg)',
           border: '1px solid #cbd5e1',
           overflow: 'hidden',
           background: 'linear-gradient(180deg, #fafcff 0%, #eef3f8 100%)',
@@ -719,7 +719,7 @@ export function SpatialBottleneckHeatmap({
               <div style={{ textAlign: 'center', padding: '24px', maxWidth: '320px' }}>
                 <div style={{
                   width: '54px', height: '54px', margin: '0 auto 14px',
-                  borderRadius: '15px', background: 'var(--bg-card)',
+                  borderRadius: 'var(--radius-lg)', background: 'var(--bg-card)',
                   border: '1px solid var(--border)',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                   boxShadow: '0 4px 14px rgba(15,23,42,0.06)',
@@ -975,7 +975,7 @@ function NodeHoverPopup({ node, screenX, screenY, kindLabel, peakAgents, intensi
         zIndex: 2000,
         width: '210px',
         background: 'var(--bg-card)',
-        borderRadius: '16px',
+        borderRadius: 'var(--radius-lg)',
         boxShadow: '0 8px 32px rgba(0,0,0,0.18), 0 2px 8px rgba(0,0,0,0.08)',
         pointerEvents: 'none',
       }}

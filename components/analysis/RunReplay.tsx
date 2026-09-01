@@ -319,7 +319,7 @@ export function RunReplay({
       <div style={{
         position: 'relative',
         aspectRatio: `${VIEW_WIDTH}/${VIEW_HEIGHT}`,
-        borderRadius: '14px',
+        borderRadius: 'var(--radius-lg)',
         border: '1px solid #cbd5e1',
         overflow: 'hidden',
         background: 'linear-gradient(180deg, #fafcff 0%, #eef3f8 100%)',

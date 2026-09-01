@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useAuth } from '@/src/hooks/useAuth'
 import { useRouter } from 'next/navigation'
 import { useOnboarding } from '@/src/hooks/useOnboarding'
+import { PageLoading } from '@/components/ui/PageLoading'
 
 // Icon components
 function GaugeIcon() {
@@ -129,7 +130,7 @@ function DocumentIcon() {
 const SECTION_CARD: React.CSSProperties = {
   background: 'var(--bg-card)',
   border: '1px solid var(--border)',
-  borderRadius: '14px',
+  borderRadius: 'var(--radius-lg)',
   padding: '28px 32px',
   marginBottom: '24px',
   boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
@@ -169,9 +170,7 @@ export default function HelpPage() {
 
   if (isAuthLoading) {
     return (
-      <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)' }}>
-        Loading...
-      </div>
+      <PageLoading />
     )
   }
 
@@ -234,7 +233,7 @@ export default function HelpPage() {
                 background: 'transparent',
                 fontSize: '16px',
                 fontWeight: '600',
-                color: activeTab === tab ? '#2db8b0' : 'var(--text-muted)',
+                color: activeTab === tab ? 'var(--status-text-teal)' : 'var(--text-muted)',
                 cursor: 'pointer',
                 borderBottom:
                   activeTab === tab ? '3px solid #2db8b0' : 'none',
@@ -275,19 +274,19 @@ export default function HelpPage() {
               <strong>Score Ranges:</strong>
               <ul style={{ marginTop: '1px', marginBottom: 0, paddingLeft: '20px' }}>
                 <li>
-                  <strong style={{ color: '#22c55e' }}>80-100 (Excellent):</strong> Building
+                  <strong style={{ color: 'var(--status-text-green)' }}>80-100 (Excellent):</strong> Building
                   meets evacuation standards; minimal risk
                 </li>
                 <li>
-                  <strong style={{ color: '#2db8b0' }}>60-79 (Good):</strong> Building
+                  <strong style={{ color: 'var(--status-text-teal)' }}>60-79 (Good):</strong> Building
                   performs well; some improvements recommended
                 </li>
                 <li>
-                  <strong style={{ color: '#f59e0b' }}>40-59 (Fair):</strong> Several areas
+                  <strong style={{ color: 'var(--status-text-amber)' }}>40-59 (Fair):</strong> Several areas
                   need attention
                 </li>
                 <li>
-                  <strong style={{ color: '#ef4444' }}>0-39 (Needs Work):</strong> Critical
+                  <strong style={{ color: 'var(--status-text-red)' }}>0-39 (Needs Work):</strong> Critical
                   issues require immediate attention
                 </li>
               </ul>
@@ -614,19 +613,19 @@ export default function HelpPage() {
               <strong>Color Coding:</strong>
               <ul style={{ marginTop: '8px', marginBottom: 0, paddingLeft: '20px' }}>
                 <li>
-                  <strong style={{ color: '#22c55e' }}>Green:</strong> Low density
+                  <strong style={{ color: 'var(--status-text-green)' }}>Green:</strong> Low density
                   (&lt;20% utilization)
                 </li>
                 <li>
-                  <strong style={{ color: '#f59e0b' }}>Yellow:</strong> Moderate
+                  <strong style={{ color: 'var(--status-text-amber)' }}>Yellow:</strong> Moderate
                   (20-45% utilization)
                 </li>
                 <li>
-                  <strong style={{ color: '#f97316' }}>Orange:</strong> High (45-75%
+                  <strong style={{ color: 'var(--status-text-amber)' }}>Orange:</strong> High (45-75%
                   utilization)
                 </li>
                 <li>
-                  <strong style={{ color: '#ef4444' }}>Red:</strong> Critical (75%+
+                  <strong style={{ color: 'var(--status-text-red)' }}>Red:</strong> Critical (75%+
                   utilization)
                 </li>
               </ul>
@@ -854,21 +853,21 @@ export default function HelpPage() {
           style={{
             padding: '12px 24px',
             borderRadius: '8px',
-            border: '1px solid #2db8b0',
+            border: '1px solid var(--teal-button)',
             background: 'transparent',
-            color: '#2db8b0',
+            color: 'var(--status-text-teal)',
             cursor: 'pointer',
             fontSize: '14px',
             fontWeight: '600',
             transition: 'all 0.2s ease-in-out',
           }}
           onMouseEnter={(e) => {
-            e.currentTarget.style.background = '#2db8b0'
-            e.currentTarget.style.color = 'white'
+            e.currentTarget.style.background = 'var(--teal-button)'
+            e.currentTarget.style.color = '#ffffff'
           }}
           onMouseLeave={(e) => {
             e.currentTarget.style.background = 'transparent'
-            e.currentTarget.style.color = '#2db8b0'
+            e.currentTarget.style.color = 'var(--status-text-teal)'
           }}
         >
           🎓 Replay Onboarding Tour
