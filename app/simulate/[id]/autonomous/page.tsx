@@ -27,6 +27,7 @@ import { createSimulationRun, saveDensityCells, saveSimulationResults } from '@/
 import { getFriendlyErrorMessage, isRateLimitError } from '@/src/services/rate-limit.service'
 import { computeFireSeverity, getHazardStorageKey, isHazardStorageAvailable, loadHazardPlan, placedHazardToZone, saveHazardPlan, type PlacedHazard } from '@/src/simulation/hazard-placement'
 import { PageLoading } from '@/components/ui/PageLoading'
+import { FloorScene3D, type SceneHazard } from '@/components/simulation/FloorScene3D'
 import {
   createSpatialGridTrace,
   densityCellsFromTrace,
@@ -273,6 +274,7 @@ export default function AutonomousScienceBuildingPage() {
   const [draggingHazardId, setDraggingHazardId] = useState<string | null>(null)
   const [storageAvailable] = useState(() => isHazardStorageAvailable())
   const [quakeScenario, setQuakeScenario] = useState<QuakeScenario>('moderate')
+  const [viewMode, setViewMode] = useState<'2d' | '3d'>('2d')
   const dropRef = useRef<HTMLDivElement | null>(null)
 
   const simStateRef = useRef<SimulationState | null>(null)
@@ -323,6 +325,9 @@ export default function AutonomousScienceBuildingPage() {
   const handleDrop = useCallback((event: React.DragEvent<HTMLDivElement>) => {
     event.preventDefault()
     if (simStateRef.current) return
+    // Plan coordinates are derived from the flat 1200x675 box, which only lines up
+    // with what the user sees in the 2D view.
+    if (viewMode === '3d') return
     const type = event.dataTransfer.getData('application/x-hazard') as PlacedHazard['type']
     const hazardId = event.dataTransfer.getData('application/x-hazard-id')
     if (!type || !dropRef.current) return
@@ -353,7 +358,7 @@ export default function AutonomousScienceBuildingPage() {
       ])
     }
     setDraggingHazardId(null)
-  }, [])
+  }, [viewMode])
 
   const handleDragStart = (type: PlacedHazard['type']) => (event: React.DragEvent<HTMLButtonElement>) => {
     event.dataTransfer.setData('application/x-hazard', type)
@@ -632,6 +637,26 @@ export default function AutonomousScienceBuildingPage() {
   ), [disaster, quakeScenario, placedHazards])
 
   const liveCongestion = useMemo(() => getCounts(simState, floor), [simState, floor])
+  const sceneHazards = useMemo<SceneHazard[]>(() => {
+    if (simState) {
+      return simState.hazards
+        .filter((hazard) => hazard.active)
+        .map((hazard) => ({
+          id: hazard.zone.id,
+          type: hazard.zone.type,
+          x: hazard.zone.x,
+          y: hazard.zone.y,
+          radius: hazard.currentRadius,
+        }))
+    }
+    return placedHazards.map((hazard) => ({
+      id: hazard.id,
+      type: hazard.type,
+      x: hazard.x,
+      y: hazard.y,
+      radius: hazard.radius,
+    }))
+  }, [simState, placedHazards])
   const topHotspots = useMemo(() => (
     floor && activeTrace ? getTopNodeHotspots(floor, activeTrace, 4) : []
   ), [activeTrace, floor])
@@ -1045,6 +1070,46 @@ export default function AutonomousScienceBuildingPage() {
           width: 100%;
           height: 100%;
           display: block;
+        }
+
+        .auto-view-toggle {
+          display: flex;
+          gap: 2px;
+          padding: 3px;
+          border-radius: 9px;
+          background: var(--bg-subtle);
+          border: 1px solid var(--border);
+        }
+
+        .auto-view-toggle button {
+          appearance: none;
+          border: none;
+          border-radius: 6px;
+          padding: 4px 12px;
+          font-size: 12px;
+          font-weight: 700;
+          color: var(--text-secondary);
+          background: transparent;
+          cursor: pointer;
+        }
+
+        .auto-view-toggle button[data-active='true'] {
+          background: ${APP_ACCENT};
+          color: #06231f;
+        }
+
+        .auto-3d-hint {
+          position: absolute;
+          left: 12px;
+          bottom: 12px;
+          z-index: 2;
+          padding: 6px 10px;
+          border-radius: 8px;
+          background: rgba(15, 23, 42, 0.72);
+          border: 1px solid rgba(226, 232, 240, 0.28);
+          font-size: 11px;
+          font-weight: 600;
+          color: #e2e8f0;
         }
 
         .auto-room-list {
@@ -1730,6 +1795,24 @@ export default function AutonomousScienceBuildingPage() {
               <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>Autonomous crowd overlay on the real floorplan</div>
             </div>
             <div className="auto-chip-row">
+              <div className="auto-view-toggle" role="group" aria-label="Floor view">
+                <button
+                  type="button"
+                  onClick={() => setViewMode('2d')}
+                  aria-pressed={viewMode === '2d'}
+                  data-active={viewMode === '2d'}
+                >
+                  2D
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setViewMode('3d')}
+                  aria-pressed={viewMode === '3d'}
+                  data-active={viewMode === '3d'}
+                >
+                  3D
+                </button>
+              </div>
               {simState && isInTremorPhase(simState) && (
                 <div style={{
                   padding: '6px 10px', borderRadius: '8px',
@@ -1764,7 +1847,7 @@ export default function AutonomousScienceBuildingPage() {
             onMouseUp={() => setDraggingHazardId(null)}
             onMouseLeave={() => setDraggingHazardId(null)}
           >
-            {floor.floorplanSrc ? (
+            {viewMode === '2d' && floor.floorplanSrc ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img src={floor.floorplanSrc} alt={`${building?.name ?? regionId} ${floor.label} floor plan`} />
             ) : null}
@@ -1783,6 +1866,20 @@ export default function AutonomousScienceBuildingPage() {
                 </div>
               </div>
             )}
+            {viewMode === '3d' ? (
+              <>
+                <FloorScene3D
+                  floor={floor}
+                  agents={simState?.agents ?? []}
+                  hazards={sceneHazards}
+                  nodeCounts={liveCongestion.nodeCounts}
+                  accent={APP_ACCENT}
+                />
+                {!simState && (
+                  <div className="auto-3d-hint">Switch to 2D to place or move hazards.</div>
+                )}
+              </>
+            ) : (
             <svg viewBox="0 0 1200 675" preserveAspectRatio="xMidYMid meet" aria-hidden="true">
               {SHOW_DEBUG_GRAPH && !simState && floor.edges.map((edge) => {
                 const fromNode = getNode(floor, edge.from)
@@ -1900,6 +1997,7 @@ export default function AutonomousScienceBuildingPage() {
                 </g>
               ))}
             </svg>
+            )}
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap', marginTop: '14px', fontSize: '12px', color: 'var(--text-secondary)' }}>
