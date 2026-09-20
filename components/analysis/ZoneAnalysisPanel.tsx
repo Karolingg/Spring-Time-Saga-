@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import type { SimulationZone } from '@/src/schema/simulation.types'
 
 /* ── Risk / intensity colour helpers ───────────────────────────────── */
@@ -60,11 +60,32 @@ interface Props {
   zones: SimulationZone[]
   /** Hide the internal section header (use when wrapping in a FeatureContainer). */
   hideHeader?: boolean
+  /** Fires with the opened zone's name (or null when collapsed) so a parent
+   *  can point the heatmap at it. */
+  onZoneSelect?: (zoneName: string | null) => void
 }
 
-export function ZoneAnalysisPanel({ zones, hideHeader = false }: Props) {
+export function ZoneAnalysisPanel({ zones, hideHeader = false, onZoneSelect }: Props) {
   const [expandedZone, setExpandedZone] = useState<string | null>(null)
   const [showAll, setShowAll] = useState(false)
+
+  function toggleZone(zoneKey: string, zoneName: string, isExpanded: boolean) {
+    setExpandedZone(isExpanded ? null : zoneKey)
+    onZoneSelect?.(isExpanded ? null : zoneName)
+  }
+
+  // Escape clears the selection from anywhere on the page — the marker it
+  // drives on the heatmap is often scrolled away from this list.
+  useEffect(() => {
+    if (!expandedZone) return
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return
+      setExpandedZone(null)
+      onZoneSelect?.(null)
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [expandedZone, onZoneSelect])
 
   const sorted = useMemo(
     () => [...zones].sort((a, b) => b.intensity - a.intensity),
@@ -183,11 +204,11 @@ export function ZoneAnalysisPanel({ zones, hideHeader = false }: Props) {
                 role="button"
                 tabIndex={0}
                 aria-expanded={isExpanded}
-                onClick={() => setExpandedZone(isExpanded ? null : zoneKey)}
+                onClick={() => toggleZone(zoneKey, zone.zoneName, isExpanded)}
                 onKeyDown={e => {
                   if (e.key === 'Enter' || e.key === ' ') {
                     e.preventDefault()
-                    setExpandedZone(isExpanded ? null : zoneKey)
+                    toggleZone(zoneKey, zone.zoneName, isExpanded)
                   }
                 }}
                 style={{

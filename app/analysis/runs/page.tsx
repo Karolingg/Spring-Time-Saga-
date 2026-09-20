@@ -19,15 +19,12 @@ import { useToast } from '@/src/context/ToastContext'
 import { getFriendlyErrorMessage } from '@/src/services/rate-limit.service'
 import type { DensityCell, SimulationRun, SimulationZone } from '@/src/schema/simulation.types'
 import { PageLoading } from '@/components/ui/PageLoading'
+import { CARD_SURFACE } from '@/components/ui/Card'
+import { BackLink } from '@/components/ui/BackLink'
+import { relativeTime } from '@/src/utils/format'
 
-const SECTION_CARD: React.CSSProperties = {
-  background: 'var(--bg-card)',
-  border: '1px solid var(--border)',
-  borderRadius: 'var(--radius-lg)',
-  padding: '28px 32px',
-  boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
-  marginBottom: '20px',
-}
+const SECTION_CARD = { ...CARD_SURFACE, marginBottom: '20px' }
+
 
 
 interface RunHistoryItem {
@@ -35,17 +32,6 @@ interface RunHistoryItem {
   label: string
 }
 
-/** Compact relative-time label, e.g. "2h ago" — keeps the run selector
- *  scannable instead of a 40-character datetime string. */
-function relativeTime(dateStr: string): string {
-  const mins = Math.floor((Date.now() - new Date(dateStr).getTime()) / 60000)
-  if (mins < 1) return 'just now'
-  if (mins < 60) return `${mins}m ago`
-  const hrs = Math.floor(mins / 60)
-  if (hrs < 24) return `${hrs}h ago`
-  const days = Math.floor(hrs / 24)
-  return `${days} day${days === 1 ? '' : 's'} ago`
-}
 
 export default function AnalysisRunsPage() {
   const { isAuthenticated, isLoading: isAuthLoading } = useAuth()
@@ -58,6 +44,8 @@ export default function AnalysisRunsPage() {
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
   const [deletingRunId, setDeletingRunId] = useState<string | null>(null)
   const [isResettingData, setIsResettingData] = useState(false)
+  /** Zone opened in the Zone Analysis panel — marked on the crowd heatmap. */
+  const [selectedZoneName, setSelectedZoneName] = useState<string | null>(null)
   const isMutationInFlightRef = useRef(false)
   const { showToast } = useToast()
 
@@ -102,6 +90,7 @@ export default function AnalysisRunsPage() {
 
   async function handleRunChange(selectedRunId: string) {
     setIsLoadingData(true)
+    setSelectedZoneName(null)
     try {
       const selected = await getSimulationRun(selectedRunId)
       setRun(selected)
@@ -213,7 +202,6 @@ export default function AnalysisRunsPage() {
             <FeatureContainer
               title="Crowd Heatmap & Replay"
               subtitle="Spatial density map and time-lapse replay of agent movement"
-              accent="#2db8b0"
               icon={
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <rect x="3" y="3" width="18" height="18" rx="2" />
@@ -231,6 +219,7 @@ export default function AnalysisRunsPage() {
                 hazards={run.hazards}
                 agentsPerRoom={run.agentsPerRoom}
                 seed={run.seed}
+                highlightedZoneName={selectedZoneName}
               />
             </FeatureContainer>
           )}
@@ -240,7 +229,6 @@ export default function AnalysisRunsPage() {
             <FeatureContainer
               title="Zone Analysis"
               subtitle="Per-zone congestion intensity, risk levels, and bottleneck counts"
-              accent="#2db8b0"
               icon={
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
@@ -248,7 +236,11 @@ export default function AnalysisRunsPage() {
                 </svg>
               }
             >
-              <ZoneAnalysisPanel zones={usedZones} hideHeader />
+              <ZoneAnalysisPanel
+                zones={usedZones}
+                hideHeader
+                onZoneSelect={setSelectedZoneName}
+              />
             </FeatureContainer>
           )}
 
@@ -256,7 +248,6 @@ export default function AnalysisRunsPage() {
           <FeatureContainer
             title="Key Metrics"
             subtitle="Aggregate evacuation statistics for this run"
-            accent="#2db8b0"
             icon={
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M3 3v18h18" />
@@ -269,6 +260,8 @@ export default function AnalysisRunsPage() {
               bottleneckCount={bottleneckCount}
               avgEvacTime={avgEvacTime}
               evacuatedPct={evacuatedPct}
+              evacuatedCount={evacuatedCount}
+              agentCount={agentCount}
             />
           </FeatureContainer>
         </>
@@ -351,6 +344,8 @@ function PageHeader({
   const isMutating = isDeleting || isResetting
   return (
     <div style={{ marginBottom: '28px' }}>
+      <BackLink href="/analysis" label="Back to analysis" />
+
       {/* ── Row 1 — identity + navigation/selection ── */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flexWrap: 'wrap' }}>
         <div style={{
@@ -372,17 +367,6 @@ function PageHeader({
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-          <a href="/analysis" style={{
-            display: 'inline-flex', alignItems: 'center', gap: '6px',
-            padding: '8px 14px', background: 'var(--bg-card)', color: 'var(--text-primary)',
-            borderRadius: '8px', textDecoration: 'none', fontSize: '13px', fontWeight: '600',
-            border: '1px solid var(--border)', flexShrink: 0,
-          }}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <polyline points="15 18 9 12 15 6" />
-            </svg>
-            Back to analysis
-          </a>
           {runHistory.length > 0 && (
             <RunControls
               runHistory={runHistory}
@@ -402,7 +386,7 @@ function PageHeader({
         borderTop: '1px solid var(--border)',
       }}>
         <span style={{
-          fontSize: '11px', fontWeight: 700, letterSpacing: '0.09em',
+          fontSize: '12px', fontWeight: 700, letterSpacing: '0.09em',
           textTransform: 'uppercase', color: 'var(--text-muted)', marginRight: '2px',
         }}>
           Actions
@@ -424,7 +408,7 @@ function PageHeader({
           title={hasRun ? 'Download a CSV of this run summary + zones' : 'Load a run to enable export'}
           style={{
             display: 'inline-flex', alignItems: 'center', gap: '6px',
-            padding: '8px 14px',
+            padding: '12px 14px',
             background: hasRun ? 'var(--bg-card)' : 'var(--bg-inset)',
             color: hasRun ? 'var(--text-primary)' : 'var(--text-muted)',
             borderRadius: '8px', fontSize: '13px', fontWeight: '600',
@@ -448,7 +432,7 @@ function PageHeader({
           onClick={(event) => { if (!hasRun) event.preventDefault() }}
           style={{
             display: 'inline-flex', alignItems: 'center', gap: '6px',
-            padding: '8px 14px',
+            padding: '12px 14px',
             background: hasRun ? 'var(--bg-card)' : 'var(--bg-inset)',
             color: hasRun ? 'var(--text-primary)' : 'var(--text-muted)',
             borderRadius: '8px', textDecoration: 'none', fontSize: '13px', fontWeight: '600',
@@ -471,21 +455,17 @@ function PageHeader({
           title={hasRun ? 'Compare this run against another' : 'Open the comparison view'}
           style={{
             display: 'inline-flex', alignItems: 'center', gap: '6px',
-            padding: '8px 14px', background: 'var(--bg-card)', color: 'var(--text-primary)',
+            padding: '12px 14px', background: 'var(--bg-card)', color: 'var(--text-primary)',
             borderRadius: '8px', textDecoration: 'none', fontSize: '13px', fontWeight: '600',
             border: '1px solid var(--border)', flexShrink: 0,
           }}
         >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M3 6h6" /><path d="M3 12h6" /><path d="M3 18h6" />
-            <path d="M15 6h6" /><path d="M15 12h6" /><path d="M15 18h6" />
-          </svg>
           Compare
         </a>
 
         <a href="/analysis/summary" style={{
           display: 'inline-flex', alignItems: 'center', gap: '6px',
-          padding: '8px 14px', background: 'var(--bg-card)', color: 'var(--text-primary)',
+          padding: '12px 14px', background: 'var(--bg-card)', color: 'var(--text-primary)',
           borderRadius: '8px', textDecoration: 'none', fontSize: '13px', fontWeight: '600',
           border: '1px solid var(--border)', flexShrink: 0,
         }}>
@@ -494,14 +474,11 @@ function PageHeader({
 
         <a href="/map" style={{
           display: 'inline-flex', alignItems: 'center', gap: '6px',
-          padding: '8px 14px', background: 'var(--teal-button)', color: '#ffffff',
+          padding: '12px 20px', background: 'var(--teal-button)', color: '#ffffff',
           borderRadius: '8px', textDecoration: 'none', fontSize: '13px', fontWeight: '600',
           flexShrink: 0, marginLeft: 'auto',
         }}>
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-            <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
-          </svg>
-          New Simulation
+          New Simulation 
         </a>
       </div>
     </div>
@@ -644,99 +621,86 @@ interface SummaryStatsProps {
   bottleneckCount: number
   avgEvacTime: string
   evacuatedPct: number | null
+  evacuatedCount: number
+  agentCount: number
 }
 
-function SummaryStats({ zoneCount, bottleneckCount, avgEvacTime, evacuatedPct }: SummaryStatsProps) {
-  const evacAccent = evacuatedPct == null
-    ? '#94a3b8'
-    : evacuatedPct >= 90 ? '#22c55e'
-    : evacuatedPct >= 70 ? '#f59e0b'
-    : '#ef4444'
+function SummaryStats({
+  zoneCount,
+  bottleneckCount,
+  avgEvacTime,
+  evacuatedPct,
+  evacuatedCount,
+  agentCount,
+}: SummaryStatsProps) {
+  /* Only the two figures that carry a verdict are coloured — zones and elapsed
+   * time are neutral facts, so they stay in ink. Colouring all four would flatten
+   * the hierarchy and leave nothing standing out. */
+  const evacTone = evacuatedPct == null
+    ? 'var(--text-primary)'
+    : evacuatedPct >= 90 ? 'var(--status-text-green)'
+    : evacuatedPct >= 70 ? 'var(--status-text-amber)'
+    : 'var(--status-text-red)'
 
   const stats = [
     {
-      label: 'Total Zones Analyzed',
+      label: 'Zones analysed',
       value: String(zoneCount),
-      accent: '#2db8b0',
-      icon: (
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M3 6l6-2 6 2 6-2v14l-6 2-6-2-6 2V6z" />
-          <path d="M9 4v14M15 6v14" />
-        </svg>
-      ),
+      tone: 'var(--text-primary)',
+      note: 'with recorded activity',
     },
     {
-      label: 'Critical Bottlenecks',
+      label: 'Critical bottlenecks',
       value: String(bottleneckCount),
-      accent: bottleneckCount > 0 ? '#f59e0b' : '#22c55e',
-      icon: (
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M12 3l9 16H3L12 3z" />
-          <path d="M12 9v4" />
-          <circle cx="12" cy="16.5" r="0.7" fill="currentColor" />
-        </svg>
-      ),
+      tone: bottleneckCount > 0 ? 'var(--status-text-amber)' : 'var(--status-text-green)',
+      note: bottleneckCount > 0 ? `across ${zoneCount} zones` : 'none recorded',
     },
     {
-      label: 'Avg Evacuation Time',
+      label: 'Avg evacuation time',
       value: avgEvacTime,
-      accent: '#2db8b0',
-      icon: (
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-          <circle cx="12" cy="13" r="8" />
-          <path d="M12 13l3-2" />
-          <path d="M12 5V3" />
-        </svg>
-      ),
+      tone: 'var(--text-primary)',
+      note: 'from first move to last exit',
     },
     {
       label: 'Evacuated',
       value: evacuatedPct != null ? `${evacuatedPct.toFixed(0)}%` : '—',
-      accent: evacAccent,
-      icon: (
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-          <polyline points="16 17 21 12 16 7" />
-          <line x1="21" y1="12" x2="9" y2="12" />
-        </svg>
-      ),
+      tone: evacTone,
+      note: agentCount > 0 ? `${evacuatedCount} of ${agentCount} agents` : 'no agents recorded',
     },
   ]
 
   return (
-    <div data-grid-2col-mobile style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '14px' }}>
+    <div
+      data-grid-2col-mobile
+      style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)' }}
+    >
       {stats.map((stat, i) => (
-        <div key={i} style={{
-          display: 'flex', alignItems: 'center', gap: '14px',
-          padding: '18px 20px',
-          background: 'var(--bg-card)',
-          border: '1px solid var(--border)',
-          borderRadius: '12px',
-          boxShadow: '0 1px 2px rgba(0,0,0,0.03)',
-        }}>
+        <div
+          key={stat.label}
+          style={{
+            padding: `0 ${i === stats.length - 1 ? '0' : 'var(--space-6)'} 0 ${i === 0 ? '0' : 'var(--space-6)'}`,
+            borderRight: i === stats.length - 1 ? 'none' : '1px solid var(--border)',
+          }}
+        >
           <div style={{
-            width: '46px', height: '46px', borderRadius: '12px',
-            background: `${stat.accent}15`, color: stat.accent,
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            flexShrink: 0,
+            fontSize: 'var(--text-xs)', fontWeight: 700,
+            letterSpacing: '0.1em', textTransform: 'uppercase',
+            color: 'var(--text-muted)', marginBottom: '10px',
           }}>
-            {stat.icon}
+            {stat.label}
           </div>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{
-              fontSize: '24px', fontWeight: 800,
-              color: 'var(--text-primary)',
-              letterSpacing: '-0.02em', lineHeight: 1,
-              fontFeatureSettings: '"tnum"',
-            }}>
-              {stat.value}
-            </div>
-            <div style={{
-              fontSize: '12px', color: 'var(--text-secondary)',
-              marginTop: '4px', fontWeight: 500,
-            }}>
-              {stat.label}
-            </div>
+          <div style={{
+            fontSize: '38px', fontWeight: 800, color: stat.tone,
+            letterSpacing: '-0.03em', lineHeight: 1,
+            fontFeatureSettings: '"tnum"',
+          }}>
+            {stat.value}
+          </div>
+          <div style={{
+            fontSize: 'var(--text-sm)', color: 'var(--text-secondary)',
+            marginTop: '8px', lineHeight: 1.4,
+          }}>
+            {stat.note}
           </div>
         </div>
       ))}

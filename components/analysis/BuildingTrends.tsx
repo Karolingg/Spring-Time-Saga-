@@ -3,6 +3,8 @@
 import { useEffect, useId, useMemo, useState } from 'react'
 import { getRunTrends, type BuildingFloorTrend, type RunTrendPoint } from '@/src/services/simulation.service'
 import { getBuildingById } from '@/src/simulation/building-model'
+import { ACCENT } from '@/src/config/theme'
+import { trendColor, type BetterWhen } from '@/src/utils/trend'
 
 /**
  * Drill-trend view.
@@ -13,15 +15,12 @@ import { getBuildingById } from '@/src/simulation/building-model'
  * "needs a baseline" gate instead of a noisy single-point arrow.
  */
 const MIN_RUNS_FOR_TREND = 3
-const ACCENT = '#2db8b0'
 const RATE_ACCENT = '#6366f1'
 
 interface ResolvedTrend extends BuildingFloorTrend {
   buildingName: string
   floorLabel: string
 }
-
-type Direction = 'lower' | 'higher'
 
 function evacRate(run: RunTrendPoint): number {
   return run.agentCount > 0 ? (run.evacuatedCount / run.agentCount) * 100 : 0
@@ -213,14 +212,13 @@ interface MetricDeltaProps {
   label: string
   latest: string
   delta: number
-  better: Direction
+  better: BetterWhen
   formatDelta: (d: number) => string
 }
 
 function MetricDelta({ label, latest, delta, better, formatDelta }: MetricDeltaProps) {
   const flat = Math.abs(delta) < 0.05
-  const improved = !flat && (better === 'lower' ? delta < 0 : delta > 0)
-  const color = flat ? '#64748b' : improved ? '#16a34a' : '#dc2626'
+  const color = trendColor(flat ? 0 : delta, better)
   const arrow = flat ? '→' : delta > 0 ? '▲' : '▼'
 
   return (

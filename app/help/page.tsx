@@ -5,6 +5,9 @@ import { useAuth } from '@/src/hooks/useAuth'
 import { useRouter } from 'next/navigation'
 import { useOnboarding } from '@/src/hooks/useOnboarding'
 import { PageLoading } from '@/components/ui/PageLoading'
+import { CARD_SURFACE } from '@/components/ui/Card'
+
+const SECTION_CARD = { ...CARD_SURFACE, marginBottom: '24px' }
 
 // Icon components
 function GaugeIcon() {
@@ -127,14 +130,6 @@ function DocumentIcon() {
   )
 }
 
-const SECTION_CARD: React.CSSProperties = {
-  background: 'var(--bg-card)',
-  border: '1px solid var(--border)',
-  borderRadius: 'var(--radius-lg)',
-  padding: '28px 32px',
-  marginBottom: '24px',
-  boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
-}
 
 const SECTION_TITLE: React.CSSProperties = {
   fontSize: '20px',

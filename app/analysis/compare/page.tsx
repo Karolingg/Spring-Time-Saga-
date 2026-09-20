@@ -9,30 +9,20 @@ import type { SimulationRun, SimulationZone, DensityCell } from '@/src/schema/si
 import { SpatialBottleneckHeatmap } from '@/components/analysis/SpatialBottleneckHeatmap'
 import { FeatureContainer } from '@/components/analysis/FeatureContainer'
 import { PageHeader } from '@/components/ui/PageHeader'
+import { BackLink } from '@/components/ui/BackLink'
+import { CARD_SURFACE } from '@/components/ui/Card'
+import { isImproved, trendColor, trendTint, type BetterWhen } from '@/src/utils/trend'
+import { ACCENT } from '@/src/config/theme'
 
-const SECTION_CARD: React.CSSProperties = {
-  background: 'var(--bg-card)',
-  border: '1px solid var(--border)',
-  borderRadius: 'var(--radius-lg)',
-  padding: '24px 28px',
-  boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
-  marginBottom: '20px',
-}
+const SECTION_CARD = { ...CARD_SURFACE, padding: '24px 28px', marginBottom: '20px' }
 
-const ACCENT = '#2db8b0'
 
-/**
- * Direction of "good" for a given KPI — used to colour the delta chip
- * green when the change moved the metric in the right direction and red
- * when it regressed.
- */
-type Direction = 'lower' | 'higher'
 
 interface MetricDef {
   key: string
   label: string
   unit: string
-  better: Direction
+  better: BetterWhen
   read: (run: SimulationRun) => number | null
   format: (value: number) => string
 }
@@ -277,7 +267,6 @@ export default function CompareRunsPage() {
               <FeatureContainer
                 title="Key Metrics"
                 subtitle="Side-by-side evacuation statistics with directional delta indicators"
-                accent={ACCENT}
                 icon={
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M3 3v18h18" />
@@ -292,7 +281,6 @@ export default function CompareRunsPage() {
               <FeatureContainer
                 title="Floor Heatmaps"
                 subtitle="Side-by-side crowd density comparison between the two runs"
-                accent={ACCENT}
                 icon={
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <rect x="3" y="3" width="18" height="18" rx="2" />
@@ -312,7 +300,6 @@ export default function CompareRunsPage() {
               <FeatureContainer
                 title="Biggest Zone Shifts"
                 subtitle="Top zones ranked by absolute change in intensity between A and B"
-                accent={ACCENT}
                 icon={
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M3 6h6" /><path d="M3 12h6" /><path d="M3 18h6" />
@@ -331,31 +318,20 @@ export default function CompareRunsPage() {
 }
 
 function Header() {
-  const accent = ACCENT
   return (
-    <PageHeader
-      icon={
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={accent} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M3 6h6" /><path d="M3 12h6" /><path d="M3 18h6" />
-          <path d="M15 6h6" /><path d="M15 12h6" /><path d="M15 18h6" />
-        </svg>
-      }
-      chipBackground={`${accent}1A`}
-      title="Compare Drills"
-      subtitle="Pick two completed runs to see how key metrics moved between them."
-      actions={
-        <>
-          <a href="/analysis" className="hover-darken" style={{
-            display: 'inline-flex', alignItems: 'center', gap: '6px',
-            padding: '8px 14px', background: 'var(--bg-card)', color: 'var(--text-primary)',
-            borderRadius: 'var(--radius-sm)', textDecoration: 'none', fontSize: 'var(--text-base)', fontWeight: 600,
-            border: '1px solid var(--border)', flexShrink: 0,
-          }}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <polyline points="15 18 9 12 15 6" />
-            </svg>
-            Back
-          </a>
+    <>
+      <BackLink href="/analysis" label="Back to analysis" />
+      <PageHeader
+        icon={
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={ACCENT} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M3 6h6" /><path d="M3 12h6" /><path d="M3 18h6" />
+            <path d="M15 6h6" /><path d="M15 12h6" /><path d="M15 18h6" />
+          </svg>
+        }
+        chipBackground={`${ACCENT}1A`}
+        title="Compare Drills"
+        subtitle="Pick two completed runs to see how key metrics moved between them."
+        actions={
           <a href="/analysis/runs" className="hover-darken" style={{
             display: 'inline-flex', alignItems: 'center', gap: '6px',
             padding: '8px 14px', background: 'var(--bg-card)', color: 'var(--text-primary)',
@@ -364,9 +340,9 @@ function Header() {
           }}>
             View Runs
           </a>
-        </>
-      }
-    />
+        }
+      />
+    </>
   )
 }
 
@@ -614,11 +590,9 @@ function KpiDeltaCard({ metric, runA, runB }: { metric: MetricDef; runA: Simulat
   const valueB = metric.read(runB)
   const hasBoth = valueA != null && valueB != null
   const delta = hasBoth ? (valueB as number) - (valueA as number) : null
-  const improved = delta != null && delta !== 0 && (
-    metric.better === 'lower' ? delta < 0 : delta > 0
-  )
+  const improved = delta != null && isImproved(delta, metric.better)
   const regressed = delta != null && delta !== 0 && !improved
-  const deltaColor = delta == null || delta === 0 ? 'var(--text-secondary)' : improved ? '#22c55e' : '#ef4444'
+  const deltaColor = trendColor(delta, metric.better)
   const deltaPrefix = delta == null ? '' : delta > 0 ? '+' : ''
 
   const relGap = delta == null || delta === 0
@@ -634,7 +608,7 @@ function KpiDeltaCard({ metric, runA, runB }: { metric: MetricDef; runA: Simulat
       borderRadius: '12px',
       padding: significant ? '13px 15px' : '14px 16px',
       background: significant
-        ? (improved ? 'rgba(34,197,94,0.07)' : 'rgba(239,68,68,0.07)')
+        ? trendTint(delta, metric.better, 0.07)
         : 'var(--bg-subtle)',
     }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '6px', marginBottom: '10px' }}>
@@ -645,7 +619,7 @@ function KpiDeltaCard({ metric, runA, runB }: { metric: MetricDef; runA: Simulat
           <span style={{
             fontSize: '9px', fontWeight: 700, letterSpacing: '0.04em',
             color: deltaColor,
-            background: improved ? 'rgba(34,197,94,0.16)' : 'rgba(239,68,68,0.16)',
+            background: trendTint(delta, metric.better, 0.16),
             borderRadius: '999px', padding: '2px 7px', textTransform: 'uppercase',
             whiteSpace: 'nowrap',
           }}>
@@ -665,7 +639,7 @@ function KpiDeltaCard({ metric, runA, runB }: { metric: MetricDef; runA: Simulat
         display: 'inline-flex', alignItems: 'center', gap: '4px',
         fontSize: '12px', fontWeight: 600, color: deltaColor,
         padding: '2px 8px', borderRadius: '5px',
-        background: delta == null || delta === 0 ? 'var(--bg-inset)' : improved ? 'rgba(34,197,94,0.12)' : 'rgba(239,68,68,0.12)',
+        background: trendTint(delta, metric.better, 0.12, 'var(--bg-inset)'),
       }}>
         {delta == null
           ? 'No data'
@@ -699,8 +673,7 @@ function ZoneDeltaTable({ rows }: { rows: ZoneDelta[] }) {
         </thead>
         <tbody>
           {rows.map((row) => {
-            const improved = row.delta < 0
-            const color = row.delta === 0 ? 'var(--text-secondary)' : improved ? '#22c55e' : '#ef4444'
+            const color = trendColor(row.delta, 'lower')
             return (
               <tr key={row.zoneName}>
                 <Td>{row.zoneName}</Td>
@@ -709,7 +682,7 @@ function ZoneDeltaTable({ rows }: { rows: ZoneDelta[] }) {
                 <Td align="right">
                   <span style={{
                     display: 'inline-block', padding: '2px 8px', borderRadius: '5px',
-                    background: row.delta === 0 ? 'var(--bg-inset)' : improved ? 'rgba(34,197,94,0.12)' : 'rgba(239,68,68,0.12)',
+                    background: trendTint(row.delta, 'lower', 0.12, 'var(--bg-inset)'),
                     color, fontWeight: 600,
                   }}>
                     {row.delta > 0 ? '+' : ''}{row.delta.toFixed(0)}%

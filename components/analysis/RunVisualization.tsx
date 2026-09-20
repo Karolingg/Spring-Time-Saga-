@@ -6,6 +6,7 @@ import { SpatialBottleneckHeatmap } from '@/components/analysis/SpatialBottlenec
 import { getBuildingById } from '@/src/simulation/building-model'
 import type { PlacedHazard } from '@/src/simulation/hazard-placement'
 import type { DensityCell, SimulationZone } from '@/src/schema/simulation.types'
+import { ACCENT } from '@/src/config/theme'
 
 type ViewMode = 'replay' | 'heatmap'
 
@@ -22,9 +23,11 @@ interface RunVisualizationProps {
   seed?: number | null
   /** Optional initial tab — defaults to replay. */
   initialView?: ViewMode
+  /** Zone picked in the Zone Analysis panel. Selecting one snaps this view to
+   *  the heatmap tab, since that's where the zone's node is marked. */
+  highlightedZoneName?: string | null
 }
 
-const ACCENT = '#2db8b0'
 const ACCENT_DARK = '#1f9189'
 
 export function RunVisualization({
@@ -38,8 +41,18 @@ export function RunVisualization({
   agentsPerRoom,
   seed,
   initialView = 'replay',
+  highlightedZoneName = null,
 }: RunVisualizationProps) {
   const [view, setView] = useState<ViewMode>(initialView)
+
+  // Picking a zone should reveal it, so snap to the tab that marks it. Only
+  // fires when the selection itself changes, so a later manual tab change
+  // sticks. Render-time correction, matching SpatialBottleneckHeatmap.
+  const [syncedZoneName, setSyncedZoneName] = useState(highlightedZoneName)
+  if (syncedZoneName !== highlightedZoneName) {
+    setSyncedZoneName(highlightedZoneName)
+    if (highlightedZoneName) setView('heatmap')
+  }
 
   const building = useMemo(
     () => (buildingId ? getBuildingById(buildingId) ?? null : null),
@@ -164,6 +177,7 @@ export function RunVisualization({
             seed={seed}
             disasterType={disasterType}
             agentCount={agentCount}
+            highlightedZoneName={highlightedZoneName}
             hideHeader
           />
         )}

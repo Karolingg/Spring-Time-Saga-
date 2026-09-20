@@ -8,10 +8,10 @@ import {
   GRID_VIEW_WIDTH,
   gridCellRect,
 } from '@/src/simulation/spatial-grid'
+import { ACCENT } from '@/src/config/theme'
 
 const VIEW_WIDTH = GRID_VIEW_WIDTH
 const VIEW_HEIGHT = GRID_VIEW_HEIGHT
-const ACCENT = '#2db8b0'
 const ACCENT_DARK = '#1f9189'
 
 function getHeatColor(intensity: number) {
