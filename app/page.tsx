@@ -255,21 +255,18 @@ export default function DashboardPage() {
               e.currentTarget.style.borderColor = 'var(--border)'
             }}
           >
+            Tutorial
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <circle cx="12" cy="12" r="10"/>
               <line x1="12" y1="16" x2="12" y2="12"/>
               <line x1="12" y1="8" x2="12.01" y2="8"/>
             </svg>
-            Tutorial
           </button>
           <a href="/map" className="hover-darken" style={{
             display: 'flex', alignItems: 'center', gap: '8px',
             padding: '10px 20px', background: 'var(--teal-button)', color: '#fff',
             borderRadius: '8px', textDecoration: 'none', fontSize: '14px', fontWeight: '600', flexShrink: 0,
           }}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="#ffffff" stroke="none">
-              <polygon points="8 5 19 12 8 19 8 5" />
-            </svg>
             Run Simulation
           </a>
         </div>

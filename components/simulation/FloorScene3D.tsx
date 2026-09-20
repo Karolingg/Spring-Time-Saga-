@@ -157,24 +157,54 @@ export function FloorScene3D({ floor, agents, hazards, nodeCounts, accent }: Flo
     disposables.push(plinthGeo, plinthMat)
     const plinth = new THREE.Mesh(plinthGeo, plinthMat)
     plinth.scale.set(PLAN_W, PLINTH_DEPTH, PLAN_H)
-    plinth.position.set(0, -PLINTH_DEPTH / 2 - 0.5, 0)
+    plinth.position.set(0, -PLINTH_DEPTH / 2, 0)
     scene.add(plinth)
 
     const planeGeo = new THREE.PlaneGeometry(PLAN_W, PLAN_H)
-    const planeMat = new THREE.MeshBasicMaterial({ color: 0xdfe6ef })
+    // Starts opaque so there's no flash of the plinth before the floorplan loads;
+    // once the texture is in, alphaTest below cuts out its white page background.
+    const planeMat = new THREE.MeshBasicMaterial({ color: 0x27354a })
     disposables.push(planeGeo, planeMat)
     const plane = new THREE.Mesh(planeGeo, planeMat)
     plane.rotation.x = -Math.PI / 2
+    // A hair above the plinth top (both sit at y=0) so the two don't z-fight
+    // where the cut-out texture exposes the plinth underneath.
+    plane.position.y = 0.2
     scene.add(plane)
 
     if (floor.floorplanSrc) {
       const loader = new THREE.TextureLoader()
       loader.load(floor.floorplanSrc, (texture) => {
-        texture.colorSpace = THREE.SRGBColorSpace
-        planeMat.map = texture
+        let finalTexture: THREE.Texture = texture
+        try {
+          // The SVG's own page background is near-white; cut it to transparent
+          // so the plinth's colour shows through instead of a white sheet
+          // wherever the (rectangular) plate extends past the building outline.
+          const source = texture.image as HTMLImageElement
+          const canvas = document.createElement('canvas')
+          canvas.width = source.naturalWidth || source.width
+          canvas.height = source.naturalHeight || source.height
+          const ctx = canvas.getContext('2d')
+          if (!ctx) throw new Error('no 2d context')
+          ctx.drawImage(source, 0, 0, canvas.width, canvas.height)
+          const image = ctx.getImageData(0, 0, canvas.width, canvas.height)
+          const data = image.data
+          for (let i = 0; i < data.length; i += 4) {
+            if (data[i] > 235 && data[i + 1] > 235 && data[i + 2] > 235) data[i + 3] = 0
+          }
+          ctx.putImageData(image, 0, 0)
+          const cutout = new THREE.CanvasTexture(canvas)
+          cutout.colorSpace = THREE.SRGBColorSpace
+          disposables.push(cutout, texture)
+          finalTexture = cutout
+          planeMat.transparent = false
+          planeMat.alphaTest = 0.5
+        } catch {
+          disposables.push(texture)
+        }
+        planeMat.map = finalTexture
         planeMat.color.set(0xffffff)
         planeMat.needsUpdate = true
-        disposables.push(texture)
         invalidate()
       })
     }
@@ -251,9 +281,9 @@ export function FloorScene3D({ floor, agents, hazards, nodeCounts, accent }: Flo
           disposables.push(cropped)
           const centerX = planToWorldX((minX + maxX) / 2)
           const centerZ = planToWorldZ((minY + maxY) / 2)
-          plane.position.set(centerX, 0, centerZ)
+          plane.position.set(centerX, 0.2, centerZ)
           plinth.scale.set(plateW + 18, PLINTH_DEPTH, plateH + 18)
-          plinth.position.set(centerX, -PLINTH_DEPTH / 2 - 0.5, centerZ)
+          plinth.position.set(centerX, -PLINTH_DEPTH / 2, centerZ)
         }
         invalidate()
       })
