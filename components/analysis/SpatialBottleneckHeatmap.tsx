@@ -15,6 +15,7 @@ import {
 import { createSimulation, stepSimulation } from '@/src/simulation/engine'
 import { getAgentRenderPosition } from '@/src/simulation/autonomous-analytics'
 import { placedHazardToZone, type PlacedHazard } from '@/src/simulation/hazard-placement'
+import { ACCENT } from '@/src/config/theme'
 
 const VIEW_WIDTH = GRID_VIEW_WIDTH
 const VIEW_HEIGHT = GRID_VIEW_HEIGHT
@@ -86,6 +87,9 @@ interface SpatialBottleneckHeatmapProps {
   seed?: number | null
   disasterType?: 'fire' | 'earthquake' | null
   agentCount?: number | null
+  /** Zone picked in the Zone Analysis panel — its node gets a persistent
+   *  marker here so the reader can see where that zone actually sits. */
+  highlightedZoneName?: string | null
 }
 
 const HAZARD_GROWTH_MULTIPLIER = 0.45
@@ -110,6 +114,23 @@ function getHeatColor(intensity: number) {
  * corridor waypoints just outside rooms and are exactly what the user wants to
  * identify when clicking the map.
  */
+/**
+ * Viewport coordinates for a node, expressed in the space a `position: fixed`
+ * descendant of this subtree actually uses. `.app-ui-scale-shell` applies CSS
+ * `zoom`, which scales fixed-positioning coordinates but is already baked into
+ * getBoundingClientRect() — so the measured rect has to be divided back out or
+ * the popup lands short of the node by the zoom factor.
+ */
+function fixedAnchorFor(layer: SVGSVGElement, x: number, y: number): { x: number; y: number } {
+  const rect = layer.getBoundingClientRect()
+  const host = layer.parentElement
+  const zoom = host && host.offsetWidth > 0 ? rect.width / host.offsetWidth : 1
+  return {
+    x: (rect.left + (x / VIEW_WIDTH) * rect.width) / zoom,
+    y: (rect.top + (y / VIEW_HEIGHT) * rect.height) / zoom,
+  }
+}
+
 function isNamedHeatmapNode(node: NavNode): boolean {
   if (node.type === 'room') return false
   if (node.type === 'exit') return true
@@ -143,6 +164,7 @@ export function SpatialBottleneckHeatmap({
   seed = null,
   disasterType = null,
   agentCount = null,
+  highlightedZoneName = null,
 }: SpatialBottleneckHeatmapProps) {
   const building = useMemo(
     () => (buildingId ? getBuildingById(buildingId) ?? null : null),
@@ -191,6 +213,39 @@ export function SpatialBottleneckHeatmap({
    *  floating identification popup (null = nothing hovered). */
   const [hoveredNode, setHoveredNode] = useState<{ node: NavNode; x: number; y: number } | null>(null)
   const nodeLayerRef = useRef<SVGSVGElement | null>(null)
+  /** Viewport anchor for the selected zone's popup. The popup is `fixed`
+   *  (the map canvas clips its own children), so it has to be re-measured
+   *  as the page scrolls or resizes. */
+  const highlightLayerRef = useRef<SVGSVGElement | null>(null)
+  const [highlightAnchor, setHighlightAnchor] = useState<{ x: number; y: number } | null>(null)
+
+  // Zones can name a room or doorway node, which `isNamedHeatmapNode` filters
+  // out of the hover layer — so resolve against every node on the floor.
+  const highlightedNode = useMemo(() => {
+    if (!highlightedZoneName || !building) return null
+    const floor = building.floors.find((f) => f.id === activeFloorId) ?? initialFloor
+    return floor?.nodes.find((node) => node.label === highlightedZoneName) ?? null
+  }, [highlightedZoneName, building, activeFloorId, initialFloor])
+
+  const highlightX = highlightedNode?.x ?? null
+  const highlightY = highlightedNode?.y ?? null
+  useEffect(() => {
+    if (highlightX == null || highlightY == null) return
+    const update = () => {
+      const el = highlightLayerRef.current
+      if (!el) return
+      setHighlightAnchor(fixedAnchorFor(el, highlightX, highlightY))
+    }
+    // Deferred so the measurement runs after the marker layer has laid out.
+    const frame = requestAnimationFrame(update)
+    window.addEventListener('scroll', update, true)
+    window.addEventListener('resize', update)
+    return () => {
+      cancelAnimationFrame(frame)
+      window.removeEventListener('scroll', update, true)
+      window.removeEventListener('resize', update)
+    }
+  }, [highlightX, highlightY])
 
   const replayFloor = simulatedFloor
   const replayAllocations = useMemo(() => {
@@ -356,6 +411,9 @@ export function SpatialBottleneckHeatmap({
   // no marker is drawn at rest, keeping the heat itself the visual focus.
   const interactiveNodes = showHeat ? activeFloor.nodes.filter(isNamedHeatmapNode) : []
 
+  // Zones can name a room or doorway node, which `isNamedHeatmapNode` filters
+  // out of the hover layer — so resolve the highlight against every node on
+  // the floor, not just the interactive subset.
   const hasData = hasDensityData || heatNodes.length > 0
   const criticalCount = hasDensityData
     ? densityHeatCells.filter((cell) => cell.intensity >= 0.75).length
@@ -502,15 +560,6 @@ export function SpatialBottleneckHeatmap({
                   transition: 'all 0.15s',
                 }}
               >
-                {d === 'fire' ? (
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M12 2c1 3-1 5-2 7-1 2 0 4 2 4s3-1 3-3c2 2 3 4 3 6a6 6 0 1 1-12 0c0-4 3-7 4-9 1-2 2-3 2-5z" />
-                  </svg>
-                ) : (
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M2 12h4l3-8 4 16 3-8h6" />
-                  </svg>
-                )}
                 {d === 'fire' ? 'Fire' : 'Earthquake'}
               </button>
             )
@@ -521,10 +570,10 @@ export function SpatialBottleneckHeatmap({
       {/* ── Stats strip (hidden for the non-simulated disaster) ──────── */}
       {!previewingOtherDisaster && (
         <div data-grid-2col-mobile style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '8px', marginBottom: '16px' }}>
-          <StatPill label={hasDensityData ? 'Active Cells' : 'Hotspots'} value={hasDensityData ? densityHeatCells.length : heatNodes.length} accent="#2db8b0" />
-          <StatPill label="Critical" value={criticalCount} accent="#f43f5e" emphasized={criticalCount > 0} />
-          <StatPill label="High Risk" value={highCount} accent="#f97316" />
-          <StatPill label="Peak Agents" value={peakAgents} accent="#3b82f6" suffix={peakAgents > 0 ? ' max' : ''} />
+          <StatPill label={hasDensityData ? 'Active Cells' : 'Hotspots'} value={hasDensityData ? densityHeatCells.length : heatNodes.length} accent={ACCENT} />
+          <StatPill label="Critical" value={criticalCount} accent={ACCENT} emphasized={criticalCount > 0} />
+          <StatPill label="High Risk" value={highCount} accent={ACCENT} />
+          <StatPill label="Peak Agents" value={peakAgents} accent={ACCENT} suffix={peakAgents > 0 ? ' max' : ''} />
         </div>
       )}
 
@@ -684,13 +733,9 @@ export function SpatialBottleneckHeatmap({
                     key={node.id}
                     style={{ cursor: 'pointer' }}
                     onMouseEnter={() => {
-                      const rect = nodeLayerRef.current?.getBoundingClientRect()
-                      if (!rect) return
-                      setHoveredNode({
-                        node,
-                        x: rect.left + (node.x / VIEW_WIDTH) * rect.width,
-                        y: rect.top + (node.y / VIEW_HEIGHT) * rect.height,
-                      })
+                      const layer = nodeLayerRef.current
+                      if (!layer) return
+                      setHoveredNode({ node, ...fixedAnchorFor(layer, node.x, node.y) })
                     }}
                     onMouseLeave={() => setHoveredNode((cur) => (cur?.node.id === node.id ? null : cur))}
                   >
@@ -707,6 +752,22 @@ export function SpatialBottleneckHeatmap({
                   </g>
                 )
               })}
+            </svg>
+          )}
+
+          {/* Selected-zone marker — pinned, unlike the hover ring, so the zone
+              picked in Zone Analysis stays identified while the reader looks. */}
+          {!previewingOtherDisaster && highlightedNode && (
+            <svg
+              ref={highlightLayerRef}
+              viewBox={`0 0 ${VIEW_WIDTH} ${VIEW_HEIGHT}`}
+              preserveAspectRatio="xMidYMid meet"
+              style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', pointerEvents: 'none' }}
+            >
+              <circle cx={highlightedNode.x} cy={highlightedNode.y} r={20} fill="#2db8b0" opacity={0.16} />
+              <circle cx={highlightedNode.x} cy={highlightedNode.y} r={13} fill="none" stroke="#ffffff" strokeWidth={5} />
+              <circle cx={highlightedNode.x} cy={highlightedNode.y} r={13} fill="none" stroke="#0f172a" strokeWidth={2.6} />
+              <circle cx={highlightedNode.x} cy={highlightedNode.y} r={5.2} fill="#2db8b0" stroke="#0f172a" strokeWidth={2} />
             </svg>
           )}
 
@@ -786,9 +847,10 @@ export function SpatialBottleneckHeatmap({
 
         {/* Vertical color-scale legend */}
         <div style={{
-          width: '78px',
+          width: '94px',
+          flexShrink: 0,
           display: 'flex', flexDirection: 'column',
-          padding: '10px 8px',
+          padding: '10px 10px',
           background: 'var(--bg-card)',
           border: '1px solid var(--border)',
           borderRadius: '12px',
@@ -796,7 +858,7 @@ export function SpatialBottleneckHeatmap({
         }}>
           <div style={{
             fontSize: '9px', fontWeight: 700, color: 'var(--text-secondary)',
-            letterSpacing: '0.08em', textTransform: 'uppercase',
+            letterSpacing: '0.06em', textTransform: 'uppercase',
             textAlign: 'center', marginBottom: '10px', lineHeight: 1.3,
           }}>
             Crowd<br/>intensity
@@ -812,8 +874,8 @@ export function SpatialBottleneckHeatmap({
               {SCALE_TICKS.map((tick) => (
                 <div key={tick.value} style={{
                   fontSize: '10px', fontWeight: 700,
-                  color: tick.value === 0 ? '#64748b' : '#0f172a',
-                  lineHeight: 1, letterSpacing: '-0.01em',
+                  color: tick.value === 0 ? 'var(--text-muted)' : 'var(--text-primary)',
+                  lineHeight: 1, letterSpacing: '-0.01em', whiteSpace: 'nowrap',
                 }}>
                   {tick.value}%
                 </div>
@@ -899,6 +961,20 @@ export function SpatialBottleneckHeatmap({
           peakAgents={zonesApply ? (peakAgentsByLabel.get(hoveredNode.node.label) ?? null) : null}
           intensity={zonesApply ? (intensityByLabel.get(hoveredNode.node.label) ?? null) : null}
           bottlenecks={zonesApply ? (bottleneckByLabel.get(hoveredNode.node.label) ?? null) : null}
+        />
+      )}
+
+      {/* Same card for the zone picked in Zone Analysis — it stays put instead
+          of following the pointer. Hovering a node takes precedence. */}
+      {!hoveredNode && highlightedNode && highlightAnchor && !previewingOtherDisaster && (
+        <NodeHoverPopup
+          node={highlightedNode}
+          screenX={highlightAnchor.x}
+          screenY={highlightAnchor.y}
+          kindLabel={nodeKindLabel(highlightedNode)}
+          peakAgents={zonesApply ? (peakAgentsByLabel.get(highlightedNode.label) ?? null) : null}
+          intensity={zonesApply ? (intensityByLabel.get(highlightedNode.label) ?? null) : null}
+          bottlenecks={zonesApply ? (bottleneckByLabel.get(highlightedNode.label) ?? null) : null}
         />
       )}
 

@@ -1,6 +1,7 @@
 'use client'
 
 import type { ReactNode } from 'react'
+import { ACCENT_STRONG } from '@/src/config/theme'
 
 /**
  * Layered "Docker-style" feature container.
@@ -13,8 +14,9 @@ import type { ReactNode } from 'react'
 export interface FeatureContainerProps {
   title: string
   subtitle?: string
-  /** Solid colour of the header band. */
-  accent: string
+  /** Solid colour of the header band. Defaults to the contrast-safe teal —
+   *  the band carries white text, and the brand teal is only 2.44:1 there. */
+  accent?: string
   /** Text/icon colour against the accent band. */
   accentText?: string
   /** Optional SVG icon shown to the left of the title. */
@@ -31,7 +33,7 @@ export interface FeatureContainerProps {
 export function FeatureContainer({
   title,
   subtitle,
-  accent,
+  accent = ACCENT_STRONG,
   accentText = '#ffffff',
   icon,
   badge,
@@ -40,8 +42,9 @@ export function FeatureContainer({
   children,
 }: FeatureContainerProps) {
   /* Derive a slightly darker shade for the gradient — adds depth without
-   * extra props. Falls back to the accent itself if parsing fails. */
-  const accentDark = darkenHex(accent, 0.14)
+   * extra props. Falls back to the accent itself if parsing fails. Kept gentle
+   * because the default accent is already a deep teal. */
+  const accentDark = darkenHex(accent, 0.1)
   const gradient = `linear-gradient(135deg, ${accent} 0%, ${accentDark} 100%)`
 
   return (

@@ -13,7 +13,7 @@
   --bg: #eef2f5;
   --bg-center-highlight: rgba(45, 184, 176, 0.10);
   --bg-warm-highlight: rgba(99, 102, 241, 0.04);
-  --grid-dot: rgba(45, 184, 176, 0.12);
+  --grid-dot: rgba(45, 184, 176, 0.055);
   --bg-card: #ffffff;
   --bg-subtle: #f8fafc;   /* inset panels, list rows, empty states */
   --bg-inset: #f1f5f9;    /* progress tracks, pills, deeper insets */
@@ -120,7 +120,7 @@
   --bg: #0b1220;
   --bg-center-highlight: rgba(45, 184, 176, 0.07);
   --bg-warm-highlight: rgba(99, 102, 241, 0.06);
-  --grid-dot: rgba(148, 163, 184, 0.08);
+  --grid-dot: rgba(148, 163, 184, 0.05);
   --bg-card: #121b2c;
   --bg-subtle: #172136;
   --bg-inset: #1d2a41;
@@ -194,10 +194,13 @@ body {
   background-image:
     radial-gradient(ellipse 70% 50% at 50% 0%, var(--bg-center-highlight), transparent 70%),
     radial-gradient(ellipse 60% 50% at 80% 90%, var(--bg-warm-highlight), transparent 70%),
-    radial-gradient(circle 1.2px at center, var(--grid-dot) 1px, transparent 1px);
-  background-size: 100% 100%, 100% 100%, 28px 28px;
+    radial-gradient(circle 1.5px at center, var(--grid-dot) 0.5px, transparent 1.5px);
+  background-size: 100% 100%, 100% 100%, 40px 40px;
   background-position: center, center, center;
-  background-attachment: fixed;
+  /* The glows stay pinned, but the dot grid scrolls with the content. Fixed
+   * dots read as "crawling" under moving content, and at the shell's 0.8 zoom
+   * a tight fixed grid resamples into visible shimmer. */
+  background-attachment: fixed, fixed, scroll;
   color: var(--text-primary);
   font-family: var(--font-geist-sans), "Segoe UI", 'Inter', system-ui, -apple-system, sans-serif;
   -webkit-font-smoothing: antialiased;
@@ -332,8 +335,8 @@ h1, h2, h3 {
   background-image:
     radial-gradient(ellipse 70% 50% at 50% 0%, var(--bg-center-highlight), transparent 70%),
     radial-gradient(ellipse 60% 50% at 80% 90%, var(--bg-warm-highlight), transparent 70%),
-    radial-gradient(circle 1.2px at center, var(--grid-dot) 1px, transparent 1px);
-  background-size: 100% 100%, 100% 100%, 28px 28px;
+    radial-gradient(circle 1.5px at center, var(--grid-dot) 0.5px, transparent 1.5px);
+  background-size: 100% 100%, 100% 100%, 40px 40px;
   background-position: center, center, center;
 }
 

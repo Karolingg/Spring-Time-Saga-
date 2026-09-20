@@ -5,6 +5,8 @@ import { useAuth } from '@/src/hooks/useAuth'
 import { getSimulationHistory } from '@/src/services/simulation.service'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { PageLoading } from '@/components/ui/PageLoading'
+import { ACCENT } from '@/src/config/theme'
+import { relativeTime } from '@/src/utils/format'
 
 interface FeatureButtonProps {
   href: string
@@ -16,27 +18,12 @@ interface FeatureButtonProps {
   icon: ReactNode
 }
 
-/* Default brand accent, used for the page header. Each feature button below
- * carries its own accent instead — see the per-destination colors at the
- * bottom of this file. */
-const ACCENT = '#2db8b0'
-
 interface HubStats {
   runCount: number
   lastDrill: string
   bestEvacTime: number | null
 }
 
-/** Compact relative-time label, e.g. "2h ago". */
-function relativeTime(dateStr: string): string {
-  const mins = Math.floor((Date.now() - new Date(dateStr).getTime()) / 60000)
-  if (mins < 1) return 'just now'
-  if (mins < 60) return `${mins}m ago`
-  const hrs = Math.floor(mins / 60)
-  if (hrs < 24) return `${hrs}h ago`
-  const days = Math.floor(hrs / 24)
-  return `${days} day${days === 1 ? '' : 's'} ago`
-}
 
 export default function AnalysisPage() {
   const { isAuthenticated, isLoading: isAuthLoading } = useAuth()
@@ -133,7 +120,7 @@ export default function AnalysisPage() {
           title="Run analysis"
           description="Inspect heatmaps, bottlenecks, and outcomes for a single simulation run."
           cta="Open run analysis"
-          accent="#2db8b0"
+          accent={ACCENT}
           icon={
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <rect x="3" y="3" width="18" height="18" rx="2" />
@@ -148,7 +135,7 @@ export default function AnalysisPage() {
           title="Aggregate insights"
           description="Review overall congestion trends and risk levels across all runs."
           cta="Open summary view"
-          accent="#2db8b0"
+          accent={ACCENT}
           icon={
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M3 3v18h18" />
@@ -164,7 +151,7 @@ export default function AnalysisPage() {
           title="Side-by-side drills"
           description="Pick two completed runs and see which KPIs improved or regressed between them."
           cta="Open comparison view"
-          accent="#2db8b0"
+          accent={ACCENT}
           icon={
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M3 6h6" /><path d="M3 12h6" /><path d="M3 18h6" />

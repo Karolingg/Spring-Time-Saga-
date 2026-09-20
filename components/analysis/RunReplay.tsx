@@ -13,6 +13,7 @@ import { createSimulation, stepSimulation, type SimulationState } from '@/src/si
 import { getAgentRenderPosition } from '@/src/simulation/autonomous-analytics'
 import { placedHazardToZone, type PlacedHazard } from '@/src/simulation/hazard-placement'
 import type { SimulationZone } from '@/src/schema/simulation.types'
+import { ACCENT } from '@/src/config/theme'
 
 interface RunReplayProps {
   buildingId: string | null
@@ -32,7 +33,6 @@ const PLAYBACK_SPEEDS = [0.5, 1, 2, 4] as const
 const SIMULATION_SECONDS_PER_MS = 0.35 / 120
 const MAX_FRAME_DELTA_MS = 48
 const HAZARD_GROWTH_MULTIPLIER = 0.45
-const ACCENT = '#2db8b0'
 const ACCENT_DARK = '#1f9189'
 
 function getHeatColor(intensity: number) {

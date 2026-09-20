@@ -20,6 +20,8 @@ import { StatCard } from '@/components/ui/StatCard'
 import type { StatCardProps } from '@/components/ui/StatCard'
 import type { SimulationRun } from '@/src/schema/simulation.types'
 import { PageLoading } from '@/components/ui/PageLoading'
+import { relativeTime } from '@/src/utils/format'
+import { trendColor, trendTint, type BetterWhen } from '@/src/utils/trend'
 
 interface AggregateStats {
   totalRuns: number
@@ -36,19 +38,6 @@ interface BuildingCoverage {
   coveredBuildingNames: string[]
 }
 
-function timeAgo(dateStr: string): string {
-  const now = Date.now()
-  const then = new Date(dateStr).getTime()
-  const diffSec = Math.floor((now - then) / 1000)
-  if (diffSec < 60) return 'just now'
-  const diffMin = Math.floor(diffSec / 60)
-  if (diffMin < 60) return `${diffMin}m ago`
-  const diffHr = Math.floor(diffMin / 60)
-  if (diffHr < 24) return `${diffHr}h ago`
-  const diffDay = Math.floor(diffHr / 24)
-  if (diffDay < 30) return `${diffDay}d ago`
-  return new Date(dateStr).toLocaleDateString()
-}
 
 function computeReadiness(stats: AggregateStats | null): number {
   if (!stats || stats.totalRuns === 0) return 0
@@ -246,7 +235,7 @@ export default function DashboardPage() {
                   background: recentRuns.length > 0 ? '#22c55e' : 'var(--border-strong)',
                   boxShadow: recentRuns.length > 0 ? '0 0 0 3px rgba(34,197,94,0.16)' : 'none',
                 }} />
-                {recentRuns.length > 0 ? `Last drill logged ${timeAgo(recentRuns[0].createdAt)}` : 'No drills logged yet'}
+                {recentRuns.length > 0 ? `Last drill logged ${relativeTime(recentRuns[0].createdAt)}` : 'No drills logged yet'}
               </span>
             )}
           </div>
@@ -621,7 +610,7 @@ function DrillTimeline({ runs, isLoading }: { runs: SimulationRun[]; isLoading: 
                       </span>
                     </div>
                     <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
-                      {timeAgo(run.createdAt)}
+                      {relativeTime(run.createdAt)}
                     </span>
                   </div>
 
@@ -872,7 +861,7 @@ function RunCard({ label, badgeColor, run, dt, emphasize }: {
         <MetricChip label="Time" value={time != null ? `${time.toFixed(1)}s` : '—'} />
       </div>
       <div style={{ fontSize: 'var(--text-sm)', color: 'var(--text-muted)' }}>
-        {timeAgo(run.createdAt)}
+        {relativeTime(run.createdAt)}
       </div>
     </div>
   )
@@ -884,9 +873,9 @@ function DeltaPill({ label, delta, format, betterWhenHigher }: {
   format: (value: number) => string
   betterWhenHigher: boolean
 }) {
-  const improved = delta !== 0 && (betterWhenHigher ? delta > 0 : delta < 0)
-  const color = delta === 0 ? 'var(--text-secondary)' : improved ? '#22c55e' : '#ef4444'
-  const bg = improved ? 'rgba(34,197,94,0.12)' : delta === 0 ? 'transparent' : 'rgba(239,68,68,0.12)'
+  const better: BetterWhen = betterWhenHigher ? 'higher' : 'lower'
+  const color = trendColor(delta, better)
+  const bg = trendTint(delta, better)
 
   return (
     <div>

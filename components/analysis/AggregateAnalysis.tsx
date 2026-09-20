@@ -3,6 +3,10 @@
 import { useEffect, useMemo, useState } from 'react'
 import { getAggregateZoneStats } from '@/src/services/simulation.service'
 import type { RiskLevel } from '@/src/schema/enums'
+import { CARD_SURFACE } from '@/components/ui/Card'
+import { ACCENT } from '@/src/config/theme'
+
+const SECTION_CARD = { ...CARD_SURFACE, marginBottom: '20px' }
 
 /* ── Types & constants ─────────────────────────────────────────────── */
 
@@ -16,7 +20,6 @@ interface AggregateZoneStat {
 
 type BandKey = 'critical' | 'high' | 'medium' | 'low'
 
-const ACCENT = '#2db8b0'
 
 const RISK_COLORS: Record<string, string> = {
   HIGH: '#ef4444', MEDIUM: '#f59e0b', LOW: '#22c55e',
@@ -67,14 +70,6 @@ function actionSentence(zone: AggregateZoneStat): string {
   return 'Minimal congestion across drills — agents typically move through this area freely.'
 }
 
-const SECTION_CARD: React.CSSProperties = {
-  background: 'var(--bg-card)',
-  border: '1px solid var(--border)',
-  borderRadius: 'var(--radius-lg)',
-  padding: '28px 32px',
-  boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
-  marginBottom: '20px',
-}
 
 /* ── Main component ────────────────────────────────────────────────── */
 
