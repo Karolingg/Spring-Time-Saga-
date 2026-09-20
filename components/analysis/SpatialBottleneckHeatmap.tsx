@@ -16,24 +16,10 @@ import { createSimulation, stepSimulation } from '@/src/simulation/engine'
 import { getAgentRenderPosition } from '@/src/simulation/autonomous-analytics'
 import { placedHazardToZone, type PlacedHazard } from '@/src/simulation/hazard-placement'
 import { ACCENT } from '@/src/config/theme'
+import { bandFor, heatColor, type CongestionBand } from '@/src/config/congestion'
 
 const VIEW_WIDTH = GRID_VIEW_WIDTH
 const VIEW_HEIGHT = GRID_VIEW_HEIGHT
-
-interface IntensityBand {
-  threshold: number
-  color: string
-  label: string
-}
-
-// Muted-warm palette — one notch deeper than pastel for readability,
-// but still well short of the harsh full-strength alert colors.
-const INTENSITY_BANDS: IntensityBand[] = [
-  { threshold: 75, color: '#f43f5e', label: 'Critical' },   // rose-500
-  { threshold: 55, color: '#f97316', label: 'High'     },   // orange-500
-  { threshold: 35, color: '#f59e0b', label: 'Medium'   },   // amber-500
-  { threshold: 0,  color: '#16a34a', label: 'Low'      },   // green-600 (darker)
-]
 
 const SCALE_TICKS = [
   { value: 100 },
@@ -42,10 +28,6 @@ const SCALE_TICKS = [
   { value: 25  },
   { value: 0   },
 ]
-
-function bandFor(intensity: number): IntensityBand {
-  return INTENSITY_BANDS.find((band) => intensity >= band.threshold) ?? INTENSITY_BANDS[INTENSITY_BANDS.length - 1]
-}
 
 function findFloorByZoneMatches(floors: FloorModel[], zones: SimulationZone[]): FloorModel {
   if (floors.length === 1) return floors[0]
@@ -66,7 +48,7 @@ interface HotNode {
   node: NavNode
   intensity: number
   peak: number
-  band: IntensityBand
+  band: CongestionBand
 }
 
 interface SpatialBottleneckHeatmapProps {
@@ -96,13 +78,6 @@ const HAZARD_GROWTH_MULTIPLIER = 0.45
 const REPLAY_STEP_DT = 0.1
 const REPLAY_BATCH_BUDGET_MS = 12
 
-function getHeatColor(intensity: number) {
-  if (intensity >= 0.78) return '#e11d48'   // rose-600
-  if (intensity >= 0.55) return '#ea580c'   // orange-600
-  if (intensity >= 0.32) return '#f59e0b'   // amber-500
-  if (intensity >= 0.12) return '#15803d'   // green-700 (deeper for contrast against light rooms)
-  return '#16a34a'                            // green-600 (darker than the old #4ade80)
-}
 
 /**
  * A node is "named" (eligible for the heatmap's hotspot list, marker overlay
@@ -668,7 +643,7 @@ export function SpatialBottleneckHeatmap({
                         width={rect.width}
                         height={rect.height}
                         rx="4"
-                        fill={getHeatColor(cell.intensity)}
+                        fill={heatColor(cell.intensity)}
                         opacity={0.42 + cell.intensity * 0.45}
                       />
                     )

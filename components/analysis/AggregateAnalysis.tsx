@@ -4,6 +4,8 @@ import { useEffect, useMemo, useState } from 'react'
 import { getAggregateZoneStats } from '@/src/services/simulation.service'
 import type { RiskLevel } from '@/src/schema/enums'
 import { CARD_SURFACE } from '@/components/ui/Card'
+import { CONGESTION_BANDS, bandFor, RISK_COLORS, RISK_TEXT_COLORS } from '@/src/config/congestion'
+import { friendlyZoneType } from '@/src/utils/format'
 import { ACCENT } from '@/src/config/theme'
 
 const SECTION_CARD = { ...CARD_SURFACE, marginBottom: '20px' }
@@ -20,44 +22,6 @@ interface AggregateZoneStat {
 
 type BandKey = 'critical' | 'high' | 'medium' | 'low'
 
-
-const RISK_COLORS: Record<string, string> = {
-  HIGH: '#ef4444', MEDIUM: '#f59e0b', LOW: '#22c55e',
-}
-
-/** Text-safe counterparts — the vivid hues above stay for the pill fills, but
- * only reach ~2.2-3.8:1 as text on a light card. */
-const RISK_TEXT_COLORS: Record<string, string> = {
-  HIGH: 'var(--status-text-red)',
-  MEDIUM: 'var(--status-text-amber)',
-  LOW: 'var(--status-text-green)',
-}
-
-interface BandDef { key: BandKey; label: string; color: string; min: number }
-
-const BANDS: BandDef[] = [
-  { key: 'critical', label: 'Critical', color: '#e11d48', min: 75 },
-  { key: 'high',     label: 'High',     color: '#ea580c', min: 55 },
-  { key: 'medium',   label: 'Medium',   color: '#f59e0b', min: 35 },
-  { key: 'low',      label: 'Low',      color: '#22c55e', min: 0  },
-]
-
-function bandFor(intensity: number): BandDef {
-  for (const band of BANDS) if (intensity >= band.min) return band
-  return BANDS[BANDS.length - 1]
-}
-
-function friendlyType(zoneName: string): string {
-  const n = zoneName.toLowerCase()
-  if (n.includes('corridor') || n.includes('hallway')) return 'Corridor'
-  if (n.includes('stair'))    return 'Stairwell'
-  if (n.includes('exit') || n.includes('out ') || n.startsWith('out')) return 'Exit area'
-  if (n.includes('door'))     return 'Doorway'
-  if (n.includes('room'))     return 'Room entrance'
-  if (n.includes('toilet') || n.includes('restroom')) return 'Restroom area'
-  if (n.includes('waypoint')) return 'Passage'
-  return 'Zone'
-}
 
 function actionSentence(zone: AggregateZoneStat): string {
   const band = bandFor(zone.avgIntensity)
@@ -222,7 +186,7 @@ export function AggregateAnalysis({ hideHeader = false }: AggregateAnalysisProps
             Intensity distribution
           </span>
           <div style={{ display: 'inline-flex', gap: '14px', flexWrap: 'wrap' }}>
-            {BANDS.map(band => (
+            {CONGESTION_BANDS.map(band => (
               <span key={band.key} style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', fontSize: '11px', color: 'var(--text-secondary)' }}>
                 <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: band.color }} />
                 <strong style={{ color: 'var(--text-primary)', fontWeight: 700 }}>{summary.counts[band.key]}</strong> {band.label}
@@ -231,11 +195,11 @@ export function AggregateAnalysis({ hideHeader = false }: AggregateAnalysisProps
           </div>
         </div>
         {(() => {
-          const total = BANDS.reduce((s, b) => s + summary.counts[b.key], 0)
+          const total = CONGESTION_BANDS.reduce((s, b) => s + summary.counts[b.key], 0)
           if (total === 0) return null
           return (
             <div style={{ display: 'flex', height: '10px', borderRadius: '999px', overflow: 'hidden', background: 'var(--bg-inset)' }}>
-              {BANDS.map(band => {
+              {CONGESTION_BANDS.map(band => {
                 const n = summary.counts[band.key]
                 if (n === 0) return null
                 return <div key={band.key} style={{ width: `${(n / total) * 100}%`, background: band.color, transition: 'width 0.4s ease' }} />
@@ -297,7 +261,7 @@ export function AggregateAnalysis({ hideHeader = false }: AggregateAnalysisProps
                   <div style={{ width: '4px', height: '24px', borderRadius: '2px', background: band.color }} />
                   <div>
                     <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)' }}>{zone.zoneName}</div>
-                    <div style={{ fontSize: '10px', color: 'var(--text-muted)' }}>{friendlyType(zone.zoneName)}</div>
+                    <div style={{ fontSize: '10px', color: 'var(--text-muted)' }}>{friendlyZoneType(zone.zoneName)}</div>
                   </div>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center' }}>
@@ -329,7 +293,7 @@ export function AggregateAnalysis({ hideHeader = false }: AggregateAnalysisProps
                   borderBottom: `1px solid ${band.color}22`,
                 }}>
                   <div style={{ display: 'flex', gap: '24px', flexWrap: 'wrap', marginBottom: '10px' }}>
-                    <DetailItem label="Zone type" value={friendlyType(zone.zoneName)} />
+                    <DetailItem label="Zone type" value={friendlyZoneType(zone.zoneName)} />
                     <DetailItem label="Avg agents" value={`${zone.avgAgentCount} people`} />
                     <DetailItem label="Total bottlenecks" value={String(zone.totalBottlenecks)} />
                     <DetailItem label="Risk level" value={zone.dominantRiskLevel} color={riskTextColor} />

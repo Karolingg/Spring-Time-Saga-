@@ -9,18 +9,12 @@ import {
   gridCellRect,
 } from '@/src/simulation/spatial-grid'
 import { ACCENT } from '@/src/config/theme'
+import { heatColor } from '@/src/config/congestion'
 
 const VIEW_WIDTH = GRID_VIEW_WIDTH
 const VIEW_HEIGHT = GRID_VIEW_HEIGHT
 const ACCENT_DARK = '#1f9189'
 
-function getHeatColor(intensity: number) {
-  if (intensity >= 0.78) return '#e11d48'
-  if (intensity >= 0.55) return '#ea580c'
-  if (intensity >= 0.32) return '#f59e0b'
-  if (intensity >= 0.12) return '#15803d'
-  return '#16a34a'
-}
 
 interface ResolvedFloorHeatmap extends AggregateFloorHeatmap {
   building: BuildingModel | null
@@ -418,7 +412,7 @@ function FloorHeatmapView({ entry }: { entry: ResolvedFloorHeatmap }) {
                   width={rect.width}
                   height={rect.height}
                   rx="4"
-                  fill={getHeatColor(cell.intensity)}
+                  fill={heatColor(cell.intensity)}
                   opacity={0.42 + cell.intensity * 0.45}
                 />
               )
