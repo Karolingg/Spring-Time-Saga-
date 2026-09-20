@@ -216,7 +216,6 @@ export default function DashboardPage() {
   const coverageTotal = buildingCoverage?.totalBuildings ?? 0
   const coverageCovered = buildingCoverage?.coveredBuildings ?? 0
   const coveragePending = buildingCoverage?.pendingBuildings ?? 0
-  const coveragePercent = coverageTotal > 0 ? (coverageCovered / coverageTotal) * 100 : 0
   const coverageNames = buildingCoverage?.coveredBuildingNames ?? []
 
   return (
@@ -228,14 +227,29 @@ export default function DashboardPage() {
     }}>
 
       {/* ── Welcome Header ── */}
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '32px', gap: '16px', flexWrap: 'wrap' }}>
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 'var(--space-8)', gap: 'var(--space-4)', flexWrap: 'wrap' }}>
         <div>
-          <h1 style={{ margin: '0 0 4px', fontSize: '26px', fontWeight: '700', color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>
+          <h1 style={{ margin: '0 0 4px', fontSize: 'var(--text-3xl)', fontWeight: '700', color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>
             {greeting}, {userName(displayName, user?.user_metadata, user?.email)}
           </h1>
-          <p style={{ margin: 0, fontSize: '14px', color: 'var(--text-secondary)' }}>
-            Campus evacuation overview &amp; drill analytics
-          </p>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)', flexWrap: 'wrap' }}>
+            <p style={{ margin: 0, fontSize: 'var(--text-md)', color: 'var(--text-secondary)' }}>
+              Campus evacuation overview &amp; drill analytics
+            </p>
+            {!isDashboardLoading && (
+              <span style={{
+                display: 'inline-flex', alignItems: 'center', gap: '6px',
+                fontSize: 'var(--text-xs)', color: 'var(--text-muted)',
+              }}>
+                <span style={{
+                  width: '6px', height: '6px', borderRadius: '50%', flexShrink: 0,
+                  background: recentRuns.length > 0 ? '#22c55e' : 'var(--border-strong)',
+                  boxShadow: recentRuns.length > 0 ? '0 0 0 3px rgba(34,197,94,0.16)' : 'none',
+                }} />
+                {recentRuns.length > 0 ? `Last drill logged ${timeAgo(recentRuns[0].createdAt)}` : 'No drills logged yet'}
+              </span>
+            )}
+          </div>
         </div>
         <div style={{ display: 'flex', gap: '12px', flexShrink: 0, flexWrap: 'wrap' }}>
           <button
@@ -294,15 +308,18 @@ export default function DashboardPage() {
         </Card>
       )}
 
-      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '16px', marginBottom: '24px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1.3fr 1fr', gap: 'var(--space-4)', marginBottom: 'var(--space-6)' }}>
 
         {/* Campus Readiness Score */}
         <Card style={{
-          display: 'flex', alignItems: 'center', gap: '28px',
+          display: 'flex', alignItems: 'center', gap: 'var(--space-7)',
+          backgroundImage: 'radial-gradient(circle at 12% 8%, rgba(45,184,176,0.09) 0%, transparent 45%)',
         }}>
-          {/* Circular progress ring */}
-          <div style={{ position: 'relative', width: '96px', height: '96px', flexShrink: 0 }}>
+          {/* Circular progress ring, with a faint dashed outer ring echoing the
+              hazard-radius rings drawn around fire/smoke in a live drill. */}
+          <div style={{ position: 'relative', width: '112px', height: '112px', flexShrink: 0 }}>
             <svg viewBox="0 0 100 100" style={{ width: '100%', height: '100%', transform: 'rotate(-90deg)' }}>
+              <circle cx="50" cy="50" r="48" fill="none" stroke={rl.color} strokeWidth="0.75" strokeDasharray="1.5 4" opacity="0.35" />
               <circle cx="50" cy="50" r="42" fill="none" stroke="var(--bg-inset)" strokeWidth="8" />
               <circle cx="50" cy="50" r="42" fill="none" stroke={rl.color} strokeWidth="8"
                 strokeLinecap="round"
@@ -313,13 +330,13 @@ export default function DashboardPage() {
               position: 'absolute', inset: 0,
               display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
             }}>
-              <span style={{ fontSize: '24px', fontWeight: '700', color: 'var(--text-primary)', lineHeight: 1 }}>{readiness}</span>
-              <span style={{ fontSize: '10px', color: 'var(--text-secondary)', marginTop: '2px' }}>/ 100</span>
+              <span style={{ fontSize: 'var(--text-2xl)', fontWeight: '700', color: 'var(--text-primary)', lineHeight: 1 }}>{readiness}</span>
+              <span style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-secondary)', marginTop: '2px' }}>/ 100</span>
             </div>
           </div>
           <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
-              <span style={{ fontSize: '11px', fontWeight: '600', letterSpacing: '0.08em', color: 'var(--text-muted)', textTransform: 'uppercase' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', marginBottom: '6px' }}>
+              <span style={{ fontSize: 'var(--text-xs)', fontWeight: '600', letterSpacing: '0.08em', color: 'var(--text-muted)', textTransform: 'uppercase' }}>
                 Campus Readiness
               </span>
               <InfoTooltip
@@ -327,10 +344,10 @@ export default function DashboardPage() {
                 description="A composite 0-100 score measuring evacuation preparedness. Based on evacuation rate (40%), bottleneck frequency (30%), and response time (30%)."
               />
             </div>
-            <div style={{ fontSize: '20px', fontWeight: '700', color: rl.textColor, marginBottom: '4px' }}>
+            <div style={{ fontSize: 'var(--text-xl)', fontWeight: '700', color: rl.textColor, marginBottom: '4px' }}>
               {rl.text}
             </div>
-            <div style={{ fontSize: '12px', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+            <div style={{ fontSize: 'var(--text-sm)', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
               {isDashboardLoading
                 ? 'Loading completed evacuation runs for your account.'
                 : 'Based on evacuation rate, bottleneck frequency, and drill response time across your completed runs.'}
@@ -340,47 +357,51 @@ export default function DashboardPage() {
 
         {/* Building Coverage */}
         <Card>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', marginBottom: 'var(--space-3)' }}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#2db8b0" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
               <line x1="3" y1="9" x2="21" y2="9" />
               <line x1="9" y1="21" x2="9" y2="9" />
             </svg>
-            <span style={{ fontSize: '11px', fontWeight: '600', letterSpacing: '0.08em', color: 'var(--text-muted)', textTransform: 'uppercase' }}>
+            <span style={{ fontSize: 'var(--text-xs)', fontWeight: '600', letterSpacing: '0.08em', color: 'var(--text-muted)', textTransform: 'uppercase' }}>
               Building Coverage
             </span>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px', marginBottom: '6px' }}>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 'var(--space-2)', marginBottom: 'var(--space-3)' }}>
             {isDashboardLoading ? (
               <span className="skeleton" style={{ width: '96px', height: '32px' }} />
             ) : (
               <>
-                <span style={{ fontSize: '32px', fontWeight: '700', color: 'var(--text-primary)', lineHeight: 1 }}>
+                <span style={{ fontSize: 'var(--text-num)', fontWeight: '700', color: 'var(--text-primary)', lineHeight: 1 }}>
                   {coverageCovered}
                 </span>
-                <span style={{ fontSize: '14px', color: 'var(--text-secondary)' }}>
+                <span style={{ fontSize: 'var(--text-md)', color: 'var(--text-secondary)' }}>
                   / {coverageTotal} buildings
                 </span>
               </>
             )}
           </div>
 
-          <div style={{ height: '6px', background: 'var(--bg-inset)', borderRadius: '3px', marginBottom: '10px' }}>
-            <div style={{
-              height: '100%', borderRadius: '3px', background: '#2db8b0',
-              width: `${isDashboardLoading ? 0 : coveragePercent}%`,
-              transition: 'width 0.3s',
-            }} />
+          {/* Coverage board: one tick per campus building, lit as its drill data
+              comes in — reads as a building roster, not a generic percent bar. */}
+          <div style={{ display: 'flex', gap: '3px', marginBottom: 'var(--space-3)' }} aria-hidden="true">
+            {Array.from({ length: Math.max(coverageTotal, 1) }).map((_, i) => (
+              <div key={i} style={{
+                flex: 1, height: '6px', borderRadius: '2px',
+                background: !isDashboardLoading && i < coverageCovered ? '#2db8b0' : 'var(--bg-inset)',
+                transition: 'background 0.3s',
+              }} />
+            ))}
           </div>
 
-          <div style={{ fontSize: '12px', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+          <div style={{ fontSize: 'var(--text-sm)', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
             {isDashboardLoading
               ? 'Loading building coverage from your completed simulation runs.'
               : 'Buildings with completed simulation data in your account.'}
           </div>
 
-          <div style={{ display: 'flex', gap: '6px', marginTop: '12px', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', gap: '6px', marginTop: 'var(--space-3)', flexWrap: 'wrap' }}>
             {isDashboardLoading ? (
               <CoveragePill label="Loading" tone="muted" />
             ) : coverageNames.length > 0 ? (
@@ -513,13 +534,22 @@ const DISASTER_ICON: Record<string, { color: string; bg: string; label: string }
 function DrillTimeline({ runs, isLoading }: { runs: SimulationRun[]; isLoading: boolean }) {
   return (
     <>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#2db8b0" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" />
-        </svg>
-        <span style={{ fontSize: '14px', fontWeight: '600', color: 'var(--text-primary)' }}>Recent Drill Activity</span>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', marginBottom: '4px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#2db8b0" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" />
+          </svg>
+          <span style={{ fontSize: 'var(--text-md)', fontWeight: '600', color: 'var(--text-primary)' }}>Recent Drill Activity</span>
+        </div>
+        {!isLoading && runs.length > 0 && (
+          <a href="/analysis/runs" className="hover-darken" style={{
+            fontSize: 'var(--text-xs)', fontWeight: '600', color: 'var(--status-text-teal)', textDecoration: 'none',
+          }}>
+            View all runs →
+          </a>
+        )}
       </div>
-      <p style={{ margin: '0 0 16px', fontSize: '12px', color: 'var(--text-secondary)' }}>
+      <p style={{ margin: '0 0 16px', fontSize: 'var(--text-sm)', color: 'var(--text-secondary)' }}>
         Latest simulation runs and their outcomes
       </p>
 
@@ -615,14 +645,22 @@ function DrillTimeline({ runs, isLoading }: { runs: SimulationRun[]; isLoading: 
 function MetricChip({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <div style={{ fontSize: '10px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '1px' }}>
+      <div style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '2px' }}>
         {label}
       </div>
-      <div style={{ fontSize: '13px', fontWeight: '600', color: 'var(--text-primary)' }}>
+      <div style={{ fontSize: 'var(--text-md)', fontWeight: '600', color: 'var(--text-primary)' }}>
         {value}
       </div>
     </div>
   )
+}
+
+/** Green/amber/red read on the evacuation rate, matching the thresholds
+ * already used for the timeline's evacuation-rate pill. */
+function rateTone(rate: number): string {
+  if (rate >= 80) return 'var(--status-text-green)'
+  if (rate >= 50) return 'var(--status-text-amber)'
+  return 'var(--status-text-red)'
 }
 
 function DashboardLoadingState({ text }: { text: string }) {
@@ -670,14 +708,23 @@ function DrillComparison({ runs, isMobile, isLoading }: { runs: SimulationRun[];
 
   return (
     <>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#2db8b0" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M3 6h6" /><path d="M3 12h6" /><path d="M3 18h6" />
-          <path d="M15 6h6" /><path d="M15 12h6" /><path d="M15 18h6" />
-        </svg>
-        <span style={{ fontSize: '14px', fontWeight: '600', color: 'var(--text-primary)' }}>Drill Comparison</span>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', marginBottom: '4px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#2db8b0" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M3 6h6" /><path d="M3 12h6" /><path d="M3 18h6" />
+            <path d="M15 6h6" /><path d="M15 12h6" /><path d="M15 18h6" />
+          </svg>
+          <span style={{ fontSize: 'var(--text-lg)', fontWeight: '600', color: 'var(--text-primary)' }}>Drill Comparison</span>
+        </div>
+        {!isLoading && hasPair && (
+          <a href="/analysis/compare" className="hover-darken" style={{
+            fontSize: 'var(--text-sm)', fontWeight: '600', color: 'var(--status-text-teal)', textDecoration: 'none',
+          }}>
+            Compare any runs →
+          </a>
+        )}
       </div>
-      <p style={{ margin: '0 0 16px', fontSize: '12px', color: 'var(--text-secondary)' }}>
+      <p style={{ margin: '0 0 16px', fontSize: 'var(--text-base)', color: 'var(--text-secondary)' }}>
         See how the latest drill stacks up against the one before it
       </p>
 
@@ -723,44 +770,50 @@ function ComparisonPreview({ a, b, compareUrl, isMobile }: { a: SimulationRun; b
     }}>
       <RunCard label="Baseline (A)" badgeColor="#64748b" run={a} dt={dtA} />
 
-      <div style={{
-        display: 'flex', alignItems: 'center', color: 'var(--text-muted)',
-        justifyContent: 'center',
-        transform: isMobile ? 'rotate(90deg)' : 'none',
-      }}>
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <line x1="5" y1="12" x2="19" y2="12" />
-          <polyline points="12 5 19 12 12 19" />
-        </svg>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{
+          width: '34px', height: '34px', borderRadius: '50%', flexShrink: 0,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          background: 'var(--bg-inset)', border: '1px solid var(--border)', color: 'var(--text-muted)',
+          transform: isMobile ? 'rotate(90deg)' : 'none',
+        }}>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <line x1="5" y1="12" x2="19" y2="12" />
+            <polyline points="12 5 19 12 12 19" />
+          </svg>
+        </div>
       </div>
 
-      <RunCard label="Latest (B)" badgeColor="#2db8b0" run={b} dt={dtB} />
+      <RunCard label="Latest (B)" badgeColor="#2db8b0" run={b} dt={dtB} emphasize />
 
       <div style={{
-        display: 'flex', flexDirection: 'column',
-        justifyContent: 'space-between', gap: isMobile ? '10px' : '8px',
-        minWidth: isMobile ? 'auto' : '180px',
+        display: 'flex', flexDirection: 'column', gap: 'var(--space-4)',
+        justifyContent: 'space-between', minWidth: isMobile ? 'auto' : '190px',
+        padding: 'var(--space-4)', background: 'var(--bg-subtle)',
+        border: '1px solid var(--border)', borderRadius: 'var(--radius-md)',
       }}>
-        <DeltaPill
-          label="Evacuation rate"
-          delta={evacDelta}
-          format={(v) => `${v > 0 ? '+' : ''}${v}%`}
-          betterWhenHigher
-        />
-        <DeltaPill
-          label="Evacuation time"
-          delta={timeDelta}
-          format={(v) => `${v > 0 ? '+' : ''}${v.toFixed(1)}s`}
-          betterWhenHigher={false}
-        />
+        <div style={{ display: 'flex', gap: 'var(--space-5)' }}>
+          <DeltaPill
+            label="Evac. rate"
+            delta={evacDelta}
+            format={(v) => `${v > 0 ? '+' : ''}${v}%`}
+            betterWhenHigher
+          />
+          <DeltaPill
+            label="Evac. time"
+            delta={timeDelta}
+            format={(v) => `${v > 0 ? '+' : ''}${v.toFixed(1)}s`}
+            betterWhenHigher={false}
+          />
+        </div>
         <a href={compareUrl} className="hover-darken" style={{
           display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
-          padding: '9px 14px', background: 'var(--teal-button)', color: '#ffffff',
-          borderRadius: '6px', textDecoration: 'none', fontSize: '13px', fontWeight: '600',
-          width: isMobile ? '100%' : undefined,
+          padding: '10px 16px', background: 'var(--teal-button)', color: '#ffffff',
+          borderRadius: 'var(--radius-sm)', textDecoration: 'none', fontSize: 'var(--text-md)', fontWeight: '600',
+          width: '100%',
         }}>
           Open comparison
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
             <polyline points="9 18 15 12 9 6" />
           </svg>
         </a>
@@ -769,11 +822,13 @@ function ComparisonPreview({ a, b, compareUrl, isMobile }: { a: SimulationRun; b
   )
 }
 
-function RunCard({ label, badgeColor, run, dt }: {
+function RunCard({ label, badgeColor, run, dt, emphasize }: {
   label: string
   badgeColor: string
   run: SimulationRun
   dt: { color: string; bg: string; label: string }
+  /** Latest (B) gets a teal-tinted surface so it reads as the current run at a glance. */
+  emphasize?: boolean
 }) {
   const agents = run.config?.agentCount ?? 0
   const evacuated = run.results?.evacuatedCount ?? 0
@@ -782,30 +837,41 @@ function RunCard({ label, badgeColor, run, dt }: {
 
   return (
     <div style={{
-      padding: '12px 14px', background: 'var(--bg-subtle)',
-      border: '1px solid var(--border)', borderRadius: '10px',
-      display: 'flex', flexDirection: 'column', gap: '8px',
+      padding: 'var(--space-4)',
+      background: emphasize ? 'var(--teal-light)' : 'var(--bg-subtle)',
+      border: '1px solid var(--border)', borderLeft: `3px solid ${badgeColor}`,
+      borderRadius: 'var(--radius-md)',
+      display: 'flex', flexDirection: 'column', gap: 'var(--space-3)',
     }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '6px' }}>
         <span style={{
-          padding: '2px 8px', borderRadius: '5px', fontSize: '10px', fontWeight: '700', letterSpacing: '0.06em',
+          padding: '2px 8px', borderRadius: '5px', fontSize: 'var(--text-xs)', fontWeight: '700', letterSpacing: '0.06em',
           background: `${badgeColor}1A`, color: badgeColor,
         }}>
           {label}
         </span>
         <span style={{
-          padding: '2px 8px', borderRadius: '5px', fontSize: '11px', fontWeight: '600',
+          padding: '2px 8px', borderRadius: '5px', fontSize: 'var(--text-sm)', fontWeight: '600',
           background: dt.bg, color: dt.color,
         }}>
           {dt.label}
         </span>
       </div>
-      <div style={{ display: 'flex', gap: '14px', flexWrap: 'wrap' }}>
-        <MetricChip label="Evacuated" value={`${evacuated}/${agents}`} />
-        <MetricChip label="Rate" value={`${rate}%`} />
+
+      {/* Evacuation rate is the headline outcome of a run, so it gets its own
+          hero line instead of sitting flush with the secondary metrics. */}
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
+        <span style={{ fontSize: 'var(--text-2xl)', fontWeight: '700', color: rateTone(rate), lineHeight: 1 }}>
+          {rate}%
+        </span>
+        <span style={{ fontSize: 'var(--text-sm)', color: 'var(--text-secondary)' }}>evacuated</span>
+      </div>
+
+      <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
+        <MetricChip label="Agents" value={`${evacuated}/${agents}`} />
         <MetricChip label="Time" value={time != null ? `${time.toFixed(1)}s` : '—'} />
       </div>
-      <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+      <div style={{ fontSize: 'var(--text-sm)', color: 'var(--text-muted)' }}>
         {timeAgo(run.createdAt)}
       </div>
     </div>
@@ -820,16 +886,16 @@ function DeltaPill({ label, delta, format, betterWhenHigher }: {
 }) {
   const improved = delta !== 0 && (betterWhenHigher ? delta > 0 : delta < 0)
   const color = delta === 0 ? 'var(--text-secondary)' : improved ? '#22c55e' : '#ef4444'
-  const bg = delta === 0 ? 'var(--bg-inset)' : improved ? 'rgba(34,197,94,0.12)' : 'rgba(239,68,68,0.12)'
+  const bg = improved ? 'rgba(34,197,94,0.12)' : delta === 0 ? 'transparent' : 'rgba(239,68,68,0.12)'
 
   return (
     <div>
-      <div style={{ fontSize: '10px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '3px' }}>
+      <div style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '4px' }}>
         {label}
       </div>
       <div style={{
-        display: 'inline-block', padding: '3px 8px', borderRadius: '5px',
-        background: bg, color, fontSize: '13px', fontWeight: '600',
+        display: 'inline-block', padding: delta === 0 ? '4px 0' : '4px 10px', borderRadius: 'var(--radius-xs)',
+        background: bg, color, fontSize: 'var(--text-md)', fontWeight: '600',
       }}>
         {delta === 0 ? 'Unchanged' : format(delta)}
       </div>
@@ -843,12 +909,6 @@ const QUICK_ACTIONS = [
     label: 'Fire Simulation',
     sub: 'High urgency scenario',
     color: '#ff6b35',
-    icon: (
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#ff6b35" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M12 21c-4.4 0-8-3.3-8-7.5 0-2.4 1.2-4.5 2.8-6.2C8.3 5.7 9.4 4 10 2c1.4.9 2.8 2.5 3.6 4.2.7-1 1.1-2 1.3-3.2 2.9 2.3 5.1 6 5.1 10.2 0 4.4-3.6 7.8-8 7.8z" />
-        <path d="M12 18.2c-1.9 0-3.5-1.4-3.5-3.2 0-1.1.5-2 1.3-2.8.7-.6 1.2-1.3 1.5-2.2 1.6 1.1 2.9 2.9 2.9 5 0 1.8-1 3.2-2.2 3.2z" />
-      </svg>
-    ),
   },
   {
     href: '/map',
@@ -882,28 +942,16 @@ const QUICK_ACTIONS = [
 function QuickActions({ isMobile }: { isMobile: boolean }) {
   return (
     <>
-      <h2 style={{ margin: '0 0 14px', fontSize: '14px', fontWeight: '600', color: 'var(--text-primary)' }}>Quick Actions</h2>
+      <h2 style={{ margin: '0 0 14px', fontSize: 'var(--text-md)', fontWeight: '600', color: 'var(--text-primary)' }}>Quick Actions</h2>
       <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, 1fr)', gap: '12px' }}>
         {QUICK_ACTIONS.map(item => (
-          <a key={item.label} href={item.href} className="hover-raise" style={{
-            display: 'flex', alignItems: 'center', gap: '14px',
-            padding: '12px 14px', background: 'var(--bg-subtle)',
-            border: '1px solid var(--border)',
-            borderRadius: '10px', textDecoration: 'none',
+          <a key={item.label} href={item.href} className="hover-darken" style={{
+            display: 'flex', flexDirection: 'column', gap: '2px',
+            padding: '12px 14px', background: 'var(--teal-button)',
+            borderRadius: '8px', textDecoration: 'none',
           }}>
-            <div style={{
-              width: '36px', height: '36px', borderRadius: '8px',
-              background: `${item.color}18`,
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: '18px', flexShrink: 0,
-            }}>
-              {item.icon}
-            </div>
-            <div>
-              <div style={{ fontSize: '13px', fontWeight: '600', color: 'var(--text-primary)' }}>{item.label}</div>
-              <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>{item.sub}</div>
-            </div>
-          </a>
+            <div style={{ fontSize: '13px', fontWeight: '600', color: '#fff' }}>{item.label}</div>
+            <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.85)' }}>{item.sub}</div>          </a>
         ))}
       </div>
     </>
