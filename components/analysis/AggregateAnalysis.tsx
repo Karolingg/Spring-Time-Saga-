@@ -212,19 +212,16 @@ export function AggregateAnalysis({ hideHeader = false }: AggregateAnalysisProps
       {/* ── KPI strip ───────────────────────────────────────── */}
       <div style={{
         display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
-        gap: '10px', marginBottom: '20px',
+        marginBottom: '20px', paddingBottom: '20px', borderBottom: '1px solid var(--border)',
       }}>
-        <KpiPill label="Zones Analyzed" value={String(summary.count)} color={ACCENT} />
+        <KpiPill label="Zones Analyzed" value={String(summary.count)} color={ACCENT} first />
         <KpiPill label="Avg Intensity" value={`${summary.avgIntensity.toFixed(0)}%`} color={bandFor(summary.avgIntensity).color} />
         <KpiPill label="Total Bottlenecks" value={String(summary.totalBn)} color={summary.totalBn > 0 ? '#f97316' : '#22c55e'} />
-        <KpiPill label="Critical Zones" value={String(summary.counts.critical)} color={summary.counts.critical > 0 ? '#e11d48' : '#22c55e'} />
+        <KpiPill label="Critical Zones" value={String(summary.counts.critical)} color={summary.counts.critical > 0 ? '#e11d48' : '#22c55e'} last />
       </div>
 
       {/* ── Intensity distribution bar ────────────────────── */}
-      <div style={{
-        marginBottom: '20px', padding: '12px 16px',
-        background: 'var(--bg-subtle)', border: '1px solid var(--border)', borderRadius: '12px',
-      }}>
+      <div style={{ marginBottom: '24px' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px', gap: '12px', flexWrap: 'wrap' }}>
           <span style={{ fontSize: '10px', fontWeight: 700, color: 'var(--text-secondary)', letterSpacing: '0.1em', textTransform: 'uppercase' }}>
             Intensity distribution
@@ -242,7 +239,7 @@ export function AggregateAnalysis({ hideHeader = false }: AggregateAnalysisProps
           const total = BANDS.reduce((s, b) => s + summary.counts[b.key], 0)
           if (total === 0) return null
           return (
-            <div style={{ display: 'flex', height: '10px', borderRadius: '999px', overflow: 'hidden', border: '1px solid var(--border)', background: 'var(--bg-inset)' }}>
+            <div style={{ display: 'flex', height: '10px', borderRadius: '999px', overflow: 'hidden', background: 'var(--bg-inset)' }}>
               {BANDS.map(band => {
                 const n = summary.counts[band.key]
                 if (n === 0) return null
@@ -259,7 +256,7 @@ export function AggregateAnalysis({ hideHeader = false }: AggregateAnalysisProps
         overflow: 'hidden', marginBottom: '16px',
       }}>
         <div style={{
-          display: 'grid', gridTemplateColumns: '2fr 1fr 90px 90px',
+          display: 'grid', gridTemplateColumns: '2fr 1fr 110px 100px', gap: '8px',
           padding: '10px 16px', background: 'var(--bg-subtle)',
           borderBottom: '1px solid var(--border)',
           fontSize: '10px', fontWeight: 700, letterSpacing: '0.08em',
@@ -267,8 +264,8 @@ export function AggregateAnalysis({ hideHeader = false }: AggregateAnalysisProps
         }}>
           <span>Zone</span>
           <span>Risk</span>
-          <span style={{ textAlign: 'right' }}>Avg Intensity</span>
-          <span style={{ textAlign: 'right' }}>Bottlenecks</span>
+          <span style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>Intensity</span>
+          <span style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>Bottlenecks</span>
         </div>
 
         {displayList.map((zone, i) => {
@@ -292,7 +289,7 @@ export function AggregateAnalysis({ hideHeader = false }: AggregateAnalysisProps
                   }
                 }}
                 style={{
-                  display: 'grid', gridTemplateColumns: '2fr 1fr 90px 90px',
+                  display: 'grid', gridTemplateColumns: '2fr 1fr 110px 100px', gap: '8px',
                   padding: '12px 16px', borderBottom: '1px solid var(--border)',
                   cursor: 'pointer',
                   background: isExpanded ? `${band.color}08` : 'var(--bg-card)',
@@ -398,13 +395,12 @@ export function AggregateAnalysis({ hideHeader = false }: AggregateAnalysisProps
 
 /* ── Sub-components ────────────────────────────────────────────────── */
 
-function KpiPill({ label, value, color }: { label: string; value: string; color: string }) {
+function KpiPill({ label, value, color, first, last }: { label: string; value: string; color: string; first?: boolean; last?: boolean }) {
   return (
     <div style={{
-      padding: '12px 14px', background: 'var(--bg-card)',
-      border: '1px solid var(--border)', borderRadius: '10px',
+      padding: `0 20px 0 ${first ? '0' : '20px'}`, borderRight: last ? 'none' : '1px solid var(--border)',
     }}>
-      <div style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '0.06em', color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '4px' }}>
+      <div style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '0.06em', color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '6px' }}>
         {label}
       </div>
       <div style={{ fontSize: '22px', fontWeight: 800, color, letterSpacing: '-0.02em', lineHeight: 1, fontFeatureSettings: '"tnum"' }}>

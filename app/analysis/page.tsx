@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { useAuth } from '@/src/hooks/useAuth'
 import { getSimulationHistory } from '@/src/services/simulation.service'
 import { PageHeader } from '@/components/ui/PageHeader'
@@ -12,9 +12,13 @@ interface FeatureButtonProps {
   title: string
   description: string
   cta: string
+  accent: string
+  icon: ReactNode
 }
 
-/* Uniform brand accent for all three feature buttons. */
+/* Default brand accent, used for the page header. Each feature button below
+ * carries its own accent instead — see the per-destination colors at the
+ * bottom of this file. */
 const ACCENT = '#2db8b0'
 
 interface HubStats {
@@ -129,6 +133,13 @@ export default function AnalysisPage() {
           title="Run analysis"
           description="Inspect heatmaps, bottlenecks, and outcomes for a single simulation run."
           cta="Open run analysis"
+          accent="#2db8b0"
+          icon={
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="3" y="3" width="18" height="18" rx="2" />
+              <path d="M9 3v18M15 3v18M3 9h18M3 15h18" />
+            </svg>
+          }
         />
 
         <FeatureButton
@@ -137,6 +148,14 @@ export default function AnalysisPage() {
           title="Aggregate insights"
           description="Review overall congestion trends and risk levels across all runs."
           cta="Open summary view"
+          accent="#2db8b0"
+          icon={
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M3 3v18h18" />
+              <polyline points="7 13 11 9 14 12 19 6" />
+              <polyline points="15 6 19 6 19 10" />
+            </svg>
+          }
         />
 
         <FeatureButton
@@ -145,6 +164,13 @@ export default function AnalysisPage() {
           title="Side-by-side drills"
           description="Pick two completed runs and see which KPIs improved or regressed between them."
           cta="Open comparison view"
+          accent="#2db8b0"
+          icon={
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M3 6h6" /><path d="M3 12h6" /><path d="M3 18h6" />
+              <path d="M15 6h6" /><path d="M15 12h6" /><path d="M15 18h6" />
+            </svg>
+          }
         />
       </div>
     </div>
@@ -167,14 +193,16 @@ function FeatureButton({
   title,
   description,
   cta,
+  accent,
+  icon,
 }: FeatureButtonProps) {
   return (
     <a
       href={href}
       style={{
         display: 'flex',
-        flexDirection: 'column',
-        gap: '8px',
+        alignItems: 'flex-start',
+        gap: 'var(--space-4)',
         padding: '22px 26px',
         background: 'var(--bg-card)',
         border: '1px solid var(--border)',
@@ -186,8 +214,8 @@ function FeatureButton({
       }}
       onMouseEnter={(e) => {
         e.currentTarget.style.transform = 'translateY(-2px)'
-        e.currentTarget.style.borderColor = ACCENT
-        e.currentTarget.style.boxShadow = `0 10px 28px rgba(45, 184, 176, 0.16), 0 2px 6px rgba(15, 23, 42, 0.06)`
+        e.currentTarget.style.borderColor = accent
+        e.currentTarget.style.boxShadow = `0 10px 28px ${accent}29, 0 2px 6px rgba(15, 23, 42, 0.06)`
       }}
       onMouseLeave={(e) => {
         e.currentTarget.style.transform = 'translateY(0)'
@@ -196,43 +224,53 @@ function FeatureButton({
       }}
     >
       <div style={{
-        fontSize: '11px',
-        fontWeight: 700,
-        letterSpacing: '0.1em',
-        textTransform: 'uppercase',
-        color: ACCENT,
+        width: '44px', height: '44px', borderRadius: 'var(--radius)',
+        background: `${accent}16`, color: accent,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        flexShrink: 0,
       }}>
-        {category}
+        {icon}
       </div>
-      <div style={{
-        fontSize: '20px',
-        fontWeight: 700,
-        color: 'var(--text-primary)',
-        letterSpacing: '-0.01em',
-      }}>
-        {title}
-      </div>
-      <div style={{
-        fontSize: '13px',
-        color: 'var(--text-secondary)',
-        lineHeight: 1.6,
-      }}>
-        {description}
-      </div>
-      <div style={{
-        display: 'inline-flex',
-        alignItems: 'center',
-        gap: '6px',
-        marginTop: '4px',
-        fontSize: '13px',
-        fontWeight: 600,
-        color: ACCENT,
-      }}>
-        {cta}
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-          <line x1="5" y1="12" x2="19" y2="12" />
-          <polyline points="12 5 19 12 12 19" />
-        </svg>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', minWidth: 0 }}>
+        <div style={{
+          fontSize: 'var(--text-xs)',
+          fontWeight: 700,
+          letterSpacing: '0.1em',
+          textTransform: 'uppercase',
+          color: accent,
+        }}>
+          {category}
+        </div>
+        <div style={{
+          fontSize: 'var(--text-xl)',
+          fontWeight: 700,
+          color: 'var(--text-primary)',
+          letterSpacing: '-0.01em',
+        }}>
+          {title}
+        </div>
+        <div style={{
+          fontSize: 'var(--text-base)',
+          color: 'var(--text-secondary)',
+          lineHeight: 1.6,
+        }}>
+          {description}
+        </div>
+        <div style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: '6px',
+          marginTop: '4px',
+          fontSize: 'var(--text-base)',
+          fontWeight: 600,
+          color: accent,
+        }}>
+          {cta}
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+            <line x1="5" y1="12" x2="19" y2="12" />
+            <polyline points="12 5 19 12 12 19" />
+          </svg>
+        </div>
       </div>
     </a>
   )
