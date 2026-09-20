@@ -27,6 +27,7 @@ import { createSimulationRun, saveDensityCells, saveSimulationResults } from '@/
 import { getFriendlyErrorMessage, isRateLimitError } from '@/src/services/rate-limit.service'
 import { computeFireSeverity, getHazardStorageKey, isHazardStorageAvailable, loadHazardPlan, placedHazardToZone, saveHazardPlan, type PlacedHazard } from '@/src/simulation/hazard-placement'
 import { PageLoading } from '@/components/ui/PageLoading'
+import { heatColor } from '@/src/config/congestion'
 import { FloorScene3D, type SceneHazard } from '@/components/simulation/FloorScene3D'
 import {
   createSpatialGridTrace,
@@ -211,12 +212,6 @@ function getBlockedEdgeCount(state: SimulationState | null) {
   return state.blockedEdges.size
 }
 
-function getHeatColor(intensity: number) {
-  if (intensity >= 0.75) return '#ef4444'
-  if (intensity >= 0.45) return '#f97316'
-  if (intensity >= 0.2) return '#f59e0b'
-  return '#22c55e'
-}
 
 function describeExitUsage(results: SimulationResults | null) {
   if (!results) return []
@@ -1888,7 +1883,7 @@ export default function AutonomousScienceBuildingPage() {
 
                 const intensity = activeTrace ? getEdgeIntensity(edge, activeTrace) : 0
                 const blocked = false
-                const stroke = blocked ? '#ef4444' : getHeatColor(intensity)
+                const stroke = blocked ? '#ef4444' : heatColor(intensity)
                 const opacity = blocked ? 0.95 : 0.25 + intensity * 0.6
 
                 const midX = (fromNode.x + toNode.x) / 2
@@ -1919,7 +1914,7 @@ export default function AutonomousScienceBuildingPage() {
                 && !/(entry|entrance|exit)$/i.test(node.label)
               )).map((node) => {
                 const intensity = activeTrace ? getNodeIntensity(node, activeTrace) : 0
-                const fill = getHeatColor(intensity)
+                const fill = heatColor(intensity)
                 const liveCount = liveCongestion.nodeCounts[node.id] || 0
 
                 return (

@@ -2,46 +2,9 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import type { SimulationZone } from '@/src/schema/simulation.types'
+import { bandFor, RISK_COLORS, RISK_TEXT_COLORS } from '@/src/config/congestion'
+import { friendlyZoneType } from '@/src/utils/format'
 
-/* ── Risk / intensity colour helpers ───────────────────────────────── */
-
-const BANDS = [
-  { key: 'critical', label: 'Critical', color: '#ef4444', min: 75 },
-  { key: 'high',     label: 'High',     color: '#f97316', min: 55 },
-  { key: 'medium',   label: 'Medium',   color: '#f59e0b', min: 35 },
-  { key: 'low',      label: 'Low',      color: '#22c55e', min: 0  },
-] as const
-
-function bandFor(intensity: number) {
-  for (const b of BANDS) if (intensity >= b.min) return b
-  return BANDS[BANDS.length - 1]
-}
-
-const RISK_COLORS: Record<string, string> = {
-  HIGH: '#ef4444', MEDIUM: '#f59e0b', LOW: '#22c55e',
-}
-
-/** Text-safe counterparts — the vivid hues above stay for the pill fills, but
- * only reach ~2.2-3.8:1 as text on a light card. */
-const RISK_TEXT_COLORS: Record<string, string> = {
-  HIGH: 'var(--status-text-red)',
-  MEDIUM: 'var(--status-text-amber)',
-  LOW: 'var(--status-text-green)',
-}
-
-/* ── Friendly zone-type mapping ────────────────────────────────────── */
-
-function friendlyType(zoneName: string): string {
-  const n = zoneName.toLowerCase()
-  if (n.includes('corridor') || n.includes('hallway')) return 'Corridor'
-  if (n.includes('stair'))    return 'Stairwell'
-  if (n.includes('exit') || n.includes('out ') || n.startsWith('out')) return 'Exit area'
-  if (n.includes('door'))     return 'Doorway'
-  if (n.includes('room'))     return 'Room entrance'
-  if (n.includes('toilet') || n.includes('restroom')) return 'Restroom area'
-  if (n.includes('waypoint')) return 'Passage'
-  return 'Zone'
-}
 
 function actionSentence(zone: SimulationZone): string {
   const band = bandFor(zone.intensity)
@@ -232,7 +195,7 @@ export function ZoneAnalysisPanel({ zones, hideHeader = false, onZoneSelect }: P
                       {zone.zoneName}
                     </div>
                     <div style={{ fontSize: '10px', color: 'var(--text-muted)' }}>
-                      {friendlyType(zone.zoneName)}
+                      {friendlyZoneType(zone.zoneName)}
                     </div>
                   </div>
                 </div>
@@ -281,7 +244,7 @@ export function ZoneAnalysisPanel({ zones, hideHeader = false, onZoneSelect }: P
                   animation: 'zoneDetailSlide 0.2s ease-out',
                 }}>
                   <div style={{ display: 'flex', gap: '24px', flexWrap: 'wrap', marginBottom: '10px' }}>
-                    <DetailItem label="Zone type" value={friendlyType(zone.zoneName)} />
+                    <DetailItem label="Zone type" value={friendlyZoneType(zone.zoneName)} />
                     <DetailItem label="Peak agents" value={`${zone.agentCount} people`} />
                     <DetailItem label="Bottleneck events" value={String(zone.bottleneckCount)} />
                     <DetailItem label="Risk level" value={zone.riskLevel} color={riskTextColor} />

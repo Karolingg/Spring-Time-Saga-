@@ -14,6 +14,7 @@ import { BUILDING_FLOOR_OCCUPANCY, getBuildingTotalCapacity } from '@/src/config
 import { ASSEMBLY_POINTS, getNearestAssembly } from '@/src/config/assembly-points'
 import { getBuildingScore, type BuildingGrade, type BuildingScore, type FloorScore } from '@/src/services/building-analytics.service'
 import { PageLoading } from '@/components/ui/PageLoading'
+import { RISK_COLORS, RISK_TEXT_COLORS } from '@/src/config/congestion'
 
 const CAMPUS_CENTER: [number, number] = [123.8988, 10.3228] // [lng, lat]
 
@@ -226,20 +227,6 @@ const CAMPUS_BUILDINGS: CampusBuilding[] = [
     status: 'coming soon',
   },
 ]
-
-const RISK_COLORS: Record<string, string> = {
-  LOW: '#22c55e',
-  MEDIUM: '#f59e0b',
-  HIGH: '#ef4444',
-}
-
-/** Text-safe counterparts — the vivid hues above stay for the accent bar and
- * pill fills, but only reach ~2.2-3.8:1 as text on a light card. */
-const RISK_TEXT_COLORS: Record<string, string> = {
-  LOW: 'var(--status-text-green)',
-  MEDIUM: 'var(--status-text-amber)',
-  HIGH: 'var(--status-text-red)',
-}
 
 function boundsCenter(b: BuildingBounds): [number, number] {
   return [(b.west + b.east) / 2, (b.south + b.north) / 2] // [lng, lat]

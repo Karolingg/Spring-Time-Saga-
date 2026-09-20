@@ -14,6 +14,7 @@ import { getAgentRenderPosition } from '@/src/simulation/autonomous-analytics'
 import { placedHazardToZone, type PlacedHazard } from '@/src/simulation/hazard-placement'
 import type { SimulationZone } from '@/src/schema/simulation.types'
 import { ACCENT } from '@/src/config/theme'
+import { heatColor } from '@/src/config/congestion'
 
 interface RunReplayProps {
   buildingId: string | null
@@ -35,13 +36,6 @@ const MAX_FRAME_DELTA_MS = 48
 const HAZARD_GROWTH_MULTIPLIER = 0.45
 const ACCENT_DARK = '#1f9189'
 
-function getHeatColor(intensity: number) {
-  if (intensity >= 0.78) return '#e11d48'
-  if (intensity >= 0.55) return '#ea580c'
-  if (intensity >= 0.32) return '#f59e0b'
-  if (intensity >= 0.12) return '#15803d'
-  return '#16a34a'
-}
 
 const HEATMAP_LEGEND: { label: string; color: string; rangeLabel: string }[] = [
   { label: 'Critical', color: '#e11d48', rangeLabel: '≥ 78%' },
@@ -365,7 +359,7 @@ export function RunReplay({
                     width={rect.width}
                     height={rect.height}
                     rx="4"
-                    fill={getHeatColor(intensity)}
+                    fill={heatColor(intensity)}
                     opacity={0.42 + intensity * 0.45}
                   />
                 )

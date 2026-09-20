@@ -1,21 +1,8 @@
 import type { SimulationZone } from '@/src/schema/simulation.types'
-
-const INTENSITY_COLORS: { threshold: number; color: string }[] = [
-  { threshold: 75, color: '#ef4444' },
-  { threshold: 55, color: '#f97316' },
-  { threshold: 35, color: '#f59e0b' },
-  { threshold: 0, color: '#22c55e' },
-]
-
-const LEGEND_ITEMS = [
-  { label: 'Critical', color: '#ef4444' },
-  { label: 'High', color: '#f97316' },
-  { label: 'Medium', color: '#f59e0b' },
-  { label: 'Low', color: '#22c55e' },
-]
+import { CONGESTION_BANDS, bandFor } from '@/src/config/congestion'
 
 function getIntensityColor(intensity: number): string {
-  return INTENSITY_COLORS.find(e => intensity >= e.threshold)?.color ?? '#22c55e'
+  return bandFor(intensity).color
 }
 
 interface CongestionHeatmapProps {
@@ -58,7 +45,7 @@ export function CongestionHeatmap({ zones, title = 'Congestion Zones', subtitle 
         })}
       </div>
       <div style={{ display: 'flex', gap: '16px', marginTop: '16px', paddingTop: '14px', borderTop: '1px solid var(--border)', flexWrap: 'wrap' }}>
-        {LEGEND_ITEMS.map(item => (
+        {CONGESTION_BANDS.map(item => (
           <div key={item.label} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
             <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: item.color }} />
             <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>{item.label}</span>

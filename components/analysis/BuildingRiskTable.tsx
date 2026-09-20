@@ -1,20 +1,5 @@
 import type { SimulationZone } from '@/src/schema/simulation.types'
-
-const RISK_COLORS: Record<string, string> = {
-  CRITICAL: '#ef4444',
-  HIGH: '#ef4444',
-  MEDIUM: '#f59e0b',
-  LOW: '#22c55e',
-}
-
-/** Text-safe counterparts to RISK_COLORS — the vivid hues above stay for the
- * pill fills, but only reach ~2.2-3.8:1 as text on a light card. */
-const RISK_TEXT_COLORS: Record<string, string> = {
-  CRITICAL: 'var(--status-text-red)',
-  HIGH: 'var(--status-text-red)',
-  MEDIUM: 'var(--status-text-amber)',
-  LOW: 'var(--status-text-green)',
-}
+import { RISK_COLORS, RISK_TEXT_COLORS } from '@/src/config/congestion'
 
 const TABLE_COLUMNS = ['Building', 'Risk', 'Agents', 'Bottlenecks']
 
