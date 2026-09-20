@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useId, useMemo, useState } from 'react'
 import { getRunTrends, type BuildingFloorTrend, type RunTrendPoint } from '@/src/services/simulation.service'
 import { getBuildingById } from '@/src/simulation/building-model'
 
@@ -249,15 +249,18 @@ function MetricDelta({ label, latest, delta, better, formatDelta }: MetricDeltaP
 }
 
 /**
- * Dual-metric sparkline. The solid teal line is evacuation time; the dashed
- * indigo line is evacuation rate. The two series sit on different scales
- * (seconds vs. percent) so each is normalized independently — the chart
- * communicates trend *shape*, not absolute values. A legend names them.
+ * Dual-metric sparkline. The solid teal line is evacuation time, filled down
+ * to its baseline so the trend reads as a shape rather than a bare squiggle;
+ * the dashed indigo line is evacuation rate. The two series sit on different
+ * scales (seconds vs. percent) so each is normalized independently — the
+ * chart communicates trend *shape*, not a shared axis. A legend names them.
  */
 function Sparkline({ values, rates }: { values: number[]; rates?: number[] }) {
   const W = 280
-  const H = 38
-  const PAD = 4
+  const H = 44
+  const PAD_X = 4
+  const PAD_Y = 5
+  const gradientId = useId()
   if (values.length < 2) return null
 
   const toPoints = (series: number[]) => {
@@ -265,8 +268,8 @@ function Sparkline({ values, rates }: { values: number[]; rates?: number[] }) {
     const max = Math.max(...series)
     const span = max - min || 1
     return series.map((v, i) => ({
-      x: PAD + (i / (series.length - 1)) * (W - PAD * 2),
-      y: PAD + (1 - (v - min) / span) * (H - PAD * 2),
+      x: PAD_X + (i / (series.length - 1)) * (W - PAD_X * 2),
+      y: PAD_Y + (1 - (v - min) / span) * (H - PAD_Y * 2),
     }))
   }
   const toPath = (pts: { x: number; y: number }[]) =>
@@ -274,10 +277,22 @@ function Sparkline({ values, rates }: { values: number[]; rates?: number[] }) {
 
   const timePoints = toPoints(values)
   const ratePoints = rates && rates.length === values.length ? toPoints(rates) : null
+  const lastTime = timePoints[timePoints.length - 1]
+  const areaPath = `${toPath(timePoints)} L${lastTime.x.toFixed(1)} ${H.toFixed(1)} `
+    + `L${timePoints[0].x.toFixed(1)} ${H.toFixed(1)} Z`
 
   return (
     <>
-      <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" style={{ width: '100%', height: '38px', display: 'block' }}>
+      <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" style={{ width: '100%', height: `${H}px`, display: 'block' }}>
+        <defs>
+          <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor={ACCENT} stopOpacity="0.18" />
+            <stop offset="100%" stopColor={ACCENT} stopOpacity="0" />
+          </linearGradient>
+        </defs>
+
+        <path d={areaPath} fill={`url(#${gradientId})`} stroke="none" />
+
         {ratePoints && (
           <path
             d={toPath(ratePoints)}
