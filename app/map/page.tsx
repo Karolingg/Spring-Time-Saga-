@@ -1,19 +1,37 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import { useAuth } from '@/src/hooks/useAuth'
 import { useIsMobile } from '@/src/hooks/useIsMobile'
-import { useTheme } from '@/src/context/ThemeContext'
+import { useFocusTrap } from '@/src/hooks/useFocusTrap'
 import MapView, { type AssemblyMarker, type MapMarker } from '@/components/MapView'
 import { PageHeader } from '@/components/ui/PageHeader'
 import {BUILDING_FLOOR_COUNT} from '@/src/config/building-floor-counts'
 import { BUILDING_FLOOR_OCCUPANCY, getBuildingTotalCapacity } from '@/src/config/building-floor-occupancy'
 import { ASSEMBLY_POINTS, getNearestAssembly } from '@/src/config/assembly-points'
 import { getBuildingScore, type BuildingGrade, type BuildingScore, type FloorScore } from '@/src/services/building-analytics.service'
+import { PageLoading } from '@/components/ui/PageLoading'
 
 const CAMPUS_CENTER: [number, number] = [123.8988, 10.3228] // [lng, lat]
+
+/* ── Assembly-point bubble geometry ─────────────────────────────────────
+ * The bubble is portalled to <body>, outside `.app-ui-scale-shell`, so every
+ * number below is in plain viewport pixels — the same space the marker icon's
+ * getBoundingClientRect() reports. No zoom conversion is involved. */
+const BUBBLE_MARGIN = 8            // keep-away distance from the viewport edges
+const BUBBLE_GAP = 14              // clearance between the icon and the bubble
+const BUBBLE_TAIL = 11             // half-width / height of the triangle tail
+const BUBBLE_MAX_WIDTH = 220
+const BUBBLE_FALLBACK_HEIGHT = 232 // flip estimate used before the first measure
+
+interface AssemblyAnchor {
+  cx: number
+  top: number
+  bottom: number
+}
 
 /* ── Building data ── */
 interface BuildingBounds {
@@ -215,6 +233,14 @@ const RISK_COLORS: Record<string, string> = {
   HIGH: '#ef4444',
 }
 
+/** Text-safe counterparts — the vivid hues above stay for the accent bar and
+ * pill fills, but only reach ~2.2-3.8:1 as text on a light card. */
+const RISK_TEXT_COLORS: Record<string, string> = {
+  LOW: 'var(--status-text-green)',
+  MEDIUM: 'var(--status-text-amber)',
+  HIGH: 'var(--status-text-red)',
+}
+
 function boundsCenter(b: BuildingBounds): [number, number] {
   return [(b.west + b.east) / 2, (b.south + b.north) / 2] // [lng, lat]
 }
@@ -231,18 +257,45 @@ function gradeAccent(grade: BuildingGrade): string {
   }
 }
 
+/** Letter color for the grade badge. White on these fills only reaches
+ *  2.15-3.76:1; these near-black inks clear 4.5:1 on their own fill while
+ *  leaving gradeAccent() untouched, so the badge keeps its color identity
+ *  and its visibility against the dark card. */
+function gradeInk(grade: BuildingGrade): string {
+  switch (grade) {
+    case 'A': return '#052e16'
+    case 'B': return '#052e16'
+    case 'C': return '#422006'
+    case 'D': return '#431407'
+    case 'F': return '#380505'
+  }
+}
+
 export default function MapPage() {
   const { isAuthenticated, isLoading } = useAuth()
-  const { theme } = useTheme()
-  const isDark = theme === 'dark'
   const router = useRouter()
   const [selected, setSelected] = useState<string | null>(null)
   const [forcedCenter, setForcedCenter] = useState<[number, number] | null>(null)
   const [selectedAssembly, setSelectedAssembly] = useState<string | null>(null)
-  const [assemblyPopupPos, setAssemblyPopupPos] = useState<{ x: number; y: number } | null>(null)
+  /* Live viewport-space geometry of the selected marker icon, plus the measured
+   * bubble height used to decide whether the bubble fits above the icon. */
+  const [assemblyAnchor, setAssemblyAnchor] = useState<AssemblyAnchor | null>(null)
+  const [assemblyBubbleHeight, setAssemblyBubbleHeight] = useState(BUBBLE_FALLBACK_HEIGHT)
   const [fullscreenImage, setFullscreenImage] = useState<string | null>(null)
   const [scoringModalOpen, setScoringModalOpen] = useState(false)
   const isMobile = useIsMobile()
+
+  /* Both overlays run the app's standard dialog contract (see ConfirmModal):
+   * Tab is trapped inside, Escape closes, and focus returns to the trigger.
+   * The trap also stops the Escape event in the capture phase, which keeps the
+   * page-level Escape handler below from clearing the map selection behind an
+   * open overlay. */
+  const imageDialogRef = useRef<HTMLDivElement>(null)
+  const scoringDialogRef = useRef<HTMLDivElement>(null)
+  const closeFullscreenImage = useCallback(() => setFullscreenImage(null), [])
+  const closeScoringModal = useCallback(() => setScoringModalOpen(false), [])
+  useFocusTrap(imageDialogRef, fullscreenImage !== null, closeFullscreenImage)
+  useFocusTrap(scoringDialogRef, scoringModalOpen, closeScoringModal)
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) window.location.href = '/auth'
@@ -253,7 +306,6 @@ export default function MapPage() {
       if (event.key === 'Escape') {
         setSelected(null)
         setSelectedAssembly(null)
-        setAssemblyPopupPos(null)
         setForcedCenter([CAMPUS_CENTER[0], CAMPUS_CENTER[1]])
       }
     }
@@ -301,6 +353,7 @@ export default function MapPage() {
   }, [building])
 
   const riskColor = building ? RISK_COLORS[building.riskLevel] : '#22c55e'
+  const riskTextColor = building ? RISK_TEXT_COLORS[building.riskLevel] : 'var(--status-text-green)'
   const panelOffset = building && !isMobile ? 416 : 0
 
   const focusCenter: [number, number] | null = useMemo(() => {
@@ -335,22 +388,94 @@ export default function MapPage() {
 
   const handleAssemblyClick = useCallback((id: string) => {
     setSelectedAssembly(id)
-    const shell = document.querySelector('.app-ui-scale-shell') as HTMLElement | null
-    const scale = shell && shell.offsetWidth > 0
-      ? shell.getBoundingClientRect().width / shell.offsetWidth
-      : 1
-    const mapContainer = document.querySelector('.map-view-shell')
-    const marker = mapContainer?.querySelector(`[data-assembly-id="${id}"]`)
-    if (marker) {
-      const rect = marker.getBoundingClientRect()
-      setAssemblyPopupPos({
-        x: (rect.left + rect.width / 2) / scale,
-        y: rect.top / scale,
-      })
+  }, [])
+
+  const closeAssemblyBubble = useCallback(() => setSelectedAssembly(null), [])
+
+  /* Track the selected marker's on-screen position.
+   *
+   * The icon sits inside `.map-view-shell`, which cancels the app-wide `zoom`,
+   * so its rect is already in true viewport pixels; the bubble is portalled to
+   * <body>, which is also unzoomed, so the rect transfers across verbatim.
+   * The previous version instead placed the bubble *inside* the zoomed shell and
+   * tried to pre-divide the rect by a zoom ratio derived from
+   * `getBoundingClientRect().width / offsetWidth`. That ratio is only the zoom
+   * factor if the two properties disagree about zoom, which browsers have not
+   * been consistent about; when they agree the ratio is 1, the division is a
+   * no-op, and the still-zoomed bubble lands at 0.8x the icon's coordinates —
+   * i.e. drifting further toward the top-left the further out the icon sits.
+   * Portalling sidesteps the question rather than betting on an answer.
+   *
+   * Mapbox re-places its markers on every frame of a pan or zoom, so we
+   * re-measure on an rAF loop and only commit when the icon actually moved. */
+  useEffect(() => {
+    if (!selectedAssembly) {
+      setAssemblyAnchor(null)
       return
     }
-    setAssemblyPopupPos({ x: window.innerWidth / 2 / scale, y: 100 / scale })
+
+    const escaped = typeof CSS !== 'undefined' && CSS.escape
+      ? CSS.escape(selectedAssembly)
+      : selectedAssembly
+    const selector = `[data-assembly-id="${escaped}"]`
+
+    let frame = requestAnimationFrame(function measure() {
+      const marker = document.querySelector(selector)
+      if (marker) {
+        const rect = marker.getBoundingClientRect()
+        const next: AssemblyAnchor = {
+          cx: rect.left + rect.width / 2,
+          top: rect.top,
+          bottom: rect.bottom,
+        }
+        setAssemblyAnchor((prev) =>
+          prev && Math.abs(prev.cx - next.cx) < 0.5 && Math.abs(prev.top - next.top) < 0.5
+            ? prev
+            : next,
+        )
+      }
+      frame = requestAnimationFrame(measure)
+    })
+
+    return () => cancelAnimationFrame(frame)
+  }, [selectedAssembly])
+
+  /* Measure the rendered bubble so the above/below decision uses its real
+   * height rather than the estimate. Runs in the commit phase, before paint. */
+  const measureAssemblyBubble = useCallback((node: HTMLDivElement | null) => {
+    if (!node) return
+    const { height } = node.getBoundingClientRect()
+    setAssemblyBubbleHeight((prev) => (Math.abs(prev - height) < 0.5 ? prev : height))
   }, [])
+
+  /* Sit the bubble above the icon when there is room, flip it below when there
+   * is not, and clamp it inside the viewport so it never runs off a narrow
+   * phone screen. The tail is placed independently of the bubble body so it
+   * keeps pointing at the icon after a sideways clamp. */
+  const assemblyBubble = useMemo(() => {
+    if (!assemblyAnchor) return null
+
+    const viewportW = window.innerWidth
+    const viewportH = window.innerHeight
+    const width = Math.min(BUBBLE_MAX_WIDTH, viewportW - BUBBLE_MARGIN * 2)
+    const above = assemblyAnchor.top - BUBBLE_GAP - assemblyBubbleHeight >= BUBBLE_MARGIN
+
+    const maxLeft = Math.max(viewportW - width - BUBBLE_MARGIN, BUBBLE_MARGIN)
+    const left = Math.min(Math.max(assemblyAnchor.cx - width / 2, BUBBLE_MARGIN), maxLeft)
+
+    const maxTailX = Math.max(width - BUBBLE_TAIL - 6, BUBBLE_TAIL + 6)
+    const tailX = Math.min(Math.max(assemblyAnchor.cx - left, BUBBLE_TAIL + 6), maxTailX)
+
+    return {
+      above,
+      left,
+      width,
+      tailX,
+      top: assemblyAnchor.bottom + BUBBLE_GAP,
+      bottom: viewportH - assemblyAnchor.top + BUBBLE_GAP,
+      maxHeight: viewportH - BUBBLE_MARGIN * 2 - BUBBLE_GAP,
+    }
+  }, [assemblyAnchor, assemblyBubbleHeight])
 
   const assemblyMarkers: AssemblyMarker[] = useMemo(
     () =>
@@ -377,9 +502,7 @@ export default function MapPage() {
 
   if (isLoading) {
     return (
-      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg)' }}>
-        <span style={{ color: 'var(--text-secondary)', fontSize: '14px', display: 'flex', alignItems: 'center', gap: '10px' }}><span className="spinner" />Loading...</span>
-      </div>
+      <PageLoading />
     )
   }
 
@@ -412,7 +535,7 @@ export default function MapPage() {
         position: 'relative',
         background: '#0f172a',
         border: '1px solid #1e293b',
-        borderRadius: '14px',
+        borderRadius: 'var(--radius-lg)',
         boxShadow: '0 4px 24px rgba(0,0,0,0.2)',
         overflow: 'hidden',
         height: isMobile ? '460px' : '640px',
@@ -492,7 +615,7 @@ export default function MapPage() {
                 <span style={{
                   display: 'inline-flex', alignItems: 'center', gap: '5px',
                   padding: '4px 12px', borderRadius: '20px',
-                  background: 'rgba(45,184,176,0.1)', color: '#2db8b0',
+                  background: 'rgba(45,184,176,0.1)', color: 'var(--status-text-teal)',
                   fontSize: '11px', fontWeight: '600',
                   border: '1px solid rgba(45,184,176,0.2)',
                 }}>
@@ -503,7 +626,7 @@ export default function MapPage() {
                   display: 'inline-flex', alignItems: 'center', gap: '5px',
                   padding: '4px 12px', borderRadius: '20px',
                   background: `${riskColor}15`,
-                  color: riskColor,
+                  color: riskTextColor,
                   fontSize: '11px', fontWeight: '600',
                   border: `1px solid ${riskColor}40`,
                 }}>
@@ -515,11 +638,15 @@ export default function MapPage() {
 
             {/* Building Image Placeholder */}
             <div style={{ padding: '0 22px 16px' }}>
-              <div
+              <button
+                type="button"
                 onClick={() => setFullscreenImage(`/floorplans/${building.id}.png`)}
+                aria-label={`View the ${building.name} floorplan full size`}
                 style={{
                   width: '100%',
                   height: '180px',
+                  padding: 0,
+                  font: 'inherit',
                   background: 'var(--glass-card-bg)',
                   borderRadius: '12px',
                   border: '1px solid rgba(148,163,184,0.2)',
@@ -573,7 +700,7 @@ export default function MapPage() {
                 }}>
                   +
                 </div>
-              </div>
+              </button>
             </div>
 
             {/* Description */}
@@ -612,7 +739,7 @@ export default function MapPage() {
                   boxShadow: '0 12px 26px rgba(15,23,42,0.06)',
                 }}>
                   <div style={{
-                    fontSize: '11px', fontWeight: '700', color: '#2db8b0',
+                    fontSize: '11px', fontWeight: '700', color: 'var(--status-text-teal)',
                     letterSpacing: '0.7px', marginBottom: '12px',
                   }}>
                     FLOOR OCCUPANCY
@@ -647,7 +774,7 @@ export default function MapPage() {
                     <span style={{ fontSize: '11px', color: 'var(--text-secondary)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                       Total
                     </span>
-                    <span style={{ fontSize: '18px', fontWeight: 800, color: '#2db8b0' }}>
+                    <span style={{ fontSize: '18px', fontWeight: 800, color: 'var(--status-text-teal)' }}>
                       {getBuildingTotalCapacity(building.id)}
                     </span>
                   </div>
@@ -670,7 +797,7 @@ export default function MapPage() {
                   display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                   marginBottom: '12px',
                 }}>
-                  <span style={{ fontSize: '11px', color: '#2db8b0', fontWeight: '700', letterSpacing: '0.7px' }}>
+                  <span style={{ fontSize: '11px', color: 'var(--status-text-teal)', fontWeight: '700', letterSpacing: '0.7px' }}>
                     EVACUATION READINESS
                   </span>
                   <button
@@ -681,7 +808,7 @@ export default function MapPage() {
                       width: '22px', height: '22px', borderRadius: '50%',
                       background: 'rgba(45,184,176,0.12)',
                       border: '1px solid rgba(45,184,176,0.28)',
-                      color: '#2db8b0', fontSize: '12px', fontWeight: 700,
+                      color: 'var(--status-text-teal)', fontSize: '12px', fontWeight: 700,
                       cursor: 'pointer',
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
                       transition: 'background 0.15s, transform 0.15s',
@@ -709,7 +836,7 @@ export default function MapPage() {
                       <div style={{
                         width: '52px', height: '52px', borderRadius: '12px',
                         background: gradeAccent(activeScore.grade),
-                        color: '#fff',
+                        color: gradeInk(activeScore.grade),
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
                         fontSize: '26px', fontWeight: 800, letterSpacing: '-0.02em',
                         boxShadow: `0 6px 16px ${gradeAccent(activeScore.grade)}55`,
@@ -724,7 +851,7 @@ export default function MapPage() {
                         <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '5px' }}>
                           Based on {activeScore.runCount} {activeScore.runCount === 1 ? 'drill' : 'drills'}
                           {activeScore.cap && (
-                            <span style={{ color: isDark ? '#fbbf24' : '#92400e', fontWeight: 700 }}>
+                            <span style={{ color: 'var(--warn-text)', fontWeight: 700 }}>
                               {' '}&middot; capped from {activeScore.rawScore}
                             </span>
                           )}
@@ -737,7 +864,7 @@ export default function MapPage() {
                         Drives the cap below. */}
                     <div style={{ display: 'flex', gap: '6px', marginBottom: '12px' }}>
                       {([
-                        { key: 'severe',   label: 'Severe',   color: '#ef4444', count: activeScore.coverage.severe },
+                        { key: 'severe',   label: 'Severe',   color: 'var(--status-text-red)', count: activeScore.coverage.severe },
                         { key: 'moderate', label: 'Moderate', color: '#f97316', count: activeScore.coverage.moderate },
                         { key: 'minor',    label: 'Minor',    color: '#3b82f6', count: activeScore.coverage.minor + activeScore.coverage.unclassified },
                       ] as const).map((bucket) => (
@@ -777,12 +904,12 @@ export default function MapPage() {
                         marginBottom: '12px',
                         display: 'flex', alignItems: 'flex-start', gap: '8px',
                       }}>
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={isDark ? '#fbbf24' : '#b45309'} strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginTop: '1px' }}>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--warn-text)" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginTop: '1px' }}>
                           <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
                           <line x1="12" y1="9" x2="12" y2="13" />
                           <line x1="12" y1="17" x2="12.01" y2="17" />
                         </svg>
-                        <div style={{ fontSize: '11px', color: isDark ? '#fcd34d' : '#9a3412', lineHeight: 1.5 }}>
+                        <div style={{ fontSize: '11px', color: 'var(--warn-text-strong)', lineHeight: 1.5 }}>
                           {activeScore.cap.reason}
                         </div>
                       </div>
@@ -852,7 +979,7 @@ export default function MapPage() {
                               <div style={{
                                 width: '22px', height: '22px', borderRadius: '6px',
                                 background: gradeAccent(floor.grade),
-                                color: '#fff',
+                                color: gradeInk(floor.grade),
                                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                                 fontSize: '10px', fontWeight: 800, flexShrink: 0,
                                 boxShadow: `0 2px 6px ${gradeAccent(floor.grade)}55`,
@@ -1025,45 +1152,56 @@ export default function MapPage() {
         </div>
       </div>
 
-      {/* Assembly point speech-bubble popup — floats directly above the marker icon */}
-      {selectedAssemblyData && assemblyPopupPos && (
+      {/* Assembly point speech-bubble popup — sits directly on top of the marker
+          icon. Portalled to <body> so it escapes `.app-ui-scale-shell`'s zoom and
+          its coordinates line up 1:1 with the icon's viewport rect. */}
+      {selectedAssemblyData && assemblyBubble && createPortal(
         <>
           {/* Invisible backdrop to dismiss on outside click */}
           <div
-            onClick={() => { setSelectedAssembly(null); setAssemblyPopupPos(null) }}
+            onClick={closeAssemblyBubble}
             style={{ position: 'fixed', inset: 0, zIndex: 1999 }}
           />
 
           {/* Speech bubble */}
           <div
+            key={selectedAssembly}
+            ref={measureAssemblyBubble}
             onClick={(e) => e.stopPropagation()}
             style={{
               position: 'fixed',
-              left: `${assemblyPopupPos.x}px`,
-              top: `${assemblyPopupPos.y}px`,
-              transform: 'translate(-50%, -100%) translateY(-18px)',
+              left: `${assemblyBubble.left}px`,
+              ...(assemblyBubble.above
+                ? { bottom: `${assemblyBubble.bottom}px` }
+                : { top: `${assemblyBubble.top}px` }),
               zIndex: 2000,
-              width: '220px',
+              width: `${assemblyBubble.width}px`,
               background: 'var(--bg-card)',
-              borderRadius: '18px',
+              borderRadius: 'var(--radius-lg)',
               boxShadow: '0 8px 32px rgba(0,0,0,0.18), 0 2px 8px rgba(0,0,0,0.08)',
               overflow: 'visible',
+              transformOrigin: `${assemblyBubble.tailX}px ${assemblyBubble.above ? '100%' : '0%'}`,
               animation: 'assemblyBubbleIn 0.18s ease-out',
             }}
           >
             {/* Bubble content */}
-            <div style={{ padding: '12px' }}>
+            <div style={{ padding: '12px', maxHeight: `${assemblyBubble.maxHeight}px`, overflowY: 'auto' }}>
               {/* Image frame */}
               {selectedAssemblyData.image ? (
-                <div
+                <button
+                  type="button"
                   onClick={() => setFullscreenImage(selectedAssemblyData.image!)}
+                  aria-label={`View full-size photo of ${selectedAssemblyData.name}`}
                   style={{
+                    display: 'block',
+                    padding: 0,
                     position: 'relative',
                     width: '100%',
                     height: '130px',
                     borderRadius: '12px',
                     overflow: 'hidden',
                     border: '1px solid var(--border)',
+                    background: 'var(--bg-subtle)',
                     cursor: 'pointer',
                     transition: 'opacity 0.2s',
                   }}
@@ -1076,7 +1214,7 @@ export default function MapPage() {
                     fill
                     style={{ objectFit: 'cover' }}
                   />
-                </div>
+                </button>
               ) : (
                 <div style={{
                   width: '100%',
@@ -1112,7 +1250,7 @@ export default function MapPage() {
                 <div style={{
                   marginTop: '6px',
                   display: 'inline-flex', alignItems: 'center', gap: '4px',
-                  fontSize: '10px', fontWeight: 600, color: '#2db8b0',
+                  fontSize: '10px', fontWeight: 600, color: 'var(--status-text-teal)',
                   background: 'rgba(45,184,176,0.08)',
                   padding: '3px 8px', borderRadius: '6px',
                 }}>
@@ -1125,27 +1263,34 @@ export default function MapPage() {
               </div>
             </div>
 
-            {/* Triangle tail — points down toward the marker icon */}
+            {/* Triangle tail — kept aligned with the marker icon even when the
+                bubble has been clamped sideways, and flipped when it sits below. */}
             <div style={{
               position: 'absolute',
-              bottom: '-10px',
-              left: '50%',
+              ...(assemblyBubble.above ? { bottom: `${-BUBBLE_TAIL + 1}px` } : { top: `${-BUBBLE_TAIL + 1}px` }),
+              left: `${assemblyBubble.tailX}px`,
               transform: 'translateX(-50%)',
               width: 0, height: 0,
-              borderLeft: '11px solid transparent',
-              borderRight: '11px solid transparent',
-              borderTop: '11px solid var(--bg-card)',
-              filter: 'drop-shadow(0 2px 2px rgba(0,0,0,0.06))',
+              borderLeft: `${BUBBLE_TAIL}px solid transparent`,
+              borderRight: `${BUBBLE_TAIL}px solid transparent`,
+              ...(assemblyBubble.above
+                ? { borderTop: `${BUBBLE_TAIL}px solid var(--bg-card)` }
+                : { borderBottom: `${BUBBLE_TAIL}px solid var(--bg-card)` }),
+              filter: assemblyBubble.above
+                ? 'drop-shadow(0 2px 2px rgba(0,0,0,0.06))'
+                : 'drop-shadow(0 -2px 2px rgba(0,0,0,0.06))',
             }} />
           </div>
-        </>
+        </>,
+        document.body,
       )}
 
-      {/* Fullscreen image modal */}
-      {fullscreenImage && (
+      {/* Fullscreen image modal — portalled alongside the bubble so both live in
+          the same stacking context and this overlay reliably covers it. */}
+      {fullscreenImage && createPortal(
         <>
           <div
-            onClick={() => setFullscreenImage(null)}
+            onClick={closeFullscreenImage}
             style={{
               position: 'fixed',
               inset: 0,
@@ -1156,27 +1301,19 @@ export default function MapPage() {
               justifyContent: 'center',
               padding: '20px',
             }}
-          />
-          <div
-            onClick={() => setFullscreenImage(null)}
-            style={{
-              position: 'fixed',
-              inset: 0,
-              zIndex: 3001,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              padding: '20px',
-            }}
           >
             <div
+              ref={imageDialogRef}
+              role="dialog"
+              aria-modal="true"
+              aria-label="Assembly point photo"
               onClick={(e) => e.stopPropagation()}
               style={{
                 position: 'relative',
                 maxWidth: '90vw',
                 maxHeight: '90vh',
                 background: 'var(--bg-card)',
-                borderRadius: '16px',
+                borderRadius: 'var(--radius-lg)',
                 overflow: 'hidden',
                 boxShadow: '0 20px 60px rgba(0, 0, 0, 0.3)',
               }}
@@ -1194,7 +1331,7 @@ export default function MapPage() {
                 }}
               />
               <button
-                onClick={() => setFullscreenImage(null)}
+                onClick={closeFullscreenImage}
                 aria-label="Close full-size image"
                 style={{
                   position: 'absolute',
@@ -1204,6 +1341,9 @@ export default function MapPage() {
                   height: '40px',
                   borderRadius: '50%',
                   background: 'rgba(255, 255, 255, 0.9)',
+                  // Chip stays light over the photo in both themes, so the
+                  // icon is pinned dark rather than inheriting themed text.
+                  color: '#0f172a',
                   border: 'none',
                   cursor: 'pointer',
                   display: 'flex',
@@ -1222,7 +1362,8 @@ export default function MapPage() {
               </button>
             </div>
           </div>
-        </>
+        </>,
+        document.body,
       )}
 
       {/* Scoring methodology modal — surfaces the formula behind the
@@ -1231,7 +1372,7 @@ export default function MapPage() {
           kept in sync with src/services/building-analytics.service.ts. */}
       {scoringModalOpen && (
         <div
-          onClick={() => setScoringModalOpen(false)}
+          onClick={closeScoringModal}
           style={{
             position: 'fixed',
             inset: 0,
@@ -1246,6 +1387,10 @@ export default function MapPage() {
           }}
         >
           <div
+            ref={scoringDialogRef}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="scoring-modal-title"
             onClick={(e) => e.stopPropagation()}
             style={{
               position: 'relative',
@@ -1254,13 +1399,13 @@ export default function MapPage() {
               maxHeight: '90vh',
               overflowY: 'auto',
               background: 'var(--bg-card)',
-              borderRadius: '16px',
+              borderRadius: 'var(--radius-lg)',
               boxShadow: '0 20px 60px rgba(0, 0, 0, 0.3)',
               padding: isMobile ? '20px' : '28px 32px',
             }}
           >
             <button
-              onClick={() => setScoringModalOpen(false)}
+              onClick={closeScoringModal}
               aria-label="Close scoring explanation"
               style={{
                 position: 'absolute', top: '14px', right: '14px',
@@ -1278,7 +1423,7 @@ export default function MapPage() {
               </svg>
             </button>
 
-            <h2 style={{ margin: '0 0 6px', fontSize: '20px', fontWeight: 800, color: 'var(--text-primary)' }}>
+            <h2 id="scoring-modal-title" style={{ margin: '0 0 6px', fontSize: '20px', fontWeight: 800, color: 'var(--text-primary)' }}>
               How the Readiness Score Works
             </h2>
             <p style={{ margin: '0 0 20px', fontSize: '13px', color: 'var(--text-secondary)', lineHeight: 1.6 }}>
@@ -1291,7 +1436,7 @@ export default function MapPage() {
               padding: '14px 16px', background: 'var(--bg-subtle)', borderRadius: '10px',
               border: '1px solid var(--border)', marginBottom: '16px',
             }}>
-              <div style={{ fontSize: '11px', fontWeight: 700, color: '#2db8b0', letterSpacing: '0.6px', marginBottom: '10px' }}>
+              <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--status-text-teal)', letterSpacing: '0.6px', marginBottom: '10px' }}>
                 PER-RUN SCORE (0–100)
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: '6px 16px', fontSize: '13px', color: 'var(--text-primary)' }}>
@@ -1317,7 +1462,7 @@ export default function MapPage() {
                   { grade: 'B' as const, min: 80, color: '#22c55e' },
                   { grade: 'C' as const, min: 70, color: '#f59e0b' },
                   { grade: 'D' as const, min: 60, color: '#f97316' },
-                  { grade: 'F' as const, min: 0,  color: '#ef4444' },
+                  { grade: 'F' as const, min: 0,  color: 'var(--status-text-red)' },
                 ]).map(g => (
                   <div key={g.grade} style={{
                     flex: '1 1 80px',
@@ -1339,10 +1484,10 @@ export default function MapPage() {
               padding: '12px 14px', background: 'rgba(245,158,11,0.1)', borderRadius: '10px',
               border: '1px solid rgba(245,158,11,0.35)', marginBottom: '12px',
             }}>
-              <div style={{ fontSize: '12px', fontWeight: 700, color: '#92400e', marginBottom: '4px' }}>
+              <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--warn-text)', marginBottom: '4px' }}>
                 Anti-gaming weighting
               </div>
-              <div style={{ fontSize: '12px', color: '#78350f', lineHeight: 1.6 }}>
+              <div style={{ fontSize: '12px', color: 'var(--warn-text-strong)', lineHeight: 1.6 }}>
                 Each run counts as <strong>scenario_multiplier × occupancy_ratio</strong>.
                 A severe + full-building drill counts ~10× more than a near-empty minor drill,
                 so easy runs can&apos;t inflate the grade.
@@ -1354,10 +1499,10 @@ export default function MapPage() {
               padding: '12px 14px', background: 'rgba(245,158,11,0.12)', borderRadius: '10px',
               border: '1px solid rgba(249,115,22,0.35)',
             }}>
-              <div style={{ fontSize: '12px', fontWeight: 700, color: '#9a3412', marginBottom: '6px' }}>
+              <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--warn-text-strong)', marginBottom: '6px' }}>
                 Mandatory coverage cap
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: '4px 12px', fontSize: '12px', color: '#7c2d12' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: '4px 12px', fontSize: '12px', color: 'var(--warn-text)' }}>
                 <span>Has a severe drill</span><span style={{ fontWeight: 700 }}>no cap</span>
                 <span>Moderate only</span><span style={{ fontWeight: 700 }}>max B (≤89)</span>
                 <span>Minor only</span><span style={{ fontWeight: 700 }}>max C (≤79)</span>
@@ -1369,7 +1514,7 @@ export default function MapPage() {
       )}
 
       <p style={{ marginTop: '12px', fontSize: '11px', color: 'var(--text-muted)', textAlign: 'center' }}>
-        Map powered by <a href="https://www.mapbox.com" target="_blank" rel="noreferrer" style={{ color: '#2db8b0' }}>Mapbox</a> &middot; Data &copy; <a href="https://www.openstreetmap.org" target="_blank" rel="noreferrer" style={{ color: '#2db8b0' }}>OpenStreetMap</a> contributors.
+        Map powered by <a href="https://www.mapbox.com" target="_blank" rel="noreferrer" style={{ color: 'var(--status-text-teal)' }}>Mapbox</a> &middot; Data &copy; <a href="https://www.openstreetmap.org" target="_blank" rel="noreferrer" style={{ color: 'var(--status-text-teal)' }}>OpenStreetMap</a> contributors.
       </p>
     </div>
   )

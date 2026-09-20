@@ -25,7 +25,7 @@ export function StatCard({ icon, label, value, sub, color, progress, loading }: 
     <Card hover padding="22px 24px">
       <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '14px' }}>
         <div style={{
-          width: '32px', height: '32px', borderRadius: '9px',
+          width: '32px', height: '32px', borderRadius: 'var(--radius-md)',
           background: `${color}16`,
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           flexShrink: 0,

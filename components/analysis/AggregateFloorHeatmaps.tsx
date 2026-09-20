@@ -128,7 +128,7 @@ export function AggregateFloorHeatmaps({ hideHeader = false }: AggregateFloorHea
     <div style={hideHeader ? {} : {
       background: 'var(--bg-card)',
       border: '1px solid var(--border)',
-      borderRadius: '14px',
+      borderRadius: 'var(--radius-lg)',
       padding: '28px 32px',
       boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
       marginBottom: '20px',
@@ -168,7 +168,7 @@ export function AggregateFloorHeatmaps({ hideHeader = false }: AggregateFloorHea
       )}
 
       {error && !isLoading && (
-        <div style={{ padding: '20px', borderRadius: '10px', background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.35)', color: '#ef4444', fontSize: '13px' }}>
+        <div style={{ padding: '20px', borderRadius: '10px', background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.35)', color: 'var(--status-text-red)', fontSize: '13px' }}>
           {error}
         </div>
       )}
@@ -218,7 +218,7 @@ export function AggregateFloorHeatmaps({ hideHeader = false }: AggregateFloorHea
                   }}
                 >
                   <span style={{
-                    width: '34px', height: '34px', borderRadius: '9px',
+                    width: '34px', height: '34px', borderRadius: 'var(--radius-md)',
                     background: isSelected ? `linear-gradient(135deg, ${ACCENT} 0%, ${ACCENT_DARK} 100%)` : 'var(--bg-inset)',
                     color: isSelected ? '#ffffff' : 'var(--text-muted)',
                     display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
@@ -310,7 +310,7 @@ function StepHeader({ step, title }: { step: number; title: string }) {
       marginBottom: '12px',
     }}>
       <span style={{
-        width: '22px', height: '22px', borderRadius: '7px',
+        width: '22px', height: '22px', borderRadius: 'var(--radius-sm)',
         background: `${ACCENT}18`,
         display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
         color: ACCENT_DARK, fontSize: '11px', fontWeight: 700,
@@ -346,7 +346,7 @@ function FloorHeatmapView({ entry }: { entry: ResolvedFloorHeatmap }) {
     <div style={{
       background: 'var(--bg-card)',
       border: '1px solid var(--border)',
-      borderRadius: '14px',
+      borderRadius: 'var(--radius-lg)',
       overflow: 'hidden',
       boxShadow: '0 1px 2px rgba(15,23,42,0.04)',
     }}>

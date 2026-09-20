@@ -21,6 +21,14 @@ const RISK_COLORS: Record<string, string> = {
   HIGH: '#ef4444', MEDIUM: '#f59e0b', LOW: '#22c55e',
 }
 
+/** Text-safe counterparts — the vivid hues above stay for the pill fills, but
+ * only reach ~2.2-3.8:1 as text on a light card. */
+const RISK_TEXT_COLORS: Record<string, string> = {
+  HIGH: 'var(--status-text-red)',
+  MEDIUM: 'var(--status-text-amber)',
+  LOW: 'var(--status-text-green)',
+}
+
 /* ── Friendly zone-type mapping ────────────────────────────────────── */
 
 function friendlyType(zoneName: string): string {
@@ -164,6 +172,7 @@ export function ZoneAnalysisPanel({ zones, hideHeader = false }: Props) {
         {displayList.map((zone, i) => {
           const band = bandFor(zone.intensity)
           const riskColor = RISK_COLORS[zone.riskLevel] ?? '#22c55e'
+          const riskTextColor = RISK_TEXT_COLORS[zone.riskLevel] ?? 'var(--status-text-green)'
           const isExpanded = expandedZone === zone.zoneName + i
           const zoneKey = zone.zoneName + i
 
@@ -171,7 +180,16 @@ export function ZoneAnalysisPanel({ zones, hideHeader = false }: Props) {
             <div key={zoneKey}>
               {/* Row */}
               <div
+                role="button"
+                tabIndex={0}
+                aria-expanded={isExpanded}
                 onClick={() => setExpandedZone(isExpanded ? null : zoneKey)}
+                onKeyDown={e => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault()
+                    setExpandedZone(isExpanded ? null : zoneKey)
+                  }
+                }}
                 style={{
                   display: 'grid', gridTemplateColumns: '2fr 1fr 80px 80px', gap: '12px',
                   padding: '12px 16px',
@@ -201,7 +219,7 @@ export function ZoneAnalysisPanel({ zones, hideHeader = false }: Props) {
                 <div style={{ display: 'flex', alignItems: 'center' }}>
                   <span style={{
                     display: 'inline-block', padding: '2px 10px', borderRadius: '999px',
-                    background: `${riskColor}14`, color: riskColor,
+                    background: `${riskColor}14`, color: riskTextColor,
                     fontSize: '10px', fontWeight: 700, letterSpacing: '0.04em',
                   }}>
                     {zone.riskLevel}
@@ -226,7 +244,7 @@ export function ZoneAnalysisPanel({ zones, hideHeader = false }: Props) {
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>
                   <span style={{
                     fontSize: '12px', fontWeight: 600,
-                    color: zone.bottleneckCount > 0 ? '#ef4444' : '#22c55e',
+                    color: zone.bottleneckCount > 0 ? 'var(--status-text-red)' : 'var(--status-text-green)',
                   }}>
                     {zone.bottleneckCount}
                   </span>
@@ -245,7 +263,7 @@ export function ZoneAnalysisPanel({ zones, hideHeader = false }: Props) {
                     <DetailItem label="Zone type" value={friendlyType(zone.zoneName)} />
                     <DetailItem label="Peak agents" value={`${zone.agentCount} people`} />
                     <DetailItem label="Bottleneck events" value={String(zone.bottleneckCount)} />
-                    <DetailItem label="Risk level" value={zone.riskLevel} color={riskColor} />
+                    <DetailItem label="Risk level" value={zone.riskLevel} color={riskTextColor} />
                   </div>
                   <p style={{
                     margin: 0, fontSize: '12px', color: 'var(--text-secondary)',
@@ -265,17 +283,19 @@ export function ZoneAnalysisPanel({ zones, hideHeader = false }: Props) {
 
         {/* Show all toggle */}
         {sorted.length > 5 && (
-          <div
+          <button
+            type="button"
             onClick={() => setShowAll(!showAll)}
             style={{
+              display: 'block', width: '100%',
               padding: '10px 16px', textAlign: 'center',
-              fontSize: '12px', fontWeight: 600, color: '#2db8b0',
+              fontSize: '12px', fontWeight: 600, color: 'var(--status-text-teal)',
               cursor: 'pointer', background: 'var(--bg-subtle)',
-              borderTop: '1px solid var(--border)',
+              border: 'none', borderTop: '1px solid var(--border)',
             }}
           >
             {showAll ? 'Show top 5 only' : `Show all ${sorted.length} zones`}
-          </div>
+          </button>
         )}
       </div>
 
@@ -291,7 +311,7 @@ export function ZoneAnalysisPanel({ zones, hideHeader = false }: Props) {
           <div style={{
             display: 'flex', alignItems: 'center', gap: '6px',
             fontSize: '10px', fontWeight: 700, letterSpacing: '0.08em',
-            color: '#2db8b0', textTransform: 'uppercase', marginBottom: '6px',
+            color: 'var(--status-text-teal)', textTransform: 'uppercase', marginBottom: '6px',
           }}>
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
               <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01z" />

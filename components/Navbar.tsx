@@ -181,7 +181,7 @@ export function Navbar({
 
           <Link href="/" style={{ display: 'flex', alignItems: 'center', gap: '8px', textDecoration: 'none' }}>
             <div style={{
-              width: '30px', height: '30px', borderRadius: '9px',
+              width: '30px', height: '30px', borderRadius: 'var(--radius-md)',
               background: 'linear-gradient(135deg, #2db8b0 0%, #1f9189 100%)',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               boxShadow: '0 3px 8px -3px rgba(45, 184, 176, 0.4)',
@@ -327,7 +327,7 @@ function renderNavContent({
           <div style={{
             width: '38px',
             height: '38px',
-            borderRadius: '11px',
+            borderRadius: 'var(--radius)',
             background: 'linear-gradient(135deg, #2db8b0 0%, #1f9189 100%)',
             display: 'flex',
             alignItems: 'center',

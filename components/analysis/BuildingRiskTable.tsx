@@ -7,6 +7,15 @@ const RISK_COLORS: Record<string, string> = {
   LOW: '#22c55e',
 }
 
+/** Text-safe counterparts to RISK_COLORS — the vivid hues above stay for the
+ * pill fills, but only reach ~2.2-3.8:1 as text on a light card. */
+const RISK_TEXT_COLORS: Record<string, string> = {
+  CRITICAL: 'var(--status-text-red)',
+  HIGH: 'var(--status-text-red)',
+  MEDIUM: 'var(--status-text-amber)',
+  LOW: 'var(--status-text-green)',
+}
+
 const TABLE_COLUMNS = ['Building', 'Risk', 'Agents', 'Bottlenecks']
 
 interface BuildingRiskTableProps {
@@ -40,18 +49,19 @@ export function BuildingRiskTable({ zones, subtitle = 'Based on latest simulatio
         <tbody>
           {zones.map((zone, i) => {
             const riskColor = RISK_COLORS[zone.riskLevel] ?? '#22c55e'
+            const riskTextColor = RISK_TEXT_COLORS[zone.riskLevel] ?? 'var(--status-text-green)'
             return (
               <tr key={i} style={{ borderBottom: '1px solid var(--border)' }}>
                 <td style={{ padding: '12px', fontSize: '13px', color: 'var(--text-primary)', fontWeight: '500' }}>{zone.zoneName}</td>
                 <td style={{ padding: '12px' }}>
                   <span style={{
                     display: 'inline-block', padding: '3px 10px', borderRadius: '20px',
-                    background: `${riskColor}18`, color: riskColor,
+                    background: `${riskColor}18`, color: riskTextColor,
                     fontSize: '11px', fontWeight: '700', letterSpacing: '0.04em',
                   }}>{zone.riskLevel}</span>
                 </td>
                 <td style={{ padding: '12px', fontSize: '13px', color: 'var(--text-primary)' }}>{zone.agentCount}</td>
-                <td style={{ padding: '12px', fontSize: '13px', color: zone.bottleneckCount > 0 ? '#ef4444' : '#22c55e', fontWeight: '600' }}>
+                <td style={{ padding: '12px', fontSize: '13px', color: zone.bottleneckCount > 0 ? 'var(--status-text-red)' : 'var(--status-text-green)', fontWeight: '600' }}>
                   {zone.bottleneckCount}
                 </td>
               </tr>

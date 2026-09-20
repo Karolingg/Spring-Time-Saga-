@@ -189,10 +189,10 @@ function TabButton({ label, active, onClick, icon }: TabButtonProps) {
       style={{
         display: 'inline-flex', alignItems: 'center', gap: '7px',
         padding: '8px 14px',
-        borderRadius: '9px',
+        borderRadius: 'var(--radius-md)',
         border: 'none',
-        background: active ? '#ffffff' : 'transparent',
-        color: active ? ACCENT_DARK : '#64748b',
+        background: active ? 'var(--bg-card)' : 'transparent',
+        color: active ? ACCENT_DARK : 'var(--text-secondary)',
         fontSize: '12px', fontWeight: 700,
         letterSpacing: '0.01em',
         cursor: 'pointer',

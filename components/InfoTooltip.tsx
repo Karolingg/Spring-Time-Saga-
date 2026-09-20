@@ -92,7 +92,7 @@ export function InfoTooltip({
               width: '18px',
               height: '18px',
               borderRadius: '50%',
-              background: '#2db8b0',
+              background: 'var(--teal-button)',
               color: 'white',
               display: 'flex',
               alignItems: 'center',

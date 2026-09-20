@@ -18,11 +18,12 @@ import { downloadRunCsv } from '@/src/services/csv-export'
 import { useToast } from '@/src/context/ToastContext'
 import { getFriendlyErrorMessage } from '@/src/services/rate-limit.service'
 import type { DensityCell, SimulationRun, SimulationZone } from '@/src/schema/simulation.types'
+import { PageLoading } from '@/components/ui/PageLoading'
 
 const SECTION_CARD: React.CSSProperties = {
   background: 'var(--bg-card)',
   border: '1px solid var(--border)',
-  borderRadius: '14px',
+  borderRadius: 'var(--radius-lg)',
   padding: '28px 32px',
   boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
   marginBottom: '20px',
@@ -165,9 +166,7 @@ export default function AnalysisRunsPage() {
 
   if (isAuthLoading) {
     return (
-      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg)' }}>
-        <div style={{ color: 'var(--text-secondary)', fontSize: '14px', display: 'flex', alignItems: 'center', gap: '10px' }}><span className="spinner" />Loading...</div>
-      </div>
+      <PageLoading />
     )
   }
 
@@ -495,7 +494,7 @@ function PageHeader({
 
         <a href="/map" style={{
           display: 'inline-flex', alignItems: 'center', gap: '6px',
-          padding: '8px 14px', background: '#2db8b0', color: '#ffffff',
+          padding: '8px 14px', background: 'var(--teal-button)', color: '#ffffff',
           borderRadius: '8px', textDecoration: 'none', fontSize: '13px', fontWeight: '600',
           flexShrink: 0, marginLeft: 'auto',
         }}>
@@ -520,7 +519,7 @@ function DangerZone({ onRequestReset, isResetting, isDisabled }: {
   return (
     <div style={{
       marginTop: '32px', padding: '20px 24px',
-      background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.35)', borderRadius: '14px',
+      background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.35)', borderRadius: 'var(--radius-lg)',
       display: 'flex', alignItems: 'center', justifyContent: 'space-between',
       gap: '16px', flexWrap: 'wrap',
     }}>
@@ -536,7 +535,7 @@ function DangerZone({ onRequestReset, isResetting, isDisabled }: {
           </svg>
         </div>
         <div>
-          <div style={{ fontSize: '14px', fontWeight: 700, color: '#ef4444' }}>Danger Zone</div>
+          <div style={{ fontSize: '14px', fontWeight: 700, color: 'var(--status-text-red)' }}>Danger Zone</div>
           <div style={{ fontSize: '13px', color: 'var(--text-secondary)', marginTop: '2px' }}>
             Permanently delete every simulation run and all associated analysis data. This cannot be undone.
           </div>
@@ -597,7 +596,7 @@ function RunControls({ runHistory, currentRunId, onRunChange, onRequestDelete, i
         style={{
           padding: '8px 10px', background: 'rgba(239,68,68,0.08)',
           border: '1px solid rgba(239,68,68,0.35)', borderRadius: '8px',
-          color: '#ef4444',
+          color: 'var(--status-text-red)',
           cursor: isDisabled ? 'not-allowed' : 'pointer',
           opacity: isDisabled ? 0.55 : 1,
           flexShrink: 0,
@@ -631,7 +630,7 @@ function EmptyState() {
       </p>
       <a href="/map" style={{
         display: 'inline-block', marginTop: '16px', padding: '10px 20px',
-        background: '#2db8b0', color: '#ffffff', borderRadius: '8px',
+        background: 'var(--teal-button)', color: '#ffffff', borderRadius: '8px',
         textDecoration: 'none', fontSize: '14px', fontWeight: '600',
       }}>
         Run Simulation

@@ -50,7 +50,7 @@ export function FeatureContainer({
       style={{
         background: 'var(--bg-card)',
         border: '1px solid var(--border)',
-        borderRadius: '16px',
+        borderRadius: 'var(--radius-lg)',
         overflow: 'hidden',
         boxShadow: '0 4px 14px rgba(15, 23, 42, 0.06), 0 1px 3px rgba(15, 23, 42, 0.04)',
         marginBottom: '20px',
@@ -70,7 +70,7 @@ export function FeatureContainer({
       }}>
         {icon && (
           <div style={{
-            width: '38px', height: '38px', borderRadius: '11px',
+            width: '38px', height: '38px', borderRadius: 'var(--radius)',
             background: 'rgba(255,255,255,0.24)',
             border: '1px solid rgba(255,255,255,0.18)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',

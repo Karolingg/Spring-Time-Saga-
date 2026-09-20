@@ -3,7 +3,9 @@
 import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { useAuth } from '@/src/hooks/useAuth'
+import { useTheme } from '@/src/context/ThemeContext'
 import { BUILDING_FLOOR_COUNT } from '@/src/config/building-floor-counts'
+import { PageLoading } from '@/components/ui/PageLoading'
 
 interface Disaster {
   type: 'fire' | 'earthquake'
@@ -87,6 +89,8 @@ function getSimulationRoute(regionId: string, disaster: string, floorIndex: numb
 
 export default function DisasterPickerPage() {
   const { isAuthenticated, isLoading } = useAuth()
+  const { theme } = useTheme()
+  const isDark = theme === 'dark'
   const router = useRouter()
   const params = useParams()
   const regionId = params.id as string
@@ -101,9 +105,7 @@ export default function DisasterPickerPage() {
 
   if (isLoading) {
     return (
-      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg)' }}>
-        <div style={{ color: 'var(--text-secondary)', fontSize: '14px', display: 'flex', alignItems: 'center', gap: '10px' }}><span className="spinner" />Loading...</div>
-      </div>
+      <PageLoading />
     )
   }
 
@@ -151,7 +153,7 @@ export default function DisasterPickerPage() {
             gap: '10px',
             padding: '6px 12px',
             borderRadius: '999px',
-            background: 'rgba(255,255,255,0.85)',
+            background: 'var(--glass-chip-bg)',
             border: '1px solid var(--border)',
             backdropFilter: 'blur(6px)',
             fontSize: '11px',
@@ -164,7 +166,7 @@ export default function DisasterPickerPage() {
           }}>
             <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#2db8b0' }} />
             {displayName}
-            <span style={{ width: '4px', height: '4px', borderRadius: '50%', background: '#cbd5e1' }} />
+            <span style={{ width: '4px', height: '4px', borderRadius: '50%', background: 'var(--border-strong)' }} />
             Step {step} of 2
           </div>
         </div>
@@ -213,14 +215,14 @@ export default function DisasterPickerPage() {
                   gap: '20px',
                   padding: '22px 24px',
                   background: isSelected
-                    ? `${d.selectedGradient}, #ffffff`
-                    : `${d.bgGradient}, #ffffff`,
+                    ? `${d.selectedGradient}, var(--bg-card)`
+                    : `${d.bgGradient}, var(--bg-card)`,
                   border: `1.5px solid ${
                     isSelected ? d.color
                     : isHovered ? `${d.color}80`
-                    : 'rgba(15,23,42,0.08)'
+                    : 'var(--border)'
                   }`,
-                  borderRadius: '16px',
+                  borderRadius: 'var(--radius-lg)',
                   cursor: 'pointer',
                   textAlign: 'left',
                   transition: 'all 0.2s ease',
@@ -250,7 +252,7 @@ export default function DisasterPickerPage() {
                 <div style={{
                   width: '56px',
                   height: '56px',
-                  borderRadius: '16px',
+                  borderRadius: 'var(--radius-lg)',
                   background: `linear-gradient(135deg, ${d.color}18 0%, ${d.color}08 100%)`,
                   border: `1px solid ${d.color}30`,
                   display: 'flex',
@@ -289,7 +291,10 @@ export default function DisasterPickerPage() {
                     gap: '6px',
                     fontSize: '11px',
                     fontWeight: 600,
-                    color: d.colorDark,
+                    // Per-disaster hue, so this can't use the shared warn token.
+                    // colorDark is tuned for white cards; on the dark card the
+                    // brighter base hue is what stays legible.
+                    color: isDark ? d.color : d.colorDark,
                     letterSpacing: '0.08em',
                     textTransform: 'uppercase',
                   }}>
@@ -308,7 +313,7 @@ export default function DisasterPickerPage() {
                   height: '36px',
                   borderRadius: '12px',
                   background: isSelected ? d.color : isHovered ? `${d.color}15` : 'transparent',
-                  color: isSelected ? '#ffffff' : isHovered ? d.color : '#cbd5e1',
+                  color: isSelected ? '#ffffff' : isHovered ? d.color : 'var(--text-muted)',
                   transition: 'all 0.2s',
                 }}>
                   {isSelected ? (
@@ -345,12 +350,12 @@ export default function DisasterPickerPage() {
               <span style={{
                 width: '22px',
                 height: '22px',
-                borderRadius: '7px',
+                borderRadius: 'var(--radius-sm)',
                 background: 'rgba(45,184,176,0.12)',
                 display: 'inline-flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                color: '#1f9189',
+                color: 'var(--nav-active-text)',
                 fontSize: '11px',
                 fontWeight: 700,
               }}>
@@ -399,8 +404,8 @@ export default function DisasterPickerPage() {
                       gap: '14px',
                       padding: '18px 18px 16px',
                       background: 'var(--bg-card)',
-                      border: `1.5px solid ${isFloorHovered ? 'rgba(45,184,176,0.5)' : 'rgba(15,23,42,0.08)'}`,
-                      borderRadius: '14px',
+                      border: `1.5px solid ${isFloorHovered ? 'rgba(45,184,176,0.5)' : 'var(--border)'}`,
+                      borderRadius: 'var(--radius-lg)',
                       cursor: 'pointer',
                       textAlign: 'left',
                       transition: 'all 0.2s ease',
@@ -440,7 +445,7 @@ export default function DisasterPickerPage() {
                         fontSize: '32px',
                         fontWeight: 700,
                         lineHeight: 1,
-                        color: isFloorHovered ? '#1f9189' : '#cbd5e1',
+                        color: isFloorHovered ? 'var(--nav-active-text)' : 'var(--border-strong)',
                         fontFeatureSettings: '"tnum"',
                         letterSpacing: '-0.02em',
                         transition: 'color 0.2s',
@@ -478,7 +483,7 @@ export default function DisasterPickerPage() {
                       borderTop: '1px dashed var(--border)',
                       fontSize: '11px',
                       fontWeight: 600,
-                      color: isFloorHovered ? '#1f9189' : 'var(--text-muted)',
+                      color: isFloorHovered ? 'var(--nav-active-text)' : 'var(--text-muted)',
                       letterSpacing: '0.08em',
                       textTransform: 'uppercase',
                       transition: 'color 0.2s',
@@ -523,7 +528,7 @@ function FloorStackIcon({ floorIndex, totalFloors, active }: { floorIndex: numbe
               borderRadius: '2px',
               background: isActiveFloor
                 ? (active ? '#2db8b0' : '#1f9189')
-                : 'rgba(15,23,42,0.06)',
+                : 'var(--bg-inset)',
               transform: isActiveFloor && active ? 'scaleX(1.05)' : 'scaleX(1)',
               transformOrigin: 'left center',
               transition: 'background 0.2s, transform 0.2s',

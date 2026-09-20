@@ -6,6 +6,7 @@ import { AggregateAnalysis } from '@/components/analysis/AggregateAnalysis'
 import { AggregateFloorHeatmaps } from '@/components/analysis/AggregateFloorHeatmaps'
 import { BuildingTrends } from '@/components/analysis/BuildingTrends'
 import { FeatureContainer } from '@/components/analysis/FeatureContainer'
+import { PageLoading } from '@/components/ui/PageLoading'
 
 export default function AnalysisSummaryPage() {
   const { isAuthenticated, isLoading: isAuthLoading } = useAuth()
@@ -18,9 +19,7 @@ export default function AnalysisSummaryPage() {
 
   if (isAuthLoading) {
     return (
-      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg)' }}>
-        <div style={{ color: 'var(--text-secondary)', fontSize: '14px', display: 'flex', alignItems: 'center', gap: '10px' }}><span className="spinner" />Loading...</div>
-      </div>
+      <PageLoading />
     )
   }
 

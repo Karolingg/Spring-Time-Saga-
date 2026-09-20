@@ -40,7 +40,7 @@ export function OnboardingOverlay({ currentPage }: OnboardingOverlayProps) {
       <div
         style={{
           background: 'var(--bg-card)',
-          borderRadius: '16px',
+          borderRadius: 'var(--radius-lg)',
           padding: '40px',
           maxWidth: '500px',
           boxShadow: '0 20px 60px rgba(0,0,0,0.3)',
@@ -74,7 +74,7 @@ export function OnboardingOverlay({ currentPage }: OnboardingOverlayProps) {
         <p
           style={{
             fontSize: '16px',
-            color: '#4b5563',
+            color: 'var(--text-secondary)',
             lineHeight: '1.6',
             marginBottom: '32px',
           }}
@@ -141,22 +141,16 @@ export function OnboardingOverlay({ currentPage }: OnboardingOverlayProps) {
                 skipOnboarding()
               }
             }}
+            className="hover-darken"
             style={{
               padding: '10px 20px',
               borderRadius: '8px',
               border: 'none',
-              background: '#2db8b0',
+              background: 'var(--teal-button)',
               color: '#ffffff',
               cursor: 'pointer',
               fontSize: '14px',
               fontWeight: '600',
-              transition: 'all 0.2s ease-in-out',
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.background = '#1f9189'
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.background = '#2db8b0'
             }}
           >
             {currentStep === steps.length - 1 ? 'Finish' : 'Next'}

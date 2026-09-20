@@ -23,6 +23,13 @@
   --teal-dark: #1f9991;
   --teal-light: rgba(45,184,176,0.12);
 
+  /* Fill for solid buttons carrying a white label. The brand teal above is
+   * only 2.44:1 against white — below the 4.5:1 AA minimum, and below even
+   * the 3:1 large-text bar — so filled CTAs use this deeper teal (5.52:1)
+   * instead. --teal itself stays the brand hue for marks, borders, icon
+   * chips, and tinted fills, where it is not carrying text. */
+  --teal-button: #17756e;
+
   /* ── Text — tuned for WCAG AA on white (muted was #94a3b8 ≈ 2.8:1) ── */
   --text-primary: #1a2332;
   --text-secondary: #475569; /* 7.5:1 */
@@ -49,6 +56,22 @@
   --overlay-panel-bg: linear-gradient(180deg, rgba(241,245,249,0.97) 0%, rgba(232,240,247,0.95) 100%);
   --glass-card-bg: linear-gradient(180deg, rgba(255,255,255,0.88) 0%, rgba(248,250,252,0.72) 100%);
   --glass-chip-bg: rgba(255, 255, 255, 0.85);
+
+  /* Warning/hazard TEXT on amber-tinted panels. The panel fills stay fixed
+   * (they're semantic hazard colors), but deep-amber text is only legible on
+   * the light fill — on the dark fill it needs to invert to a pale amber. */
+  --warn-text: #92400e;
+  --warn-text-strong: #9a3412;
+
+  /* Text-safe variants of the vivid status hues. The vivid values
+   * (#22c55e, #2db8b0, #f59e0b, #ef4444) stay in use for fills, rings, and
+   * chart marks, but as TEXT they only reach ~2.2-3.8:1 on white. These keep
+   * the hue while clearing 4.5:1 in both themes. */
+  --status-text-green: #15803d;
+  --status-text-teal:  #17756e;
+  --status-text-amber: #b45309;
+  --status-text-red:   #dc2626;
+  --status-text-slate: #64748b;
 
   /* ── Spacing scale ── */
   --space-1: 4px;
@@ -78,7 +101,11 @@
   --radius-sm: 8px;
   --radius-md: 10px;
   --radius: 12px;
-  --radius-lg: 14px;
+  /* Container radius: cards, modals, feature panels. 16px is what the modals
+   * and feature containers had already settled on independently, so the token
+   * matches them rather than the other way round — one radius for every large
+   * surface, instead of Card at 14 and every overlay at 15-16. */
+  --radius-lg: 16px;
   --radius-xl: 20px;
   --radius-full: 999px;
 }
@@ -122,6 +149,17 @@
   --overlay-panel-bg: linear-gradient(180deg, rgba(19,28,46,0.97) 0%, rgba(11,18,32,0.96) 100%);
   --glass-card-bg: linear-gradient(180deg, rgba(255,255,255,0.07) 0%, rgba(255,255,255,0.03) 100%);
   --glass-chip-bg: rgba(255, 255, 255, 0.08);
+
+  --warn-text: #fbbf24;
+  --warn-text-strong: #fcd34d;
+
+  /* On the dark card the vivid hues already clear 4.5:1, but these stay
+   * slightly lifted so status text reads consistently against tinted pills. */
+  --status-text-green: #4ade80;
+  --status-text-teal:  #53d6cd;
+  --status-text-amber: #fbbf24;
+  --status-text-red:   #f87171;
+  --status-text-slate: #8496ad;
 }
 
 *, *::before, *::after {
@@ -223,10 +261,14 @@ h1, h2, h3 {
   }
 }
 
-/* Assembly marker speech-bubble pop-in */
+/* Assembly marker speech-bubble pop-in.
+ * Placement is done entirely with left/top/bottom in app/map/page.tsx, so this
+ * animates scale only — a translate here would fight the computed position and
+ * push the bubble off its marker. `transform-origin` is set inline to the tail,
+ * so the bubble grows out of the icon it belongs to. */
 @keyframes assemblyBubbleIn {
-  from { opacity: 0; transform: translate(-50%, -100%) translateY(-8px) scale(0.92); }
-  to   { opacity: 1; transform: translate(-50%, -100%) translateY(-18px) scale(1); }
+  from { opacity: 0; transform: scale(0.92); }
+  to   { opacity: 1; transform: scale(1); }
 }
 
 @keyframes fadeIn {
@@ -293,6 +335,21 @@ h1, h2, h3 {
     radial-gradient(circle 1.2px at center, var(--grid-dot) 1px, transparent 1px);
   background-size: 100% 100%, 100% 100%, 28px 28px;
   background-position: center, center, center;
+}
+
+/* ─── Auth route surface ───────────────────────────────────────────────
+ * The sign-in page opts out of the ambient dot grid: its shell carries
+ * `data-auth-shell`, and :has() lets the body swap to a plain teal/indigo
+ * wash so nothing is ruled behind the card. Painting this on <body> rather
+ * than on the shell also avoids a seam at the bottom of the screen — the
+ * `zoom` on .app-ui-scale-shell makes a descendant's 100vh render shorter
+ * than the actual viewport, exposing the body underneath. */
+body:has([data-auth-shell]) {
+  background-image:
+    radial-gradient(ellipse 90% 55% at 50% -8%, var(--bg-center-highlight), transparent 72%),
+    radial-gradient(ellipse 75% 45% at 50% 106%, var(--bg-warm-highlight), transparent 72%);
+  background-size: 100% 100%, 100% 100%;
+  background-position: center, center;
 }
 
 /* ─── Interaction utilities ────────────────────────────────────────────

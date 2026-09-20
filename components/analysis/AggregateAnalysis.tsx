@@ -22,6 +22,14 @@ const RISK_COLORS: Record<string, string> = {
   HIGH: '#ef4444', MEDIUM: '#f59e0b', LOW: '#22c55e',
 }
 
+/** Text-safe counterparts — the vivid hues above stay for the pill fills, but
+ * only reach ~2.2-3.8:1 as text on a light card. */
+const RISK_TEXT_COLORS: Record<string, string> = {
+  HIGH: 'var(--status-text-red)',
+  MEDIUM: 'var(--status-text-amber)',
+  LOW: 'var(--status-text-green)',
+}
+
 interface BandDef { key: BandKey; label: string; color: string; min: number }
 
 const BANDS: BandDef[] = [
@@ -62,7 +70,7 @@ function actionSentence(zone: AggregateZoneStat): string {
 const SECTION_CARD: React.CSSProperties = {
   background: 'var(--bg-card)',
   border: '1px solid var(--border)',
-  borderRadius: '14px',
+  borderRadius: 'var(--radius-lg)',
   padding: '28px 32px',
   boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
   marginBottom: '20px',
@@ -266,13 +274,23 @@ export function AggregateAnalysis({ hideHeader = false }: AggregateAnalysisProps
         {displayList.map((zone, i) => {
           const band = bandFor(zone.avgIntensity)
           const riskColor = RISK_COLORS[zone.dominantRiskLevel] ?? '#22c55e'
+          const riskTextColor = RISK_TEXT_COLORS[zone.dominantRiskLevel] ?? 'var(--status-text-green)'
           const zoneKey = zone.zoneName + i
           const isExpanded = expandedZone === zoneKey
 
           return (
             <div key={zoneKey}>
               <div
+                role="button"
+                tabIndex={0}
+                aria-expanded={isExpanded}
                 onClick={() => setExpandedZone(isExpanded ? null : zoneKey)}
+                onKeyDown={e => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault()
+                    setExpandedZone(isExpanded ? null : zoneKey)
+                  }
+                }}
                 style={{
                   display: 'grid', gridTemplateColumns: '2fr 1fr 90px 90px',
                   padding: '12px 16px', borderBottom: '1px solid var(--border)',
@@ -293,7 +311,7 @@ export function AggregateAnalysis({ hideHeader = false }: AggregateAnalysisProps
                 <div style={{ display: 'flex', alignItems: 'center' }}>
                   <span style={{
                     padding: '2px 10px', borderRadius: '999px',
-                    background: `${riskColor}14`, color: riskColor,
+                    background: `${riskColor}14`, color: riskTextColor,
                     fontSize: '10px', fontWeight: 700,
                   }}>{zone.dominantRiskLevel}</span>
                 </div>
@@ -306,7 +324,7 @@ export function AggregateAnalysis({ hideHeader = false }: AggregateAnalysisProps
                   </span>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>
-                  <span style={{ fontSize: '12px', fontWeight: 600, color: zone.totalBottlenecks > 0 ? '#ef4444' : '#22c55e' }}>
+                  <span style={{ fontSize: '12px', fontWeight: 600, color: zone.totalBottlenecks > 0 ? 'var(--status-text-red)' : 'var(--status-text-green)' }}>
                     {zone.totalBottlenecks}
                   </span>
                 </div>
@@ -322,7 +340,7 @@ export function AggregateAnalysis({ hideHeader = false }: AggregateAnalysisProps
                     <DetailItem label="Zone type" value={friendlyType(zone.zoneName)} />
                     <DetailItem label="Avg agents" value={`${zone.avgAgentCount} people`} />
                     <DetailItem label="Total bottlenecks" value={String(zone.totalBottlenecks)} />
-                    <DetailItem label="Risk level" value={zone.dominantRiskLevel} color={riskColor} />
+                    <DetailItem label="Risk level" value={zone.dominantRiskLevel} color={riskTextColor} />
                   </div>
                   <p style={{
                     margin: 0, fontSize: '12px', color: 'var(--text-secondary)', lineHeight: 1.5, fontStyle: 'italic',
@@ -337,17 +355,19 @@ export function AggregateAnalysis({ hideHeader = false }: AggregateAnalysisProps
         })}
 
         {sorted.length > 5 && (
-          <div
+          <button
+            type="button"
             onClick={() => setShowAll(!showAll)}
             style={{
+              display: 'block', width: '100%',
               padding: '10px 16px', textAlign: 'center',
-              fontSize: '12px', fontWeight: 600, color: '#2db8b0',
+              fontSize: '12px', fontWeight: 600, color: 'var(--status-text-teal)',
               cursor: 'pointer', background: 'var(--bg-subtle)',
-              borderTop: '1px solid var(--border)',
+              border: 'none', borderTop: '1px solid var(--border)',
             }}
           >
             {showAll ? 'Show top 5 only' : `Show all ${sorted.length} zones`}
-          </div>
+          </button>
         )}
       </div>
 
@@ -362,7 +382,7 @@ export function AggregateAnalysis({ hideHeader = false }: AggregateAnalysisProps
           <div style={{
             display: 'flex', alignItems: 'center', gap: '6px',
             fontSize: '10px', fontWeight: 700, letterSpacing: '0.08em',
-            color: '#2db8b0', textTransform: 'uppercase', marginBottom: '6px',
+            color: 'var(--status-text-teal)', textTransform: 'uppercase', marginBottom: '6px',
           }}>
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
               <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01z" />

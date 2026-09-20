@@ -4,6 +4,7 @@ import { useEffect } from 'react'
 import { useAuth } from '@/src/hooks/useAuth'
 import { Card } from '@/components/ui/Card'
 import { PageHeader } from '@/components/ui/PageHeader'
+import { PageLoading } from '@/components/ui/PageLoading'
 
 const sectionTitle: React.CSSProperties = {
   margin: '0 0 4px',
@@ -35,9 +36,7 @@ export default function AboutPage() {
 
   if (isLoading) {
     return (
-      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg)' }}>
-        <span style={{ color: 'var(--text-secondary)', fontSize: '14px', display: 'flex', alignItems: 'center', gap: '10px' }}><span className="spinner" />Loading...</span>
-      </div>
+      <PageLoading />
     )
   }
 
