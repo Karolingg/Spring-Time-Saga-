@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useParams, useRouter, useSearchParams } from 'next/navigation'
-import { useAuth } from '@/src/hooks/useAuth'
+import { useRequireAuth } from '@/src/hooks/useRequireAuth'
 import { useToast } from '@/src/context/ToastContext'
 import { didGradeRegress, getBuildingScore } from '@/src/services/building-analytics.service'
 import { getBuildingTotalCapacity } from '@/src/config/building-floor-occupancy'
@@ -35,13 +35,14 @@ import {
   updateSpatialGridTrace,
   type SpatialGridTrace,
 } from '@/src/simulation/spatial-grid'
+import { ACCENT } from '@/src/config/theme'
 type DisasterType = 'fire' | 'earthquake'
 
 const SIMULATION_SECONDS_PER_MS = 0.35 / 120
 const MAX_FRAME_DELTA_MS = 48
 const HAZARD_GROWTH_MULTIPLIER = 0.45
 
-const APP_ACCENT = '#2db8b0'
+const APP_ACCENT = ACCENT
 const APP_ACCENT_DARK = '#1f9189'
 const SHOW_DEBUG_GRAPH = false
 
@@ -219,7 +220,7 @@ function describeExitUsage(results: SimulationResults | null) {
 }
 
 export default function AutonomousScienceBuildingPage() {
-  const { isAuthenticated, isLoading } = useAuth()
+  const { isAuthenticated, isLoading } = useRequireAuth()
   const { showToast } = useToast()
   const params = useParams()
   const router = useRouter()
@@ -294,11 +295,6 @@ export default function AutonomousScienceBuildingPage() {
     return disaster === 'earthquake' ? ['debris', 'smoke'] as const : ['fire', 'smoke'] as const
   }, [disaster])
 
-  useEffect(() => {
-    if (!isLoading && !isAuthenticated) {
-      window.location.href = '/auth'
-    }
-  }, [isLoading, isAuthenticated])
 
   useEffect(() => {
     const plan = loadHazardPlan(hazardStorageKey)
@@ -1967,7 +1963,7 @@ export default function AutonomousScienceBuildingPage() {
 
               {simState?.agents.filter((agent) => agent.state !== 'evacuated').map((agent) => {
                 const position = getAgentRenderPosition(agent, floor)
-                const fill = agent.state === 'trapped' ? '#ef4444' : '#2db8b0'
+                const fill = agent.state === 'trapped' ? '#ef4444' : ACCENT
 
                 return (
                   <circle
@@ -1997,7 +1993,7 @@ export default function AutonomousScienceBuildingPage() {
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap', marginTop: '14px', fontSize: '12px', color: 'var(--text-secondary)' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <span style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#2db8b0', display: 'inline-block' }} />
+              <span style={{ width: '10px', height: '10px', borderRadius: '50%', background: ACCENT, display: 'inline-block' }} />
               Active agents
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>

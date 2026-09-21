@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
+import { ACCENT } from '@/src/config/theme'
 
 interface InfoTooltipProps {
   title: string
@@ -125,7 +126,7 @@ export function InfoTooltip({
             wordWrap: 'break-word',
           }}
         >
-          <div style={{ fontWeight: '600', marginBottom: '4px', color: '#2db8b0' }}>
+          <div style={{ fontWeight: '600', marginBottom: '4px', color: ACCENT }}>
             {title}
           </div>
           <div style={{ fontSize: '13px', lineHeight: '1.5' }}>{description}</div>

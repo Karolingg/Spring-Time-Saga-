@@ -4,6 +4,8 @@ import { useEffect, useMemo, useState } from 'react'
 import type { SimulationZone } from '@/src/schema/simulation.types'
 import { bandFor, RISK_COLORS, RISK_TEXT_COLORS } from '@/src/config/congestion'
 import { friendlyZoneType } from '@/src/utils/format'
+import { DetailItem } from '@/components/ui/DetailItem'
+import { ACCENT } from '@/src/config/theme'
 
 
 function actionSentence(zone: SimulationZone): string {
@@ -107,7 +109,7 @@ export function ZoneAnalysisPanel({ zones, hideHeader = false, onZoneSelect }: P
             background: 'rgba(45,184,176,0.1)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
           }}>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2db8b0" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={ACCENT} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/>
             </svg>
           </div>
@@ -127,7 +129,7 @@ export function ZoneAnalysisPanel({ zones, hideHeader = false, onZoneSelect }: P
         display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '10px',
         marginBottom: '20px',
       }}>
-        <StatPill label="Total Zones" value={String(stats.total)} color="#2db8b0" />
+        <StatPill label="Total Zones" value={String(stats.total)} color={ACCENT} />
         <StatPill label="Critical / High" value={String(stats.critHigh)} color={stats.critHigh > 0 ? '#ef4444' : '#22c55e'} />
         <StatPill label="Peak Congestion" value={`${stats.peakIntensity.toFixed(0)}%`} color={bandFor(stats.peakIntensity).color} />
         <StatPill label="Bottlenecks" value={String(stats.totalBn)} color={stats.totalBn > 0 ? '#f97316' : '#22c55e'} />
@@ -344,15 +346,3 @@ function StatPill({ label, value, color }: { label: string; value: string; color
   )
 }
 
-function DetailItem({ label, value, color }: { label: string; value: string; color?: string }) {
-  return (
-    <div>
-      <div style={{ fontSize: '10px', fontWeight: 600, color: 'var(--text-muted)', letterSpacing: '0.04em', textTransform: 'uppercase', marginBottom: '2px' }}>
-        {label}
-      </div>
-      <div style={{ fontSize: '13px', fontWeight: 600, color: color ?? 'var(--text-primary)' }}>
-        {value}
-      </div>
-    </div>
-  )
-}

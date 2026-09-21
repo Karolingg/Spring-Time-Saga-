@@ -1,10 +1,11 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import { getBuildingById } from '@/src/simulation/building-model'
 import { createSimulation, stepSimulation } from '@/src/simulation/engine'
 import { distributeAgentsByCapacity } from '@/src/simulation/autonomous-analytics'
 import { placedHazardToZone, type PlacedHazard } from '@/src/simulation/hazard-placement'
+import { useFloorModel } from '@/src/hooks/useFloorModel'
+import { ACCENT } from '@/src/config/theme'
 
 interface ExitUtilizationBreakdownProps {
   buildingId: string | null
@@ -21,7 +22,7 @@ const STEP_DT = 0.1
 const BATCH_BUDGET_MS = 14
 const MAX_STEPS = 12000
 
-const EXIT_COLORS = ['#2db8b0', '#3b82f6', '#8b5cf6', '#f59e0b', '#ec4899', '#0ea5e9']
+const EXIT_COLORS = [ACCENT, '#3b82f6', '#8b5cf6', '#f59e0b', '#ec4899', '#0ea5e9']
 
 interface ExitRow {
   label: string
@@ -43,11 +44,7 @@ export function ExitUtilizationBreakdown({
   seed,
   agentCount,
 }: ExitUtilizationBreakdownProps) {
-  const floor = useMemo(() => {
-    if (!buildingId || simulatedFloorIndex == null) return null
-    const building = getBuildingById(buildingId)
-    return building?.floors[simulatedFloorIndex] ?? null
-  }, [buildingId, simulatedFloorIndex])
+  const { floor } = useFloorModel(buildingId, simulatedFloorIndex, { fallbackToFirstFloor: false })
 
   const allocations = useMemo(() => {
     if (agentsPerRoom && Object.keys(agentsPerRoom).length > 0) return agentsPerRoom

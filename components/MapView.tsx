@@ -5,6 +5,7 @@ import Map, { Source, Layer, NavigationControl, Marker } from 'react-map-gl/mapb
 import type { MapRef, MapMouseEvent } from 'react-map-gl/mapbox'
 import type { FillExtrusionLayerSpecification, FillLayerSpecification, GeoJSONFeature, LineLayerSpecification, SymbolLayerSpecification } from 'mapbox-gl'
 import 'mapbox-gl/dist/mapbox-gl.css'
+import { ACCENT } from '@/src/config/theme'
 
 const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || ''
 
@@ -30,28 +31,28 @@ const MAP_STYLES: MapStyleOption[] = [
     label: 'Cycle Map',
     url: 'mapbox://styles/mapbox/outdoors-v12',
     polygonColor: 'rgba(45,184,176,0.15)',
-    glowColor: '#2db8b0',
+    glowColor: ACCENT,
   },
   {
     id: 'dark',
     label: 'Dark',
     url: 'mapbox://styles/mapbox/dark-v11',
     polygonColor: 'rgba(45,184,176,0.15)',
-    glowColor: '#2db8b0',
+    glowColor: ACCENT,
   },
   {
     id: 'light',
     label: 'Light',
     url: 'mapbox://styles/mapbox/light-v11',
     polygonColor: 'rgba(45,184,176,0.12)',
-    glowColor: '#2db8b0',
+    glowColor: ACCENT,
   },
   {
     id: 'streets',
     label: 'Streets',
     url: 'mapbox://styles/mapbox/streets-v12',
     polygonColor: 'rgba(45,184,176,0.12)',
-    glowColor: '#2db8b0',
+    glowColor: ACCENT,
   },
 ]
 
@@ -684,7 +685,7 @@ export default function MapView({ regions, markers, assemblyMarkers, onRegionCli
             Mapbox token required
           </div>
           <div style={{ fontSize: '12px', color: '#94a3b8', lineHeight: 1.6 }}>
-            Add your token to <code style={{ background: '#1e293b', padding: '2px 6px', borderRadius: '4px', color: '#2db8b0' }}>.env.local</code> as <code style={{ background: '#1e293b', padding: '2px 6px', borderRadius: '4px', color: '#2db8b0' }}>NEXT_PUBLIC_MAPBOX_TOKEN</code>
+            Add your token to <code style={{ background: '#1e293b', padding: '2px 6px', borderRadius: '4px', color: ACCENT }}>.env.local</code> as <code style={{ background: '#1e293b', padding: '2px 6px', borderRadius: '4px', color: ACCENT }}>NEXT_PUBLIC_MAPBOX_TOKEN</code>
           </div>
         </div>
       )}

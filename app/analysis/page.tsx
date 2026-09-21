@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState, type ReactNode } from 'react'
-import { useAuth } from '@/src/hooks/useAuth'
+import { useRequireAuth } from '@/src/hooks/useRequireAuth'
 import { getSimulationHistory } from '@/src/services/simulation.service'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { PageLoading } from '@/components/ui/PageLoading'
@@ -26,14 +26,9 @@ interface HubStats {
 
 
 export default function AnalysisPage() {
-  const { isAuthenticated, isLoading: isAuthLoading } = useAuth()
+  const { isAuthenticated, isLoading: isAuthLoading } = useRequireAuth()
   const [hubStats, setHubStats] = useState<HubStats | null>(null)
 
-  useEffect(() => {
-    if (!isAuthLoading && !isAuthenticated) {
-      window.location.href = '/auth'
-    }
-  }, [isAuthLoading, isAuthenticated])
 
   useEffect(() => {
     if (!isAuthenticated) return

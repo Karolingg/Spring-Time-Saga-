@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useAuth } from '@/src/hooks/useAuth'
+import { useRequireAuth } from '@/src/hooks/useRequireAuth'
 import { useIsMobile } from '@/src/hooks/useIsMobile'
 import { useOnboarding } from '@/src/hooks/useOnboarding'
 import {
@@ -22,6 +22,7 @@ import type { SimulationRun } from '@/src/schema/simulation.types'
 import { PageLoading } from '@/components/ui/PageLoading'
 import { relativeTime } from '@/src/utils/format'
 import { trendColor, trendTint, type BetterWhen } from '@/src/utils/trend'
+import { ACCENT } from '@/src/config/theme'
 
 interface AggregateStats {
   totalRuns: number
@@ -54,7 +55,7 @@ function computeReadiness(stats: AggregateStats | null): number {
  */
 function readinessLabel(score: number): { text: string; color: string; textColor: string } {
   if (score >= 80) return { text: 'Excellent', color: '#22c55e', textColor: 'var(--status-text-green)' }
-  if (score >= 60) return { text: 'Good', color: '#2db8b0', textColor: 'var(--status-text-teal)' }
+  if (score >= 60) return { text: 'Good', color: ACCENT, textColor: 'var(--status-text-teal)' }
   if (score >= 40) return { text: 'Fair', color: '#f59e0b', textColor: 'var(--status-text-amber)' }
   if (score > 0)   return { text: 'Needs Work', color: '#ef4444', textColor: 'var(--status-text-red)' }
   return { text: 'No Data', color: '#94a3b8', textColor: 'var(--status-text-slate)' }
@@ -81,7 +82,7 @@ function userName(displayName: string | null, metadata: Record<string, unknown> 
 
 export default function DashboardPage() {
   const isMobile = useIsMobile()
-  const { user, isAuthenticated, isLoading: isAuthLoading } = useAuth()
+  const { user, isAuthenticated, isLoading: isAuthLoading } = useRequireAuth()
   const { resetOnboarding } = useOnboarding()
   const [stats, setStats] = useState<AggregateStats | null>(null)
   const [recentRuns, setRecentRuns] = useState<SimulationRun[]>([])
@@ -92,11 +93,6 @@ export default function DashboardPage() {
   const [dashboardError, setDashboardError] = useState<string | null>(null)
   const [profileName, setProfileName] = useState<{ userId: string; displayName: string | null } | null>(null)
 
-  useEffect(() => {
-    if (!isAuthLoading && !isAuthenticated) {
-      window.location.href = '/auth'
-    }
-  }, [isAuthLoading, isAuthenticated])
 
   useEffect(() => {
     if (!isAuthenticated) return
@@ -251,7 +247,7 @@ export default function DashboardPage() {
             }}
             onMouseEnter={(e) => {
               e.currentTarget.style.background = 'var(--teal-light)'
-              e.currentTarget.style.borderColor = '#2db8b0'
+              e.currentTarget.style.borderColor = ACCENT
             }}
             onMouseLeave={(e) => {
               e.currentTarget.style.background = 'var(--bg-inset)'
@@ -347,7 +343,7 @@ export default function DashboardPage() {
         {/* Building Coverage */}
         <Card>
           <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', marginBottom: 'var(--space-3)' }}>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#2db8b0" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={ACCENT} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
               <line x1="3" y1="9" x2="21" y2="9" />
               <line x1="9" y1="21" x2="9" y2="9" />
@@ -378,7 +374,7 @@ export default function DashboardPage() {
             {Array.from({ length: Math.max(coverageTotal, 1) }).map((_, i) => (
               <div key={i} style={{
                 flex: 1, height: '6px', borderRadius: '2px',
-                background: !isDashboardLoading && i < coverageCovered ? '#2db8b0' : 'var(--bg-inset)',
+                background: !isDashboardLoading && i < coverageCovered ? ACCENT : 'var(--bg-inset)',
                 transition: 'background 0.3s',
               }} />
             ))}
@@ -463,19 +459,19 @@ function buildStatCards(stats: AggregateStats | null, isLoading: boolean): StatC
   return [
     {
       icon: (
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2db8b0" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={ACCENT} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <path d="M3 3v18h18" /><path d="M18.7 8l-5.1 5.2-2.8-2.7L7 14.3" />
         </svg>
       ),
       label: 'SIMULATIONS RUN',
       value: stats?.totalRuns.toString() ?? '0',
       sub: isLoading ? 'Loading completed runs' : stats && stats.totalRuns > 0 ? 'completed runs' : 'No data yet',
-      color: '#2db8b0',
+      color: ACCENT,
       loading: isLoading,
     },
     {
       icon: (
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2db8b0" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={ACCENT} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" />
           <path d="M23 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" />
         </svg>
@@ -483,19 +479,19 @@ function buildStatCards(stats: AggregateStats | null, isLoading: boolean): StatC
       label: 'TOTAL AGENTS',
       value: stats?.totalAgentsSimulated.toLocaleString() ?? '0',
       sub: isLoading ? 'Loading agent totals' : 'across your simulations',
-      color: '#2db8b0',
+      color: ACCENT,
       loading: isLoading,
     },
     {
       icon: (
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2db8b0" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={ACCENT} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
         </svg>
       ),
       label: 'AVG EVACUATION',
       value: stats ? `${stats.avgEvacuationRate.toFixed(0)}%` : '0%',
       sub: isLoading ? 'Loading success rate' : 'average success rate',
-      color: '#2db8b0',
+      color: ACCENT,
       progress: isLoading ? 0 : stats?.avgEvacuationRate ?? 0,
       loading: isLoading,
     },
@@ -525,7 +521,7 @@ function DrillTimeline({ runs, isLoading }: { runs: SimulationRun[]; isLoading: 
     <>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', marginBottom: '4px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#2db8b0" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={ACCENT} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" />
           </svg>
           <span style={{ fontSize: 'var(--text-md)', fontWeight: '600', color: 'var(--text-primary)' }}>Recent Drill Activity</span>
@@ -699,7 +695,7 @@ function DrillComparison({ runs, isMobile, isLoading }: { runs: SimulationRun[];
     <>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', marginBottom: '4px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#2db8b0" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={ACCENT} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M3 6h6" /><path d="M3 12h6" /><path d="M3 18h6" />
             <path d="M15 6h6" /><path d="M15 12h6" /><path d="M15 18h6" />
           </svg>
@@ -773,7 +769,7 @@ function ComparisonPreview({ a, b, compareUrl, isMobile }: { a: SimulationRun; b
         </div>
       </div>
 
-      <RunCard label="Latest (B)" badgeColor="#2db8b0" run={b} dt={dtB} emphasize />
+      <RunCard label="Latest (B)" badgeColor={ACCENT} run={b} dt={dtB} emphasize />
 
       <div style={{
         display: 'flex', flexDirection: 'column', gap: 'var(--space-4)',
@@ -919,7 +915,7 @@ const QUICK_ACTIONS = [
     sub: 'View density & bottlenecks',
     color: 'var(--status-text-teal)',
     icon: (
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2db8b0" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={ACCENT} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <rect x="3" y="3" width="18" height="18" rx="2" />
         <path d="M9 3v18M15 3v18M3 9h18M3 15h18" />
         <circle cx="15" cy="9" r="2.2" />

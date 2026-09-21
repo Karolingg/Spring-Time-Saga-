@@ -1,11 +1,12 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { useAuth } from '@/src/hooks/useAuth'
+import { useRequireAuth } from '@/src/hooks/useRequireAuth'
 import { useTheme } from '@/src/context/ThemeContext'
 import { BUILDING_FLOOR_COUNT } from '@/src/config/building-floor-counts'
 import { PageLoading } from '@/components/ui/PageLoading'
+import { ACCENT } from '@/src/config/theme'
 
 interface Disaster {
   type: 'fire' | 'earthquake'
@@ -88,7 +89,7 @@ function getSimulationRoute(regionId: string, disaster: string, floorIndex: numb
 }
 
 export default function DisasterPickerPage() {
-  const { isAuthenticated, isLoading } = useAuth()
+  const { isAuthenticated, isLoading } = useRequireAuth()
   const { theme } = useTheme()
   const isDark = theme === 'dark'
   const router = useRouter()
@@ -99,9 +100,6 @@ export default function DisasterPickerPage() {
   const [hoveredFloor, setHoveredFloor] = useState<number | null>(null)
   const floorCount = BUILDING_FLOOR_COUNT[regionId] || 2
 
-  useEffect(() => {
-    if (!isLoading && !isAuthenticated) window.location.href = '/auth'
-  }, [isLoading, isAuthenticated])
 
   if (isLoading) {
     return (
@@ -164,7 +162,7 @@ export default function DisasterPickerPage() {
             marginRight: '8px',
             flexShrink: 0,
           }}>
-            <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#2db8b0' }} />
+            <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: ACCENT }} />
             {displayName}
             <span style={{ width: '4px', height: '4px', borderRadius: '50%', background: 'var(--border-strong)' }} />
             Step {step} of 2
@@ -424,7 +422,7 @@ export default function DisasterPickerPage() {
                       right: 0,
                       height: '3px',
                       background: isFloorHovered
-                        ? `linear-gradient(90deg, #2db8b0 0%, ${disasterMeta.color} 100%)`
+                        ? `linear-gradient(90deg, ${ACCENT} 0%, ${disasterMeta.color} 100%)`
                         : 'transparent',
                       transition: 'background 0.2s',
                     }} />
@@ -527,7 +525,7 @@ function FloorStackIcon({ floorIndex, totalFloors, active }: { floorIndex: numbe
               height: '6px',
               borderRadius: '2px',
               background: isActiveFloor
-                ? (active ? '#2db8b0' : '#1f9189')
+                ? (active ? ACCENT : '#1f9189')
                 : 'var(--bg-inset)',
               transform: isActiveFloor && active ? 'scaleX(1.05)' : 'scaleX(1)',
               transformOrigin: 'left center',

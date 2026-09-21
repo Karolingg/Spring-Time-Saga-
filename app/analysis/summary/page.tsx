@@ -1,7 +1,7 @@
 'use client'
 
-import { useEffect } from 'react'
-import { useAuth } from '@/src/hooks/useAuth'
+
+import { useRequireAuth } from '@/src/hooks/useRequireAuth'
 import { AggregateAnalysis } from '@/components/analysis/AggregateAnalysis'
 import { AggregateFloorHeatmaps } from '@/components/analysis/AggregateFloorHeatmaps'
 import { BuildingTrends } from '@/components/analysis/BuildingTrends'
@@ -13,13 +13,8 @@ import { ACCENT } from '@/src/config/theme'
 
 
 export default function AnalysisSummaryPage() {
-  const { isAuthenticated, isLoading: isAuthLoading } = useAuth()
+  const { isAuthenticated, isLoading: isAuthLoading } = useRequireAuth()
 
-  useEffect(() => {
-    if (!isAuthLoading && !isAuthenticated) {
-      window.location.href = '/auth'
-    }
-  }, [isAuthLoading, isAuthenticated])
 
   if (isAuthLoading) {
     return (

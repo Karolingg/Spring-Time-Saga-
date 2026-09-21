@@ -1,7 +1,7 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { getBuildingById, type FloorModel, type NavNode } from '@/src/simulation/building-model'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { type NavNode } from '@/src/simulation/building-model'
 import {
   createSpatialGridTrace,
   getRenderableGridCells,
@@ -15,6 +15,7 @@ import { placedHazardToZone, type PlacedHazard } from '@/src/simulation/hazard-p
 import type { SimulationZone } from '@/src/schema/simulation.types'
 import { ACCENT } from '@/src/config/theme'
 import { heatColor } from '@/src/config/congestion'
+import { useFloorModel } from '@/src/hooks/useFloorModel'
 
 interface RunReplayProps {
   buildingId: string | null
@@ -82,16 +83,7 @@ export function RunReplay({
   hideHeader = false,
 }: RunReplayProps) {
   void _zones
-  const building = useMemo(
-    () => (buildingId ? getBuildingById(buildingId) ?? null : null),
-    [buildingId],
-  )
-
-  const floor: FloorModel | null = useMemo(() => {
-    if (!building) return null
-    if (simulatedFloorIndex == null) return building.floors[0] ?? null
-    return building.floors[simulatedFloorIndex] ?? building.floors[0] ?? null
-  }, [building, simulatedFloorIndex])
+  const { building, floor } = useFloorModel(buildingId, simulatedFloorIndex)
 
   const disaster = (disasterType ?? 'fire') as 'fire' | 'earthquake'
 
@@ -253,8 +245,8 @@ export function RunReplay({
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
             <div style={{
               width: '40px', height: '40px', borderRadius: '10px',
-              background: 'linear-gradient(135deg, #2db8b015 0%, #2db8b005 100%)',
-              border: '1px solid #2db8b033',
+              background: `linear-gradient(135deg, ${ACCENT}15 0%, ${ACCENT}05 100%)`,
+              border: `1px solid ${ACCENT}33`,
               display: 'flex', alignItems: 'center', justifyContent: 'center',
             }}>
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={ACCENT} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">

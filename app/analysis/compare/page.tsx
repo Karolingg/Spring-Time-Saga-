@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
-import { useAuth } from '@/src/hooks/useAuth'
+import { useRequireAuth } from '@/src/hooks/useRequireAuth'
 import { getSimulationHistory, getSimulationRun, getDensityCells } from '@/src/services/simulation.service'
 import { getBuildingById } from '@/src/simulation/building-model'
 import type { SimulationRun, SimulationZone, DensityCell } from '@/src/schema/simulation.types'
@@ -10,6 +10,7 @@ import { SpatialBottleneckHeatmap } from '@/components/analysis/SpatialBottlenec
 import { FeatureContainer } from '@/components/analysis/FeatureContainer'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { BackLink } from '@/components/ui/BackLink'
+import { RunSelect } from '@/components/ui/RunSelect'
 import { CARD_SURFACE } from '@/components/ui/Card'
 import { isImproved, trendColor, trendTint, type BetterWhen } from '@/src/utils/trend'
 import { ACCENT } from '@/src/config/theme'
@@ -115,14 +116,8 @@ function describeRun(run: SimulationRun | null): string {
   return `${disaster} · ${agents} agents · ${where}`
 }
 
-function formatHistoryLabel(run: SimulationRun): string {
-  const date = new Date(run.createdAt).toLocaleString()
-  const id = run.id.slice(0, 8)
-  return `${run.disasterType} · ${run.config?.agentCount ?? 0} agents · ${date} (${id})`
-}
-
 export default function CompareRunsPage() {
-  const { isAuthenticated, isLoading: isAuthLoading } = useAuth()
+  const { isAuthenticated, isLoading: isAuthLoading } = useRequireAuth()
   const searchParams = useSearchParams()
 
   const [history, setHistory] = useState<SimulationRun[]>([])
@@ -133,11 +128,6 @@ export default function CompareRunsPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  useEffect(() => {
-    if (!isAuthLoading && !isAuthenticated) {
-      window.location.href = '/auth'
-    }
-  }, [isAuthLoading, isAuthenticated])
 
   useEffect(() => {
     if (!isAuthenticated) return
@@ -392,7 +382,7 @@ function RunPickers({ history, runA, runB, onSelect, onSwap }: RunPickersProps) 
 
       <RunSlot
         slotLabel="B · Comparison"
-        slotColor="#2db8b0"
+        slotColor={ACCENT}
         history={history}
         currentId={runB?.id ?? ''}
         currentRun={runB}
@@ -421,20 +411,14 @@ function RunSlot({ slotLabel, slotColor, history, currentId, currentRun, onChang
       }}>
         {slotLabel}
       </div>
-      <select
+      <RunSelect
+        runs={history}
         value={currentId}
-        onChange={(e) => onChange(e.target.value)}
-        style={{
-          width: '100%', padding: '10px 12px', borderRadius: '8px',
-          border: '1px solid var(--border)', fontSize: '13px',
-          color: 'var(--text-primary)', background: 'var(--bg-card)',
-        }}
-      >
-        <option value="">— select a run —</option>
-        {history.map((r) => (
-          <option key={r.id} value={r.id}>{formatHistoryLabel(r)}</option>
-        ))}
-      </select>
+        onChange={onChange}
+        placeholder="— select a run —"
+        fullWidth
+        aria-label={`Run for slot ${slotLabel}`}
+      />
       <div style={{ marginTop: '8px', fontSize: '12px', color: 'var(--text-secondary)', minHeight: '18px' }}>
         {describeRun(currentRun)}
       </div>
@@ -830,7 +814,7 @@ function EmptyState() {
   return (
     <div style={{ ...SECTION_CARD, textAlign: 'center', padding: '60px 32px' }}>
       <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '16px' }}>
-        <svg width="42" height="42" viewBox="0 0 24 24" fill="none" stroke="#2db8b0" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+        <svg width="42" height="42" viewBox="0 0 24 24" fill="none" stroke={ACCENT} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
           <path d="M3 6h6" /><path d="M3 12h6" /><path d="M3 18h6" />
           <path d="M15 6h6" /><path d="M15 12h6" /><path d="M15 18h6" />
         </svg>

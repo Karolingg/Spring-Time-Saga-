@@ -2,12 +2,13 @@
 
 import { useEffect, useState, useRef, useCallback, useMemo } from 'react'
 import { useParams, useSearchParams, useRouter } from 'next/navigation'
-import { useAuth } from '@/src/hooks/useAuth'
+import { useRequireAuth } from '@/src/hooks/useRequireAuth'
 import { BUILDING_FLOOR_COUNT } from '@/src/config/building-floor-counts'
 import { makePlaceholderFloor } from '@/src/simulation/floor-config/placeholder'
 import { BUILDING_FLOORS } from '@/src/simulation/floor-config/buildings'
 import { getHazardStorageKey, loadHazardPlan, type PlacedHazard } from '@/src/simulation/hazard-placement'
 import { PageLoading } from '@/components/ui/PageLoading'
+import { ACCENT } from '@/src/config/theme'
 
 type SimPhase = 'planning' | 'running' | 'rerouting' | 'completed'
 type DisasterType = 'fire' | 'earthquake'
@@ -1010,14 +1011,14 @@ function SimOverlay({ config, obstacles, selectedExit, selectedRoom, agentPos, p
             <path
               d={pathD(fullPath)}
               fill="none"
-              stroke={blockedExits.has(selectedExit) ? '#ef444455' : '#2db8b055'}
+              stroke={blockedExits.has(selectedExit) ? '#ef444455' : `${ACCENT}55`}
               strokeWidth="8"
               strokeLinecap="round"
             />
             <path
               d={pathD(fullPath)}
               fill="none"
-              stroke={blockedExits.has(selectedExit) ? '#ef4444' : '#2db8b0'}
+              stroke={blockedExits.has(selectedExit) ? '#ef4444' : ACCENT}
               strokeWidth="2.8"
               strokeDasharray="8 5"
               strokeLinecap="round"
@@ -1091,10 +1092,10 @@ function SimOverlay({ config, obstacles, selectedExit, selectedRoom, agentPos, p
                 <g onClick={() => canSelect && onChooseNeighbor?.(node.label)}>
                   {(isEntry || isCurrent) && (
                     <circle cx={node.x} cy={node.y} r={selected ? 13 : 11}
-                      fill="none" stroke={isCurrent ? '#2db8b0' : '#3b82f6'} strokeWidth={1.8} opacity={0.65} />
+                      fill="none" stroke={isCurrent ? ACCENT : '#3b82f6'} strokeWidth={1.8} opacity={0.65} />
                   )}
                   <circle cx={node.x} cy={node.y} r={selected ? 8 : 5}
-                    fill={selected ? '#f59e0b' : isCurrent ? '#2db8b0' : canSelect ? '#334155' : '#94a3b8'} stroke={selected ? '#fff' : '#1e2f46'} strokeWidth={1.5} />
+                    fill={selected ? '#f59e0b' : isCurrent ? ACCENT : canSelect ? '#334155' : '#94a3b8'} stroke={selected ? '#fff' : '#1e2f46'} strokeWidth={1.5} />
                   {selected && (
                     <text x={node.x} y={node.y + 4} textAnchor="middle" fill="#fff" fontSize="8" fontFamily="system-ui, sans-serif" fontWeight={700}>{index + 1}</text>
                   )}
@@ -1119,7 +1120,7 @@ function SimOverlay({ config, obstacles, selectedExit, selectedRoom, agentPos, p
       {phase !== 'planning' && (
         <g>
           <circle cx={agentPos.x} cy={agentPos.y + 3} r="11" fill="#000" opacity="0.18" />
-          <circle cx={agentPos.x} cy={agentPos.y} r="11" fill="#2db8b0" stroke="#fff" strokeWidth="2" />
+          <circle cx={agentPos.x} cy={agentPos.y} r="11" fill={ACCENT} stroke="#fff" strokeWidth="2" />
           <circle cx={agentPos.x} cy={agentPos.y - 4} r="3.5" fill="#fff" />
           <path d={`M${agentPos.x - 5},${agentPos.y + 4} Q${agentPos.x},${agentPos.y + 9} ${agentPos.x + 5},${agentPos.y + 4}`}
             stroke="#fff" strokeWidth="1.8" fill="none" strokeLinecap="round" />
@@ -1130,7 +1131,7 @@ function SimOverlay({ config, obstacles, selectedExit, selectedRoom, agentPos, p
       {phase === 'planning' && selectedRoom && (
         <g>
           <circle cx={agentPos.x} cy={agentPos.y} r="6"
-            fill="#2db8b0" stroke="#fff" strokeWidth="1.5" opacity="0.9" />
+            fill={ACCENT} stroke="#fff" strokeWidth="1.5" opacity="0.9" />
         </g>
       )}
 
@@ -1445,7 +1446,7 @@ const DISASTER_META: Record<string, { label: string; color: string }> = {
 }
 
 export default function SimulationRunPage() {
-  const { isAuthenticated, isLoading } = useAuth()
+  const { isAuthenticated, isLoading } = useRequireAuth()
   const router = useRouter()
   const params  = useParams()
   const search  = useSearchParams()
@@ -1537,7 +1538,7 @@ export default function SimulationRunPage() {
     const room = config.rooms[selectedRoom]
     return { x: room.x, y: room.y }
   }, [config, selectedRoom])
-  useEffect(() => { if (!isLoading && !isAuthenticated) window.location.href = '/auth' }, [isLoading, isAuthenticated])
+
   useEffect(() => { phase2Ref.current = phase }, [phase])
   useEffect(() => () => {
     invalidateActiveRun()
@@ -2068,7 +2069,7 @@ export default function SimulationRunPage() {
           </div>
         )}
 
-        <div style={{ marginLeft: 'auto', padding: '5px 14px', borderRadius: '20px', fontSize: '11px', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', background: phase === 'planning' ? '#2db8b015' : phase === 'completed' ? '#22c55e15' : `${meta.color}15`, color: phase === 'planning' ? '#2db8b0' : phase === 'completed' ? '#22c55e' : meta.color, border: `1px solid ${phase === 'planning' ? '#2db8b030' : phase === 'completed' ? '#22c55e30' : `${meta.color}30`}` }}>
+        <div style={{ marginLeft: 'auto', padding: '5px 14px', borderRadius: '20px', fontSize: '11px', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', background: phase === 'planning' ? `${ACCENT}15` : phase === 'completed' ? '#22c55e15' : `${meta.color}15`, color: phase === 'planning' ? ACCENT : phase === 'completed' ? '#22c55e' : meta.color, border: `1px solid ${phase === 'planning' ? `${ACCENT}30` : phase === 'completed' ? '#22c55e30' : `${meta.color}30`}` }}>
           {phase === 'planning' ? 'Planning' : phase === 'rerouting' ? 'Rerouting\u2026' : phase === 'running' ? `Running \u00B7 ${elapsedSec}s` : 'Completed'}
         </div>
       </div>
@@ -2101,7 +2102,7 @@ export default function SimulationRunPage() {
           <div style={{ position: 'absolute', top: '10px', left: '10px', display: 'flex', gap: '6px', flexWrap: 'wrap', pointerEvents: 'none' }}>
             {[
               { label: 'Live Drill View', swatch: null },
-              { label: 'Selected Route', swatch: '#2db8b0' },
+              { label: 'Selected Route', swatch: ACCENT },
               { label: 'Blocked Path', swatch: '#ef4444' },
             ].map(chip => (
               <span
@@ -2135,7 +2136,7 @@ export default function SimulationRunPage() {
               {/* Step 1: Room Selection */}
               <div style={{ background: 'var(--bg-subtle)', border: '1px solid var(--border)', borderRadius: '12px', padding: '16px', boxShadow: '0 1px 0 rgba(0,0,0,0.02)' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
-                  <div style={{ width: '22px', height: '22px', borderRadius: '50%', background: selectedRoom ? '#2db8b0' : 'var(--bg-inset)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: 700, color: selectedRoom ? '#fff' : 'var(--text-secondary)', flexShrink: 0 }}>1</div>
+                  <div style={{ width: '22px', height: '22px', borderRadius: '50%', background: selectedRoom ? ACCENT : 'var(--bg-inset)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: 700, color: selectedRoom ? '#fff' : 'var(--text-secondary)', flexShrink: 0 }}>1</div>
                   <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)' }}>Where Are You?</div>
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px' }}>
@@ -2148,8 +2149,8 @@ export default function SimulationRunPage() {
                     <button key={key} onClick={() => selectRoom(key)}
                       style={{
                         padding: '8px 10px', borderRadius: '8px', fontSize: '11px', fontWeight: 600,
-                        background: selectedRoom === key ? '#2db8b015' : 'var(--bg-inset)',
-                        border: `1.5px solid ${selectedRoom === key ? '#2db8b0' : 'var(--border-strong)'}`,
+                        background: selectedRoom === key ? `${ACCENT}15` : 'var(--bg-inset)',
+                        border: `1.5px solid ${selectedRoom === key ? ACCENT : 'var(--border-strong)'}`,
                         color: selectedRoom === key ? 'var(--status-text-teal)' : 'var(--text-primary)',
                         cursor: 'pointer', textAlign: 'left', transition: 'all 0.15s',
                       }}>
@@ -2163,7 +2164,7 @@ export default function SimulationRunPage() {
               {selectedRoom && (
                 <div style={{ background: 'var(--bg-subtle)', border: '1px solid var(--border)', borderRadius: '12px', padding: '16px', boxShadow: '0 1px 0 rgba(0,0,0,0.02)' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
-                    <div style={{ width: '22px', height: '22px', borderRadius: '50%', background: routeMode ? '#2db8b0' : 'var(--bg-inset)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: 700, color: routeMode ? '#fff' : 'var(--text-secondary)', flexShrink: 0 }}>2</div>
+                    <div style={{ width: '22px', height: '22px', borderRadius: '50%', background: routeMode ? ACCENT : 'var(--bg-inset)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: 700, color: routeMode ? '#fff' : 'var(--text-secondary)', flexShrink: 0 }}>2</div>
                     <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)' }}>Choose Route</div>
                   </div>
                   <div style={{ background: 'var(--bg-card)', border: '1px solid #dbe7ee', borderRadius: 'var(--radius-md)', padding: '10px 12px', marginBottom: '10px' }}>
@@ -2303,7 +2304,7 @@ export default function SimulationRunPage() {
                   <button onClick={startSimulation} disabled={!selectedExit || !selectedRoom}
                     style={{
                       padding: '13px', borderRadius: '10px', fontSize: '13px', fontWeight: 700,
-                      background: selectedExit && selectedRoom ? '#2db8b0' : 'var(--bg-inset)',
+                      background: selectedExit && selectedRoom ? ACCENT : 'var(--bg-inset)',
                       color: selectedExit && selectedRoom ? '#fff' : 'var(--text-muted)',
                       border: selectedExit && selectedRoom ? 'none' : '1px solid var(--border-strong)', cursor: selectedExit && selectedRoom ? 'pointer' : 'not-allowed', transition: 'all 0.15s',
                       boxShadow: selectedExit && selectedRoom ? '0 4px 16px rgba(45,184,176,0.3)' : 'none',
@@ -2323,7 +2324,7 @@ export default function SimulationRunPage() {
                   {[
                     { label: 'Elapsed', value: `${elapsedSec}s`, accent: '#3b82f6' },
                     { label: 'Target', value: selectedExit ?? '\u2014', accent: '#8b5cf6' },
-                    { label: 'Status', value: phase === 'rerouting' ? 'Rerouting' : 'Moving', color: phase === 'rerouting' ? '#f59e0b' : '#2db8b0', accent: phase === 'rerouting' ? '#f59e0b' : '#2db8b0' },
+                    { label: 'Status', value: phase === 'rerouting' ? 'Rerouting' : 'Moving', color: phase === 'rerouting' ? '#f59e0b' : ACCENT, accent: phase === 'rerouting' ? '#f59e0b' : ACCENT },
                     { label: 'Floor', value: config?.floorLabel || '1F', accent: meta.color },
                   ].map(m => (
                     <div key={m.label} style={{ background: `${(m as { accent?: string }).accent ?? '#ffffff'}08`, border: `1px solid ${((m as { accent?: string }).accent ?? '#e6edf2')}35`, borderRadius: '8px', padding: '10px 12px' }}>
@@ -2338,7 +2339,7 @@ export default function SimulationRunPage() {
                 {events.length === 0 && <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>No events yet{'\u2026'}</div>}
                 {events.map((ev, i) => (
                   <div key={i} style={{ display: 'flex', gap: '8px', marginBottom: '8px', alignItems: 'flex-start', padding: '7px 8px', background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '8px' }}>
-                    <div style={{ width: '6px', height: '6px', borderRadius: '50%', marginTop: '6px', flexShrink: 0, background: ev.type === 'danger' ? '#ef4444' : ev.type === 'warn' ? '#f59e0b' : '#2db8b0' }} />
+                    <div style={{ width: '6px', height: '6px', borderRadius: '50%', marginTop: '6px', flexShrink: 0, background: ev.type === 'danger' ? '#ef4444' : ev.type === 'warn' ? '#f59e0b' : ACCENT }} />
                     <div style={{ flex: 1 }}>
                       <div style={{ fontSize: '10px', color: 'var(--text-secondary)', marginBottom: '2px' }}>{formatEventTime(ev.time)}</div>
                       <div style={{ fontSize: '11px', color: ev.type === 'danger' ? 'var(--status-text-red)' : ev.type === 'warn' ? '#b45309' : 'var(--text-secondary)', lineHeight: 1.4 }}>{ev.message}</div>
@@ -2405,7 +2406,7 @@ export default function SimulationRunPage() {
                 <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Drill Evaluator</div>
                 {feedbackLines.map((line, i) => (
                   <div key={i} style={{ display: 'flex', gap: '8px', marginBottom: '6px', alignItems: 'flex-start' }}>
-                    <div style={{ width: '5px', height: '5px', borderRadius: '50%', marginTop: '5px', flexShrink: 0, background: '#2db8b0' }} />
+                    <div style={{ width: '5px', height: '5px', borderRadius: '50%', marginTop: '5px', flexShrink: 0, background: ACCENT }} />
                     <div style={{ fontSize: '11.5px', color: 'var(--text-secondary)', lineHeight: 1.5 }}>{line}</div>
                   </div>
                 ))}
