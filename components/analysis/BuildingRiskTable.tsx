@@ -1,5 +1,6 @@
 import type { SimulationZone } from '@/src/schema/simulation.types'
 import { RISK_COLORS, RISK_TEXT_COLORS } from '@/src/config/congestion'
+import { ACCENT } from '@/src/config/theme'
 
 const TABLE_COLUMNS = ['Building', 'Risk', 'Agents', 'Bottlenecks']
 
@@ -12,7 +13,7 @@ export function BuildingRiskTable({ zones, subtitle = 'Based on latest simulatio
   return (
     <div>
       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#2db8b0" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={ACCENT} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <rect x="2" y="7" width="20" height="14" rx="2" ry="2"/>
           <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/>
         </svg>

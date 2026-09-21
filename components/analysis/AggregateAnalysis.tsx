@@ -7,6 +7,7 @@ import { CARD_SURFACE } from '@/components/ui/Card'
 import { CONGESTION_BANDS, bandFor, RISK_COLORS, RISK_TEXT_COLORS } from '@/src/config/congestion'
 import { friendlyZoneType } from '@/src/utils/format'
 import { ACCENT } from '@/src/config/theme'
+import { DetailItem } from '@/components/ui/DetailItem'
 
 const SECTION_CARD = { ...CARD_SURFACE, marginBottom: '20px' }
 
@@ -369,11 +370,3 @@ function KpiPill({ label, value, color, first, last }: { label: string; value: s
   )
 }
 
-function DetailItem({ label, value, color }: { label: string; value: string; color?: string }) {
-  return (
-    <div>
-      <div style={{ fontSize: '10px', fontWeight: 600, color: 'var(--text-muted)', letterSpacing: '0.04em', textTransform: 'uppercase', marginBottom: '2px' }}>{label}</div>
-      <div style={{ fontSize: '13px', fontWeight: 600, color: color ?? '#0f172a' }}>{value}</div>
-    </div>
-  )
-}

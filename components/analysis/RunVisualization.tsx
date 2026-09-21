@@ -1,9 +1,9 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useState } from 'react'
 import { RunReplay } from '@/components/analysis/RunReplay'
 import { SpatialBottleneckHeatmap } from '@/components/analysis/SpatialBottleneckHeatmap'
-import { getBuildingById } from '@/src/simulation/building-model'
+import { useFloorModel } from '@/src/hooks/useFloorModel'
 import type { PlacedHazard } from '@/src/simulation/hazard-placement'
 import type { DensityCell, SimulationZone } from '@/src/schema/simulation.types'
 import { ACCENT } from '@/src/config/theme'
@@ -54,15 +54,7 @@ export function RunVisualization({
     if (highlightedZoneName) setView('heatmap')
   }
 
-  const building = useMemo(
-    () => (buildingId ? getBuildingById(buildingId) ?? null : null),
-    [buildingId],
-  )
-  const floor = useMemo(() => {
-    if (!building) return null
-    if (simulatedFloorIndex == null) return building.floors[0] ?? null
-    return building.floors[simulatedFloorIndex] ?? building.floors[0] ?? null
-  }, [building, simulatedFloorIndex])
+  const { building, floor } = useFloorModel(buildingId, simulatedFloorIndex)
 
   const buildingLabel = building?.name ?? 'Building'
   const floorLabel = floor?.label ?? '—'

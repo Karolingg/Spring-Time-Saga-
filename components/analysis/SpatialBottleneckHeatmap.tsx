@@ -426,11 +426,11 @@ export function SpatialBottleneckHeatmap({
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
             <div style={{
               width: '40px', height: '40px', borderRadius: '10px',
-              background: 'linear-gradient(135deg, #2db8b015 0%, #2db8b005 100%)',
-              border: '1px solid #2db8b033',
+              background: `linear-gradient(135deg, ${ACCENT}15 0%, ${ACCENT}05 100%)`,
+              border: `1px solid ${ACCENT}33`,
               display: 'flex', alignItems: 'center', justifyContent: 'center',
             }}>
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#2db8b0" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={ACCENT} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M12 22c4-3 8-7 8-12a8 8 0 0 0-16 0c0 5 4 9 8 12z" />
                 <circle cx="12" cy="10" r="3" />
               </svg>
@@ -458,7 +458,7 @@ export function SpatialBottleneckHeatmap({
             >
               <span style={{
                 width: '6px', height: '6px', borderRadius: '50%',
-                background: '#2db8b0',
+                background: ACCENT,
               }} />
               Simulated: {activeFloor.label}
             </div>
@@ -721,7 +721,7 @@ export function SpatialBottleneckHeatmap({
                       <>
                         <circle cx={node.x} cy={node.y} r={11} fill="none" stroke="#ffffff" strokeWidth={4.5} />
                         <circle cx={node.x} cy={node.y} r={11} fill="none" stroke="#0f172a" strokeWidth={2.4} />
-                        <circle cx={node.x} cy={node.y} r={4.4} fill={isExit ? '#ffffff' : '#2db8b0'} stroke="#0f172a" strokeWidth={2} />
+                        <circle cx={node.x} cy={node.y} r={4.4} fill={isExit ? '#ffffff' : ACCENT} stroke="#0f172a" strokeWidth={2} />
                       </>
                     )}
                   </g>
@@ -739,10 +739,10 @@ export function SpatialBottleneckHeatmap({
               preserveAspectRatio="xMidYMid meet"
               style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', pointerEvents: 'none' }}
             >
-              <circle cx={highlightedNode.x} cy={highlightedNode.y} r={20} fill="#2db8b0" opacity={0.16} />
+              <circle cx={highlightedNode.x} cy={highlightedNode.y} r={20} fill={ACCENT} opacity={0.16} />
               <circle cx={highlightedNode.x} cy={highlightedNode.y} r={13} fill="none" stroke="#ffffff" strokeWidth={5} />
               <circle cx={highlightedNode.x} cy={highlightedNode.y} r={13} fill="none" stroke="#0f172a" strokeWidth={2.6} />
-              <circle cx={highlightedNode.x} cy={highlightedNode.y} r={5.2} fill="#2db8b0" stroke="#0f172a" strokeWidth={2} />
+              <circle cx={highlightedNode.x} cy={highlightedNode.y} r={5.2} fill={ACCENT} stroke="#0f172a" strokeWidth={2} />
             </svg>
           )}
 
@@ -810,7 +810,7 @@ export function SpatialBottleneckHeatmap({
               }}>
                 <span style={{
                   width: 10, height: 10, borderRadius: '50%',
-                  background: '#2db8b0',
+                  background: ACCENT,
                   animation: 'sbm-pulse 1.1s ease-in-out infinite',
                 }} />
                 Computing heatmap…
@@ -878,11 +878,11 @@ export function SpatialBottleneckHeatmap({
       {heatNodes.length > 0 && (
         <div style={{ marginTop: '20px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px' }}>
-            <div style={{ height: '2px', flex: 1, background: 'linear-gradient(90deg, #2db8b0 0%, transparent 100%)', borderRadius: '2px' }} />
+            <div style={{ height: '2px', flex: 1, background: `linear-gradient(90deg, ${ACCENT} 0%, transparent 100%)`, borderRadius: '2px' }} />
             <span style={{ fontSize: '10px', fontWeight: 700, color: 'var(--text-secondary)', letterSpacing: '0.12em', textTransform: 'uppercase' }}>
               Top Hotspots
             </span>
-            <div style={{ height: '2px', flex: 1, background: 'linear-gradient(270deg, #2db8b0 0%, transparent 100%)', borderRadius: '2px' }} />
+            <div style={{ height: '2px', flex: 1, background: `linear-gradient(270deg, ${ACCENT} 0%, transparent 100%)`, borderRadius: '2px' }} />
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: '10px' }}>
             {heatNodes.slice(0, 4).map(({ node, intensity, peak, band }, i) => (
@@ -1036,7 +1036,7 @@ function NodeHoverPopup({ node, screenX, screenY, kindLabel, peakAgents, intensi
         <div style={{ display: 'flex', alignItems: 'center', gap: '9px' }}>
           <span style={{
             width: '28px', height: '28px', borderRadius: '8px',
-            background: isExit ? '#16a34a' : '#2db8b0',
+            background: isExit ? '#16a34a' : ACCENT,
             display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
             flexShrink: 0,
           }}>

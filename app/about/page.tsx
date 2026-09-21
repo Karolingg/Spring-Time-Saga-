@@ -1,10 +1,11 @@
 'use client'
 
-import { useEffect } from 'react'
-import { useAuth } from '@/src/hooks/useAuth'
+
+import { useRequireAuth } from '@/src/hooks/useRequireAuth'
 import { Card } from '@/components/ui/Card'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { PageLoading } from '@/components/ui/PageLoading'
+import { ACCENT } from '@/src/config/theme'
 
 const sectionTitle: React.CSSProperties = {
   margin: '0 0 4px',
@@ -26,13 +27,8 @@ const divider: React.CSSProperties = {
 }
 
 export default function AboutPage() {
-  const { isAuthenticated, isLoading } = useAuth()
+  const { isAuthenticated, isLoading } = useRequireAuth()
 
-  useEffect(() => {
-    if (!isLoading && !isAuthenticated) {
-      window.location.href = '/auth'
-    }
-  }, [isLoading, isAuthenticated])
 
   if (isLoading) {
     return (
@@ -62,7 +58,7 @@ export default function AboutPage() {
     <div data-page-shell style={{ minHeight: '100vh', padding: '88px 40px 56px', maxWidth: '860px', margin: '0 auto' }}>
       <PageHeader
         icon={
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#2db8b0" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={ACCENT} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/>
           </svg>
         }
@@ -84,7 +80,7 @@ export default function AboutPage() {
           border: '1px solid rgba(45,184,176,0.15)',
           marginBottom: '24px',
         }}>
-          <div style={{ width: '48px', height: '48px', borderRadius: '12px', flexShrink: 0, background: '#2db8b0', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div style={{ width: '48px', height: '48px', borderRadius: '12px', flexShrink: 0, background: ACCENT, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
               <path d="M12 22s-8-4.5-8-11.8A8 8 0 0 1 12 2a8 8 0 0 1 8 8.2c0 7.3-8 11.8-8 11.8z"/>
               <circle cx="12" cy="10" r="3"/>

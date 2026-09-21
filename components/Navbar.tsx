@@ -7,6 +7,7 @@ import { useTheme, Theme } from '@/src/context/ThemeContext'
 import { useFocusTrap } from '@/src/hooks/useFocusTrap'
 import { usePathname } from 'next/navigation'
 import Link from 'next/link'
+import { ACCENT } from '@/src/config/theme'
 
 interface NavItem {
   href: string
@@ -182,7 +183,7 @@ export function Navbar({
           <Link href="/" style={{ display: 'flex', alignItems: 'center', gap: '8px', textDecoration: 'none' }}>
             <div style={{
               width: '30px', height: '30px', borderRadius: 'var(--radius-md)',
-              background: 'linear-gradient(135deg, #2db8b0 0%, #1f9189 100%)',
+              background: `linear-gradient(135deg, ${ACCENT} 0%, #1f9189 100%)`,
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               boxShadow: '0 3px 8px -3px rgba(45, 184, 176, 0.4)',
             }}>
@@ -191,13 +192,13 @@ export function Navbar({
               </svg>
             </div>
             <span style={{ fontSize: '15px', fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.03em' }}>
-              EVAC<span style={{ color: '#2db8b0' }}>SIM</span>
+              EVAC<span style={{ color: ACCENT }}>SIM</span>
             </span>
           </Link>
 
           <div style={{
             width: '32px', height: '32px', borderRadius: '50%',
-            background: 'linear-gradient(135deg, #2db8b0 0%, #1f9189 100%)',
+            background: `linear-gradient(135deg, ${ACCENT} 0%, #1f9189 100%)`,
             color: '#ffffff',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             fontSize: '12px', fontWeight: 800,
@@ -328,7 +329,7 @@ function renderNavContent({
             width: '38px',
             height: '38px',
             borderRadius: 'var(--radius)',
-            background: 'linear-gradient(135deg, #2db8b0 0%, #1f9189 100%)',
+            background: `linear-gradient(135deg, ${ACCENT} 0%, #1f9189 100%)`,
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -341,7 +342,7 @@ function renderNavContent({
           </div>
           <div style={{ minWidth: 0 }}>
             <div style={{ fontSize: '16px', fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.03em', lineHeight: 1 }}>
-              EVAC<span style={{ color: '#2db8b0' }}>SIM</span>
+              EVAC<span style={{ color: ACCENT }}>SIM</span>
             </div>
             <div style={{ fontSize: '10.5px', fontWeight: 600, color: 'var(--text-muted)', letterSpacing: '0.04em', marginTop: '3px', textTransform: 'uppercase' }}>
               Campus Evacuation
@@ -456,7 +457,7 @@ function renderNavContent({
                       width: '3px',
                       height: '20px',
                       borderRadius: '0 3px 3px 0',
-                      background: '#2db8b0',
+                      background: ACCENT,
                     }} />
                   )}
                   <span style={{
@@ -545,7 +546,7 @@ function renderNavContent({
             width: '34px',
             height: '34px',
             borderRadius: '50%',
-            background: 'linear-gradient(135deg, #2db8b0 0%, #1f9189 100%)',
+            background: `linear-gradient(135deg, ${ACCENT} 0%, #1f9189 100%)`,
             color: '#ffffff',
             display: 'flex',
             alignItems: 'center',

@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
-import { useAuth } from '@/src/hooks/useAuth'
+import { useRequireAuth } from '@/src/hooks/useRequireAuth'
 import { useIsMobile } from '@/src/hooks/useIsMobile'
 import { useFocusTrap } from '@/src/hooks/useFocusTrap'
 import MapView, { type AssemblyMarker, type MapMarker } from '@/components/MapView'
@@ -15,6 +15,7 @@ import { ASSEMBLY_POINTS, getNearestAssembly } from '@/src/config/assembly-point
 import { getBuildingScore, type BuildingGrade, type BuildingScore, type FloorScore } from '@/src/services/building-analytics.service'
 import { PageLoading } from '@/components/ui/PageLoading'
 import { RISK_COLORS, RISK_TEXT_COLORS } from '@/src/config/congestion'
+import { ACCENT } from '@/src/config/theme'
 
 const CAMPUS_CENTER: [number, number] = [123.8988, 10.3228] // [lng, lat]
 
@@ -259,7 +260,7 @@ function gradeInk(grade: BuildingGrade): string {
 }
 
 export default function MapPage() {
-  const { isAuthenticated, isLoading } = useAuth()
+  const { isAuthenticated, isLoading } = useRequireAuth()
   const router = useRouter()
   const [selected, setSelected] = useState<string | null>(null)
   const [forcedCenter, setForcedCenter] = useState<[number, number] | null>(null)
@@ -284,9 +285,6 @@ export default function MapPage() {
   useFocusTrap(imageDialogRef, fullscreenImage !== null, closeFullscreenImage)
   useFocusTrap(scoringDialogRef, scoringModalOpen, closeScoringModal)
 
-  useEffect(() => {
-    if (!isLoading && !isAuthenticated) window.location.href = '/auth'
-  }, [isLoading, isAuthenticated])
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -507,7 +505,7 @@ export default function MapPage() {
       <PageHeader
         dense={isMobile}
         icon={
-          <svg width={isMobile ? 18 : 22} height={isMobile ? 18 : 22} viewBox="0 0 24 24" fill="none" stroke="#2db8b0" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <svg width={isMobile ? 18 : 22} height={isMobile ? 18 : 22} viewBox="0 0 24 24" fill="none" stroke={ACCENT} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
             <circle cx="12" cy="10" r="3"/>
           </svg>
@@ -570,7 +568,7 @@ export default function MapPage() {
           {building && (
             <>
             {/* Accent bar at top */}
-            <div style={{ height: '3px', background: `linear-gradient(90deg, ${riskColor}, #2db8b0)`, borderRadius: '0 14px 0 0' }} />
+            <div style={{ height: '3px`, background: `linear-gradient(90deg, ${riskColor}, ${ACCENT})`, borderRadius: `0 14px 0 0' }} />
 
             {/* Header */}
             <div style={{ padding: '20px 22px 0' }}>
@@ -1106,7 +1104,7 @@ export default function MapPage() {
                 onClick={() => router.push(`/simulate/${encodeURIComponent(building.id)}/disaster`)}
                 style={{
                   width: '100%', padding: '14px 20px',
-                  background: building.status === 'available' ? 'linear-gradient(135deg, #2db8b0 0%, #1a9e97 100%)' : 'rgba(148,163,184,0.3)',
+                  background: building.status === 'available' ? `linear-gradient(135deg, ${ACCENT} 0%, #1a9e97 100%)` : 'rgba(148,163,184,0.3)',
                   border: 'none', borderRadius: '12px',
                   color: building.status === 'available' ? '#fff' : '#94a3b8', 
                   fontSize: '14px', fontWeight: '700',

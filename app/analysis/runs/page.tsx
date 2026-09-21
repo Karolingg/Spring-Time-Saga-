@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { useAuth } from '@/src/hooks/useAuth'
+import { useRequireAuth } from '@/src/hooks/useRequireAuth'
 import {
   getLatestSimulationRun,
   getSimulationHistory,
@@ -21,24 +21,20 @@ import type { DensityCell, SimulationRun, SimulationZone } from '@/src/schema/si
 import { PageLoading } from '@/components/ui/PageLoading'
 import { CARD_SURFACE } from '@/components/ui/Card'
 import { BackLink } from '@/components/ui/BackLink'
-import { relativeTime } from '@/src/utils/format'
+import { RunSelect } from '@/components/ui/RunSelect'
+import { ACCENT } from '@/src/config/theme'
 
 const SECTION_CARD = { ...CARD_SURFACE, marginBottom: '20px' }
 
 
 
-interface RunHistoryItem {
-  id: string
-  label: string
-}
-
 
 export default function AnalysisRunsPage() {
-  const { isAuthenticated, isLoading: isAuthLoading } = useAuth()
+  const { isAuthenticated, isLoading: isAuthLoading } = useRequireAuth()
 
   const [run, setRun] = useState<SimulationRun | null>(null)
   const [densityCells, setDensityCells] = useState<DensityCell[]>([])
-  const [runHistory, setRunHistory] = useState<RunHistoryItem[]>([])
+  const [runHistory, setRunHistory] = useState<SimulationRun[]>([])
   const [isLoadingData, setIsLoadingData] = useState(true)
   const [isConfirmResetOpen, setIsConfirmResetOpen] = useState(false)
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
@@ -49,16 +45,10 @@ export default function AnalysisRunsPage() {
   const isMutationInFlightRef = useRef(false)
   const { showToast } = useToast()
 
-  useEffect(() => {
-    if (!isAuthLoading && !isAuthenticated) {
-      window.location.href = '/auth'
-    }
-  }, [isAuthLoading, isAuthenticated])
 
   useEffect(() => {
     if (!isAuthenticated) return
     loadInitialData()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAuthenticated])
 
   async function loadInitialData() {
@@ -70,22 +60,12 @@ export default function AnalysisRunsPage() {
       ])
       setRun(latest)
       setDensityCells(latest ? await getDensityCells(latest.id) : [])
-      setRunHistory(buildRunHistory(history))
+      setRunHistory(history)
     } catch (err) {
       console.error('Failed to load simulation data:', err)
     } finally {
       setIsLoadingData(false)
     }
-  }
-
-  function buildRunHistory(runs: SimulationRun[]): RunHistoryItem[] {
-    return runs.map(r => {
-      const type = r.disasterType.charAt(0).toUpperCase() + r.disasterType.slice(1)
-      return {
-        id: r.id,
-        label: `${type} · ${r.config?.agentCount ?? 0} agents · ${relativeTime(r.createdAt)}`,
-      }
-    })
   }
 
   async function handleRunChange(selectedRunId: string) {
@@ -270,7 +250,7 @@ export default function AnalysisRunsPage() {
       {!isLoadingData && run && !hasAnalysisData && (
         <div style={{ ...SECTION_CARD, textAlign: 'center', padding: '48px 32px' }}>
           <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '12px' }}>
-            <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#2db8b0" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+            <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke={ACCENT} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
               <circle cx="12" cy="12" r="9" />
               <path d="M9 15l1.8-4.8L15 9l-1.8 4.8L9 15z" />
             </svg>
@@ -321,7 +301,7 @@ export default function AnalysisRunsPage() {
 }
 
 interface PageHeaderProps {
-  runHistory: RunHistoryItem[]
+  runHistory: SimulationRun[]
   currentRunId: string
   currentRun: SimulationRun | null
   onRunChange: (id: string) => void
@@ -353,7 +333,7 @@ function PageHeader({
           background: 'rgba(45,184,176,0.1)',
           display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
         }}>
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#2db8b0" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={ACCENT} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
             <path d="M3 3v18h18"/><path d="M18.7 8l-5.1 5.2-2.8-2.7L7 14.3"/>
           </svg>
         </div>
@@ -538,7 +518,7 @@ function DangerZone({ onRequestReset, isResetting, isDisabled }: {
 }
 
 interface RunControlsProps {
-  runHistory: RunHistoryItem[]
+  runHistory: SimulationRun[]
   currentRunId: string
   onRunChange: (id: string) => void
   onRequestDelete: (id: string) => void
@@ -548,23 +528,12 @@ interface RunControlsProps {
 function RunControls({ runHistory, currentRunId, onRunChange, onRequestDelete, isDisabled }: RunControlsProps) {
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-      <select
-        onChange={e => onRunChange(e.target.value)}
+      <RunSelect
+        runs={runHistory}
         value={currentRunId}
+        onChange={onRunChange}
         disabled={isDisabled}
-        style={{
-          padding: '8px 12px', borderRadius: '8px',
-          border: '1px solid var(--border)', fontSize: '12px',
-          color: 'var(--text-primary)', background: 'var(--bg-card)',
-          maxWidth: '320px',
-          cursor: isDisabled ? 'not-allowed' : 'default',
-          opacity: isDisabled ? 0.7 : 1,
-        }}
-      >
-        {runHistory.map(r => (
-          <option key={r.id} value={r.id}>{r.label}</option>
-        ))}
-      </select>
+      />
       <button
         onClick={() => onRequestDelete(currentRunId)}
         disabled={isDisabled}
@@ -593,7 +562,7 @@ function EmptyState() {
   return (
     <div style={{ ...SECTION_CARD, textAlign: 'center', padding: '60px 32px' }}>
       <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '16px' }}>
-        <svg width="42" height="42" viewBox="0 0 24 24" fill="none" stroke="#2db8b0" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+        <svg width="42" height="42" viewBox="0 0 24 24" fill="none" stroke={ACCENT} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
           <rect x="3" y="3" width="18" height="18" rx="2" />
           <path d="M9 3v18M15 3v18M3 9h18M3 15h18" />
           <circle cx="15" cy="9" r="2.2" />

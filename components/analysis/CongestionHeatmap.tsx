@@ -1,5 +1,6 @@
 import type { SimulationZone } from '@/src/schema/simulation.types'
 import { CONGESTION_BANDS, bandFor } from '@/src/config/congestion'
+import { ACCENT } from '@/src/config/theme'
 
 function getIntensityColor(intensity: number): string {
   return bandFor(intensity).color
@@ -15,7 +16,7 @@ export function CongestionHeatmap({ zones, title = 'Congestion Zones', subtitle 
   return (
     <div>
       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#2db8b0" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={ACCENT} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/>
         </svg>
         <span style={{ fontSize: '11px', fontWeight: '700', letterSpacing: '0.1em', color: 'var(--text-muted)', textTransform: 'uppercase' }}>

@@ -1,6 +1,7 @@
 'use client'
 
 import { useOnboarding } from '@/src/hooks/useOnboarding'
+import { ACCENT } from '@/src/config/theme'
 
 interface OnboardingOverlayProps {
   currentPage: string
@@ -95,7 +96,7 @@ export function OnboardingOverlay({ currentPage }: OnboardingOverlayProps) {
           <div
             style={{
               height: '100%',
-              background: '#2db8b0',
+              background: ACCENT,
               width: `${((currentStep + 1) / steps.length) * 100}%`,
               transition: 'width 0.3s ease-in-out',
             }}
